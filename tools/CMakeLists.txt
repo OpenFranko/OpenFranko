@@ -1,2 +1,1 @@
-add_subdirectory(decompressor)
-
+add_executable(backwardLZ77Decompressor decompressor/backwardLZ77.cpp)
