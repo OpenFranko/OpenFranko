@@ -4,6 +4,9 @@ project(OpenFranko)
 
 option(BUILD_TESTS "Build tests" OFF)
 
+include(FindPkgConfig)
+include(GNUInstallDirs)
+
 add_subdirectory(lib)
 add_subdirectory(tools)
 
