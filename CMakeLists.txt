@@ -2,7 +2,14 @@ cmake_minimum_required(VERSION 3.10)
 
 project(OpenFranko)
 
-set(CMAKE_CXX_STANDARD 17)
+option(BUILD_TESTS "Build tests" OFF)
+
+add_subdirectory(lib)
 
 add_executable(OpenFranko src/main.cpp)
+
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif()
 
