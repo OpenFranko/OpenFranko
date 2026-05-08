@@ -5,6 +5,7 @@ project(OpenFranko)
 option(BUILD_TESTS "Build tests" OFF)
 
 add_subdirectory(lib)
+add_subdirectory(tools)
 
 add_executable(OpenFranko src/main.cpp)
 

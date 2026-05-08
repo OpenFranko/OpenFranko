@@ -1,2 +1,2 @@
-add_executable(backwardLZ77 backwardLZ77.cpp)
+add_executable(backwardLZ77Decompressor backwardLZ77.cpp)
 
