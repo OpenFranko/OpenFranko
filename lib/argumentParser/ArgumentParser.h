@@ -9,11 +9,9 @@ namespace argumentParser {
 
 class ArgumentParser {
 public:
-  ArgumentParser(int &argc, char **argv);
+  ArgumentParser(int argc, char **argv);
 
   std::optional<std::string> getCmdOption(const std::string &option) const;
-
-  bool cmdOptionExists(const std::string &option) const;
 
 private:
   std::vector<std::string> inputStrings;

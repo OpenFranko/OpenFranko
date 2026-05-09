@@ -2,7 +2,7 @@
 
 namespace openfranko::lib::argumentParser {
 
-ArgumentParser::ArgumentParser(int &argc, char **argv) {
+ArgumentParser::ArgumentParser(int argc, char **argv) {
   for (int i = 1; i < argc; ++i)
     this->inputStrings.push_back(std::string(argv[i]));
 }
@@ -15,11 +15,6 @@ ArgumentParser::getCmdOption(const std::string &option) const {
     return *itr;
   }
   return std::nullopt;
-}
-
-bool ArgumentParser::cmdOptionExists(const std::string &option) const {
-  return std::find(this->inputStrings.begin(), this->inputStrings.end(),
-                   option) != this->inputStrings.end();
 }
 
 } // namespace openfranko::lib::argumentParser

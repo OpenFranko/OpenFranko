@@ -10,14 +10,18 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  if (parser.cmdOptionExists("-i")) {
+  const auto inputOptional = parser.getCmdOption("-i");
 
-    std::string inputFilePath = parser.getCmdOption("-i").value();
+  if (inputOptional.has_value()) {
+
+    std::string inputFilePath = inputOptional.value();
 
     std::string outputFilePath = inputFilePath + ".dec";
 
-    if (parser.cmdOptionExists("-o")) {
-      outputFilePath = parser.getCmdOption("-o").value();
+    const auto outputOptional = parser.getCmdOption("-o");
+
+    if (outputOptional.has_value()) {
+      outputFilePath = outputOptional.value();
     }
 
     std::vector<uint8_t> compressedData =

@@ -1,5 +1,12 @@
 find_package(Catch2 REQUIRED)
 
+set(ARGUMENT_PARSER_TEST_TARGET argumentParserTest)
+add_executable(${ARGUMENT_PARSER_TEST_TARGET}
+    argumentParser/argumentParserTest.cpp
+)
+target_link_libraries(${ARGUMENT_PARSER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain argumentParser)
+add_test(NAME ${ARGUMENT_PARSER_TEST_TARGET} COMMAND ${ARGUMENT_PARSER_TEST_TARGET})
+
 set(READ_FILE_TEST_TARGET readFileTest)
 add_executable(${READ_FILE_TEST_TARGET}
     filesystem/readFileTest.cpp
