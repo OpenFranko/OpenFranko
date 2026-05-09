@@ -7,6 +7,13 @@ add_executable(${READ_FILE_TEST_TARGET}
 target_link_libraries(${READ_FILE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain readFile)
 add_test(NAME ${READ_FILE_TEST_TARGET} COMMAND ${READ_FILE_TEST_TARGET})
 
+set(WRITE_FILE_TEST_TARGET writeFileTest)
+add_executable(${WRITE_FILE_TEST_TARGET}
+    filesystem/writeFileTest.cpp
+)
+target_link_libraries(${WRITE_FILE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain writeFile readFile)
+add_test(NAME ${WRITE_FILE_TEST_TARGET} COMMAND ${WRITE_FILE_TEST_TARGET})
+
 set(BACKWARD_LZ77_TEST_TARGET backwardLZ77Test)
 add_executable(${BACKWARD_LZ77_TEST_TARGET}
     decompressor/backwardLZ77Test.cpp
