@@ -1,2 +1,2 @@
 add_executable(backwardLZ77Decompressor decompressor/backwardLZ77.cpp)
-target_link_libraries(backwardLZ77Decompressor readFile)
+target_link_libraries(backwardLZ77Decompressor argumentParser readFile backwardLZ77 writeFile)

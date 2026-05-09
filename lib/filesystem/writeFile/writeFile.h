@@ -5,9 +5,9 @@
 namespace openfranko {
 namespace lib {
 namespace filesystem {
-namespace readFile {
+namespace writeFile {
 
-std::vector<uint8_t> readFile(const std::string &filePath);
+void writeFile(const std::string &filePath, const std::vector<uint8_t> &data);
 
 }
 } // namespace filesystem

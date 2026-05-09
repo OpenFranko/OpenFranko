@@ -5,10 +5,12 @@ namespace openfranko {
 namespace lib {
 namespace decompressor {
 namespace backwardLZ77 {
+namespace helpers {
 
-std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData);
+uint32_t readUint32BigEndian(const std::vector<uint8_t> &data, size_t pos);
 
-}
+} // namespace helpers
+} // namespace backwardLZ77
 } // namespace decompressor
 } // namespace lib
 } // namespace openfranko
