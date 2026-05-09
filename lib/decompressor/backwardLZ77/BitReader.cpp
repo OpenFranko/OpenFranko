@@ -10,11 +10,7 @@ BitReader::BitReader(const std::vector<uint8_t> &data, size_t endPos,
     : m_data(data), m_readPos(endPos), m_buffer(initialBuffer),
       m_checksum(xorChecksum) {}
 
-uint8_t BitReader::readRawByte() {
-  if (m_readPos == 0)
-    throw std::runtime_error("Stream underflow");
-  return m_data[--m_readPos];
-}
+uint8_t BitReader::readRawByte() { return static_cast<uint8_t>(getBits(8)); }
 
 uint32_t BitReader::getBit() {
   uint32_t bit = m_buffer & 1;
@@ -45,7 +41,6 @@ void BitReader::refill() {
   uint32_t nextWord = helpers::readUint32BigEndian(m_data, m_readPos);
 
   m_checksum ^= nextWord;
-
   m_lastBitBeforeRefill = nextWord & 1;
   m_buffer = (nextWord >> 1) | consts::BIT_SENTINEL;
 }
