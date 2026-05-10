@@ -18,7 +18,7 @@ constexpr size_t SPACK_HEADER_SIZE = 90;
 
 constexpr size_t SPACK_PALETTE_SIZE = 32;
 
-constexpr size_t BITMAP_HEADER_SIZE = 24;
+constexpr size_t PACKED_BITMAP_HEADER_SIZE = 24;
 
 } // namespace consts
 } // namespace amosCompact
