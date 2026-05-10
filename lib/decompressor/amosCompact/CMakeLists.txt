@@ -1,2 +1,2 @@
-add_library(amosCompact amosCompact.cpp amosCompact.h)
+add_library(amosCompact amosCompact.cpp amosCompact.h SPACKScreen.cpp SPACKScreen.h )
 
