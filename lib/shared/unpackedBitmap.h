@@ -1,7 +1,6 @@
 #ifndef UNPACKEDBITMAP_H_
 #define UNPACKEDBITMAP_H_
 
-#include "Consts.h"
 #include <cstdint>
 #include <vector>
 
@@ -10,12 +9,14 @@ namespace lib {
 namespace decompressor {
 namespace amosCompact {
 
+namespace {}
+
 struct UnpackedBitmap {
   uint16_t width = 0;
   uint16_t height = 0;
   uint16_t numberOfBitplanes = 0;
   uint16_t palette[32] = {};
-  uint8_t *bitplaneData[consts::MAX_SUPPORTED_BITPLANES] = {};
+  uint8_t *bitplaneData[6] = {};
   size_t bytesPerPlane = 0;
   uint8_t *chunkyPixels = nullptr;
 };

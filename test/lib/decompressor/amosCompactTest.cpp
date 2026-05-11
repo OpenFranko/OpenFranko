@@ -3,7 +3,7 @@
 #include "../../../lib/decompressor/amosCompact/ByteReader.h"
 #include "../../../lib/decompressor/amosCompact/Consts.h"
 #include "../../../lib/decompressor/amosCompact/headers.h"
-#include "../../../lib/decompressor/amosCompact/unpackedBitmap.h"
+#include "../../../lib/shared/unpackedBitmap.h"
 #include <catch2/catch_all.hpp>
 #include <cstdlib>
 #include <vector>
@@ -89,8 +89,8 @@ SCENARIO("BitReader reads bits MSB-first from a byte stream") {
       }
 
       THEN("All 16 bits are correct") {
-        REQUIRE(bits ==
-                std::vector<int>{1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0});
+        REQUIRE(bits == std::vector<int>{1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1,
+                                         1, 0, 0});
       }
     }
   }
@@ -171,19 +171,34 @@ SCENARIO("ByteReader reads bytes sequentially") {
 SCENARIO("SPACK header parsing extracts all fields correctly") {
   GIVEN("A 90-byte SPACK header with known values") {
     std::vector<uint8_t> data(90, 0);
-    data[0] = 0x12; data[1] = 0x03; data[2] = 0x19; data[3] = 0x90;
-    data[4] = 0x01; data[5] = 0x40;
-    data[6] = 0x00; data[7] = 0xC8;
-    data[8] = 0x00; data[9] = 0x10;
-    data[10] = 0x00; data[11] = 0x20;
-    data[12] = 0x01; data[13] = 0x30;
-    data[14] = 0x00; data[15] = 0xB8;
-    data[16] = 0x00; data[17] = 0x05;
-    data[18] = 0x00; data[19] = 0x0A;
-    data[20] = 0x80; data[21] = 0x00;
-    data[22] = 0x00; data[23] = 0x10;
-    data[24] = 0x00; data[25] = 0x04;
-    data[28] = 0x0F; data[29] = 0x00;
+    data[0] = 0x12;
+    data[1] = 0x03;
+    data[2] = 0x19;
+    data[3] = 0x90;
+    data[4] = 0x01;
+    data[5] = 0x40;
+    data[6] = 0x00;
+    data[7] = 0xC8;
+    data[8] = 0x00;
+    data[9] = 0x10;
+    data[10] = 0x00;
+    data[11] = 0x20;
+    data[12] = 0x01;
+    data[13] = 0x30;
+    data[14] = 0x00;
+    data[15] = 0xB8;
+    data[16] = 0x00;
+    data[17] = 0x05;
+    data[18] = 0x00;
+    data[19] = 0x0A;
+    data[20] = 0x80;
+    data[21] = 0x00;
+    data[22] = 0x00;
+    data[23] = 0x10;
+    data[24] = 0x00;
+    data[25] = 0x04;
+    data[28] = 0x0F;
+    data[29] = 0x00;
 
     WHEN("Parsing the header") {
       auto hdr = headers::parseSPACKHeader(data);
@@ -210,15 +225,8 @@ SCENARIO("SPACK header parsing extracts all fields correctly") {
 SCENARIO("Bitmap header parsing extracts all fields correctly") {
   GIVEN("A 24-byte bitmap header with known values") {
     std::vector<uint8_t> data = {
-        0x06, 0x07, 0x19, 0x63,
-        0xFF, 0xFE,
-        0x00, 0x03,
-        0x00, 0x28,
-        0x00, 0x0A,
-        0x00, 0x10,
-        0x00, 0x04,
-        0x00, 0x00, 0x12, 0x34,
-        0x00, 0x00, 0x56, 0x78,
+        0x06, 0x07, 0x19, 0x63, 0xFF, 0xFE, 0x00, 0x03, 0x00, 0x28, 0x00, 0x0A,
+        0x00, 0x10, 0x00, 0x04, 0x00, 0x00, 0x12, 0x34, 0x00, 0x00, 0x56, 0x78,
     };
 
     WHEN("Parsing the header") {
@@ -267,10 +275,7 @@ SCENARIO("AMOS Compact decompression works correctly") {
   }
 
   GIVEN("A single-cell bitmap where a mask bit triggers a fresh value read") {
-    auto data = buildPackedBitmap(1, 1, 1, 1,
-                                  {0x00, 0xFF},
-                                  {0x80},
-                                  {0x00});
+    auto data = buildPackedBitmap(1, 1, 1, 1, {0x00, 0xFF}, {0x80}, {0x00});
 
     WHEN("Decompressing") {
       auto result = decompress(data);
@@ -303,10 +308,8 @@ SCENARIO("AMOS Compact decompression works correctly") {
 
   GIVEN("A 2x2 tile grid with tileHeight=2 verifying tile traversal order") {
     auto data = buildPackedBitmap(
-        2, 2, 2, 1,
-        {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
-        {0xFF},
-        {0x00});
+        2, 2, 2, 1, {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
+        {0xFF}, {0x00});
 
     WHEN("Decompressing") {
       auto result = decompress(data);
@@ -332,10 +335,8 @@ SCENARIO("AMOS Compact decompression works correctly") {
   }
 
   GIVEN("A two-plane bitmap combining into chunky pixels") {
-    auto data = buildPackedBitmap(1, 1, 1, 2,
-                                  {0x00, 0xAA, 0x55},
-                                  {0xFF},
-                                  {0x00});
+    auto data =
+        buildPackedBitmap(1, 1, 1, 2, {0x00, 0xAA, 0x55}, {0xFF}, {0x00});
 
     WHEN("Decompressing") {
       auto result = decompress(data);
@@ -358,10 +359,8 @@ SCENARIO("AMOS Compact decompression works correctly") {
   }
 
   GIVEN("A bitmap where the initial pointer bit updates the mask") {
-    auto data = buildPackedBitmap(1, 1, 1, 1,
-                                  {0x00, 0xBB},
-                                  {0x00, 0x80},
-                                  {0x80});
+    auto data =
+        buildPackedBitmap(1, 1, 1, 1, {0x00, 0xBB}, {0x00, 0x80}, {0x80});
 
     WHEN("Decompressing") {
       auto result = decompress(data);
@@ -376,13 +375,16 @@ SCENARIO("AMOS Compact decompression works correctly") {
 
   GIVEN("A SPACK-format input with screen header and palette") {
     std::vector<uint8_t> spackHeader(90, 0);
-    spackHeader[0] = 0x12; spackHeader[1] = 0x03;
-    spackHeader[2] = 0x19; spackHeader[3] = 0x90;
+    spackHeader[0] = 0x12;
+    spackHeader[1] = 0x03;
+    spackHeader[2] = 0x19;
+    spackHeader[3] = 0x90;
     spackHeader[5] = 0x08;
     spackHeader[7] = 0x01;
     spackHeader[23] = 0x02;
     spackHeader[25] = 0x01;
-    spackHeader[28] = 0x0F; spackHeader[29] = 0xFF;
+    spackHeader[28] = 0x0F;
+    spackHeader[29] = 0xFF;
 
     auto bitmapData = buildPackedBitmap(1, 1, 1, 1, {0x42}, {0x00}, {0x00});
 
@@ -425,10 +427,8 @@ SCENARIO("AMOS Compact decompression works correctly") {
   }
 
   GIVEN("A multi-cell bitmap with a mix of fresh and repeated values") {
-    auto data = buildPackedBitmap(1, 1, 4, 1,
-                                  {0x00, 0xAA, 0xBB},
-                                  {0x90},
-                                  {0x00});
+    auto data =
+        buildPackedBitmap(1, 1, 4, 1, {0x00, 0xAA, 0xBB}, {0x90}, {0x00});
 
     WHEN("Decompressing") {
       auto result = decompress(data);
@@ -458,8 +458,10 @@ SCENARIO("AMOS Compact decompression rejects invalid input") {
 
   GIVEN("Input with an unrecognized magic number") {
     std::vector<uint8_t> data(30, 0);
-    data[0] = 0xDE; data[1] = 0xAD;
-    data[2] = 0xBE; data[3] = 0xEF;
+    data[0] = 0xDE;
+    data[1] = 0xAD;
+    data[2] = 0xBE;
+    data[3] = 0xEF;
 
     WHEN("Attempting to decompress") {
       THEN("It throws") {
@@ -520,8 +522,10 @@ SCENARIO("AMOS Compact decompression rejects invalid input") {
 
   GIVEN("A bitmap with bitstream pointer beyond data") {
     auto data = buildPackedBitmap(1, 1, 1, 1, {0x42}, {0x00}, {0x00});
-    data[20] = 0x00; data[21] = 0x00;
-    data[22] = 0xFF; data[23] = 0xFF;
+    data[20] = 0x00;
+    data[21] = 0x00;
+    data[22] = 0xFF;
+    data[23] = 0xFF;
 
     WHEN("Attempting to decompress") {
       THEN("It throws") {
@@ -532,8 +536,10 @@ SCENARIO("AMOS Compact decompression rejects invalid input") {
 
   GIVEN("A SPACK header without enough data for the bitmap header") {
     std::vector<uint8_t> data(100, 0);
-    data[0] = 0x12; data[1] = 0x03;
-    data[2] = 0x19; data[3] = 0x90;
+    data[0] = 0x12;
+    data[1] = 0x03;
+    data[2] = 0x19;
+    data[3] = 0x90;
 
     WHEN("Attempting to decompress") {
       THEN("It throws") {
