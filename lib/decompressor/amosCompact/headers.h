@@ -30,12 +30,12 @@ SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data);
 struct BitmapHeader {
   int16_t xOffset;
   int16_t yOffset;
-  uint16_t bytesWidth;
-  uint16_t rowsHeight;
+  uint16_t gridX;
+  uint16_t gridY;
   uint16_t tileHeight;
   uint16_t numberOfBitplanes;
-  uint32_t offsetToByteTable;
-  uint32_t offsetToPointerTable;
+  uint32_t offsetToByteTable2;
+  uint32_t offsetToPointerBitstream;
 };
 
 BitmapHeader parseBitmapHeader(const std::vector<uint8_t> &data);

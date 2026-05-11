@@ -30,12 +30,12 @@ BitmapHeader parseBitmapHeader(const std::vector<uint8_t> &data) {
   BitmapHeader header;
   header.xOffset = helpers::readInt16BigEndian(data, 4);
   header.yOffset = helpers::readInt16BigEndian(data, 6);
-  header.bytesWidth = helpers::readUint16BigEndian(data, 8);
-  header.rowsHeight = helpers::readUint16BigEndian(data, 10);
+  header.gridX = helpers::readUint16BigEndian(data, 8);
+  header.gridY = helpers::readUint16BigEndian(data, 10);
   header.tileHeight = helpers::readUint16BigEndian(data, 12);
   header.numberOfBitplanes = helpers::readUint16BigEndian(data, 14);
-  header.offsetToByteTable = helpers::readUint32BigEndian(data, 16);
-  header.offsetToPointerTable = helpers::readUint32BigEndian(data, 20);
+  header.offsetToByteTable2 = helpers::readUint32BigEndian(data, 16);
+  header.offsetToPointerBitstream = helpers::readUint32BigEndian(data, 20);
   return header;
 }
 

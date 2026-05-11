@@ -7,7 +7,7 @@ namespace openfranko::lib::decompressor::amosCompact {
 
 SPACKScreen::SPACKScreen(const std::vector<uint8_t> &data) : m_data(data) {
   checkSize();
-  parseHeader();
+  parseHeaders();
 }
 
 std::vector<uint8_t> SPACKScreen::getData() const { return {}; }
@@ -19,8 +19,11 @@ void SPACKScreen::checkSize() {
   }
 }
 
-void SPACKScreen::parseHeader() {
-  m_header = headers::parseSPACKHeader(m_data);
+void SPACKScreen::parseHeaders() {
+  m_spackHeader = headers::parseSPACKHeader(m_data);
+  m_bitmapData = std::vector<uint8_t>(
+      m_data.begin() + consts::SPACK_HEADER_SIZE, m_data.end());
+  m_bitmapHeader = headers::parseBitmapHeader(m_bitmapData);
 }
 
 } // namespace openfranko::lib::decompressor::amosCompact

@@ -16,10 +16,12 @@ public:
 private:
   void checkSize();
 
-  void parseHeader();
+  void parseHeaders();
 
   const std::vector<uint8_t> &m_data;
-  headers::SPACKHeader m_header;
+  headers::SPACKHeader m_spackHeader;
+  std::vector<uint8_t> m_bitmapData;
+  headers::BitmapHeader m_bitmapHeader;
 };
 
 } // namespace amosCompact
