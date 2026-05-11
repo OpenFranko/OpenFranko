@@ -1,12 +1,13 @@
 #include "../../../lib/decompressor/amosCompact/amosCompact.h"
-#include "../../../lib/decompressor/amosCompact/BitReader.h"
-#include "../../../lib/decompressor/amosCompact/ByteReader.h"
+#include "../../../lib/decompressor/amosCompact/detail/BitReader.h"
+#include "../../../lib/decompressor/amosCompact/detail/ByteReader.h"
 #include "../../../lib/decompressor/amosCompact/Consts.h"
-#include "../../../lib/decompressor/amosCompact/headers.h"
+#include "../../../lib/decompressor/amosCompact/detail/headers.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
 using namespace openfranko::lib::decompressor::amosCompact;
+using namespace openfranko::lib::decompressor::amosCompact::detail;
 
 static uint32_t readLittleEndianUInt32(const std::vector<uint8_t> &d,
                                        size_t off) {

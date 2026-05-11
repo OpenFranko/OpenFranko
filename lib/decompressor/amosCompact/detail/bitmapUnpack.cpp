@@ -1,12 +1,12 @@
 #include "bitmapUnpack.h"
 #include "BitReader.h"
 #include "ByteReader.h"
-#include "Consts.h"
+#include "../Consts.h"
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
 
-namespace openfranko::lib::decompressor::amosCompact {
+namespace openfranko::lib::decompressor::amosCompact::detail {
 
 namespace {
 
@@ -123,4 +123,4 @@ UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
   return bitmap;
 }
 
-} // namespace openfranko::lib::decompressor::amosCompact
+} // namespace openfranko::lib::decompressor::amosCompact::detail

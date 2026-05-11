@@ -1,8 +1,8 @@
 #include "headers.h"
-#include "../helpers/helpers.h"
-#include "Consts.h"
+#include "../../helpers/helpers.h"
+#include "../Consts.h"
 
-namespace openfranko::lib::decompressor::amosCompact::headers {
+namespace openfranko::lib::decompressor::amosCompact::detail::headers {
 
 SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data) {
   SPACKHeader header;
@@ -37,4 +37,4 @@ BitmapHeader parseBitmapHeader(const std::vector<uint8_t> &data) {
   return header;
 }
 
-} // namespace openfranko::lib::decompressor::amosCompact::headers
+} // namespace openfranko::lib::decompressor::amosCompact::detail::headers

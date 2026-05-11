@@ -1,8 +1,8 @@
 #include "amosCompact.h"
 #include "../helpers/helpers.h"
 #include "Consts.h"
-#include "bitmapUnpack.h"
-#include "unpackedBitmap2Vector.h"
+#include "detail/bitmapUnpack.h"
+#include "detail/unpackedBitmap2Vector.h"
 #include <stdexcept>
 
 namespace openfranko::lib::decompressor::amosCompact {
@@ -38,7 +38,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
       throw std::runtime_error("File is too small to be a valid SPACK screen");
     }
 
-    auto spackHeader = headers::parseSPACKHeader(data);
+    auto spackHeader = detail::headers::parseSPACKHeader(data);
     palette = std::vector<uint16_t>(std::begin(spackHeader.amigaPalette),
                                     std::end(spackHeader.amigaPalette));
     data = std::vector<uint8_t>(data.begin() + consts::SPACK_HEADER_SIZE,
@@ -50,7 +50,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("File is not a valid packed bitmap");
   }
 
-  auto bitmapHeader = headers::parseBitmapHeader(data);
+  auto bitmapHeader = detail::headers::parseBitmapHeader(data);
 
   if (bitmapHeader.numberOfBitplanes == 0 ||
       bitmapHeader.numberOfBitplanes > consts::MAX_SUPPORTED_BITPLANES) {
@@ -61,8 +61,8 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("Invalid bitmap dimensions");
   }
 
-  auto unpackedBitmap = bitmapUnpack(data, bitmapHeader, palette);
-  return unpackedBitmap2Vector(unpackedBitmap);
+  auto unpackedBitmap = detail::bitmapUnpack(data, bitmapHeader, palette);
+  return detail::unpackedBitmap2Vector(unpackedBitmap);
 }
 
 } // namespace openfranko::lib::decompressor::amosCompact

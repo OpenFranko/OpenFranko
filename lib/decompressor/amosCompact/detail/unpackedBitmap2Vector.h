@@ -9,9 +9,11 @@ namespace openfranko {
 namespace lib {
 namespace decompressor {
 namespace amosCompact {
+namespace detail {
 
 std::vector<uint8_t> unpackedBitmap2Vector(const UnpackedBitmap &bitmap);
 
+}
 } // namespace amosCompact
 } // namespace decompressor
 } // namespace lib

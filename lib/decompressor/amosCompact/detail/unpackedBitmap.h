@@ -8,6 +8,7 @@ namespace openfranko {
 namespace lib {
 namespace decompressor {
 namespace amosCompact {
+namespace detail {
 
 struct UnpackedBitmap {
   uint16_t width = 0;
@@ -19,6 +20,7 @@ struct UnpackedBitmap {
   uint8_t *chunkyPixels = nullptr;
 };
 
+} // namespace detail
 } // namespace amosCompact
 } // namespace decompressor
 } // namespace lib

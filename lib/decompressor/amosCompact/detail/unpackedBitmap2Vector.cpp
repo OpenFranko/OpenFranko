@@ -1,7 +1,7 @@
 #include "unpackedBitmap2Vector.h"
 #include <stdexcept>
 
-namespace openfranko::lib::decompressor::amosCompact {
+namespace openfranko::lib::decompressor::amosCompact::detail {
 
 namespace {
 
@@ -88,4 +88,4 @@ std::vector<uint8_t> unpackedBitmap2Vector(const UnpackedBitmap &bitmap) {
   return buf;
 }
 
-} // namespace openfranko::lib::decompressor::amosCompact
+} // namespace openfranko::lib::decompressor::amosCompact::detail
