@@ -22,7 +22,7 @@ struct SPACKHeader {
   uint16_t displayModeFlags;
   uint16_t numberOfColors;
   uint16_t numberOfBitplanes;
-  std::vector<uint16_t> amigaPalette;
+  uint16_t amigaPalette[32];
 };
 
 SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data);

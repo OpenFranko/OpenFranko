@@ -19,9 +19,7 @@ SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data) {
   header.numberOfBitplanes = helpers::readUint16BigEndian(data, 24);
 
   for (size_t i = 0; i < consts::SPACK_PALETTE_SIZE; ++i) {
-    uint16_t color =
-        helpers::readUint16BigEndian(data, consts::SPACK_HEADER_SIZE + i * 2);
-    header.amigaPalette.push_back(color);
+    header.amigaPalette[i] = helpers::readUint16BigEndian(data, 26 + i * 2);
   }
   return header;
 }

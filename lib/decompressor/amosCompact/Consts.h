@@ -1,3 +1,6 @@
+#ifndef CONSTS_H_
+#define CONSTS_H_
+
 #include <cstdint>
 #include <vector>
 
@@ -25,3 +28,5 @@ constexpr size_t PACKED_BITMAP_HEADER_SIZE = 24;
 } // namespace decompressor
 } // namespace lib
 } // namespace openfranko
+
+#endif // CONSTS_H_

@@ -1,3 +1,7 @@
+#ifndef UNPACKEDBITMAP_H_
+#define UNPACKEDBITMAP_H_
+
+#include "Consts.h"
 #include <cstdint>
 #include <vector>
 
@@ -10,13 +14,15 @@ struct UnpackedBitmap {
   uint16_t width;
   uint16_t height;
   uint16_t numberOfBitplanes;
-  std::vector<uint16_t> palette;
-  std::vector<uint8_t *> bitplaneData;
+  uint16_t palette[32];
+  uint8_t *bitplaneData[consts::MAX_SUPPORTED_BITPLANES];
   size_t bytesPerPlane;
-  std::vector<uint8_t> chunkyPixels;
+  uint8_t *chunkyPixels;
 };
 
 } // namespace amosCompact
 } // namespace decompressor
 } // namespace lib
 } // namespace openfranko
+
+#endif // UNPACKEDBITMAP_H_
