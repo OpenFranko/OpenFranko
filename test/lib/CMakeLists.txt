@@ -28,3 +28,9 @@ add_executable(${BACKWARD_LZ77_TEST_TARGET}
 target_link_libraries(${BACKWARD_LZ77_TEST_TARGET} PRIVATE Catch2::Catch2WithMain backwardLZ77)
 add_test(NAME ${BACKWARD_LZ77_TEST_TARGET} COMMAND ${BACKWARD_LZ77_TEST_TARGET})
 
+set(AMOS_COMPACT_TEST_TARGET amosCompactTest)
+add_executable(${AMOS_COMPACT_TEST_TARGET}
+    decompressor/amosCompactTest.cpp
+)
+target_link_libraries(${AMOS_COMPACT_TEST_TARGET} PRIVATE Catch2::Catch2WithMain amosCompact)
+add_test(NAME ${AMOS_COMPACT_TEST_TARGET} COMMAND ${AMOS_COMPACT_TEST_TARGET})
