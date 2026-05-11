@@ -1,2 +1,5 @@
 add_executable(backwardLZ77Decompressor decompressor/backwardLZ77.cpp)
 target_link_libraries(backwardLZ77Decompressor argumentParser readFile backwardLZ77 writeFile)
+
+add_executable(amosCompact2Bitmap decompressor/compact2bmp.cpp)
+target_link_libraries(amosCompact2Bitmap argumentParser readFile amosCompact writeFile)
