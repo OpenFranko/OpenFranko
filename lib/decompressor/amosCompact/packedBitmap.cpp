@@ -19,14 +19,7 @@ void PackedBitmap::checkSize() {
 }
 
 void PackedBitmap::parseHeader() {
-  m_header.xOffset = helpers::readInt16BigEndian(m_data, 4);
-  m_header.yOffset = helpers::readInt16BigEndian(m_data, 6);
-  m_header.bytesWidth = helpers::readUint16BigEndian(m_data, 8);
-  m_header.rowsHeight = helpers::readUint16BigEndian(m_data, 10);
-  m_header.tileHeight = helpers::readUint16BigEndian(m_data, 12);
-  m_header.numberOfBitplanes = helpers::readUint16BigEndian(m_data, 14);
-  m_header.offsetToByteTable = helpers::readUint32BigEndian(m_data, 16);
-  m_header.offsetToPointerTable = helpers::readUint32BigEndian(m_data, 20);
+  m_header = headers::parseBitmapHeader(m_data);
 }
 
 } // namespace openfranko::lib::decompressor::amosCompact

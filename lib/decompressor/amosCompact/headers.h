@@ -7,6 +7,7 @@
 namespace openfranko {
 namespace lib {
 namespace decompressor {
+namespace amosCompact {
 namespace headers {
 
 struct SPACKHeader {
@@ -24,6 +25,8 @@ struct SPACKHeader {
   std::vector<uint16_t> amigaPalette;
 };
 
+SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data);
+
 struct BitmapHeader {
   int16_t xOffset;
   int16_t yOffset;
@@ -35,7 +38,10 @@ struct BitmapHeader {
   uint32_t offsetToPointerTable;
 };
 
+BitmapHeader parseBitmapHeader(const std::vector<uint8_t> &data);
+
 } // namespace headers
+} // namespace amosCompact
 } // namespace decompressor
 } // namespace lib
 } // namespace openfranko
