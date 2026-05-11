@@ -1,4 +1,3 @@
-#include "../../shared/unpackedBitmap.h"
 #include <cstdint>
 #include <vector>
 
@@ -7,7 +6,7 @@ namespace lib {
 namespace decompressor {
 namespace amosCompact {
 
-UnpackedBitmap decompress(const std::vector<uint8_t> &compressedData);
+std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData);
 
 }
 } // namespace decompressor

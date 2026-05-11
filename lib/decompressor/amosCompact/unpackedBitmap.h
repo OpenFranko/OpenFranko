@@ -9,8 +9,6 @@ namespace lib {
 namespace decompressor {
 namespace amosCompact {
 
-namespace {}
-
 struct UnpackedBitmap {
   uint16_t width = 0;
   uint16_t height = 0;

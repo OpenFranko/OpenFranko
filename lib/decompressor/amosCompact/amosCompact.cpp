@@ -2,6 +2,7 @@
 #include "../helpers/helpers.h"
 #include "Consts.h"
 #include "bitmapUnpack.h"
+#include "unpackedBitmap2Vector.h"
 #include <stdexcept>
 
 namespace openfranko::lib::decompressor::amosCompact {
@@ -19,7 +20,7 @@ bool isPackedBitmap(const std::vector<uint8_t> &data) {
 
 } // namespace
 
-UnpackedBitmap decompress(const std::vector<uint8_t> &compressedData) {
+std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   if (compressedData.size() < consts::MINIMAL_SIZE) {
     throw std::runtime_error("File is too small");
   }
@@ -60,7 +61,8 @@ UnpackedBitmap decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("Invalid bitmap dimensions");
   }
 
-  return bitmapUnpack(data, bitmapHeader, palette);
+  auto unpackedBitmap = bitmapUnpack(data, bitmapHeader, palette);
+  return unpackedBitmap2Vector(unpackedBitmap);
 }
 
 } // namespace openfranko::lib::decompressor::amosCompact
