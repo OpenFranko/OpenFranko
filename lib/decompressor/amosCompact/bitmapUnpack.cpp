@@ -2,6 +2,7 @@
 #include "BitReader.h"
 #include "ByteReader.h"
 #include "Consts.h"
+#include <algorithm>
 #include <cstring>
 #include <stdexcept>
 
@@ -24,18 +25,18 @@ void mainDecompression(UnpackedBitmap &bitmap,
 
   int maskBit = 7;
 
-  for (int plane; plane < bitmap.numberOfBitplanes; plane++) {
+  for (int plane = 0; plane < bitmap.numberOfBitplanes; plane++) {
     uint8_t *planeData = bitmap.bitplaneData[plane];
 
     for (int tileRow = 0; tileRow < header.gridY; tileRow++) {
       for (int tileCol = 0; tileCol < header.gridX; tileCol++) {
-        for (int row; row < header.tileHeight; row++) {
-          if (mask >> maskBit & 1) {
+        for (int row = 0; row < header.tileHeight; row++) {
+          if ((mask >> maskBit) & 1) {
             val = bytes1.read();
           }
 
-          int outX = tileRow * header.tileHeight + row;
-          int outY = tileCol;
+          int outY = tileRow * header.tileHeight + row;
+          int outX = tileCol;
 
           if (outY < heightLines && outX < lineSize) {
             planeData[outY * lineSize + outX] = val;
@@ -105,7 +106,9 @@ UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
   bitmap.height = heightInLines;
   bitmap.numberOfBitplanes = header.numberOfBitplanes;
   bitmap.bytesPerPlane = planeSize;
-  std::memcpy(bitmap.palette, palette.data(), sizeof(bitmap.palette));
+  size_t paletteCopySize =
+      std::min(palette.size() * sizeof(uint16_t), sizeof(bitmap.palette));
+  std::memcpy(bitmap.palette, palette.data(), paletteCopySize);
   for (int p = 0; p < bitmap.numberOfBitplanes; p++) {
     bitmap.bitplaneData[p] = static_cast<uint8_t *>(calloc(1, planeSize));
   }

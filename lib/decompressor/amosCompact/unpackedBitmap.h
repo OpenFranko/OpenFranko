@@ -11,13 +11,13 @@ namespace decompressor {
 namespace amosCompact {
 
 struct UnpackedBitmap {
-  uint16_t width;
-  uint16_t height;
-  uint16_t numberOfBitplanes;
-  uint16_t palette[32];
-  uint8_t *bitplaneData[consts::MAX_SUPPORTED_BITPLANES];
-  size_t bytesPerPlane;
-  uint8_t *chunkyPixels;
+  uint16_t width = 0;
+  uint16_t height = 0;
+  uint16_t numberOfBitplanes = 0;
+  uint16_t palette[32] = {};
+  uint8_t *bitplaneData[consts::MAX_SUPPORTED_BITPLANES] = {};
+  size_t bytesPerPlane = 0;
+  uint8_t *chunkyPixels = nullptr;
 };
 
 } // namespace amosCompact

@@ -26,9 +26,10 @@ UnpackedBitmap decompress(const std::vector<uint8_t> &compressedData) {
 
   std::vector<uint8_t> data = compressedData;
 
-  std::vector<uint16_t> palette = {0x555, 0xAAA, 0x666, 0xFAA, 0x083, 0x902,
-                                   0xB95, 0x760, 0x063, 0x000, 0x520, 0x17A,
-                                   0x09E, 0x4DF, 0x777, 0xDDD, 0xFFF};
+  std::vector<uint16_t> palette(32);
+  for (int i = 0; i < 32; i++) {
+    palette[i] = static_cast<uint16_t>((i * 0x111) & 0xFFF);
+  }
 
   if (isSPACK(data)) {
     if (data.size() <
@@ -49,6 +50,15 @@ UnpackedBitmap decompress(const std::vector<uint8_t> &compressedData) {
   }
 
   auto bitmapHeader = headers::parseBitmapHeader(data);
+
+  if (bitmapHeader.numberOfBitplanes == 0 ||
+      bitmapHeader.numberOfBitplanes > consts::MAX_SUPPORTED_BITPLANES) {
+    throw std::runtime_error("Invalid number of bitplanes");
+  }
+  if (bitmapHeader.gridX == 0 || bitmapHeader.gridY == 0 ||
+      bitmapHeader.tileHeight == 0) {
+    throw std::runtime_error("Invalid bitmap dimensions");
+  }
 
   return bitmapUnpack(data, bitmapHeader, palette);
 }
