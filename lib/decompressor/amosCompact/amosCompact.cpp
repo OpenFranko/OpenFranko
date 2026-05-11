@@ -9,19 +9,11 @@ namespace openfranko::lib::decompressor::amosCompact {
 
 namespace {
 bool isSPACK(const std::vector<uint8_t> &data) {
-  if (data.size() < consts::SPACK_HEADER_SIZE) {
-    return false;
-  }
-
   uint32_t header = helpers::readUint32BigEndian(data, 0);
   return header == consts::SPACK_SCREEN_HEADER;
 }
 
 bool isPackedBitmap(const std::vector<uint8_t> &data) {
-  if (data.size() < consts::PACKED_BITMAP_HEADER_SIZE) {
-    return false;
-  }
-
   uint32_t header = helpers::readUint32BigEndian(data, 0);
   return header == consts::AMOS_BMCODE;
 }
