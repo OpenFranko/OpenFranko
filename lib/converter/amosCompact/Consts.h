@@ -6,7 +6,7 @@
 
 namespace openfranko {
 namespace lib {
-namespace decompressor {
+namespace converter {
 namespace amosCompact {
 namespace consts {
 
@@ -25,7 +25,7 @@ constexpr size_t PACKED_BITMAP_HEADER_SIZE = 24;
 
 } // namespace consts
 } // namespace amosCompact
-} // namespace decompressor
+} // namespace converter
 } // namespace lib
 } // namespace openfranko
 

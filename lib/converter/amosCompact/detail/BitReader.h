@@ -3,7 +3,7 @@
 
 namespace openfranko {
 namespace lib {
-namespace decompressor {
+namespace converter {
 namespace amosCompact {
 namespace detail {
 
@@ -21,6 +21,6 @@ private:
 
 } // namespace detail
 } // namespace amosCompact
-} // namespace decompressor
+} // namespace converter
 } // namespace lib
 } // namespace openfranko

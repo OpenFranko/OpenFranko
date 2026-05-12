@@ -1,5 +1,20 @@
 add_executable(backwardLZ77Decompressor decompressor/backwardLZ77.cpp)
 target_link_libraries(backwardLZ77Decompressor argumentParser readFile backwardLZ77 writeFile)
 
-add_executable(amosCompact2Bitmap decompressor/compact2bmp.cpp)
+add_executable(amosCompact2Bitmap converter/compact2bmp.cpp)
 target_link_libraries(amosCompact2Bitmap argumentParser readFile amosCompact writeFile)
+
+add_executable(sprites2bmp converter/sprites2bmp.cpp)
+target_link_libraries(sprites2bmp argumentParser readFile backwardLZ77 spriteSheet writeFile)
+
+add_executable(frankoExtract converter/frankoExtract.cpp)
+target_link_libraries(frankoExtract argumentParser readFile writeFile backwardLZ77 amosCompact spriteSheet bitmapExtractor fileContainer)
+
+add_executable(extractSprites converter/extractSprites.cpp)
+target_link_libraries(extractSprites argumentParser readFile writeFile backwardLZ77 spriteSheet)
+
+add_executable(extractBitmaps converter/extractBitmaps.cpp)
+target_link_libraries(extractBitmaps argumentParser readFile writeFile backwardLZ77 bitmapExtractor)
+
+add_executable(extractScreen converter/extractScreen.cpp)
+target_link_libraries(extractScreen argumentParser readFile writeFile amosCompact)

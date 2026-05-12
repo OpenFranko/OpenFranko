@@ -34,8 +34,9 @@ uint32_t BitReader::getBits(int count) {
 bool BitReader::verifyChecksum() const { return m_checksum == 0; }
 
 void BitReader::refill() {
-  if (m_readPos < 4)
+  if (m_readPos < 4) {
     throw std::runtime_error("Unexpected end of stream");
+  }
 
   m_readPos -= 4;
   uint32_t nextWord = helpers::readUint32BigEndian(m_data, m_readPos);

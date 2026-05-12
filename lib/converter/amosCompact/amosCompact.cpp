@@ -1,20 +1,20 @@
 #include "amosCompact.h"
-#include "../helpers/helpers.h"
+#include "../../bmpWriter/bmpWriter.h"
+#include "../../decompressor/helpers/helpers.h"
 #include "Consts.h"
 #include "detail/bitmapUnpack.h"
-#include "detail/unpackedBitmap2Vector.h"
 #include <stdexcept>
 
-namespace openfranko::lib::decompressor::amosCompact {
+namespace openfranko::lib::converter::amosCompact {
 
 namespace {
 bool isSPACK(const std::vector<uint8_t> &data) {
-  uint32_t header = helpers::readUint32BigEndian(data, 0);
+  uint32_t header = decompressor::helpers::readUint32BigEndian(data, 0);
   return header == consts::SPACK_SCREEN_HEADER;
 }
 
 bool isPackedBitmap(const std::vector<uint8_t> &data) {
-  uint32_t header = helpers::readUint32BigEndian(data, 0);
+  uint32_t header = decompressor::helpers::readUint32BigEndian(data, 0);
   return header == consts::AMOS_BMCODE;
 }
 
@@ -38,7 +38,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
       throw std::runtime_error("File is too small to be a valid SPACK screen");
     }
 
-    auto spackHeader = detail::headers::parseSPACKHeader(data);
+    auto spackHeader = headers::parseSPACKHeader(data);
     palette = std::vector<uint16_t>(std::begin(spackHeader.amigaPalette),
                                     std::end(spackHeader.amigaPalette));
     data = std::vector<uint8_t>(data.begin() + consts::SPACK_HEADER_SIZE,
@@ -50,7 +50,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("File is not a valid packed bitmap");
   }
 
-  auto bitmapHeader = detail::headers::parseBitmapHeader(data);
+  auto bitmapHeader = headers::parseBitmapHeader(data);
 
   if (bitmapHeader.numberOfBitplanes == 0 ||
       bitmapHeader.numberOfBitplanes > consts::MAX_SUPPORTED_BITPLANES) {
@@ -62,7 +62,22 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   }
 
   auto unpackedBitmap = detail::bitmapUnpack(data, bitmapHeader, palette);
-  return detail::unpackedBitmap2Vector(unpackedBitmap);
+
+  if (unpackedBitmap.width == 0 || unpackedBitmap.height == 0) {
+    throw std::runtime_error("Bitmap has zero dimensions");
+  }
+  if (!unpackedBitmap.chunkyPixels) {
+    throw std::runtime_error("Bitmap has no chunky pixel data");
+  }
+
+  int numberOfColors = 1 << unpackedBitmap.numberOfBitplanes;
+  if (numberOfColors > 32) {
+    numberOfColors = 32;
+  }
+
+  return bmpWriter::pixelsToBmp(unpackedBitmap.width, unpackedBitmap.height,
+                                unpackedBitmap.chunkyPixels,
+                                unpackedBitmap.palette, numberOfColors);
 }
 
-} // namespace openfranko::lib::decompressor::amosCompact
+} // namespace openfranko::lib::converter::amosCompact

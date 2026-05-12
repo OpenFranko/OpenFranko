@@ -6,9 +6,7 @@
 
 namespace openfranko {
 namespace lib {
-namespace decompressor {
-namespace amosCompact {
-namespace detail {
+namespace converter {
 namespace headers {
 
 struct SPACKHeader {
@@ -42,9 +40,7 @@ struct BitmapHeader {
 BitmapHeader parseBitmapHeader(const std::vector<uint8_t> &data);
 
 } // namespace headers
-} // namespace detail
-} // namespace amosCompact
-} // namespace decompressor
+} // namespace converter
 } // namespace lib
 } // namespace openfranko
 

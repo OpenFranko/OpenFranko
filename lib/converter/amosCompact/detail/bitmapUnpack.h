@@ -1,11 +1,11 @@
-#include "headers.h"
+#include "../../shared/headers.h"
 #include "unpackedBitmap.h"
 #include <cstdint>
 #include <vector>
 
 namespace openfranko {
 namespace lib {
-namespace decompressor {
+namespace converter {
 namespace amosCompact {
 namespace detail {
 
@@ -15,6 +15,6 @@ UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
 
 }
 } // namespace amosCompact
-} // namespace decompressor
+} // namespace converter
 } // namespace lib
 } // namespace openfranko

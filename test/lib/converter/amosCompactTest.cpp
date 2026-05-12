@@ -1,13 +1,14 @@
-#include "../../../lib/decompressor/amosCompact/amosCompact.h"
-#include "../../../lib/decompressor/amosCompact/detail/BitReader.h"
-#include "../../../lib/decompressor/amosCompact/detail/ByteReader.h"
-#include "../../../lib/decompressor/amosCompact/Consts.h"
-#include "../../../lib/decompressor/amosCompact/detail/headers.h"
+#include "../../../lib/converter/amosCompact/amosCompact.h"
+#include "../../../lib/converter/amosCompact/detail/BitReader.h"
+#include "../../../lib/converter/amosCompact/detail/ByteReader.h"
+#include "../../../lib/converter/amosCompact/Consts.h"
+#include "../../../lib/converter/shared/headers.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
-using namespace openfranko::lib::decompressor::amosCompact;
-using namespace openfranko::lib::decompressor::amosCompact::detail;
+using namespace openfranko::lib::converter::amosCompact;
+using namespace openfranko::lib::converter::amosCompact::detail;
+using namespace openfranko::lib::converter::headers;
 
 static uint32_t readLittleEndianUInt32(const std::vector<uint8_t> &d,
                                        size_t off) {
@@ -222,7 +223,7 @@ SCENARIO("SPACK header parsing extracts all fields correctly") {
     data[29] = 0x00;
 
     WHEN("Parsing the header") {
-      auto hdr = headers::parseSPACKHeader(data);
+      auto hdr = parseSPACKHeader(data);
 
       THEN("All fields are correct") {
         REQUIRE(hdr.screenWidth == 320);
@@ -251,7 +252,7 @@ SCENARIO("Bitmap header parsing extracts all fields correctly") {
     };
 
     WHEN("Parsing the header") {
-      auto hdr = headers::parseBitmapHeader(data);
+      auto hdr = parseBitmapHeader(data);
 
       THEN("All fields are correct including signed offsets") {
         REQUIRE(hdr.xOffset == -2);

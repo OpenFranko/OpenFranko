@@ -1,0 +1,5 @@
+add_subdirectory(shared)
+add_subdirectory(amosCompact)
+add_subdirectory(spriteSheet)
+add_subdirectory(fileContainer)
+add_subdirectory(bitmapExtractor)

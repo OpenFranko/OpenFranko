@@ -6,7 +6,7 @@
 #include <cstring>
 #include <stdexcept>
 
-namespace openfranko::lib::decompressor::amosCompact::detail {
+namespace openfranko::lib::converter::amosCompact::detail {
 
 namespace {
 
@@ -123,4 +123,4 @@ UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
   return bitmap;
 }
 
-} // namespace openfranko::lib::decompressor::amosCompact::detail
+} // namespace openfranko::lib::converter::amosCompact::detail

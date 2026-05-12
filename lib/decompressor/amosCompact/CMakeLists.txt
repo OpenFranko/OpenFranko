@@ -1,2 +1,0 @@
-add_library(amosCompact amosCompact.cpp amosCompact.h detail/headers.cpp detail/headers.h detail/bitmapUnpack.cpp detail/bitmapUnpack.h detail/BitReader.cpp detail/BitReader.h detail/ByteReader.cpp detail/ByteReader.h detail/unpackedBitmap2Vector.cpp detail/unpackedBitmap2Vector.h)
-target_link_libraries(amosCompact helpers)
