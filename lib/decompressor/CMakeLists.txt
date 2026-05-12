@@ -1,3 +1,2 @@
 add_subdirectory(helpers)
 add_subdirectory(backwardLZ77)
-add_subdirectory(amosCompact)

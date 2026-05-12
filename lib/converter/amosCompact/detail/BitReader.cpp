@@ -1,6 +1,6 @@
 #include "BitReader.h"
 
-namespace openfranko::lib::decompressor::amosCompact {
+namespace openfranko::lib::converter::amosCompact::detail {
 
 BitReader::BitReader(const std::vector<uint8_t> &data, size_t offset)
     : m_data(data), m_offset(offset), m_bit(7) {}
@@ -18,4 +18,4 @@ int BitReader::read() {
   return value;
 }
 
-} // namespace openfranko::lib::decompressor::amosCompact
+} // namespace openfranko::lib::converter::amosCompact::detail

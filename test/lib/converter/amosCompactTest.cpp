@@ -1,22 +1,44 @@
-#include "../../../lib/decompressor/amosCompact/amosCompact.h"
-#include "../../../lib/decompressor/amosCompact/BitReader.h"
-#include "../../../lib/decompressor/amosCompact/ByteReader.h"
-#include "../../../lib/decompressor/amosCompact/Consts.h"
-#include "../../../lib/decompressor/amosCompact/headers.h"
-#include "../../../lib/decompressor/amosCompact/unpackedBitmap.h"
+#include "../../../lib/converter/amosCompact/amosCompact.h"
+#include "../../../lib/converter/amosCompact/detail/BitReader.h"
+#include "../../../lib/converter/amosCompact/detail/ByteReader.h"
+#include "../../../lib/converter/amosCompact/Consts.h"
+#include "../../../lib/converter/shared/headers.h"
 #include <catch2/catch_all.hpp>
-#include <cstdlib>
 #include <vector>
 
-using namespace openfranko::lib::decompressor::amosCompact;
+using namespace openfranko::lib::converter::amosCompact;
+using namespace openfranko::lib::converter::amosCompact::detail;
+using namespace openfranko::lib::converter::headers;
 
-static void freeBitmap(UnpackedBitmap &bmp) {
-  for (size_t p = 0; p < consts::MAX_SUPPORTED_BITPLANES; p++) {
-    free(bmp.bitplaneData[p]);
-    bmp.bitplaneData[p] = nullptr;
-  }
-  free(bmp.chunkyPixels);
-  bmp.chunkyPixels = nullptr;
+static uint32_t readLittleEndianUInt32(const std::vector<uint8_t> &d,
+                                       size_t off) {
+  return d[off] | (d[off + 1] << 8) | (d[off + 2] << 16) | (d[off + 3] << 24);
+}
+
+static uint32_t bmpWidth(const std::vector<uint8_t> &bmp) {
+  return readLittleEndianUInt32(bmp, 18);
+}
+
+static uint32_t bmpHeight(const std::vector<uint8_t> &bmp) {
+  return readLittleEndianUInt32(bmp, 22);
+}
+
+static uint8_t bmpPixel(const std::vector<uint8_t> &bmp, int x, int y) {
+  uint32_t w = bmpWidth(bmp);
+  uint32_t h = bmpHeight(bmp);
+  uint32_t rowBytes = (w + 3) & ~3u;
+  uint32_t pixelOff = readLittleEndianUInt32(bmp, 10);
+  int bmpY = static_cast<int>(h) - 1 - y;
+  return bmp[pixelOff + bmpY * rowBytes + x];
+}
+
+struct BmpColor {
+  uint8_t r, g, b;
+};
+
+static BmpColor bmpPalette(const std::vector<uint8_t> &bmp, int index) {
+  size_t off = 54 + index * 4;
+  return {bmp[off + 2], bmp[off + 1], bmp[off]};
 }
 
 static std::vector<uint8_t>
@@ -89,8 +111,8 @@ SCENARIO("BitReader reads bits MSB-first from a byte stream") {
       }
 
       THEN("All 16 bits are correct") {
-        REQUIRE(bits ==
-                std::vector<int>{1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0});
+        REQUIRE(bits == std::vector<int>{1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1,
+                                         1, 0, 0});
       }
     }
   }
@@ -171,22 +193,37 @@ SCENARIO("ByteReader reads bytes sequentially") {
 SCENARIO("SPACK header parsing extracts all fields correctly") {
   GIVEN("A 90-byte SPACK header with known values") {
     std::vector<uint8_t> data(90, 0);
-    data[0] = 0x12; data[1] = 0x03; data[2] = 0x19; data[3] = 0x90;
-    data[4] = 0x01; data[5] = 0x40;
-    data[6] = 0x00; data[7] = 0xC8;
-    data[8] = 0x00; data[9] = 0x10;
-    data[10] = 0x00; data[11] = 0x20;
-    data[12] = 0x01; data[13] = 0x30;
-    data[14] = 0x00; data[15] = 0xB8;
-    data[16] = 0x00; data[17] = 0x05;
-    data[18] = 0x00; data[19] = 0x0A;
-    data[20] = 0x80; data[21] = 0x00;
-    data[22] = 0x00; data[23] = 0x10;
-    data[24] = 0x00; data[25] = 0x04;
-    data[28] = 0x0F; data[29] = 0x00;
+    data[0] = 0x12;
+    data[1] = 0x03;
+    data[2] = 0x19;
+    data[3] = 0x90;
+    data[4] = 0x01;
+    data[5] = 0x40;
+    data[6] = 0x00;
+    data[7] = 0xC8;
+    data[8] = 0x00;
+    data[9] = 0x10;
+    data[10] = 0x00;
+    data[11] = 0x20;
+    data[12] = 0x01;
+    data[13] = 0x30;
+    data[14] = 0x00;
+    data[15] = 0xB8;
+    data[16] = 0x00;
+    data[17] = 0x05;
+    data[18] = 0x00;
+    data[19] = 0x0A;
+    data[20] = 0x80;
+    data[21] = 0x00;
+    data[22] = 0x00;
+    data[23] = 0x10;
+    data[24] = 0x00;
+    data[25] = 0x04;
+    data[28] = 0x0F;
+    data[29] = 0x00;
 
     WHEN("Parsing the header") {
-      auto hdr = headers::parseSPACKHeader(data);
+      auto hdr = parseSPACKHeader(data);
 
       THEN("All fields are correct") {
         REQUIRE(hdr.screenWidth == 320);
@@ -210,19 +247,12 @@ SCENARIO("SPACK header parsing extracts all fields correctly") {
 SCENARIO("Bitmap header parsing extracts all fields correctly") {
   GIVEN("A 24-byte bitmap header with known values") {
     std::vector<uint8_t> data = {
-        0x06, 0x07, 0x19, 0x63,
-        0xFF, 0xFE,
-        0x00, 0x03,
-        0x00, 0x28,
-        0x00, 0x0A,
-        0x00, 0x10,
-        0x00, 0x04,
-        0x00, 0x00, 0x12, 0x34,
-        0x00, 0x00, 0x56, 0x78,
+        0x06, 0x07, 0x19, 0x63, 0xFF, 0xFE, 0x00, 0x03, 0x00, 0x28, 0x00, 0x0A,
+        0x00, 0x10, 0x00, 0x04, 0x00, 0x00, 0x12, 0x34, 0x00, 0x00, 0x56, 0x78,
     };
 
     WHEN("Parsing the header") {
-      auto hdr = headers::parseBitmapHeader(data);
+      auto hdr = parseBitmapHeader(data);
 
       THEN("All fields are correct including signed offsets") {
         REQUIRE(hdr.xOffset == -2);
@@ -238,48 +268,40 @@ SCENARIO("Bitmap header parsing extracts all fields correctly") {
   }
 }
 
-SCENARIO("AMOS Compact decompression works correctly") {
+SCENARIO("AMOS Compact decompression produces valid BMP output") {
   GIVEN("A minimal single-cell bitmap with mask=0 (RLE, no fresh reads)") {
     auto data = buildPackedBitmap(1, 1, 1, 1, {0x42}, {0x00}, {0x00});
 
     WHEN("Decompressing") {
-      auto result = decompress(data);
+      auto bmp = decompress(data);
 
-      THEN("Output has correct dimensions") {
-        REQUIRE(result.width == 8);
-        REQUIRE(result.height == 1);
-        REQUIRE(result.numberOfBitplanes == 1);
+      THEN("BMP has correct header") {
+        REQUIRE(bmp[0] == 'B');
+        REQUIRE(bmp[1] == 'M');
+        REQUIRE(bmpWidth(bmp) == 8);
+        REQUIRE(bmpHeight(bmp) == 1);
       }
 
-      THEN("Plane data contains the initial value") {
-        REQUIRE(result.bitplaneData[0][0] == 0x42);
-      }
-
-      THEN("Chunky pixels reflect the bitplane data") {
+      THEN("Pixels match plane byte 0x42 (01000010) read MSB-first") {
         std::vector<uint8_t> expected = {0, 1, 0, 0, 0, 0, 1, 0};
         for (int i = 0; i < 8; i++) {
-          REQUIRE(result.chunkyPixels[i] == expected[i]);
+          REQUIRE(bmpPixel(bmp, i, 0) == expected[i]);
         }
       }
-
-      freeBitmap(result);
     }
   }
 
   GIVEN("A single-cell bitmap where a mask bit triggers a fresh value read") {
-    auto data = buildPackedBitmap(1, 1, 1, 1,
-                                  {0x00, 0xFF},
-                                  {0x80},
-                                  {0x00});
+    auto data = buildPackedBitmap(1, 1, 1, 1, {0x00, 0xFF}, {0x80}, {0x00});
 
     WHEN("Decompressing") {
-      auto result = decompress(data);
+      auto bmp = decompress(data);
 
-      THEN("The fresh value overwrites the initial") {
-        REQUIRE(result.bitplaneData[0][0] == 0xFF);
+      THEN("All pixels are 1 (plane byte 0xFF)") {
+        for (int i = 0; i < 8; i++) {
+          REQUIRE(bmpPixel(bmp, i, 0) == 1);
+        }
       }
-
-      freeBitmap(result);
     }
   }
 
@@ -287,102 +309,96 @@ SCENARIO("AMOS Compact decompression works correctly") {
     auto data = buildPackedBitmap(3, 1, 1, 1, {0xAA}, {0x00}, {0x00});
 
     WHEN("Decompressing") {
-      auto result = decompress(data);
+      auto bmp = decompress(data);
 
-      THEN("All plane bytes are the repeated value") {
-        REQUIRE(result.width == 24);
-        REQUIRE(result.height == 1);
-        for (int i = 0; i < 3; i++) {
-          REQUIRE(result.bitplaneData[0][i] == 0xAA);
+      THEN("All 24 pixels follow 0xAA (10101010) pattern repeated 3 times") {
+        REQUIRE(bmpWidth(bmp) == 24);
+        REQUIRE(bmpHeight(bmp) == 1);
+        for (int i = 0; i < 24; i++) {
+          uint8_t expected = (i % 2 == 0) ? 1 : 0;
+          REQUIRE(bmpPixel(bmp, i, 0) == expected);
         }
       }
-
-      freeBitmap(result);
     }
   }
 
   GIVEN("A 2x2 tile grid with tileHeight=2 verifying tile traversal order") {
     auto data = buildPackedBitmap(
-        2, 2, 2, 1,
-        {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
-        {0xFF},
-        {0x00});
+        2, 2, 2, 1, {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
+        {0xFF}, {0x00});
 
     WHEN("Decompressing") {
-      auto result = decompress(data);
+      auto bmp = decompress(data);
 
       THEN("Dimensions are correct") {
-        REQUIRE(result.width == 16);
-        REQUIRE(result.height == 4);
+        REQUIRE(bmpWidth(bmp) == 16);
+        REQUIRE(bmpHeight(bmp) == 4);
       }
 
-      THEN("Tile traversal produces correct row-major plane layout") {
-        REQUIRE(result.bitplaneData[0][0] == 0x01);
-        REQUIRE(result.bitplaneData[0][1] == 0x03);
-        REQUIRE(result.bitplaneData[0][2] == 0x02);
-        REQUIRE(result.bitplaneData[0][3] == 0x04);
-        REQUIRE(result.bitplaneData[0][4] == 0x05);
-        REQUIRE(result.bitplaneData[0][5] == 0x07);
-        REQUIRE(result.bitplaneData[0][6] == 0x06);
-        REQUIRE(result.bitplaneData[0][7] == 0x08);
-      }
+      THEN("Pixels confirm correct row-major tile placement") {
+        REQUIRE(bmpPixel(bmp, 7, 0) == 1);
+        REQUIRE(bmpPixel(bmp, 6, 0) == 0);
+        REQUIRE(bmpPixel(bmp, 15, 0) == 1);
+        REQUIRE(bmpPixel(bmp, 14, 0) == 1);
 
-      freeBitmap(result);
+        REQUIRE(bmpPixel(bmp, 7, 1) == 0);
+        REQUIRE(bmpPixel(bmp, 6, 1) == 1);
+
+        REQUIRE(bmpPixel(bmp, 7, 2) == 1);
+        REQUIRE(bmpPixel(bmp, 5, 2) == 1);
+        REQUIRE(bmpPixel(bmp, 15, 2) == 1);
+
+        REQUIRE(bmpPixel(bmp, 12, 3) == 1);
+        REQUIRE(bmpPixel(bmp, 7, 3) == 0);
+        REQUIRE(bmpPixel(bmp, 6, 3) == 1);
+      }
     }
   }
 
   GIVEN("A two-plane bitmap combining into chunky pixels") {
-    auto data = buildPackedBitmap(1, 1, 1, 2,
-                                  {0x00, 0xAA, 0x55},
-                                  {0xFF},
-                                  {0x00});
+    auto data =
+        buildPackedBitmap(1, 1, 1, 2, {0x00, 0xAA, 0x55}, {0xFF}, {0x00});
 
     WHEN("Decompressing") {
-      auto result = decompress(data);
+      auto bmp = decompress(data);
 
-      THEN("Each plane has its own data") {
-        REQUIRE(result.numberOfBitplanes == 2);
-        REQUIRE(result.bitplaneData[0][0] == 0xAA);
-        REQUIRE(result.bitplaneData[1][0] == 0x55);
-      }
-
-      THEN("Chunky pixels combine both planes") {
+      THEN("Pixels combine both planes into alternating 1 and 2") {
         std::vector<uint8_t> expected = {1, 2, 1, 2, 1, 2, 1, 2};
         for (int i = 0; i < 8; i++) {
-          REQUIRE(result.chunkyPixels[i] == expected[i]);
+          REQUIRE(bmpPixel(bmp, i, 0) == expected[i]);
         }
       }
-
-      freeBitmap(result);
     }
   }
 
   GIVEN("A bitmap where the initial pointer bit updates the mask") {
-    auto data = buildPackedBitmap(1, 1, 1, 1,
-                                  {0x00, 0xBB},
-                                  {0x00, 0x80},
-                                  {0x80});
+    auto data =
+        buildPackedBitmap(1, 1, 1, 1, {0x00, 0xBB}, {0x00, 0x80}, {0x80});
 
     WHEN("Decompressing") {
-      auto result = decompress(data);
+      auto bmp = decompress(data);
 
-      THEN("The updated mask allows a fresh value read") {
-        REQUIRE(result.bitplaneData[0][0] == 0xBB);
+      THEN("Pixels match 0xBB (10111011)") {
+        std::vector<uint8_t> expected = {1, 0, 1, 1, 1, 0, 1, 1};
+        for (int i = 0; i < 8; i++) {
+          REQUIRE(bmpPixel(bmp, i, 0) == expected[i]);
+        }
       }
-
-      freeBitmap(result);
     }
   }
 
   GIVEN("A SPACK-format input with screen header and palette") {
     std::vector<uint8_t> spackHeader(90, 0);
-    spackHeader[0] = 0x12; spackHeader[1] = 0x03;
-    spackHeader[2] = 0x19; spackHeader[3] = 0x90;
+    spackHeader[0] = 0x12;
+    spackHeader[1] = 0x03;
+    spackHeader[2] = 0x19;
+    spackHeader[3] = 0x90;
     spackHeader[5] = 0x08;
     spackHeader[7] = 0x01;
     spackHeader[23] = 0x02;
     spackHeader[25] = 0x01;
-    spackHeader[28] = 0x0F; spackHeader[29] = 0xFF;
+    spackHeader[28] = 0x0F;
+    spackHeader[29] = 0xFF;
 
     auto bitmapData = buildPackedBitmap(1, 1, 1, 1, {0x42}, {0x00}, {0x00});
 
@@ -391,20 +407,25 @@ SCENARIO("AMOS Compact decompression works correctly") {
     data.insert(data.end(), bitmapData.begin(), bitmapData.end());
 
     WHEN("Decompressing") {
-      auto result = decompress(data);
+      auto bmp = decompress(data);
 
-      THEN("Palette comes from the SPACK header, not the default ramp") {
-        REQUIRE(result.palette[0] == 0x000);
-        REQUIRE(result.palette[1] == 0xFFF);
+      THEN("BMP palette comes from the SPACK header") {
+        auto c0 = bmpPalette(bmp, 0);
+        REQUIRE(c0.r == 0);
+        REQUIRE(c0.g == 0);
+        REQUIRE(c0.b == 0);
+
+        auto c1 = bmpPalette(bmp, 1);
+        REQUIRE(c1.r == 255);
+        REQUIRE(c1.g == 255);
+        REQUIRE(c1.b == 255);
       }
 
-      THEN("Bitmap data is decompressed correctly") {
-        REQUIRE(result.width == 8);
-        REQUIRE(result.height == 1);
-        REQUIRE(result.bitplaneData[0][0] == 0x42);
+      THEN("Pixel data is correct") {
+        REQUIRE(bmpPixel(bmp, 1, 0) == 1);
+        REQUIRE(bmpPixel(bmp, 6, 0) == 1);
+        REQUIRE(bmpPixel(bmp, 0, 0) == 0);
       }
-
-      freeBitmap(result);
     }
   }
 
@@ -412,35 +433,45 @@ SCENARIO("AMOS Compact decompression works correctly") {
     auto data = buildPackedBitmap(1, 1, 1, 1, {0x42}, {0x00}, {0x00});
 
     WHEN("Decompressing") {
-      auto result = decompress(data);
+      auto bmp = decompress(data);
 
-      THEN("Default palette is a generated ramp") {
-        REQUIRE(result.palette[0] == 0x000);
-        REQUIRE(result.palette[1] == 0x111);
-        REQUIRE(result.palette[15] == 0xFFF);
+      THEN("BMP palette uses the default generated ramp") {
+        auto c0 = bmpPalette(bmp, 0);
+        REQUIRE(c0.r == 0);
+        REQUIRE(c0.g == 0);
+        REQUIRE(c0.b == 0);
+
+        auto c1 = bmpPalette(bmp, 1);
+        REQUIRE(c1.r == 17);
+        REQUIRE(c1.g == 17);
+        REQUIRE(c1.b == 17);
+
+        auto c2 = bmpPalette(bmp, 2);
+        REQUIRE(c2.r == 0);
+        REQUIRE(c2.g == 0);
+        REQUIRE(c2.b == 0);
       }
-
-      freeBitmap(result);
     }
   }
 
   GIVEN("A multi-cell bitmap with a mix of fresh and repeated values") {
-    auto data = buildPackedBitmap(1, 1, 4, 1,
-                                  {0x00, 0xAA, 0xBB},
-                                  {0x90},
-                                  {0x00});
+    auto data =
+        buildPackedBitmap(1, 1, 4, 1, {0x00, 0xAA, 0xBB}, {0x90}, {0x00});
 
     WHEN("Decompressing") {
-      auto result = decompress(data);
+      auto bmp = decompress(data);
 
-      THEN("Fresh and repeated values are placed correctly") {
-        REQUIRE(result.bitplaneData[0][0] == 0xAA);
-        REQUIRE(result.bitplaneData[0][1] == 0xAA);
-        REQUIRE(result.bitplaneData[0][2] == 0xAA);
-        REQUIRE(result.bitplaneData[0][3] == 0xBB);
+      THEN("Repeated rows match 0xAA and fresh row matches 0xBB") {
+        REQUIRE(bmpPixel(bmp, 0, 0) == 1);
+        REQUIRE(bmpPixel(bmp, 1, 0) == 0);
+        REQUIRE(bmpPixel(bmp, 0, 2) == 1);
+        REQUIRE(bmpPixel(bmp, 1, 2) == 0);
+
+        REQUIRE(bmpPixel(bmp, 3, 2) == 0);
+        REQUIRE(bmpPixel(bmp, 3, 3) == 1);
+        REQUIRE(bmpPixel(bmp, 5, 3) == 0);
+        REQUIRE(bmpPixel(bmp, 7, 3) == 1);
       }
-
-      freeBitmap(result);
     }
   }
 }
@@ -458,8 +489,10 @@ SCENARIO("AMOS Compact decompression rejects invalid input") {
 
   GIVEN("Input with an unrecognized magic number") {
     std::vector<uint8_t> data(30, 0);
-    data[0] = 0xDE; data[1] = 0xAD;
-    data[2] = 0xBE; data[3] = 0xEF;
+    data[0] = 0xDE;
+    data[1] = 0xAD;
+    data[2] = 0xBE;
+    data[3] = 0xEF;
 
     WHEN("Attempting to decompress") {
       THEN("It throws") {
@@ -520,8 +553,10 @@ SCENARIO("AMOS Compact decompression rejects invalid input") {
 
   GIVEN("A bitmap with bitstream pointer beyond data") {
     auto data = buildPackedBitmap(1, 1, 1, 1, {0x42}, {0x00}, {0x00});
-    data[20] = 0x00; data[21] = 0x00;
-    data[22] = 0xFF; data[23] = 0xFF;
+    data[20] = 0x00;
+    data[21] = 0x00;
+    data[22] = 0xFF;
+    data[23] = 0xFF;
 
     WHEN("Attempting to decompress") {
       THEN("It throws") {
@@ -532,8 +567,10 @@ SCENARIO("AMOS Compact decompression rejects invalid input") {
 
   GIVEN("A SPACK header without enough data for the bitmap header") {
     std::vector<uint8_t> data(100, 0);
-    data[0] = 0x12; data[1] = 0x03;
-    data[2] = 0x19; data[3] = 0x90;
+    data[0] = 0x12;
+    data[1] = 0x03;
+    data[2] = 0x19;
+    data[3] = 0x90;
 
     WHEN("Attempting to decompress") {
       THEN("It throws") {

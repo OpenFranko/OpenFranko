@@ -3,8 +3,9 @@
 namespace openfranko::lib::argumentParser {
 
 ArgumentParser::ArgumentParser(int argc, char **argv) {
-  for (int i = 1; i < argc; ++i)
+  for (int i = 1; i < argc; ++i) {
     this->inputStrings.push_back(std::string(argv[i]));
+  }
 }
 
 std::optional<std::string>

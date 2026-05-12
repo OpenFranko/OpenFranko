@@ -195,9 +195,9 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     };
 
     WHEN("Decompressing the data") {
-      const auto decompressedData = decompress(compressedData);
-
-      THEN("The result should be empty") { REQUIRE(decompressedData.empty()); }
+      THEN("It throws a runtime error") {
+        REQUIRE_THROWS_AS(decompress(compressedData), std::runtime_error);
+      }
     }
   }
 

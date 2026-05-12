@@ -3,22 +3,23 @@
 
 namespace openfranko {
 namespace lib {
-namespace decompressor {
+namespace converter {
 namespace amosCompact {
+namespace detail {
 
-class BitReader {
+class ByteReader {
 public:
-  BitReader(const std::vector<uint8_t> &data, size_t offset);
+  ByteReader(const std::vector<uint8_t> &data, size_t offset);
 
   int read();
 
 private:
   const std::vector<uint8_t> &m_data;
   size_t m_offset;
-  int m_bit;
 };
 
+} // namespace detail
 } // namespace amosCompact
-} // namespace decompressor
+} // namespace converter
 } // namespace lib
 } // namespace openfranko

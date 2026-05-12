@@ -38,21 +38,21 @@ void processDecompression(BitReader &reader, std::vector<uint8_t> &out,
     if (isComplexCommand) {
       uint32_t type = reader.getBits(2);
 
-      if (type < 2) { // Short Match Type 1
+      if (type < 2) {
         applyMatch(out, writePtr, reader.getBits(9 + type), type + 3,
                    unpackedSize);
-      } else if (type == 2) { // Long Match
+      } else if (type == 2) {
         int length = reader.getBits(8);
         applyMatch(out, writePtr, reader.getBits(12), length + 1, unpackedSize);
-      } else { // Long Literal Run
+      } else {
         applyLiteralRun(out, writePtr, reader, reader.getBits(8) + 9);
       }
     } else {
       bool isShortMatch = reader.getBit();
 
-      if (isShortMatch) { // Short Match Type 0
+      if (isShortMatch) {
         applyMatch(out, writePtr, reader.getBits(8), 2, unpackedSize);
-      } else { // Short Literal Run
+      } else {
         applyLiteralRun(out, writePtr, reader, reader.getBits(3) + 1);
       }
     }
@@ -76,7 +76,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
       helpers::readUint32BigEndian(compressedData, footerStart + 0);
 
   if (unpackedSize == 0) {
-    return {};
+    throw std::runtime_error("Unpacked size is zero");
   }
 
   const size_t payloadSize =
