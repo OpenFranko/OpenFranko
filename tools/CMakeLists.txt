@@ -8,7 +8,7 @@ add_executable(sprites2bmp converter/sprites2bmp.cpp)
 target_link_libraries(sprites2bmp argumentParser readFile backwardLZ77 spriteSheet writeFile)
 
 add_executable(frankoExtract converter/frankoExtract.cpp)
-target_link_libraries(frankoExtract argumentParser readFile writeFile backwardLZ77 amosCompact spriteSheet bitmapExtractor fileContainer)
+target_link_libraries(frankoExtract argumentParser readFile writeFile backwardLZ77 amosCompact spriteSheet bitmapExtractor audioExtractor fileContainer)
 
 add_executable(extractSprites converter/extractSprites.cpp)
 target_link_libraries(extractSprites argumentParser readFile writeFile backwardLZ77 spriteSheet)

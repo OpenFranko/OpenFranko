@@ -1,17 +1,36 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
+#include "../../lib/converter/audioExtractor/audioExtractor.h"
 #include "../../lib/converter/bitmapExtractor/bitmapExtractor.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../lib/converter/amosCompact/amosCompact.h"
 #include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
+#include "../../lib/decompressor/helpers/helpers.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
 #include <filesystem>
+#include <functional>
 #include <iomanip>
 #include <iostream>
+#include <set>
 #include <sstream>
 
 using namespace openfranko::lib;
+
+static size_t hashSamBank(const std::vector<uint8_t> &data) {
+  if (data.size() < 12) {
+    return 0;
+  }
+  uint32_t sbOff = decompressor::helpers::readUint32BigEndian(data, 8);
+  if (sbOff == 0 || sbOff >= data.size()) {
+    return 0;
+  }
+  size_t h = 0;
+  for (size_t i = sbOff; i < data.size(); i++) {
+    h ^= std::hash<uint8_t>{}(data[i]) + 0x9e3779b9 + (h << 6) + (h >> 2);
+  }
+  return h;
+}
 
 static std::string fileIdToHex(uint16_t id) {
   std::ostringstream ss;
@@ -44,7 +63,8 @@ static void writeOutput(const std::string &dir, const std::string &name,
 }
 
 static int processFile(const std::string &inputPath,
-                       const std::string &outDir) {
+                       const std::string &outDir,
+                       std::set<size_t> &seenSamBanks) {
   auto rawData = filesystem::readFile::readFile(inputPath);
   auto info = converter::fileContainer::parseFooter(rawData);
   std::string fileId = fileIdToHex(info.fileId);
@@ -89,15 +109,43 @@ static int processFile(const std::string &inputPath,
     } catch (const std::exception &e) {
       std::cerr << "  sprite error: " << e.what() << std::endl;
     }
+    {
+      size_t samHash = hashSamBank(dec);
+      if (samHash != 0 && seenSamBanks.insert(samHash).second) {
+        auto samples = converter::audioExtractor::extractEmbeddedSamBank(dec, fileId);
+        for (const auto &s : samples) {
+          writeOutput(outDir, s.name, s.data);
+        }
+      }
+    }
     break;
   }
 
   case 0x0200: {
     auto bitmaps = converter::bitmapExtractor::extract(dec, fileId);
-    for (const auto &bm : bitmaps)
+    for (const auto &bm : bitmaps) {
       writeOutput(outDir, bm.name + ".bmp", bm.bmpData);
-    if (bitmaps.empty())
+    }
+    if (bitmaps.empty()) {
       std::cerr << "  (no bitmaps extracted)" << std::endl;
+    }
+    break;
+  }
+
+  case 0x0300: {
+    auto samples = converter::audioExtractor::extractStandaloneSamBank(dec, fileId);
+    for (const auto &s : samples) {
+      writeOutput(outDir, s.name, s.data);
+    }
+    if (samples.empty()) {
+      std::cerr << "  (no samples extracted)" << std::endl;
+    }
+    break;
+  }
+
+  case 0x0400: {
+    auto abk = converter::audioExtractor::wrapMusicBank(dec, fileId);
+    writeOutput(outDir, abk.name, abk.data);
     break;
   }
 
@@ -132,8 +180,9 @@ int main(int argc, char **argv) {
   std::string inputPath = inputOptional.value();
   std::string outDir = "extracted";
   const auto outputOptional = parser.getCmdOption("-o");
-  if (outputOptional.has_value())
+  if (outputOptional.has_value()) {
     outDir = outputOptional.value();
+  }
 
   std::filesystem::create_directories(outDir);
 
@@ -152,21 +201,25 @@ int main(int argc, char **argv) {
               break;
             }
           }
-          if (isHex)
+          if (isHex) {
             files.push_back(entry.path().string());
+          }
         }
       }
     }
     std::sort(files.begin(), files.end());
 
+    std::set<size_t> seenSamBanks;
     std::cerr << "Processing " << files.size() << " data files..." << std::endl;
-    for (const auto &f : files)
-      errors += processFile(f, outDir);
+    for (const auto &f : files) {
+      errors += processFile(f, outDir, seenSamBanks);
+    }
 
     std::cerr << "\nDone. " << files.size() << " files processed, " << errors
               << " errors." << std::endl;
   } else {
-    errors = processFile(inputPath, outDir);
+    std::set<size_t> seenSamBanks;
+    errors = processFile(inputPath, outDir, seenSamBanks);
   }
 
   return errors > 0 ? 1 : 0;
