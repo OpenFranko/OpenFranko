@@ -432,7 +432,7 @@ SpeedTempo amosTempoToS3m(uint8_t amosTempo) {
     speed = 1;
   if (speed > 31)
     speed = 31;
-  int bpm = (125 * speed * amosTempo + 47) / 95;
+  int bpm = (122 * speed * amosTempo + 47) / 95;
   if (bpm < 32)
     bpm = 32;
   if (bpm > 255)

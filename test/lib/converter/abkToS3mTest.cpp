@@ -164,10 +164,10 @@ SCENARIO("convert maps AMOS tempo to S3M speed/tempo") {
 
       THEN("speed = round(100/25) = 4") { REQUIRE(s3m[0x31] == 4); }
 
-      THEN("BPM = round(125*4*25/95) = 132") {
+      THEN("BPM = round(122*4*25/95) = 128") {
         uint8_t bpm = s3m[0x32];
-        REQUIRE(bpm >= 130);
-        REQUIRE(bpm <= 135);
+        REQUIRE(bpm >= 126);
+        REQUIRE(bpm <= 131);
       }
     }
   }
