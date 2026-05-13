@@ -84,11 +84,27 @@ static std::string resourceTypeName(uint16_t type) {
   }
 }
 
-static void writeOutput(const std::string &dir, const std::string &name,
-                        const std::vector<uint8_t> &data) {
-  std::string path = dir + "/" + name;
-  filesystem::writeFile::writeFile(path, data);
-  std::cerr << "  -> " << path << " (" << data.size() << " bytes)" << std::endl;
+struct OutputFile {
+  std::string name;
+  std::vector<uint8_t> data;
+};
+
+static void writeOutputs(const std::string &outDir, const std::string &fileId,
+                         const std::vector<OutputFile> &outputs) {
+  if (outputs.empty()) {
+    return;
+  }
+  std::string dir = outDir;
+  if (outputs.size() > 1) {
+    dir = outDir + "/" + fileId;
+    std::filesystem::create_directories(dir);
+  }
+  for (const auto &f : outputs) {
+    std::string path = dir + "/" + f.name;
+    filesystem::writeFile::writeFile(path, f.data);
+    std::cerr << "  -> " << path << " (" << f.data.size() << " bytes)"
+              << std::endl;
+  }
 }
 
 static int processFile(const std::string &inputPath,
@@ -101,13 +117,16 @@ static int processFile(const std::string &inputPath,
   std::cerr << fileId << " [" << resourceTypeName(info.resourceType) << "] "
             << rawData.size() << " bytes" << std::endl;
 
+  std::vector<OutputFile> outputs;
+
   if (info.resourceType == 0x0201) {
     try {
       auto bmpData = converter::amosCompact::decompress(rawData);
-      writeOutput(outDir, fileId + ".bmp", bmpData);
+      outputs.push_back({fileId + ".bmp", std::move(bmpData)});
     } catch (const std::exception &e) {
       std::cerr << "  SPACK error: " << e.what() << std::endl;
     }
+    writeOutputs(outDir, fileId, outputs);
     return 0;
   }
 
@@ -127,11 +146,11 @@ static int processFile(const std::string &inputPath,
       auto palette = converter::spriteSheet::selectPalette(fileId);
       auto bmps = converter::spriteSheet::convertToIndividual(dec, palette);
       int idx = 0;
-      for (const auto &bmp : bmps) {
+      for (auto &bmp : bmps) {
         if (!bmp.empty()) {
           char buf[32];
           snprintf(buf, sizeof(buf), "%s_%03d.bmp", fileId.c_str(), idx);
-          writeOutput(outDir, std::string(buf), bmp);
+          outputs.push_back({std::string(buf), std::move(bmp)});
         }
         idx++;
       }
@@ -141,9 +160,10 @@ static int processFile(const std::string &inputPath,
     {
       size_t samHash = hashSamBank(dec);
       if (samHash != 0 && seenSamBanks.insert(samHash).second) {
-        auto samples = converter::audioExtractor::extractEmbeddedSamBank(dec, fileId);
-        for (const auto &s : samples) {
-          writeOutput(outDir, s.name, s.data);
+        auto samples =
+            converter::audioExtractor::extractEmbeddedSamBank(dec, fileId);
+        for (auto &s : samples) {
+          outputs.push_back({std::move(s.name), std::move(s.data)});
         }
       }
     }
@@ -152,8 +172,8 @@ static int processFile(const std::string &inputPath,
 
   case 0x0200: {
     auto bitmaps = converter::bitmapExtractor::extract(dec, fileId);
-    for (const auto &bm : bitmaps) {
-      writeOutput(outDir, bm.name + ".bmp", bm.bmpData);
+    for (auto &bm : bitmaps) {
+      outputs.push_back({bm.name + ".bmp", std::move(bm.bmpData)});
     }
     if (bitmaps.empty()) {
       std::cerr << "  (no bitmaps extracted)" << std::endl;
@@ -162,9 +182,10 @@ static int processFile(const std::string &inputPath,
   }
 
   case 0x0300: {
-    auto samples = converter::audioExtractor::extractStandaloneSamBank(dec, fileId);
-    for (const auto &s : samples) {
-      writeOutput(outDir, s.name, s.data);
+    auto samples =
+        converter::audioExtractor::extractStandaloneSamBank(dec, fileId);
+    for (auto &s : samples) {
+      outputs.push_back({std::move(s.name), std::move(s.data)});
     }
     if (samples.empty()) {
       std::cerr << "  (no samples extracted)" << std::endl;
@@ -175,8 +196,7 @@ static int processFile(const std::string &inputPath,
   case 0x0400: {
     auto abk = converter::audioExtractor::wrapMusicBank(dec, fileId);
     auto s3mData = converter::abkToS3m::convert(abk.data);
-    std::string s3mName = fileId + ".s3m";
-    writeOutput(outDir, s3mName, s3mData);
+    outputs.push_back({fileId + ".s3m", std::move(s3mData)});
     break;
   }
 
@@ -186,6 +206,7 @@ static int processFile(const std::string &inputPath,
     break;
   }
 
+  writeOutputs(outDir, fileId, outputs);
   return 0;
 }
 
