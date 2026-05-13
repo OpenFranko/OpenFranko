@@ -1,4 +1,5 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
+#include "../../lib/converter/abkToS3m/abkToS3m.h"
 #include "../../lib/converter/audioExtractor/audioExtractor.h"
 #include "../../lib/converter/bitmapExtractor/bitmapExtractor.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
@@ -145,7 +146,9 @@ static int processFile(const std::string &inputPath,
 
   case 0x0400: {
     auto abk = converter::audioExtractor::wrapMusicBank(dec, fileId);
-    writeOutput(outDir, abk.name, abk.data);
+    auto s3mData = converter::abkToS3m::convert(abk.data);
+    std::string s3mName = fileId + ".s3m";
+    writeOutput(outDir, s3mName, s3mData);
     break;
   }
 
@@ -172,7 +175,7 @@ int main(int argc, char **argv) {
     std::cerr << "  Icons   (0x0200) -> BMP (screens, tiles, bitmaps)"
               << std::endl;
     std::cerr << "  Samples (0x0300) -> WAV" << std::endl;
-    std::cerr << "  Music   (0x0400) -> ABK (AMOS Music Bank)" << std::endl;
+    std::cerr << "  Music   (0x0400) -> S3M (ScreamTracker 3)" << std::endl;
     std::cerr << "  Screen  (0x0201) -> BMP (raw SPACK)" << std::endl;
     return 1;
   }
