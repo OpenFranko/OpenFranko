@@ -198,10 +198,35 @@ extractEmbeddedSamBank(const std::vector<uint8_t> &data,
   return results;
 }
 
+void patchMissingSpeedCommand(std::vector<uint8_t> &music) {
+  if (music.size() < 12) {
+    return;
+  }
+  uint32_t trackOff = helpers::readUint32BigEndian(music, 8);
+  if (trackOff + 2 > music.size()) {
+    return;
+  }
+  uint16_t numSteps = helpers::readUint16BigEndian(music, trackOff);
+  size_t tableBytes = 2 + static_cast<size_t>(numSteps) * 4 * 2;
+  size_t patternStart = trackOff + tableBytes;
+  if (patternStart + 2 > music.size()) {
+    return;
+  }
+  uint8_t hi = music[patternStart];
+  if (hi == 0x88) {
+    return;
+  }
+  music[patternStart] = 0x88;
+  music[patternStart + 1] = 0x21;
+}
+
 ExtractedAudio wrapMusicBank(const std::vector<uint8_t> &data,
                              const std::string &fileId) {
+  auto music = data;
+  patchMissingSpeedCommand(music);
+
   std::vector<uint8_t> abk;
-  abk.reserve(20 + data.size());
+  abk.reserve(20 + music.size());
 
   abk.push_back('A');
   abk.push_back('m');
@@ -209,11 +234,11 @@ ExtractedAudio wrapMusicBank(const std::vector<uint8_t> &data,
   abk.push_back('k');
   pushBE16(abk, 3);
   pushBE16(abk, 0);
-  pushBE32(abk, static_cast<uint32_t>(data.size() + 8));
+  pushBE32(abk, static_cast<uint32_t>(music.size() + 8) | 0x80000000u);
 
   const char *bankName = "Music   ";
   abk.insert(abk.end(), bankName, bankName + 8);
-  abk.insert(abk.end(), data.begin(), data.end());
+  abk.insert(abk.end(), music.begin(), music.end());
 
   return {fileId + ".abk", std::move(abk)};
 }
