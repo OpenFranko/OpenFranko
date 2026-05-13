@@ -1,7 +1,7 @@
 #include "bitmapExtractor.h"
 #include "../../bmpWriter/bmpWriter.h"
-#include "../../decompressor/helpers/helpers.h"
-#include "../shared/Palettes.h"
+#include "../../helpers/helpers.h"
+#include "../spriteSheet/Palettes.h"
 #include "../amosCompact/Consts.h"
 #include "../shared/decodeImage.h"
 #include "../shared/headers.h"
@@ -10,7 +10,6 @@
 
 namespace openfranko::lib::converter::bitmapExtractor {
 
-namespace helpers = decompressor::helpers;
 namespace amosConsts = amosCompact::consts;
 namespace pal = spriteSheet::palettes;
 using converter::DecodedImage;

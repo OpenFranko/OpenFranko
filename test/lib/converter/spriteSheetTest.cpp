@@ -1,11 +1,11 @@
 #include "../../../lib/converter/spriteSheet/spriteSheet.h"
-#include "../../../lib/decompressor/helpers/helpers.h"
+#include "../../../lib/helpers/helpers.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
 using namespace openfranko::lib::converter::spriteSheet;
-using openfranko::lib::decompressor::helpers::pushBigEndian16;
-using openfranko::lib::decompressor::helpers::pushBigEndian32;
+using openfranko::lib::helpers::pushBigEndian16;
+using openfranko::lib::helpers::pushBigEndian32;
 namespace pal = openfranko::lib::converter::spriteSheet::palettes;
 
 static std::vector<uint8_t>

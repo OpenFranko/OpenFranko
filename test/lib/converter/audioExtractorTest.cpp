@@ -1,11 +1,11 @@
 #include "../../../lib/converter/audioExtractor/audioExtractor.h"
-#include "../../../lib/decompressor/helpers/helpers.h"
+#include "../../../lib/helpers/helpers.h"
 #include <catch2/catch_all.hpp>
 #include <cstring>
 #include <vector>
 
 using namespace openfranko::lib::converter::audioExtractor;
-using namespace openfranko::lib::decompressor::helpers;
+using namespace openfranko::lib::helpers;
 
 namespace {
 

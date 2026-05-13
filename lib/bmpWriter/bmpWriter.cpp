@@ -1,9 +1,8 @@
 #include "bmpWriter.h"
-#include "../decompressor/helpers/helpers.h"
+#include "../helpers/helpers.h"
 
 namespace openfranko::lib::bmpWriter {
 
-namespace helpers = decompressor::helpers;
 using helpers::pushLittleEndian16;
 using helpers::pushLittleEndian32;
 

@@ -3,14 +3,14 @@
 #include "../../../lib/converter/amosCompact/detail/ByteReader.h"
 #include "../../../lib/converter/amosCompact/Consts.h"
 #include "../../../lib/converter/shared/headers.h"
-#include "../../../lib/decompressor/helpers/helpers.h"
+#include "../../../lib/helpers/helpers.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
 using namespace openfranko::lib::converter::amosCompact;
 using namespace openfranko::lib::converter::amosCompact::detail;
 using namespace openfranko::lib::converter::headers;
-using openfranko::lib::decompressor::helpers::readUint32LittleEndian;
+using openfranko::lib::helpers::readUint32LittleEndian;
 
 static uint32_t bmpWidth(const std::vector<uint8_t> &bmp) {
   return readUint32LittleEndian(bmp, 18);

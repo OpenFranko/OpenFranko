@@ -1,5 +1,5 @@
 #include "backwardLZ77.h"
-#include "../helpers/helpers.h"
+#include "../../helpers/helpers.h"
 #include "BitReader.h"
 #include "Consts.h"
 #include <algorithm>

@@ -1,11 +1,11 @@
 #include "../../../lib/converter/abkToS3m/abkToS3m.h"
-#include "../../../lib/decompressor/helpers/helpers.h"
+#include "../../../lib/helpers/helpers.h"
 #include <catch2/catch_all.hpp>
 #include <cstring>
 #include <vector>
 
 using namespace openfranko::lib::converter::abkToS3m;
-using namespace openfranko::lib::decompressor::helpers;
+using namespace openfranko::lib::helpers;
 
 namespace {
 

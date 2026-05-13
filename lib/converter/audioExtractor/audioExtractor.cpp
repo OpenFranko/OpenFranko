@@ -1,10 +1,9 @@
 #include "audioExtractor.h"
-#include "../../decompressor/helpers/helpers.h"
+#include "../../helpers/helpers.h"
 #include <cstring>
 
 namespace openfranko::lib::converter::audioExtractor {
 
-namespace helpers = decompressor::helpers;
 using helpers::pushBigEndian16;
 using helpers::pushBigEndian32;
 using helpers::pushLittleEndian16;

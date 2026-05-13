@@ -1,6 +1,6 @@
 #include "helpers.h"
 
-namespace openfranko::lib::decompressor::helpers {
+namespace openfranko::lib::helpers {
 
 uint32_t readUint32BigEndian(const std::vector<uint8_t> &data, size_t pos) {
   return (static_cast<uint32_t>(data[pos + 0]) << 24) |
@@ -60,4 +60,4 @@ void padTo16(std::vector<uint8_t> &buf) {
   }
 }
 
-} // namespace openfranko::lib::decompressor::helpers
+} // namespace openfranko::lib::helpers

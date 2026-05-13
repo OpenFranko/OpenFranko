@@ -1,8 +1,8 @@
-#include "../../../lib/decompressor/helpers/helpers.h"
+#include "../../../lib/helpers/helpers.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
-using namespace openfranko::lib::decompressor::helpers;
+using namespace openfranko::lib::helpers;
 
 SCENARIO("readUint32BigEndian reads 4 bytes in big-endian order") {
   GIVEN("A buffer with known bytes") {

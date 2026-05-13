@@ -1,12 +1,11 @@
 #include "spriteSheet.h"
 #include "../../bmpWriter/bmpWriter.h"
-#include "../../decompressor/helpers/helpers.h"
+#include "../../helpers/helpers.h"
 #include "../shared/decodeImage.h"
 #include <stdexcept>
 
 namespace openfranko::lib::converter::spriteSheet {
 
-namespace helpers = decompressor::helpers;
 using converter::DecodedImage;
 using converter::decodeAmosBitmap;
 

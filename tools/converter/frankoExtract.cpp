@@ -6,7 +6,7 @@
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../lib/converter/amosCompact/amosCompact.h"
 #include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
-#include "../../lib/decompressor/helpers/helpers.h"
+#include "../../lib/helpers/helpers.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
 #include <filesystem>
@@ -50,7 +50,7 @@ static size_t hashSamBank(const std::vector<uint8_t> &data) {
   if (data.size() < 12) {
     return 0;
   }
-  uint32_t sbOff = decompressor::helpers::readUint32BigEndian(data, 8);
+  uint32_t sbOff = helpers::readUint32BigEndian(data, 8);
   if (sbOff == 0 || sbOff >= data.size()) {
     return 0;
   }

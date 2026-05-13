@@ -1,12 +1,11 @@
 #include "abkToS3m.h"
-#include "../../decompressor/helpers/helpers.h"
+#include "../../helpers/helpers.h"
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
 
 namespace openfranko::lib::converter::abkToS3m {
 
-namespace helpers = decompressor::helpers;
 using helpers::padTo16;
 using helpers::pushLittleEndian16;
 

@@ -3,7 +3,6 @@
 
 namespace openfranko {
 namespace lib {
-namespace decompressor {
 namespace helpers {
 
 uint32_t readUint32BigEndian(const std::vector<uint8_t> &data, size_t pos);
@@ -20,6 +19,5 @@ void pushLittleEndian32(std::vector<uint8_t> &buf, uint32_t v);
 void padTo16(std::vector<uint8_t> &buf);
 
 } // namespace helpers
-} // namespace decompressor
 } // namespace lib
 } // namespace openfranko

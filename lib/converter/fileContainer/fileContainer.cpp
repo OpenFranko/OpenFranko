@@ -1,5 +1,5 @@
 #include "fileContainer.h"
-#include "../../decompressor/helpers/helpers.h"
+#include "../../helpers/helpers.h"
 #include <stdexcept>
 
 namespace openfranko::lib::converter::fileContainer {
@@ -14,9 +14,9 @@ FileInfo parseFooter(const std::vector<uint8_t> &rawData) {
   size_t off = rawData.size() - SUFFIX_SIZE;
 
   FileInfo info;
-  info.unpackSize = decompressor::helpers::readUint32BigEndian(rawData, off);
-  info.fileId = decompressor::helpers::readUint16BigEndian(rawData, off + 4);
-  info.resourceType = decompressor::helpers::readUint16BigEndian(rawData, off + 6);
+  info.unpackSize = helpers::readUint32BigEndian(rawData, off);
+  info.fileId = helpers::readUint16BigEndian(rawData, off + 4);
+  info.resourceType = helpers::readUint16BigEndian(rawData, off + 6);
   return info;
 }
 
