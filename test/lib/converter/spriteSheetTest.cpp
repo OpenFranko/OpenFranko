@@ -1,38 +1,29 @@
 #include "../../../lib/converter/spriteSheet/spriteSheet.h"
+#include "../../../lib/decompressor/helpers/helpers.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
 using namespace openfranko::lib::converter::spriteSheet;
+using openfranko::lib::decompressor::helpers::pushBigEndian16;
+using openfranko::lib::decompressor::helpers::pushBigEndian32;
 namespace pal = openfranko::lib::converter::spriteSheet::palettes;
 
-static void pushBE16(std::vector<uint8_t> &buf, uint16_t v) {
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v));
-}
-
-static void pushBE32(std::vector<uint8_t> &buf, uint32_t v) {
-  buf.push_back(static_cast<uint8_t>(v >> 24));
-  buf.push_back(static_cast<uint8_t>(v >> 16));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v));
-}
-
-static std::vector<uint8_t> buildBankHeader(uint16_t count, uint16_t maxW,
-                                            uint16_t maxH, uint16_t numberOfColors,
-                                            uint32_t samBankOff,
-                                            const std::vector<SpriteDescriptor> &descs) {
+static std::vector<uint8_t>
+buildBankHeader(uint16_t count, uint16_t maxW, uint16_t maxH,
+                uint16_t numberOfColors, uint32_t samBankOff,
+                const std::vector<SpriteDescriptor> &descs) {
   std::vector<uint8_t> buf;
-  pushBE16(buf, count);
-  pushBE16(buf, maxW);
-  pushBE16(buf, maxH);
-  pushBE16(buf, numberOfColors);
-  pushBE32(buf, samBankOff);
+  pushBigEndian16(buf, count);
+  pushBigEndian16(buf, maxW);
+  pushBigEndian16(buf, maxH);
+  pushBigEndian16(buf, numberOfColors);
+  pushBigEndian32(buf, samBankOff);
   for (const auto &d : descs) {
-    pushBE16(buf, d.wordOffset);
-    pushBE16(buf, d.widthWords);
-    pushBE16(buf, d.height);
-    pushBE16(buf, d.hotspotX);
-    pushBE16(buf, d.hotspotY);
+    pushBigEndian16(buf, d.wordOffset);
+    pushBigEndian16(buf, d.widthWords);
+    pushBigEndian16(buf, d.height);
+    pushBigEndian16(buf, d.hotspotX);
+    pushBigEndian16(buf, d.hotspotY);
   }
   return buf;
 }
@@ -93,11 +84,11 @@ SCENARIO("parseHeader reads sprite bank header and descriptors") {
 
   GIVEN("A header claiming 5 sprites but buffer too small for descriptors") {
     std::vector<uint8_t> buf;
-    pushBE16(buf, 5);
-    pushBE16(buf, 64);
-    pushBE16(buf, 32);
-    pushBE16(buf, 16);
-    pushBE32(buf, 0);
+    pushBigEndian16(buf, 5);
+    pushBigEndian16(buf, 64);
+    pushBigEndian16(buf, 32);
+    pushBigEndian16(buf, 16);
+    pushBigEndian32(buf, 0);
 
     for (int i = 0; i < 10; i++)
       buf.push_back(0);

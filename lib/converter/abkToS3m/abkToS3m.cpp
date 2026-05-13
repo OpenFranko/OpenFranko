@@ -7,6 +7,9 @@
 namespace openfranko::lib::converter::abkToS3m {
 
 namespace helpers = decompressor::helpers;
+using helpers::padTo16;
+using helpers::pushLittleEndian16;
+using helpers::pushLittleEndian32;
 
 namespace {
 
@@ -321,24 +324,6 @@ DecodedPattern decodePattern(const uint8_t *music, size_t musicSize,
   return {pat, endRow};
 }
 
-void pushLE16(std::vector<uint8_t> &buf, uint16_t v) {
-  buf.push_back(static_cast<uint8_t>(v));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-}
-
-void pushLE32(std::vector<uint8_t> &buf, uint32_t v) {
-  buf.push_back(static_cast<uint8_t>(v));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v >> 16));
-  buf.push_back(static_cast<uint8_t>(v >> 24));
-}
-
-void padTo16(std::vector<uint8_t> &buf) {
-  while (buf.size() % 16 != 0) {
-    buf.push_back(0);
-  }
-}
-
 std::vector<uint8_t> packPattern(const Pattern &pat) {
   std::vector<uint8_t> packed;
   packed.push_back(0);
@@ -555,12 +540,12 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData) {
 
   size_t insPtrOff = s3m.size();
   for (uint16_t i = 0; i < insNum; i++) {
-    pushLE16(s3m, 0);
+    pushLittleEndian16(s3m, 0);
   }
 
   size_t patPtrOff = s3m.size();
   for (uint16_t i = 0; i < patNum; i++) {
-    pushLE16(s3m, 0);
+    pushLittleEndian16(s3m, 0);
   }
 
   uint8_t panning[32] = {};

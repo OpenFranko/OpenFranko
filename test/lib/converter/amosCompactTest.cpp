@@ -3,31 +3,28 @@
 #include "../../../lib/converter/amosCompact/detail/ByteReader.h"
 #include "../../../lib/converter/amosCompact/Consts.h"
 #include "../../../lib/converter/shared/headers.h"
+#include "../../../lib/decompressor/helpers/helpers.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
 using namespace openfranko::lib::converter::amosCompact;
 using namespace openfranko::lib::converter::amosCompact::detail;
 using namespace openfranko::lib::converter::headers;
-
-static uint32_t readLittleEndianUInt32(const std::vector<uint8_t> &d,
-                                       size_t off) {
-  return d[off] | (d[off + 1] << 8) | (d[off + 2] << 16) | (d[off + 3] << 24);
-}
+using openfranko::lib::decompressor::helpers::readUint32LittleEndian;
 
 static uint32_t bmpWidth(const std::vector<uint8_t> &bmp) {
-  return readLittleEndianUInt32(bmp, 18);
+  return readUint32LittleEndian(bmp, 18);
 }
 
 static uint32_t bmpHeight(const std::vector<uint8_t> &bmp) {
-  return readLittleEndianUInt32(bmp, 22);
+  return readUint32LittleEndian(bmp, 22);
 }
 
 static uint8_t bmpPixel(const std::vector<uint8_t> &bmp, int x, int y) {
   uint32_t w = bmpWidth(bmp);
   uint32_t h = bmpHeight(bmp);
   uint32_t rowBytes = (w + 3) & ~3u;
-  uint32_t pixelOff = readLittleEndianUInt32(bmp, 10);
+  uint32_t pixelOff = readUint32LittleEndian(bmp, 10);
   int bmpY = static_cast<int>(h) - 1 - y;
   return bmp[pixelOff + bmpY * rowBytes + x];
 }

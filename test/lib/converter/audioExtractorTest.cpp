@@ -1,47 +1,25 @@
 #include "../../../lib/converter/audioExtractor/audioExtractor.h"
+#include "../../../lib/decompressor/helpers/helpers.h"
 #include <catch2/catch_all.hpp>
 #include <cstring>
 #include <vector>
 
 using namespace openfranko::lib::converter::audioExtractor;
+using namespace openfranko::lib::decompressor::helpers;
 
 namespace {
-
-void pushBE16(std::vector<uint8_t> &buf, uint16_t v) {
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v));
-}
-
-void pushBE32(std::vector<uint8_t> &buf, uint32_t v) {
-  buf.push_back(static_cast<uint8_t>(v >> 24));
-  buf.push_back(static_cast<uint8_t>(v >> 16));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v));
-}
-
-uint32_t readLE32(const std::vector<uint8_t> &buf, size_t off) {
-  return static_cast<uint32_t>(buf[off]) |
-         (static_cast<uint32_t>(buf[off + 1]) << 8) |
-         (static_cast<uint32_t>(buf[off + 2]) << 16) |
-         (static_cast<uint32_t>(buf[off + 3]) << 24);
-}
-
-uint16_t readLE16(const std::vector<uint8_t> &buf, size_t off) {
-  return static_cast<uint16_t>(buf[off]) |
-         (static_cast<uint16_t>(buf[off + 1]) << 8);
-}
 
 std::vector<uint8_t> buildStandaloneSamBank(uint16_t freq, uint32_t pcmLen,
                                             const std::vector<int8_t> &pcm) {
   std::vector<uint8_t> data;
-  pushBE16(data, 1);
+  pushBigEndian16(data, 1);
   uint32_t sampleOffset = 6;
-  pushBE32(data, sampleOffset);
+  pushBigEndian32(data, sampleOffset);
 
-  pushBE32(data, 0);
-  pushBE32(data, 0);
-  pushBE16(data, freq);
-  pushBE32(data, pcmLen);
+  pushBigEndian32(data, 0);
+  pushBigEndian32(data, 0);
+  pushBigEndian16(data, freq);
+  pushBigEndian32(data, pcmLen);
   for (auto s : pcm) {
     data.push_back(static_cast<uint8_t>(s));
   }
@@ -79,12 +57,12 @@ SCENARIO("extractStandaloneSamBank extracts WAV from sample bank") {
 
       THEN("WAV sample rate matches input frequency") {
         auto &wav = results[0].data;
-        REQUIRE(readLE32(wav, 24) == 8000);
+        REQUIRE(readUint32LittleEndian(wav, 24) == 8000);
       }
 
       THEN("WAV has correct number of samples") {
         auto &wav = results[0].data;
-        uint32_t dataLen = readLE32(wav, 40);
+        uint32_t dataLen = readUint32LittleEndian(wav, 40);
         REQUIRE(dataLen == 10);
       }
     }
@@ -101,8 +79,8 @@ SCENARIO("extractStandaloneSamBank extracts WAV from sample bank") {
 
   GIVEN("A sample bank with zero samples") {
     std::vector<uint8_t> data;
-    pushBE16(data, 0);
-    pushBE32(data, 0);
+    pushBigEndian16(data, 0);
+    pushBigEndian32(data, 0);
 
     WHEN("extractStandaloneSamBank is called") {
       auto results = extractStandaloneSamBank(data, "X");
@@ -120,7 +98,7 @@ SCENARIO("extractStandaloneSamBank extracts WAV from sample bank") {
         REQUIRE(results.size() == 1);
         REQUIRE(results[0].name == "F0_sam1_8287Hz.wav");
         auto &wav = results[0].data;
-        REQUIRE(readLE32(wav, 24) == 8287);
+        REQUIRE(readUint32LittleEndian(wav, 24) == 8287);
       }
     }
   }

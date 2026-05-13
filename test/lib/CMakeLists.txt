@@ -32,14 +32,14 @@ set(AMOS_COMPACT_TEST_TARGET amosCompactTest)
 add_executable(${AMOS_COMPACT_TEST_TARGET}
     converter/amosCompactTest.cpp
 )
-target_link_libraries(${AMOS_COMPACT_TEST_TARGET} PRIVATE Catch2::Catch2WithMain amosCompact)
+target_link_libraries(${AMOS_COMPACT_TEST_TARGET} PRIVATE Catch2::Catch2WithMain amosCompact helpers)
 add_test(NAME ${AMOS_COMPACT_TEST_TARGET} COMMAND ${AMOS_COMPACT_TEST_TARGET})
 
 set(BMP_WRITER_TEST_TARGET bmpWriterTest)
 add_executable(${BMP_WRITER_TEST_TARGET}
     bmpWriter/bmpWriterTest.cpp
 )
-target_link_libraries(${BMP_WRITER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain bmpWriter)
+target_link_libraries(${BMP_WRITER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain bmpWriter helpers)
 add_test(NAME ${BMP_WRITER_TEST_TARGET} COMMAND ${BMP_WRITER_TEST_TARGET})
 
 set(FILE_CONTAINER_TEST_TARGET fileContainerTest)
@@ -53,7 +53,7 @@ set(SPRITE_SHEET_TEST_TARGET spriteSheetTest)
 add_executable(${SPRITE_SHEET_TEST_TARGET}
     converter/spriteSheetTest.cpp
 )
-target_link_libraries(${SPRITE_SHEET_TEST_TARGET} PRIVATE Catch2::Catch2WithMain spriteSheet)
+target_link_libraries(${SPRITE_SHEET_TEST_TARGET} PRIVATE Catch2::Catch2WithMain spriteSheet helpers)
 add_test(NAME ${SPRITE_SHEET_TEST_TARGET} COMMAND ${SPRITE_SHEET_TEST_TARGET})
 
 set(BITMAP_EXTRACTOR_TEST_TARGET bitmapExtractorTest)
@@ -74,7 +74,7 @@ set(AUDIO_EXTRACTOR_TEST_TARGET audioExtractorTest)
 add_executable(${AUDIO_EXTRACTOR_TEST_TARGET}
     converter/audioExtractorTest.cpp
 )
-target_link_libraries(${AUDIO_EXTRACTOR_TEST_TARGET} PRIVATE Catch2::Catch2WithMain audioExtractor)
+target_link_libraries(${AUDIO_EXTRACTOR_TEST_TARGET} PRIVATE Catch2::Catch2WithMain audioExtractor helpers)
 add_test(NAME ${AUDIO_EXTRACTOR_TEST_TARGET} COMMAND ${AUDIO_EXTRACTOR_TEST_TARGET})
 
 set(HEADERS_TEST_TARGET headersTest)
@@ -88,5 +88,5 @@ set(ABK_TO_S3M_TEST_TARGET abkToS3mTest)
 add_executable(${ABK_TO_S3M_TEST_TARGET}
     converter/abkToS3mTest.cpp
 )
-target_link_libraries(${ABK_TO_S3M_TEST_TARGET} PRIVATE Catch2::Catch2WithMain abkToS3m)
+target_link_libraries(${ABK_TO_S3M_TEST_TARGET} PRIVATE Catch2::Catch2WithMain abkToS3m helpers)
 add_test(NAME ${ABK_TO_S3M_TEST_TARGET} COMMAND ${ABK_TO_S3M_TEST_TARGET})

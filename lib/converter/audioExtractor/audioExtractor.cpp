@@ -5,32 +5,12 @@
 namespace openfranko::lib::converter::audioExtractor {
 
 namespace helpers = decompressor::helpers;
+using helpers::pushBigEndian16;
+using helpers::pushBigEndian32;
+using helpers::pushLittleEndian16;
+using helpers::pushLittleEndian32;
 
 namespace {
-
-void pushLE16(std::vector<uint8_t> &buf, uint16_t v) {
-  buf.push_back(static_cast<uint8_t>(v));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-}
-
-void pushLE32(std::vector<uint8_t> &buf, uint32_t v) {
-  buf.push_back(static_cast<uint8_t>(v));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v >> 16));
-  buf.push_back(static_cast<uint8_t>(v >> 24));
-}
-
-void pushBE16(std::vector<uint8_t> &buf, uint16_t v) {
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v));
-}
-
-void pushBE32(std::vector<uint8_t> &buf, uint32_t v) {
-  buf.push_back(static_cast<uint8_t>(v >> 24));
-  buf.push_back(static_cast<uint8_t>(v >> 16));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v));
-}
 
 std::vector<uint8_t> pcmToWav(const int8_t *pcm, uint32_t numSamples,
                               uint32_t sampleRate) {
@@ -44,7 +24,7 @@ std::vector<uint8_t> pcmToWav(const int8_t *pcm, uint32_t numSamples,
   buf.push_back('I');
   buf.push_back('F');
   buf.push_back('F');
-  pushLE32(buf, fileSize);
+  pushLittleEndian32(buf, fileSize);
   buf.push_back('W');
   buf.push_back('A');
   buf.push_back('V');
@@ -54,23 +34,23 @@ std::vector<uint8_t> pcmToWav(const int8_t *pcm, uint32_t numSamples,
   buf.push_back('m');
   buf.push_back('t');
   buf.push_back(' ');
-  pushLE32(buf, 16);
-  pushLE16(buf, 1);
-  pushLE16(buf, 1);
-  pushLE32(buf, sampleRate);
-  pushLE32(buf, sampleRate * 2);
-  pushLE16(buf, 2);
-  pushLE16(buf, 16);
+  pushLittleEndian32(buf, 16);
+  pushLittleEndian16(buf, 1);
+  pushLittleEndian16(buf, 1);
+  pushLittleEndian32(buf, sampleRate);
+  pushLittleEndian32(buf, sampleRate * 2);
+  pushLittleEndian16(buf, 2);
+  pushLittleEndian16(buf, 16);
 
   buf.push_back('d');
   buf.push_back('a');
   buf.push_back('t');
   buf.push_back('a');
-  pushLE32(buf, dataLen);
+  pushLittleEndian32(buf, dataLen);
 
   for (uint32_t i = 0; i < numSamples; i++) {
     int16_t s = static_cast<int16_t>(pcm[i]) * 256;
-    pushLE16(buf, static_cast<uint16_t>(s));
+    pushLittleEndian16(buf, static_cast<uint16_t>(s));
   }
 
   return buf;
@@ -121,11 +101,11 @@ extractStandaloneSamBank(const std::vector<uint8_t> &data,
       continue;
     }
 
-    auto wav = pcmToWav(reinterpret_cast<const int8_t *>(data.data() + pcmStart),
-                        length, freq);
-    results.push_back(
-        {fileId + "_sam" + std::to_string(i + 1) + "_" + std::to_string(freq) + "Hz.wav",
-         std::move(wav)});
+    auto wav = pcmToWav(
+        reinterpret_cast<const int8_t *>(data.data() + pcmStart), length, freq);
+    results.push_back({fileId + "_sam" + std::to_string(i + 1) + "_" +
+                           std::to_string(freq) + "Hz.wav",
+                       std::move(wav)});
   }
 
   return results;
@@ -187,12 +167,11 @@ extractEmbeddedSamBank(const std::vector<uint8_t> &data,
     }
 
     auto wav = pcmToWav(
-        reinterpret_cast<const int8_t *>(data.data() + pcmStart), length,
-        freq);
+        reinterpret_cast<const int8_t *>(data.data() + pcmStart), length, freq);
 
-    results.push_back(
-        {fileId + "_sam" + std::to_string(i + 1) + "_" + std::to_string(freq) + "Hz.wav",
-         std::move(wav)});
+    results.push_back({fileId + "_sam" + std::to_string(i + 1) + "_" +
+                           std::to_string(freq) + "Hz.wav",
+                       std::move(wav)});
   }
 
   return results;
@@ -232,9 +211,9 @@ ExtractedAudio wrapMusicBank(const std::vector<uint8_t> &data,
   abk.push_back('m');
   abk.push_back('B');
   abk.push_back('k');
-  pushBE16(abk, 3);
-  pushBE16(abk, 0);
-  pushBE32(abk, static_cast<uint32_t>(music.size() + 8) | 0x80000000u);
+  pushBigEndian16(abk, 3);
+  pushBigEndian16(abk, 0);
+  pushBigEndian32(abk, static_cast<uint32_t>(music.size() + 8) | 0x80000000u);
 
   const char *bankName = "Music   ";
   abk.insert(abk.end(), bankName, bankName + 8);
