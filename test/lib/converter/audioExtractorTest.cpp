@@ -63,7 +63,7 @@ SCENARIO("extractStandaloneSamBank extracts WAV from sample bank") {
       THEN("WAV has correct number of samples") {
         auto &wav = results[0].data;
         uint32_t dataLen = readUint32LittleEndian(wav, 40);
-        REQUIRE(dataLen == 10);
+        REQUIRE(dataLen == 5);
       }
     }
   }

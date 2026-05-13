@@ -14,7 +14,7 @@ namespace {
 
 std::vector<uint8_t> pcmToWav(const int8_t *pcm, uint32_t numSamples,
                               uint32_t sampleRate) {
-  uint32_t dataLen = numSamples * 2;
+  uint32_t dataLen = numSamples;
   uint32_t fileSize = 36 + dataLen;
 
   std::vector<uint8_t> buf;
@@ -38,9 +38,9 @@ std::vector<uint8_t> pcmToWav(const int8_t *pcm, uint32_t numSamples,
   pushLittleEndian16(buf, 1);
   pushLittleEndian16(buf, 1);
   pushLittleEndian32(buf, sampleRate);
-  pushLittleEndian32(buf, sampleRate * 2);
-  pushLittleEndian16(buf, 2);
-  pushLittleEndian16(buf, 16);
+  pushLittleEndian32(buf, sampleRate);
+  pushLittleEndian16(buf, 1);
+  pushLittleEndian16(buf, 8);
 
   buf.push_back('d');
   buf.push_back('a');
@@ -48,9 +48,9 @@ std::vector<uint8_t> pcmToWav(const int8_t *pcm, uint32_t numSamples,
   buf.push_back('a');
   pushLittleEndian32(buf, dataLen);
 
+  // WAV 8-bit uses unsigned (128 = silence), Amiga uses signed (0 = silence)
   for (uint32_t i = 0; i < numSamples; i++) {
-    int16_t s = static_cast<int16_t>(pcm[i]) * 256;
-    pushLittleEndian16(buf, static_cast<uint16_t>(s));
+    buf.push_back(static_cast<uint8_t>(pcm[i] + 128));
   }
 
   return buf;
