@@ -62,3 +62,31 @@ add_executable(${BITMAP_EXTRACTOR_TEST_TARGET}
 )
 target_link_libraries(${BITMAP_EXTRACTOR_TEST_TARGET} PRIVATE Catch2::Catch2WithMain bitmapExtractor)
 add_test(NAME ${BITMAP_EXTRACTOR_TEST_TARGET} COMMAND ${BITMAP_EXTRACTOR_TEST_TARGET})
+
+set(HELPERS_TEST_TARGET helpersTest)
+add_executable(${HELPERS_TEST_TARGET}
+    decompressor/helpersTest.cpp
+)
+target_link_libraries(${HELPERS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain helpers)
+add_test(NAME ${HELPERS_TEST_TARGET} COMMAND ${HELPERS_TEST_TARGET})
+
+set(AUDIO_EXTRACTOR_TEST_TARGET audioExtractorTest)
+add_executable(${AUDIO_EXTRACTOR_TEST_TARGET}
+    converter/audioExtractorTest.cpp
+)
+target_link_libraries(${AUDIO_EXTRACTOR_TEST_TARGET} PRIVATE Catch2::Catch2WithMain audioExtractor)
+add_test(NAME ${AUDIO_EXTRACTOR_TEST_TARGET} COMMAND ${AUDIO_EXTRACTOR_TEST_TARGET})
+
+set(HEADERS_TEST_TARGET headersTest)
+add_executable(${HEADERS_TEST_TARGET}
+    converter/headersTest.cpp
+)
+target_link_libraries(${HEADERS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain decodeImage)
+add_test(NAME ${HEADERS_TEST_TARGET} COMMAND ${HEADERS_TEST_TARGET})
+
+set(ABK_TO_S3M_TEST_TARGET abkToS3mTest)
+add_executable(${ABK_TO_S3M_TEST_TARGET}
+    converter/abkToS3mTest.cpp
+)
+target_link_libraries(${ABK_TO_S3M_TEST_TARGET} PRIVATE Catch2::Catch2WithMain abkToS3m)
+add_test(NAME ${ABK_TO_S3M_TEST_TARGET} COMMAND ${ABK_TO_S3M_TEST_TARGET})
