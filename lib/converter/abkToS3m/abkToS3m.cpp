@@ -9,7 +9,6 @@ namespace openfranko::lib::converter::abkToS3m {
 namespace helpers = decompressor::helpers;
 using helpers::padTo16;
 using helpers::pushLittleEndian16;
-using helpers::pushLittleEndian32;
 
 namespace {
 
@@ -41,6 +40,8 @@ constexpr uint8_t S3M_EFFECT_TEMPO = 20;
 constexpr uint8_t S3M_NOTE_NONE = 0xFF;
 constexpr uint8_t S3M_NOTE_OFF = 0xFE;
 constexpr uint8_t S3M_VOLUME_NONE = 0xFF;
+
+constexpr int NUM_CHANNELS = 4;
 
 constexpr uint16_t PERIOD_TABLE[] = {
     1712, 1616, 1524, 1440, 1356, 1280, 1208, 1140, 1076, 1016, 960, 906,
@@ -90,7 +91,7 @@ struct RowEvent {
 };
 
 struct Pattern {
-  RowEvent channels[4][64];
+  RowEvent channels[NUM_CHANNELS][64];
 };
 
 std::vector<AmosSample> parseSamples(const uint8_t *music, size_t musicSize,
@@ -100,11 +101,11 @@ std::vector<AmosSample> parseSamples(const uint8_t *music, size_t musicSize,
     return samples;
   }
   const std::vector<uint8_t> musicVec(music, music + musicSize);
-  auto read32 = [&](size_t o) {
-    return helpers::readUint32BigEndian(musicVec, o);
+  auto read32 = [&](size_t offset) {
+    return helpers::readUint32BigEndian(musicVec, offset);
   };
-  auto read16 = [&](size_t o) {
-    return helpers::readUint16BigEndian(musicVec, o);
+  auto read16 = [&](size_t offset) {
+    return helpers::readUint16BigEndian(musicVec, offset);
   };
   uint16_t count = read16(sampleInfoOff);
   if (count == 0 || count > 64) {
@@ -132,7 +133,7 @@ std::vector<AmosSample> parseSamples(const uint8_t *music, size_t musicSize,
 
 struct SongInfo {
   uint16_t speed;
-  std::vector<uint16_t> orders[4];
+  std::vector<uint16_t> orders[NUM_CHANNELS];
   char name[17];
 };
 
@@ -140,8 +141,8 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
   SongInfo info{};
   info.speed = 17;
   const std::vector<uint8_t> musicVec(music, music + musicSize);
-  auto read16 = [&](size_t o) {
-    return helpers::readUint16BigEndian(musicVec, o);
+  auto read16 = [&](size_t offset) {
+    return helpers::readUint16BigEndian(musicVec, offset);
   };
   if (songOff + 6 > musicSize) {
     return info;
@@ -153,7 +154,7 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
     return info;
   }
 
-  uint16_t chOff[4];
+  uint16_t chOff[NUM_CHANNELS];
   chOff[0] = read16(songBase);
   chOff[1] = read16(songBase + 2);
   chOff[2] = read16(songBase + 4);
@@ -162,7 +163,7 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
   std::memcpy(info.name, music + songBase + 12, 16);
   info.name[16] = '\0';
 
-  for (int ch = 0; ch < 4; ch++) {
+  for (int ch = 0; ch < NUM_CHANNELS; ch++) {
     size_t pos = songBase + chOff[ch];
     while (pos + 2 <= musicSize) {
       uint16_t val = read16(pos);
@@ -187,14 +188,14 @@ TrackInfo parseTrackData(const uint8_t *music, size_t musicSize,
   TrackInfo info{};
   info.trackDataBase = trackOff;
   const std::vector<uint8_t> musicVec(music, music + musicSize);
-  auto read16 = [&](size_t o) {
-    return helpers::readUint16BigEndian(musicVec, o);
+  auto read16 = [&](size_t offset) {
+    return helpers::readUint16BigEndian(musicVec, offset);
   };
   if (trackOff + 2 > musicSize) {
     return info;
   }
   info.numSteps = read16(trackOff);
-  size_t numOffsets = static_cast<size_t>(info.numSteps) * 4;
+  size_t numOffsets = static_cast<size_t>(info.numSteps) * NUM_CHANNELS;
   for (size_t i = 0; i < numOffsets; i++) {
     size_t pos = trackOff + 2 + i * 2;
     if (pos + 2 > musicSize) {
@@ -213,16 +214,16 @@ struct DecodedPattern {
 void decodeChannel(Pattern &pat, int ch, const uint8_t *music, size_t musicSize,
                    const TrackInfo &track, uint16_t stepIdx,
                    int &channelEndRow) {
-  size_t tableIdx = static_cast<size_t>(stepIdx) * 4 + ch;
+  size_t tableIdx = static_cast<size_t>(stepIdx) * NUM_CHANNELS + ch;
   if (tableIdx >= track.offsets.size()) {
     return;
   }
 
-  auto read16at = [&](size_t o) -> uint16_t {
-    if (o + 2 > musicSize) {
+  auto readUint16Safe = [&](size_t offset) -> uint16_t {
+    if (offset + 2 > musicSize) {
       return 0;
     }
-    return static_cast<uint16_t>((music[o] << 8) | music[o + 1]);
+    return static_cast<uint16_t>((music[offset] << 8) | music[offset + 1]);
   };
 
   size_t pos = track.trackDataBase + track.offsets[tableIdx];
@@ -235,7 +236,7 @@ void decodeChannel(Pattern &pat, int ch, const uint8_t *music, size_t musicSize,
   uint16_t notePeriod = 0;
 
   while (pos + 2 <= musicSize && row < 64) {
-    uint16_t cmd = read16at(pos);
+    uint16_t cmd = readUint16Safe(pos);
     pos += 2;
     uint8_t hi = cmd >> 8;
     uint8_t lo = cmd & 0xFF;
@@ -340,28 +341,28 @@ void decodeChannel(Pattern &pat, int ch, const uint8_t *music, size_t musicSize,
 
 DecodedPattern decodePattern(const uint8_t *music, size_t musicSize,
                              const TrackInfo &track,
-                             const uint16_t stepIndices[4]) {
+                             const uint16_t stepIndices[NUM_CHANNELS]) {
   Pattern pat{};
   for (int row = 0; row < 64; row++) {
-    for (int ch = 0; ch < 4; ch++) {
+    for (int ch = 0; ch < NUM_CHANNELS; ch++) {
       pat.channels[ch][row] = {S3M_NOTE_NONE, 0, S3M_VOLUME_NONE, 0, 0};
     }
   }
 
-  int channelEndRows[4] = {64, 64, 64, 64};
-  for (int ch = 0; ch < 4; ch++) {
+  int channelEndRows[NUM_CHANNELS] = {64, 64, 64, 64};
+  for (int ch = 0; ch < NUM_CHANNELS; ch++) {
     decodeChannel(pat, ch, music, musicSize, track, stepIndices[ch],
                   channelEndRows[ch]);
   }
 
   int endRow = 64;
-  for (int ch = 0; ch < 4; ch++) {
+  for (int ch = 0; ch < NUM_CHANNELS; ch++) {
     if (channelEndRows[ch] < endRow) {
       endRow = channelEndRows[ch];
     }
   }
   if (endRow < 64) {
-    for (int ch = 0; ch < 4; ch++) {
+    for (int ch = 0; ch < NUM_CHANNELS; ch++) {
       if (pat.channels[ch][endRow].effect == 0) {
         pat.channels[ch][endRow].effect = S3M_EFFECT_PATTERN_BREAK;
         pat.channels[ch][endRow].effectParam = 0;
@@ -379,7 +380,7 @@ std::vector<uint8_t> packPattern(const Pattern &pat) {
   packed.push_back(0);
 
   for (int row = 0; row < 64; row++) {
-    for (int ch = 0; ch < 4; ch++) {
+    for (int ch = 0; ch < NUM_CHANNELS; ch++) {
       const auto &ev = pat.channels[ch][row];
       uint8_t what = 0;
       if (ev.note != S3M_NOTE_NONE || ev.instrument != 0) {
@@ -441,7 +442,7 @@ SpeedTempo amosTempoToS3m(uint8_t amosTempo) {
 
 void fixSpeedEffects(Pattern &pat) {
   for (int row = 0; row < 64; row++) {
-    for (int ch = 0; ch < 4; ch++) {
+    for (int ch = 0; ch < NUM_CHANNELS; ch++) {
       auto &ev = pat.channels[ch][row];
       if (ev.effect != S3M_EFFECT_SPEED) {
         continue;
@@ -449,7 +450,7 @@ void fixSpeedEffects(Pattern &pat) {
       auto st = amosTempoToS3m(ev.effectParam);
       ev.effectParam = st.speed;
       if (st.tempo != 134) {
-        for (int ch2 = 0; ch2 < 4; ch2++) {
+        for (int ch2 = 0; ch2 < NUM_CHANNELS; ch2++) {
           if (ch2 != ch && pat.channels[ch2][row].effect == 0) {
             pat.channels[ch2][row].effect = S3M_EFFECT_TEMPO;
             pat.channels[ch2][row].effectParam = st.tempo;
@@ -468,20 +469,20 @@ std::vector<Pattern> decodeAllPatterns(const uint8_t *music, size_t musicSize,
   std::vector<Pattern> patterns;
 
   size_t songLen = 0;
-  for (int ch = 0; ch < 4; ch++) {
+  for (int ch = 0; ch < NUM_CHANNELS; ch++) {
     songLen = std::max(songLen, song.orders[ch].size());
   }
 
   for (size_t pos = 0; pos < songLen; pos++) {
-    uint16_t steps[4];
-    for (int ch = 0; ch < 4; ch++) {
+    uint16_t steps[NUM_CHANNELS];
+    for (int ch = 0; ch < NUM_CHANNELS; ch++) {
       steps[ch] = pos < song.orders[ch].size() ? song.orders[ch][pos] : 0;
     }
 
     auto decoded = decodePattern(music, musicSize, track, steps);
     if (isE1) {
       for (int row = 0; row < 64; row++)
-        for (int ch = 0; ch < 4; ch++)
+        for (int ch = 0; ch < NUM_CHANNELS; ch++)
           if (decoded.pat.channels[ch][row].effect == S3M_EFFECT_SPEED)
             decoded.pat.channels[ch][row].effect = 0,
             decoded.pat.channels[ch][row].effectParam = 0;

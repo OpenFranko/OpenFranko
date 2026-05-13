@@ -17,6 +17,7 @@ uint32_t BitReader::getBit() {
   m_buffer >>= 1;
 
   if (m_buffer == 0) {
+    // refill() saves the LSB of the new word into m_lastBitBeforeRefill
     refill();
     return m_lastBitBeforeRefill;
   }

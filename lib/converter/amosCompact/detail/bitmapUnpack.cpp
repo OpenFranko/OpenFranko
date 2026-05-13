@@ -67,6 +67,7 @@ void unpackChunkyPixels(UnpackedBitmap &bitmap) {
         planeBytes[p] = bitmap.bitplaneData[p][y * widthByBytes + x];
       }
 
+      // Interleave bits from each bitplane into a single palette index per pixel
       for (int bit = 7; bit >= 0; bit--) {
         int shift = 7 - bit;
         uint8_t pixelValue = 0;
