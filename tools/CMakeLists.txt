@@ -18,3 +18,6 @@ target_link_libraries(extractBitmaps argumentParser readFile writeFile backwardL
 
 add_executable(extractScreen converter/extractScreen.cpp)
 target_link_libraries(extractScreen argumentParser readFile writeFile amosCompact)
+
+add_executable(abk2s3m converter/abk2s3m.cpp)
+target_link_libraries(abk2s3m argumentParser readFile writeFile abkToS3m)
