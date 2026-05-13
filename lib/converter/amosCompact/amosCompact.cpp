@@ -66,7 +66,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   if (unpackedBitmap.width == 0 || unpackedBitmap.height == 0) {
     throw std::runtime_error("Bitmap has zero dimensions");
   }
-  if (!unpackedBitmap.chunkyPixels) {
+  if (unpackedBitmap.chunkyPixels.empty()) {
     throw std::runtime_error("Bitmap has no chunky pixel data");
   }
 
@@ -76,7 +76,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   }
 
   return bmpWriter::pixelsToBmp(unpackedBitmap.width, unpackedBitmap.height,
-                                unpackedBitmap.chunkyPixels,
+                                unpackedBitmap.chunkyPixels.data(),
                                 unpackedBitmap.palette, numberOfColors);
 }
 

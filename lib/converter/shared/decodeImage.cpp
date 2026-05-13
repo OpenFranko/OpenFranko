@@ -26,9 +26,9 @@ DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
   DecodedImage img;
   img.width = bm.width;
   img.height = bm.height;
-  if (bm.chunkyPixels && bm.width > 0 && bm.height > 0) {
+  if (!bm.chunkyPixels.empty() && bm.width > 0 && bm.height > 0) {
     size_t n = static_cast<size_t>(bm.width) * bm.height;
-    img.pixels.assign(bm.chunkyPixels, bm.chunkyPixels + n);
+    img.pixels.assign(bm.chunkyPixels.begin(), bm.chunkyPixels.begin() + n);
   }
 
   return img;

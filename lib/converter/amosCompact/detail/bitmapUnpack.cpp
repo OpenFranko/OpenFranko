@@ -26,7 +26,7 @@ void mainDecompression(UnpackedBitmap &bitmap,
   int maskBit = 7;
 
   for (int plane = 0; plane < bitmap.numberOfBitplanes; plane++) {
-    uint8_t *planeData = bitmap.bitplaneData[plane];
+    uint8_t *planeData = bitmap.bitplaneData[plane].data();
 
     for (int tileRow = 0; tileRow < header.gridY; tileRow++) {
       for (int tileCol = 0; tileCol < header.gridX; tileCol++) {
@@ -58,11 +58,7 @@ void unpackChunkyPixels(UnpackedBitmap &bitmap) {
   size_t totalPixels = bitmap.width * bitmap.height;
   uint16_t widthByBytes = bitmap.width / 8;
 
-  if (!bitmap.chunkyPixels) {
-    bitmap.chunkyPixels = static_cast<uint8_t *>(calloc(1, totalPixels));
-  } else {
-    std::memset(bitmap.chunkyPixels, 0, totalPixels);
-  }
+  bitmap.chunkyPixels.assign(totalPixels, 0);
 
   for (int y = 0; y < bitmap.height; y++) {
     for (int x = 0; x < widthByBytes; x++) {
@@ -109,8 +105,9 @@ UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
   size_t paletteCopySize =
       std::min(palette.size() * sizeof(uint16_t), sizeof(bitmap.palette));
   std::memcpy(bitmap.palette, palette.data(), paletteCopySize);
+  bitmap.bitplaneData.resize(bitmap.numberOfBitplanes);
   for (int p = 0; p < bitmap.numberOfBitplanes; p++) {
-    bitmap.bitplaneData[p] = static_cast<uint8_t *>(calloc(1, planeSize));
+    bitmap.bitplaneData[p].assign(planeSize, 0);
   }
 
   ByteReader bytes1(packedData, byteTable1Pointer);

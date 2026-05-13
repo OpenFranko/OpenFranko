@@ -1,22 +1,13 @@
 #include "bmpWriter.h"
+#include "../decompressor/helpers/helpers.h"
 
 namespace openfranko::lib::bmpWriter {
 
-namespace {
+namespace helpers = decompressor::helpers;
+using helpers::pushLittleEndian16;
+using helpers::pushLittleEndian32;
 
-void pushLittleEndian16(std::vector<uint8_t> &buf, uint16_t v) {
-  buf.push_back(static_cast<uint8_t>(v));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-}
-
-void pushLittleEndian32(std::vector<uint8_t> &buf, uint32_t v) {
-  buf.push_back(static_cast<uint8_t>(v));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v >> 16));
-  buf.push_back(static_cast<uint8_t>(v >> 24));
-}
-
-} // namespace
+constexpr uint32_t BMP_PIXELS_PER_METER_72DPI = 2835;
 
 std::vector<uint8_t> pixelsToBmp(uint32_t width, uint32_t height,
                                  const uint8_t *pixels, const uint16_t *palette,
@@ -47,8 +38,8 @@ std::vector<uint8_t> pixelsToBmp(uint32_t width, uint32_t height,
   pushLittleEndian16(buf, 8);
   pushLittleEndian32(buf, 0);
   pushLittleEndian32(buf, pixelDataSize);
-  pushLittleEndian32(buf, 2835);
-  pushLittleEndian32(buf, 2835);
+  pushLittleEndian32(buf, BMP_PIXELS_PER_METER_72DPI);
+  pushLittleEndian32(buf, BMP_PIXELS_PER_METER_72DPI);
   pushLittleEndian32(buf, static_cast<uint32_t>(numberOfColors));
   pushLittleEndian32(buf, 0);
 
