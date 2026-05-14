@@ -20,9 +20,10 @@ namespace {
 
 std::vector<size_t> findBMCodeOffsets(const std::vector<uint8_t> &data) {
   std::vector<size_t> offsets;
+  helpers::BigEndianReader reader(data);
   for (size_t off = 0;
        off + amosConsts::PACKED_BITMAP_HEADER_SIZE <= data.size(); off += 2) {
-    if (helpers::readUint32BigEndian(data, off) == amosConsts::AMOS_BMCODE) {
+    if (reader.readUint32(off) == amosConsts::AMOS_BMCODE) {
       offsets.push_back(off);
     }
   }
@@ -113,9 +114,10 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data) {
   int found = 0;
 
   std::vector<ExtractedBitmap> results;
+  helpers::BigEndianReader reader(data);
 
   for (size_t off = 0; off + 4 <= data.size(); off += 2) {
-    uint32_t magic = helpers::readUint32BigEndian(data, off);
+    uint32_t magic = reader.readUint32(off);
 
     if (magic == amosConsts::SPACK_SCREEN_HEADER &&
         off + amosConsts::SPACK_HEADER_SIZE <= data.size()) {
@@ -152,7 +154,8 @@ std::vector<ExtractedBitmap> extract(const std::vector<uint8_t> &data,
     throw std::runtime_error("Data too small to extract bitmaps");
   }
 
-  uint32_t magic = helpers::readUint32BigEndian(data, 0);
+  helpers::BigEndianReader reader(data);
+  uint32_t magic = reader.readUint32(0);
 
   if (std::string_view(fileId) == gameData::fileIds::MULTI_PALETTE_BITMAP) {
     return extract0384(data);

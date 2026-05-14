@@ -28,7 +28,7 @@ size_t hashSamBank(const std::vector<uint8_t> &data) {
   if (data.size() < 12) {
     return 0;
   }
-  uint32_t sbOff = lib::helpers::readUint32BigEndian(data, 8);
+  uint32_t sbOff = lib::helpers::BigEndianReader(data).readUint32(8);
   if (sbOff == 0 || sbOff >= data.size()) {
     return 0;
   }

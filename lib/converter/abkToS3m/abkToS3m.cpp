@@ -101,11 +101,12 @@ std::vector<AmosSample> parseSamples(const uint8_t *music, size_t musicSize,
     return samples;
   }
   const std::vector<uint8_t> musicVec(music, music + musicSize);
+  helpers::BigEndianReader reader(musicVec);
   auto read32 = [&](size_t offset) {
-    return helpers::readUint32BigEndian(musicVec, offset);
+    return reader.readUint32(offset);
   };
   auto read16 = [&](size_t offset) {
-    return helpers::readUint16BigEndian(musicVec, offset);
+    return reader.readUint16(offset);
   };
   uint16_t count = read16(sampleInfoOff);
   if (count == 0 || count > 64) {
@@ -141,8 +142,9 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
   SongInfo info{};
   info.speed = 17;
   const std::vector<uint8_t> musicVec(music, music + musicSize);
+  helpers::BigEndianReader reader(musicVec);
   auto read16 = [&](size_t offset) {
-    return helpers::readUint16BigEndian(musicVec, offset);
+    return reader.readUint16(offset);
   };
   if (songOff + 6 > musicSize) {
     return info;
@@ -188,8 +190,9 @@ TrackInfo parseTrackData(const uint8_t *music, size_t musicSize,
   TrackInfo info{};
   info.trackDataBase = trackOff;
   const std::vector<uint8_t> musicVec(music, music + musicSize);
+  helpers::BigEndianReader reader(musicVec);
   auto read16 = [&](size_t offset) {
-    return helpers::readUint16BigEndian(musicVec, offset);
+    return reader.readUint16(offset);
   };
   if (trackOff + 2 > musicSize) {
     return info;
@@ -614,9 +617,10 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData) {
     throw std::runtime_error("music data too small");
   }
 
-  uint32_t sampleInfoOff = helpers::readUint32BigEndian(abkData, 20);
-  uint32_t songOff = helpers::readUint32BigEndian(abkData, 24);
-  uint32_t trackOff = helpers::readUint32BigEndian(abkData, 28);
+  helpers::BigEndianReader reader(abkData);
+  uint32_t sampleInfoOff = reader.readUint32(20);
+  uint32_t songOff = reader.readUint32(24);
+  uint32_t trackOff = reader.readUint32(28);
 
   auto samples = parseSamples(music, musicSize, sampleInfoOff);
   auto song = parseSong(music, musicSize, songOff);

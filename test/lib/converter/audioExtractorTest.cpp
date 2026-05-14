@@ -57,12 +57,12 @@ SCENARIO("extractStandaloneSamBank extracts WAV from sample bank") {
 
       THEN("WAV sample rate matches input frequency") {
         auto &wav = results[0].data;
-        REQUIRE(readUint32LittleEndian(wav, 24) == 8000);
+        REQUIRE(LittleEndianReader(wav).readUint32(24) == 8000);
       }
 
       THEN("WAV has correct number of samples") {
         auto &wav = results[0].data;
-        uint32_t dataLen = readUint32LittleEndian(wav, 40);
+        uint32_t dataLen = LittleEndianReader(wav).readUint32(40);
         REQUIRE(dataLen == 5);
       }
     }
@@ -98,7 +98,7 @@ SCENARIO("extractStandaloneSamBank extracts WAV from sample bank") {
         REQUIRE(results.size() == 1);
         REQUIRE(results[0].name == "F0_sam1_8287Hz.wav");
         auto &wav = results[0].data;
-        REQUIRE(readUint32LittleEndian(wav, 24) == 8287);
+        REQUIRE(LittleEndianReader(wav).readUint32(24) == 8287);
       }
     }
   }

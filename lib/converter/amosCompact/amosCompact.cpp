@@ -9,12 +9,12 @@ namespace openfranko::lib::converter::amosCompact {
 
 namespace {
 bool isSPACK(const std::vector<uint8_t> &data) {
-  uint32_t header = helpers::readUint32BigEndian(data, 0);
+  uint32_t header = helpers::BigEndianReader(data).readUint32(0);
   return header == consts::SPACK_SCREEN_HEADER;
 }
 
 bool isPackedBitmap(const std::vector<uint8_t> &data) {
-  uint32_t header = helpers::readUint32BigEndian(data, 0);
+  uint32_t header = helpers::BigEndianReader(data).readUint32(0);
   return header == consts::AMOS_BMCODE;
 }
 

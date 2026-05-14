@@ -12,7 +12,7 @@ DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
   if (offset + amosCompact::consts::PACKED_BITMAP_HEADER_SIZE > data.size()) {
     throw std::runtime_error("Data too small for bitmap header");
   }
-  if (helpers::readUint32BigEndian(data, offset) !=
+  if (helpers::BigEndianReader(data).readUint32(offset) !=
       amosCompact::consts::AMOS_BMCODE) {
     throw std::runtime_error("Invalid bitmap magic number");
   }

@@ -5,35 +5,39 @@
 namespace openfranko::lib::converter::headers {
 
 SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data) {
+  helpers::BigEndianReader reader(data);
+
   SPACKHeader header;
-  header.screenWidth = helpers::readUint16BigEndian(data, 4);
-  header.screenHeight = helpers::readUint16BigEndian(data, 6);
-  header.windowX = helpers::readUint16BigEndian(data, 8);
-  header.windowY = helpers::readUint16BigEndian(data, 10);
-  header.windowWidth = helpers::readUint16BigEndian(data, 12);
-  header.windowHeight = helpers::readUint16BigEndian(data, 14);
-  header.viewX = helpers::readUint16BigEndian(data, 16);
-  header.viewY = helpers::readUint16BigEndian(data, 18);
-  header.displayModeFlags = helpers::readUint16BigEndian(data, 20);
-  header.numberOfColors = helpers::readUint16BigEndian(data, 22);
-  header.numberOfBitplanes = helpers::readUint16BigEndian(data, 24);
+  header.screenWidth = reader.readUint16(4);
+  header.screenHeight = reader.readUint16(6);
+  header.windowX = reader.readUint16(8);
+  header.windowY = reader.readUint16(10);
+  header.windowWidth = reader.readUint16(12);
+  header.windowHeight = reader.readUint16(14);
+  header.viewX = reader.readUint16(16);
+  header.viewY = reader.readUint16(18);
+  header.displayModeFlags = reader.readUint16(20);
+  header.numberOfColors = reader.readUint16(22);
+  header.numberOfBitplanes = reader.readUint16(24);
 
   for (size_t i = 0; i < amosCompact::consts::SPACK_PALETTE_SIZE; ++i) {
-    header.amigaPalette[i] = helpers::readUint16BigEndian(data, 26 + i * 2);
+    header.amigaPalette[i] = reader.readUint16(26 + i * 2);
   }
   return header;
 }
 
 BitmapHeader parseBitmapHeader(const std::vector<uint8_t> &data) {
+  helpers::BigEndianReader reader(data);
+
   BitmapHeader header;
-  header.xOffset = helpers::readInt16BigEndian(data, 4);
-  header.yOffset = helpers::readInt16BigEndian(data, 6);
-  header.gridX = helpers::readUint16BigEndian(data, 8);
-  header.gridY = helpers::readUint16BigEndian(data, 10);
-  header.tileHeight = helpers::readUint16BigEndian(data, 12);
-  header.numberOfBitplanes = helpers::readUint16BigEndian(data, 14);
-  header.offsetToByteTable2 = helpers::readUint32BigEndian(data, 16);
-  header.offsetToPointerBitstream = helpers::readUint32BigEndian(data, 20);
+  header.xOffset = reader.readInt16(4);
+  header.yOffset = reader.readInt16(6);
+  header.gridX = reader.readUint16(8);
+  header.gridY = reader.readUint16(10);
+  header.tileHeight = reader.readUint16(12);
+  header.numberOfBitplanes = reader.readUint16(14);
+  header.offsetToByteTable2 = reader.readUint32(16);
+  header.offsetToPointerBitstream = reader.readUint32(20);
   return header;
 }
 

@@ -123,17 +123,18 @@ SCENARIO("convert produces a valid S3M file") {
       }
 
       THEN("order count is at least 2 (padded to even)") {
-        uint16_t ordNum = readUint16LittleEndian(s3m, 0x20);
+        LittleEndianReader reader(s3m);
+        uint16_t ordNum = reader.readUint16(0x20);
         REQUIRE(ordNum >= 2);
         REQUIRE(ordNum % 2 == 0);
       }
 
       THEN("instrument count is 1") {
-        REQUIRE(readUint16LittleEndian(s3m, 0x22) == 1);
+        REQUIRE(LittleEndianReader(s3m).readUint16(0x22) == 1);
       }
 
       THEN("pattern count is at least 1") {
-        REQUIRE(readUint16LittleEndian(s3m, 0x24) >= 1);
+        REQUIRE(LittleEndianReader(s3m).readUint16(0x24) >= 1);
       }
 
       THEN("global volume is 64") { REQUIRE(s3m[0x30] == 64); }

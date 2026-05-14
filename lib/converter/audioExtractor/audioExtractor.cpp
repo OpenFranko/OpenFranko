@@ -65,8 +65,9 @@ bool appendSample(const std::vector<uint8_t> &data, size_t sampleOffset,
     return false;
   }
 
-  uint16_t freq = helpers::readUint16BigEndian(data, sampleOffset + 8);
-  uint32_t length = helpers::readUint32BigEndian(data, sampleOffset + 10);
+  helpers::BigEndianReader reader(data);
+  uint16_t freq = reader.readUint16(sampleOffset + 8);
+  uint32_t length = reader.readUint32(sampleOffset + 10);
   size_t pcmStart = sampleOffset + SAMPLE_HEADER_SIZE;
 
   if (freq == 0) {
@@ -98,7 +99,8 @@ extractStandaloneSamBank(const std::vector<uint8_t> &data,
     return results;
   }
 
-  uint16_t maxSample = helpers::readUint16BigEndian(data, 0);
+  helpers::BigEndianReader reader(data);
+  uint16_t maxSample = reader.readUint16(0);
   if (maxSample == 0 || maxSample > 100) {
     return results;
   }
@@ -109,7 +111,7 @@ extractStandaloneSamBank(const std::vector<uint8_t> &data,
   }
 
   for (uint16_t i = 0; i < maxSample; i++) {
-    uint32_t sampleOffset = helpers::readUint32BigEndian(data, 2 + i * 4);
+    uint32_t sampleOffset = reader.readUint32(2 + i * 4);
     if (sampleOffset == 0) {
       continue;
     }
@@ -129,12 +131,13 @@ extractEmbeddedSamBank(const std::vector<uint8_t> &data,
     return results;
   }
 
-  uint32_t sbOff = helpers::readUint32BigEndian(data, 8);
+  helpers::BigEndianReader reader(data);
+  uint32_t sbOff = reader.readUint32(8);
   if (sbOff == 0 || sbOff + 6 >= data.size()) {
     return results;
   }
 
-  uint16_t count = helpers::readUint16BigEndian(data, sbOff);
+  uint16_t count = reader.readUint16(sbOff);
   if (count == 0 || count > 50) {
     return results;
   }
@@ -146,7 +149,7 @@ extractEmbeddedSamBank(const std::vector<uint8_t> &data,
 
   uint32_t prev = 0;
   for (uint16_t i = 0; i < count; i++) {
-    uint32_t v = helpers::readUint32BigEndian(data, sbOff + 2 + i * 4);
+    uint32_t v = reader.readUint32(sbOff + 2 + i * 4);
     if (v <= prev || v >= data.size()) {
       return results;
     }
@@ -154,8 +157,7 @@ extractEmbeddedSamBank(const std::vector<uint8_t> &data,
   }
 
   for (uint16_t i = 0; i < count; i++) {
-    size_t sampleOffset =
-        sbOff + helpers::readUint32BigEndian(data, sbOff + 2 + i * 4);
+    size_t sampleOffset = sbOff + reader.readUint32(sbOff + 2 + i * 4);
 
     appendSample(data, sampleOffset, i + 1, fileId, results);
   }

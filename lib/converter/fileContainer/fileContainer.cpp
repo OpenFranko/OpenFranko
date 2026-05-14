@@ -12,11 +12,12 @@ FileInfo parseFooter(const std::vector<uint8_t> &rawData) {
   }
 
   size_t off = rawData.size() - SUFFIX_SIZE;
+  helpers::BigEndianReader reader(rawData);
 
   FileInfo info;
-  info.unpackSize = helpers::readUint32BigEndian(rawData, off);
-  info.fileId = helpers::readUint16BigEndian(rawData, off + 4);
-  info.resourceType = helpers::readUint16BigEndian(rawData, off + 6);
+  info.unpackSize = reader.readUint32(off);
+  info.fileId = reader.readUint16(off + 4);
+  info.resourceType = reader.readUint16(off + 6);
   return info;
 }
 
