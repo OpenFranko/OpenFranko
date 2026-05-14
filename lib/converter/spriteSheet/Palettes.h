@@ -1,9 +1,12 @@
 #ifndef PALETTES_H_
 #define PALETTES_H_
 
+#include "../gameData/gameData.h"
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace openfranko {
@@ -59,28 +62,32 @@ constexpr std::array<uint16_t, 16> HUD = {
 constexpr std::array<uint16_t, 2> BW_MAGENTA = {0xF0F, 0x000};
 
 inline std::vector<uint16_t> selectPalette(const std::string &fileId) {
-  if (fileId == "0038") {
+  const std::string_view id(fileId);
+
+  if (id == gameData::fileIds::SUNSET_PALETTE) {
     return {SUNSET.begin(), SUNSET.end()};
   }
-  if (fileId == "0037") {
+  if (id == gameData::fileIds::STORY_PALETTE) {
     return {STORY.begin(), STORY.end()};
   }
-  if (fileId == "0034") {
+  if (id == gameData::fileIds::MENU_PALETTE) {
     return {MENU.begin(), MENU.end()};
   }
-  if (fileId == "0035") {
+  if (id == gameData::fileIds::MENU_35_PALETTE) {
     return {MENU_35.begin(), MENU_35.end()};
   }
-  if (fileId == "0036") {
+  if (id == gameData::fileIds::CEMETERY_PALETTE) {
     return {CEMETERY.begin(), CEMETERY.end()};
   }
-  if (fileId == "03B7") {
+  if (id == gameData::fileIds::TITLE_PALETTE) {
     return {TITLE.begin(), TITLE.end()};
   }
-  if (fileId == "03BB") {
+  if (id == gameData::fileIds::HUD_SPRITES) {
     return {BW_MAGENTA.begin(), BW_MAGENTA.end()};
   }
-  if (fileId == "03BE" || fileId == "03BF" || fileId == "03C0") {
+  if (std::find(gameData::fileIds::PAL24_FILES.begin(),
+                gameData::fileIds::PAL24_FILES.end(),
+                id) != gameData::fileIds::PAL24_FILES.end()) {
     return {PAL24.begin(), PAL24.end()};
   }
   return {LEVEL.begin(), LEVEL.end()};

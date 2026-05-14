@@ -1,4 +1,5 @@
 #include "abkToS3m.h"
+#include "../gameData/gameData.h"
 #include "../../helpers/helpers.h"
 #include <algorithm>
 #include <cstring>
@@ -584,7 +585,7 @@ void writeInstrument(std::vector<uint8_t> &s3m, size_t insStart,
     s3m[insStart + 0x1F] = 1;
   }
 
-  uint32_t c2spd = 8287;
+  uint32_t c2spd = gameData::audio::DEFAULT_SAMPLE_RATE;
   s3m[insStart + 0x20] = static_cast<uint8_t>(c2spd);
   s3m[insStart + 0x21] = static_cast<uint8_t>(c2spd >> 8);
   s3m[insStart + 0x22] = static_cast<uint8_t>(c2spd >> 16);

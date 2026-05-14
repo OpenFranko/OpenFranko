@@ -1,4 +1,5 @@
 #include "audioExtractor.h"
+#include "../gameData/gameData.h"
 #include "../../helpers/helpers.h"
 #include <cstring>
 
@@ -10,6 +11,8 @@ using helpers::pushLittleEndian16;
 using helpers::pushLittleEndian32;
 
 namespace {
+
+constexpr size_t SAMPLE_HEADER_SIZE = 14;
 
 std::vector<uint8_t> pcmToWav(const int8_t *pcm, uint32_t numSamples,
                               uint32_t sampleRate) {
@@ -55,6 +58,35 @@ std::vector<uint8_t> pcmToWav(const int8_t *pcm, uint32_t numSamples,
   return buf;
 }
 
+bool appendSample(const std::vector<uint8_t> &data, size_t sampleOffset,
+                  uint16_t sampleNumber, const std::string &fileId,
+                  std::vector<ExtractedAudio> &results) {
+  if (sampleOffset + SAMPLE_HEADER_SIZE >= data.size()) {
+    return false;
+  }
+
+  uint16_t freq = helpers::readUint16BigEndian(data, sampleOffset + 8);
+  uint32_t length = helpers::readUint32BigEndian(data, sampleOffset + 10);
+  size_t pcmStart = sampleOffset + SAMPLE_HEADER_SIZE;
+
+  if (freq == 0) {
+    freq = gameData::audio::DEFAULT_SAMPLE_RATE;
+  }
+  if (pcmStart + length > data.size()) {
+    length = static_cast<uint32_t>(data.size() - pcmStart);
+  }
+  if (length == 0) {
+    return false;
+  }
+
+  auto wav = pcmToWav(
+      reinterpret_cast<const int8_t *>(data.data() + pcmStart), length, freq);
+  results.push_back({fileId + "_sam" + std::to_string(sampleNumber) + "_" +
+                         std::to_string(freq) + "Hz.wav",
+                     std::move(wav)});
+  return true;
+}
+
 } // namespace
 
 std::vector<ExtractedAudio>
@@ -82,29 +114,7 @@ extractStandaloneSamBank(const std::vector<uint8_t> &data,
       continue;
     }
 
-    if (sampleOffset + 14 >= data.size()) {
-      continue;
-    }
-
-    uint16_t freq = helpers::readUint16BigEndian(data, sampleOffset + 8);
-    uint32_t length = helpers::readUint32BigEndian(data, sampleOffset + 10);
-    size_t pcmStart = sampleOffset + 14;
-
-    if (freq == 0) {
-      freq = 8287;
-    }
-    if (pcmStart + length > data.size()) {
-      length = static_cast<uint32_t>(data.size() - pcmStart);
-    }
-    if (length == 0) {
-      continue;
-    }
-
-    auto wav = pcmToWav(
-        reinterpret_cast<const int8_t *>(data.data() + pcmStart), length, freq);
-    results.push_back({fileId + "_sam" + std::to_string(i + 1) + "_" +
-                           std::to_string(freq) + "Hz.wav",
-                       std::move(wav)});
+    appendSample(data, sampleOffset, i + 1, fileId, results);
   }
 
   return results;
@@ -147,30 +157,7 @@ extractEmbeddedSamBank(const std::vector<uint8_t> &data,
     size_t sampleOffset =
         sbOff + helpers::readUint32BigEndian(data, sbOff + 2 + i * 4);
 
-    if (sampleOffset + 14 >= data.size()) {
-      continue;
-    }
-
-    uint16_t freq = helpers::readUint16BigEndian(data, sampleOffset + 8);
-    uint32_t length = helpers::readUint32BigEndian(data, sampleOffset + 10);
-    size_t pcmStart = sampleOffset + 14;
-
-    if (freq == 0) {
-      freq = 8287;
-    }
-    if (pcmStart + length > data.size()) {
-      length = static_cast<uint32_t>(data.size() - pcmStart);
-    }
-    if (length == 0) {
-      continue;
-    }
-
-    auto wav = pcmToWav(
-        reinterpret_cast<const int8_t *>(data.data() + pcmStart), length, freq);
-
-    results.push_back({fileId + "_sam" + std::to_string(i + 1) + "_" +
-                           std::to_string(freq) + "Hz.wav",
-                       std::move(wav)});
+    appendSample(data, sampleOffset, i + 1, fileId, results);
   }
 
   return results;

@@ -1,11 +1,12 @@
 #include "bitmapExtractor.h"
 #include "../../bmpWriter/bmpWriter.h"
 #include "../../helpers/helpers.h"
+#include "../gameData/gameData.h"
 #include "../spriteSheet/Palettes.h"
 #include "../amosCompact/Consts.h"
 #include "../shared/decodeImage.h"
 #include "../shared/headers.h"
-#include <set>
+#include <algorithm>
 #include <stdexcept>
 
 namespace openfranko::lib::converter::bitmapExtractor {
@@ -29,11 +30,9 @@ std::vector<size_t> findBMCodeOffsets(const std::vector<uint8_t> &data) {
 }
 
 bool isTileFile(const std::string &id) {
-  static const std::set<std::string> tileIds = {
-      "0137", "0138", "0139", "013A", "013B", "013C", "013D", "013E",
-      "013F", "0140", "0141", "0142", "0143", "0144", "0145", "014A",
-      "0154", "014B", "014C", "014D", "014E", "014F"};
-  return tileIds.count(id) > 0;
+  return std::find(gameData::fileIds::TILE_FILES.begin(),
+                   gameData::fileIds::TILE_FILES.end(),
+                   std::string_view(id)) != gameData::fileIds::TILE_FILES.end();
 }
 
 std::vector<uint16_t> readSPACKPalette(const std::vector<uint8_t> &data,
@@ -132,7 +131,9 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data) {
         continue;
       }
       std::string name =
-          (found == 0) ? std::string("0384") : "0384_" + std::to_string(found);
+          (found == 0) ? std::string(gameData::fileIds::MULTI_PALETTE_BITMAP)
+                       : std::string(gameData::fileIds::MULTI_PALETTE_BITMAP) +
+                             "_" + std::to_string(found);
       results.push_back(
           {name, bmpWriter::pixelsToBmp(img.width, img.height,
                                         img.pixels.data(), curPal.data(),
@@ -153,11 +154,12 @@ std::vector<ExtractedBitmap> extract(const std::vector<uint8_t> &data,
 
   uint32_t magic = helpers::readUint32BigEndian(data, 0);
 
-  if (fileId == "0384") {
+  if (std::string_view(fileId) == gameData::fileIds::MULTI_PALETTE_BITMAP) {
     return extract0384(data);
   }
 
-  if (magic == amosConsts::SPACK_SCREEN_HEADER && fileId != "03BB") {
+  if (magic == amosConsts::SPACK_SCREEN_HEADER &&
+      std::string_view(fileId) != gameData::fileIds::HUD_SPRITES) {
     return extractSCCode(data, fileId);
   }
 
