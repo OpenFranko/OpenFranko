@@ -1,11 +1,11 @@
 #include "frankoResourceExtractor.h"
 #include "../../lib/converter/abkToS3m/abkToS3m.h"
+#include "../../lib/converter/amosCompact/amosCompact.h"
 #include "../../lib/converter/audioExtractor/audioExtractor.h"
 #include "../../lib/converter/bitmapExtractor/bitmapExtractor.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/gameData/gameData.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
-#include "../../lib/converter/amosCompact/amosCompact.h"
 #include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
@@ -68,6 +68,26 @@ void writeOutputs(const std::string &outDir, const std::string &fileId,
   }
 }
 
+void patch0038SunsetBitmap(std::vector<uint8_t> &bmp) {
+  if (bmp.size() < 54 + 4 * 3) {
+    return;
+  }
+
+  auto setPaletteEntry = [&](int index, uint8_t r, uint8_t g, uint8_t b) {
+    size_t offset = 54 + static_cast<size_t>(index) * 4;
+    if (offset + 4 > bmp.size()) {
+      return;
+    }
+    bmp[offset + 0] = b;
+    bmp[offset + 1] = g;
+    bmp[offset + 2] = r;
+    bmp[offset + 3] = 0;
+  };
+
+  setPaletteEntry(1, 0xFF, 0xFF, 0xFF);
+  setPaletteEntry(2, 0x77, 0x77, 0x77);
+}
+
 } // namespace
 
 int validateDirectory(const std::string &dirPath) {
@@ -125,6 +145,9 @@ int processFile(const std::string &inputPath, const std::string &outDir,
       int idx = 0;
       for (auto &bmp : bmps) {
         if (!bmp.empty()) {
+          if (fileId == "0038" && idx >= 43 && idx <= 100) {
+            patch0038SunsetBitmap(bmp);
+          }
           char buf[32];
           snprintf(buf, sizeof(buf), "%s_%03d.bmp", fileId.c_str(), idx);
           outputs.push_back({std::string(buf), std::move(bmp)});
