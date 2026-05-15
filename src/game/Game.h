@@ -23,12 +23,13 @@ public:
 
   bool running() { return m_running; }
 
+  static SDL_Renderer *renderer;
+
 private:
   int m_count = 0;
 
   bool m_running;
   SDL_Window *m_window;
-  SDL_Renderer *m_renderer;
 };
 
 } // namespace game

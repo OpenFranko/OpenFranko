@@ -1,13 +1,11 @@
 #include "GameObject.h"
+#include "../game/Game.h"
 #include "../textureManager/TextureManager.h"
 
 namespace openfranko::src::gameObject {
 
-GameObject::GameObject(const char *textureSheet, SDL_Renderer *renderer, int x,
-                       int y) {
-  m_renderer = renderer;
-  m_objTexture =
-      textureManager::TextureManager::LoadTexture(textureSheet, renderer);
+GameObject::GameObject(const char *textureSheet, int x, int y) {
+  m_objTexture = textureManager::TextureManager::LoadTexture(textureSheet);
 
   m_xpos = x;
   m_ypos = y;
@@ -30,7 +28,7 @@ void GameObject::update() {
 }
 
 void GameObject::render() {
-  SDL_RenderCopy(m_renderer, m_objTexture, &m_srcRect, &m_destRect);
+  SDL_RenderCopy(game::Game::renderer, m_objTexture, &m_srcRect, &m_destRect);
 }
 
 } // namespace openfranko::src::gameObject

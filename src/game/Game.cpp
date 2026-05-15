@@ -1,11 +1,15 @@
 #include "Game.h"
 #include "../gameObject/GameObject.h"
+#include "../map/Map.h"
 #include <iostream>
 
 namespace openfranko::src::game {
 
 gameObject::GameObject *player;
 gameObject::GameObject *enemy;
+map::Map *map;
+
+SDL_Renderer *Game::renderer = nullptr;
 
 Game::Game() {}
 Game::~Game() {}
@@ -22,9 +26,9 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
     m_window = SDL_CreateWindow(title, xpos, ypos, width, height, flags);
     if (m_window) {
       std::cout << "Window created!" << std::endl;
-      m_renderer = SDL_CreateRenderer(m_window, -1, 0);
-      if (m_renderer) {
-        SDL_SetRenderDrawColor(m_renderer, 255, 255, 255, 255);
+      renderer = SDL_CreateRenderer(m_window, -1, 0);
+      if (renderer) {
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         std::cout << "Renderer created!" << std::endl;
       }
       m_running = true;
@@ -33,10 +37,9 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
     m_running = false;
   }
 
-  player =
-      new gameObject::GameObject("assets/00FF/00FF_006.bmp", m_renderer, 0, 0);
-  enemy = new gameObject::GameObject("assets/0038/0038_009.bmp", m_renderer,
-                                     100, 50);
+  player = new gameObject::GameObject("assets/00FF/00FF_006.bmp", 0, 0);
+  enemy = new gameObject::GameObject("assets/0038/0038_009.bmp", 100, 50);
+  map = new map::Map();
 }
 
 void Game::handleEvents() {
@@ -58,15 +61,16 @@ void Game::update() {
 }
 
 void Game::render() {
-  SDL_RenderClear(m_renderer);
+  SDL_RenderClear(renderer);
+  map->drawMap();
   player->render();
   enemy->render();
-  SDL_RenderPresent(m_renderer);
+  SDL_RenderPresent(renderer);
 }
 
 void Game::clean() {
   SDL_DestroyWindow(m_window);
-  SDL_DestroyRenderer(m_renderer);
+  SDL_DestroyRenderer(renderer);
   SDL_Quit();
   std::cout << "Game cleaned!" << std::endl;
 }
