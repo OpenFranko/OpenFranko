@@ -1,4 +1,5 @@
 add_subdirectory(textureManager)
+add_subdirectory(gameObject)
 add_subdirectory(game)
 
 add_executable(${PROJECT_NAME} main.cpp)

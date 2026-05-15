@@ -1,11 +1,11 @@
 #include "Game.h"
-#include "../textureManager/TextureManager.h"
+#include "../gameObject/GameObject.h"
 #include <iostream>
 
 namespace openfranko::src::game {
 
-SDL_Texture *titleTex;
-SDL_Rect srcR, destR;
+gameObject::GameObject *player;
+gameObject::GameObject *enemy;
 
 Game::Game() {}
 Game::~Game() {}
@@ -33,8 +33,10 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
     m_running = false;
   }
 
-  titleTex = textureManager::TextureManager::LoadTexture("assets/03BA.bmp",
-                                                         m_renderer);
+  player =
+      new gameObject::GameObject("assets/00FF/00FF_006.bmp", m_renderer, 0, 0);
+  enemy = new gameObject::GameObject("assets/0038/0038_009.bmp", m_renderer,
+                                     100, 50);
 }
 
 void Game::handleEvents() {
@@ -51,16 +53,14 @@ void Game::handleEvents() {
 }
 
 void Game::update() {
-  m_count++;
-  destR.h = 512;
-  destR.w = 640;
-  destR.x = m_count;
-  std::cout << m_count << std::endl;
+  player->update();
+  enemy->update();
 }
 
 void Game::render() {
   SDL_RenderClear(m_renderer);
-  SDL_RenderCopy(m_renderer, titleTex, NULL, &destR);
+  player->render();
+  enemy->render();
   SDL_RenderPresent(m_renderer);
 }
 
