@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "../textureManager/TextureManager.h"
 #include <iostream>
 
 namespace openfranko::src::game {
@@ -32,9 +33,8 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
     m_running = false;
   }
 
-  SDL_Surface *tmpSurface = IMG_Load("assets/03BA.bmp");
-  titleTex = SDL_CreateTextureFromSurface(m_renderer, tmpSurface);
-  SDL_FreeSurface(tmpSurface);
+  titleTex = textureManager::TextureManager::LoadTexture("assets/03BA.bmp",
+                                                         m_renderer);
 }
 
 void Game::handleEvents() {
