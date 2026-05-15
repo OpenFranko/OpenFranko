@@ -3,6 +3,9 @@
 
 namespace openfranko::src::game {
 
+SDL_Texture *titleTex;
+SDL_Rect srcR, destR;
+
 Game::Game() {}
 Game::~Game() {}
 
@@ -28,6 +31,10 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
   } else {
     m_running = false;
   }
+
+  SDL_Surface *tmpSurface = IMG_Load("assets/03BA.bmp");
+  titleTex = SDL_CreateTextureFromSurface(m_renderer, tmpSurface);
+  SDL_FreeSurface(tmpSurface);
 }
 
 void Game::handleEvents() {
@@ -45,11 +52,15 @@ void Game::handleEvents() {
 
 void Game::update() {
   m_count++;
+  destR.h = 512;
+  destR.w = 640;
+  destR.x = m_count;
   std::cout << m_count << std::endl;
 }
 
 void Game::render() {
   SDL_RenderClear(m_renderer);
+  SDL_RenderCopy(m_renderer, titleTex, NULL, &destR);
   SDL_RenderPresent(m_renderer);
 }
 

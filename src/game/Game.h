@@ -2,6 +2,7 @@
 #define GAME_GAME_H_
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 
 namespace openfranko {
 namespace src {
