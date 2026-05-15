@@ -1,6 +1,6 @@
 #include "amosCompact.h"
 #include "../../bmpWriter/bmpWriter.h"
-#include "../../decompressor/helpers/helpers.h"
+#include "../../helpers/helpers.h"
 #include "Consts.h"
 #include "detail/bitmapUnpack.h"
 #include <stdexcept>
@@ -9,12 +9,12 @@ namespace openfranko::lib::converter::amosCompact {
 
 namespace {
 bool isSPACK(const std::vector<uint8_t> &data) {
-  uint32_t header = decompressor::helpers::readUint32BigEndian(data, 0);
+  uint32_t header = helpers::BigEndianReader(data).readUint32(0);
   return header == consts::SPACK_SCREEN_HEADER;
 }
 
 bool isPackedBitmap(const std::vector<uint8_t> &data) {
-  uint32_t header = decompressor::helpers::readUint32BigEndian(data, 0);
+  uint32_t header = helpers::BigEndianReader(data).readUint32(0);
   return header == consts::AMOS_BMCODE;
 }
 
@@ -66,7 +66,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   if (unpackedBitmap.width == 0 || unpackedBitmap.height == 0) {
     throw std::runtime_error("Bitmap has zero dimensions");
   }
-  if (!unpackedBitmap.chunkyPixels) {
+  if (unpackedBitmap.chunkyPixels.empty()) {
     throw std::runtime_error("Bitmap has no chunky pixel data");
   }
 
@@ -76,7 +76,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   }
 
   return bmpWriter::pixelsToBmp(unpackedBitmap.width, unpackedBitmap.height,
-                                unpackedBitmap.chunkyPixels,
+                                unpackedBitmap.chunkyPixels.data(),
                                 unpackedBitmap.palette, numberOfColors);
 }
 

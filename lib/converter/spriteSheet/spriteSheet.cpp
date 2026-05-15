@@ -1,12 +1,11 @@
 #include "spriteSheet.h"
 #include "../../bmpWriter/bmpWriter.h"
-#include "../../decompressor/helpers/helpers.h"
+#include "../../helpers/helpers.h"
 #include "../shared/decodeImage.h"
 #include <stdexcept>
 
 namespace openfranko::lib::converter::spriteSheet {
 
-namespace helpers = decompressor::helpers;
 using converter::DecodedImage;
 using converter::decodeAmosBitmap;
 
@@ -19,11 +18,12 @@ SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
   }
 
   SpriteBankHeader header;
-  header.count = helpers::readUint16BigEndian(data, 0);
-  header.maxWidth = helpers::readUint16BigEndian(data, 2);
-  header.maxHeight = helpers::readUint16BigEndian(data, 4);
-  header.numColors = helpers::readUint16BigEndian(data, 6);
-  header.samBankOffset = helpers::readUint32BigEndian(data, 8);
+  helpers::BigEndianReader reader(data);
+  header.count = reader.readUint16(0);
+  header.maxWidth = reader.readUint16(2);
+  header.maxHeight = reader.readUint16(4);
+  header.numColors = reader.readUint16(6);
+  header.samBankOffset = reader.readUint32(8);
 
   if (header.count == 0 || header.count > 200) {
     throw std::runtime_error("Invalid sprite count: " +
@@ -38,16 +38,11 @@ SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
   header.descriptors.resize(header.count);
   for (uint16_t i = 0; i < header.count; i++) {
     size_t off = BANK_HEADER_SIZE + i * DESCRIPTOR_SIZE;
-    header.descriptors[i].wordOffset =
-        helpers::readUint16BigEndian(data, off + 0);
-    header.descriptors[i].widthWords =
-        helpers::readUint16BigEndian(data, off + 2);
-    header.descriptors[i].height =
-        helpers::readUint16BigEndian(data, off + 4);
-    header.descriptors[i].hotspotX =
-        helpers::readUint16BigEndian(data, off + 6);
-    header.descriptors[i].hotspotY =
-        helpers::readUint16BigEndian(data, off + 8);
+    header.descriptors[i].wordOffset = reader.readUint16(off + 0);
+    header.descriptors[i].widthWords = reader.readUint16(off + 2);
+    header.descriptors[i].height = reader.readUint16(off + 4);
+    header.descriptors[i].hotspotX = reader.readUint16(off + 6);
+    header.descriptors[i].hotspotY = reader.readUint16(off + 8);
   }
 
   return header;

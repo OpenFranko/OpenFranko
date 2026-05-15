@@ -1,11 +1,10 @@
 #include "../../../lib/bmpWriter/bmpWriter.h"
-#include "../../../lib/decompressor/helpers/helpers.h"
+#include "../../../lib/helpers/helpers.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
 using namespace openfranko::lib::bmpWriter;
-using openfranko::lib::decompressor::helpers::readUint16LittleEndian;
-using openfranko::lib::decompressor::helpers::readUint32LittleEndian;
+using openfranko::lib::helpers::LittleEndianReader;
 
 SCENARIO("pixelsToBmp produces a valid Windows BMP v3") {
   GIVEN("A 2x2 image with a 2-color Amiga palette") {
@@ -15,6 +14,7 @@ SCENARIO("pixelsToBmp produces a valid Windows BMP v3") {
 
     WHEN("pixelsToBmp is called") {
       auto bmp = pixelsToBmp(2, 2, pixels, palette, numberOfColors);
+      LittleEndianReader reader(bmp);
 
       THEN("The BMP magic bytes are 'BM'") {
         REQUIRE(bmp[0] == 'B');
@@ -22,30 +22,30 @@ SCENARIO("pixelsToBmp produces a valid Windows BMP v3") {
       }
 
       THEN("The file size field matches the actual size") {
-        REQUIRE(readUint32LittleEndian(bmp, 2) == bmp.size());
+        REQUIRE(reader.readUint32(2) == bmp.size());
       }
 
       THEN("The pixel data offset is 14 + 40 + 256*4 = 1078") {
-        REQUIRE(readUint32LittleEndian(bmp, 10) == 1078u);
+        REQUIRE(reader.readUint32(10) == 1078u);
       }
 
       THEN("The DIB header size is 40") {
-        REQUIRE(readUint32LittleEndian(bmp, 14) == 40u);
+        REQUIRE(reader.readUint32(14) == 40u);
       }
 
       THEN("Width and height are correct") {
-        REQUIRE(readUint32LittleEndian(bmp, 18) == 2u);
-        REQUIRE(readUint32LittleEndian(bmp, 22) == 2u);
+        REQUIRE(reader.readUint32(18) == 2u);
+        REQUIRE(reader.readUint32(22) == 2u);
       }
 
-      THEN("Bits per pixel is 8") { REQUIRE(readUint16LittleEndian(bmp, 28) == 8); }
+      THEN("Bits per pixel is 8") { REQUIRE(reader.readUint16(28) == 8); }
 
       THEN("Compression is BI_RGB (0)") {
-        REQUIRE(readUint32LittleEndian(bmp, 30) == 0u);
+        REQUIRE(reader.readUint32(30) == 0u);
       }
 
       THEN("Colors used equals numberOfColors") {
-        REQUIRE(readUint32LittleEndian(bmp, 46) == 2u);
+        REQUIRE(reader.readUint32(46) == 2u);
       }
     }
   }
@@ -80,7 +80,8 @@ SCENARIO("pixelsToBmp stores rows bottom-up with 4-byte alignment") {
 
     WHEN("pixelsToBmp is called") {
       auto bmp = pixelsToBmp(3, 2, pixels, palette, 1);
-      uint32_t pixelOff = readUint32LittleEndian(bmp, 10);
+      LittleEndianReader reader(bmp);
+      uint32_t pixelOff = reader.readUint32(10);
       uint32_t rowBytes = 4;
 
       THEN("The bottom row of the image comes first in the file") {

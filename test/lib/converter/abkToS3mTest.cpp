@@ -1,11 +1,11 @@
 #include "../../../lib/converter/abkToS3m/abkToS3m.h"
-#include "../../../lib/decompressor/helpers/helpers.h"
+#include "../../../lib/helpers/helpers.h"
 #include <catch2/catch_all.hpp>
 #include <cstring>
 #include <vector>
 
 using namespace openfranko::lib::converter::abkToS3m;
-using namespace openfranko::lib::decompressor::helpers;
+using namespace openfranko::lib::helpers;
 
 namespace {
 
@@ -123,17 +123,18 @@ SCENARIO("convert produces a valid S3M file") {
       }
 
       THEN("order count is at least 2 (padded to even)") {
-        uint16_t ordNum = readUint16LittleEndian(s3m, 0x20);
+        LittleEndianReader reader(s3m);
+        uint16_t ordNum = reader.readUint16(0x20);
         REQUIRE(ordNum >= 2);
         REQUIRE(ordNum % 2 == 0);
       }
 
       THEN("instrument count is 1") {
-        REQUIRE(readUint16LittleEndian(s3m, 0x22) == 1);
+        REQUIRE(LittleEndianReader(s3m).readUint16(0x22) == 1);
       }
 
       THEN("pattern count is at least 1") {
-        REQUIRE(readUint16LittleEndian(s3m, 0x24) >= 1);
+        REQUIRE(LittleEndianReader(s3m).readUint16(0x24) >= 1);
       }
 
       THEN("global volume is 64") { REQUIRE(s3m[0x30] == 64); }
@@ -164,10 +165,10 @@ SCENARIO("convert maps AMOS tempo to S3M speed/tempo") {
 
       THEN("speed = round(100/25) = 4") { REQUIRE(s3m[0x31] == 4); }
 
-      THEN("BPM = round(125*4*25/95) = 132") {
+      THEN("BPM = round(122*4*25/95) = 128") {
         uint8_t bpm = s3m[0x32];
-        REQUIRE(bpm >= 130);
-        REQUIRE(bpm <= 135);
+        REQUIRE(bpm >= 126);
+        REQUIRE(bpm <= 131);
       }
     }
   }

@@ -1,5 +1,5 @@
 #include "backwardLZ77.h"
-#include "../helpers/helpers.h"
+#include "../../helpers/helpers.h"
 #include "BitReader.h"
 #include "Consts.h"
 #include <algorithm>
@@ -67,13 +67,11 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   }
 
   const size_t footerStart = compressedData.size() - consts::FOOTER_SIZE;
+  helpers::BigEndianReader footerReader(compressedData);
 
-  uint32_t unpackedSize =
-      helpers::readUint32BigEndian(compressedData, footerStart + 8);
-  uint32_t xorChecksum =
-      helpers::readUint32BigEndian(compressedData, footerStart + 4);
-  uint32_t initialBits =
-      helpers::readUint32BigEndian(compressedData, footerStart + 0);
+  uint32_t unpackedSize = footerReader.readUint32(footerStart + 8);
+  uint32_t xorChecksum = footerReader.readUint32(footerStart + 4);
+  uint32_t initialBits = footerReader.readUint32(footerStart + 0);
 
   if (unpackedSize == 0) {
     throw std::runtime_error("Unpacked size is zero");

@@ -1,5 +1,5 @@
 #include "BitReader.h"
-#include "../helpers/helpers.h"
+#include "../../helpers/helpers.h"
 #include "Consts.h"
 #include <stdexcept>
 
@@ -17,6 +17,7 @@ uint32_t BitReader::getBit() {
   m_buffer >>= 1;
 
   if (m_buffer == 0) {
+    // refill() saves the LSB of the new word into m_lastBitBeforeRefill
     refill();
     return m_lastBitBeforeRefill;
   }
@@ -39,7 +40,7 @@ void BitReader::refill() {
   }
 
   m_readPos -= 4;
-  uint32_t nextWord = helpers::readUint32BigEndian(m_data, m_readPos);
+  uint32_t nextWord = helpers::BigEndianReader(m_data).readUint32(m_readPos);
 
   m_checksum ^= nextWord;
   m_lastBitBeforeRefill = nextWord & 1;
