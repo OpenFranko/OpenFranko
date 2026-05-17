@@ -1,6 +1,7 @@
 #ifndef ENTITYCOMPONENTSYSTEM_COLLIDERCOMPONENT_COLLIDERCOMPONENT_H_
 #define ENTITYCOMPONENTSYSTEM_COLLIDERCOMPONENT_COLLIDERCOMPONENT_H_
 
+#include "../../game/Game.h"
 #include "../EntityComponentSystem.h"
 #include "../transformComponent/TransformComponent.h"
 #include <SDL2/SDL.h>
@@ -26,6 +27,8 @@ public:
       entity->addComponent<transformComponent::TransformComponent>();
     }
     transform = &entity->getComponent<transformComponent::TransformComponent>();
+
+    openfranko::src::game::Game::colliders.push_back(this);
   }
 
   void update() override {

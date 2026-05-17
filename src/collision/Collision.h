@@ -6,11 +6,27 @@
 
 namespace openfranko {
 namespace src {
+namespace entityComponentSystem {
+namespace colliderComponent {
+
+class ColliderComponent;
+
+}
+} // namespace entityComponentSystem
+} // namespace src
+} // namespace openfranko
+
+namespace openfranko {
+namespace src {
 namespace collision {
 
 class Collision {
 public:
   static bool AABB(const SDL_Rect &rectA, const SDL_Rect &rectB);
+  static bool AABB(const openfranko::src::entityComponentSystem::
+                       colliderComponent::ColliderComponent &colA,
+                   const openfranko::src::entityComponentSystem::
+                       colliderComponent::ColliderComponent &colB);
 };
 
 } // namespace collision

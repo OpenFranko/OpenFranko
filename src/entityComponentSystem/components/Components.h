@@ -5,6 +5,7 @@
 #include "../colliderComponent/ColliderComponent.h"
 #include "../keyboardController/KeyboardController.h"
 #include "../spriteComponent/SpriteComponent.h"
+#include "../tileComponent/TileComponent.h"
 #include "../transformComponent/TransformComponent.h"
 
 namespace openfranko {

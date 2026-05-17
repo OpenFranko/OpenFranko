@@ -13,8 +13,16 @@ entityComponentSystem::Manager manager;
 SDL_Renderer *Game::renderer = nullptr;
 SDL_Event Game::event;
 
+std::vector<openfranko::src::entityComponentSystem::colliderComponent::
+                ColliderComponent *>
+    Game::colliders;
+
 auto &player(manager.addEntity());
 auto &wall(manager.addEntity());
+
+auto &tile0(manager.addEntity());
+auto &tile1(manager.addEntity());
+auto &tile2(manager.addEntity());
 
 Game::Game() {}
 Game::~Game() {}
@@ -43,6 +51,17 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
   }
 
   map = new map::Map();
+
+  tile0.addComponent<entityComponentSystem::tileComponent::TileComponent>(
+      200, 200, 32, 32, 0);
+  tile1.addComponent<entityComponentSystem::tileComponent::TileComponent>(
+      250, 250, 32, 32, 1);
+  tile1.addComponent<
+      entityComponentSystem::colliderComponent::ColliderComponent>("dirt");
+  tile2.addComponent<entityComponentSystem::tileComponent::TileComponent>(
+      150, 150, 32, 32, 2);
+  tile2.addComponent<
+      entityComponentSystem::colliderComponent::ColliderComponent>("grass");
 
   player.addComponent<
       entityComponentSystem::transformComponent::TransformComponent>(2);
@@ -79,29 +98,16 @@ void Game::update() {
   manager.refresh();
   manager.update();
 
-  if (collision::Collision::AABB(
-          player
-              .getComponent<
-                  entityComponentSystem::colliderComponent::ColliderComponent>()
-              .collider,
-          wall.getComponent<
-                  entityComponentSystem::colliderComponent::ColliderComponent>()
-              .collider)) {
-    player
-        .getComponent<
-            entityComponentSystem::transformComponent::TransformComponent>()
-        .scale = 1;
-    player.getComponent<
-              entityComponentSystem::transformComponent::TransformComponent>()
-            .velocity *
-        -1;
-    std::cout << "Wall hit!!!" << std::endl;
+  for (auto cc : colliders) {
+    collision::Collision::AABB(
+        player.getComponent<
+            entityComponentSystem::colliderComponent::ColliderComponent>(),
+        *cc);
   }
 }
 
 void Game::render() {
   SDL_RenderClear(renderer);
-  map->drawMap();
   manager.draw();
   SDL_RenderPresent(renderer);
 }
