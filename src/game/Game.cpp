@@ -1,20 +1,16 @@
 #include "Game.h"
-#include "../components/Components.h"
-#include "../entityComponentSystem/EntityComponentSystem.h"
-#include "../gameObject/GameObject.h"
+#include "../entityComponentSystem/components/Components.h"
 #include "../map/Map.h"
 #include <iostream>
 
 namespace openfranko::src::game {
 
-gameObject::GameObject *player;
-gameObject::GameObject *enemy;
 map::Map *map;
 
 SDL_Renderer *Game::renderer = nullptr;
 
 entityComponentSystem::Manager manager;
-auto &newPlayer(manager.addEntity());
+auto &player(manager.addEntity());
 
 Game::Game() {}
 Game::~Game() {}
@@ -42,12 +38,12 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
     m_running = false;
   }
 
-  player = new gameObject::GameObject("assets/00FF/00FF_006.bmp", 0, 0);
-  enemy = new gameObject::GameObject("assets/0038/0038_009.bmp", 100, 50);
   map = new map::Map();
 
-  newPlayer.addComponent<components::PositionComponent>();
-  newPlayer.getComponent<components::PositionComponent>().setPos(500, 500);
+  player.addComponent<
+      entityComponentSystem::positionComponent::PositionComponent>(0, 0);
+  player.addComponent<entityComponentSystem::spriteComponent::SpriteComponent>(
+      "assets/00FF/00FF_006.bmp");
 }
 
 void Game::handleEvents() {
@@ -64,20 +60,23 @@ void Game::handleEvents() {
 }
 
 void Game::update() {
-  player->update();
-  enemy->update();
+  manager.refresh();
   manager.update();
-  std::cout << newPlayer.getComponent<components::PositionComponent>().x()
-            << ","
-            << newPlayer.getComponent<components::PositionComponent>().y()
-            << std::endl;
+
+  if (player
+          .getComponent<
+              entityComponentSystem::positionComponent::PositionComponent>()
+          .x() > 100) {
+    player
+        .getComponent<entityComponentSystem::spriteComponent::SpriteComponent>()
+        .setTex("assets/0038/0038_009.bmp");
+  };
 }
 
 void Game::render() {
   SDL_RenderClear(renderer);
   map->drawMap();
-  player->render();
-  enemy->render();
+  manager.draw();
   SDL_RenderPresent(renderer);
 }
 
