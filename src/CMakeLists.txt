@@ -1,3 +1,4 @@
+add_subdirectory(collision)
 add_subdirectory(vector2d)
 add_subdirectory(textureManager)
 add_subdirectory(gameObject)

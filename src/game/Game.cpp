@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "../collision/Collision.h"
 #include "../entityComponentSystem/components/Components.h"
 #include "../map/Map.h"
 #include "../vector2d/Vector2D.h"
@@ -13,6 +14,7 @@ SDL_Renderer *Game::renderer = nullptr;
 SDL_Event Game::event;
 
 auto &player(manager.addEntity());
+auto &wall(manager.addEntity());
 
 Game::Game() {}
 Game::~Game() {}
@@ -43,11 +45,21 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
   map = new map::Map();
 
   player.addComponent<
-      entityComponentSystem::transformComponent::TransformComponent>();
+      entityComponentSystem::transformComponent::TransformComponent>(2);
   player.addComponent<entityComponentSystem::spriteComponent::SpriteComponent>(
       "assets/00FF/00FF_006.bmp");
   player.addComponent<
       entityComponentSystem::keyboardController::KeyboardController>();
+  player.addComponent<
+      entityComponentSystem::colliderComponent::ColliderComponent>("player");
+
+  wall.addComponent<
+      entityComponentSystem::transformComponent::TransformComponent>(
+      300.0f, 300.0f, 300, 20, 1);
+  wall.addComponent<entityComponentSystem::spriteComponent::SpriteComponent>(
+      "assets/038A.bmp");
+  wall.addComponent<
+      entityComponentSystem::colliderComponent::ColliderComponent>("wall");
 }
 
 void Game::handleEvents() {
@@ -66,6 +78,21 @@ void Game::handleEvents() {
 void Game::update() {
   manager.refresh();
   manager.update();
+
+  if (collision::Collision::AABB(
+          player
+              .getComponent<
+                  entityComponentSystem::colliderComponent::ColliderComponent>()
+              .collider,
+          wall.getComponent<
+                  entityComponentSystem::colliderComponent::ColliderComponent>()
+              .collider)) {
+    player
+        .getComponent<
+            entityComponentSystem::transformComponent::TransformComponent>()
+        .scale = 1;
+    std::cout << "Wall hit!!!" << std::endl;
+  }
 }
 
 void Game::render() {
