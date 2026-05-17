@@ -2,6 +2,7 @@
 #define COMPONENTS_COMPONENETS_H_
 
 #include "../EntityComponentSystem.h"
+#include "../keyboardController/KeyboardController.h"
 #include "../spriteComponent/SpriteComponent.h"
 #include "../transformComponent/TransformComponent.h"
 

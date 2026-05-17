@@ -7,10 +7,11 @@
 namespace openfranko::src::game {
 
 map::Map *map;
+entityComponentSystem::Manager manager;
 
 SDL_Renderer *Game::renderer = nullptr;
+SDL_Event Game::event;
 
-entityComponentSystem::Manager manager;
 auto &player(manager.addEntity());
 
 Game::Game() {}
@@ -45,10 +46,12 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
       entityComponentSystem::transformComponent::TransformComponent>();
   player.addComponent<entityComponentSystem::spriteComponent::SpriteComponent>(
       "assets/00FF/00FF_006.bmp");
+  player.addComponent<
+      entityComponentSystem::keyboardController::KeyboardController>();
 }
 
 void Game::handleEvents() {
-  SDL_Event event;
+
   SDL_PollEvent(&event);
 
   switch (event.type) {
@@ -63,19 +66,6 @@ void Game::handleEvents() {
 void Game::update() {
   manager.refresh();
   manager.update();
-  player
-      .getComponent<
-          entityComponentSystem::transformComponent::TransformComponent>()
-      .position.add(vector2d::Vector2D(5, 0));
-
-  if (player
-          .getComponent<
-              entityComponentSystem::transformComponent::TransformComponent>()
-          .position.x > 100) {
-    player
-        .getComponent<entityComponentSystem::spriteComponent::SpriteComponent>()
-        .setTex("assets/0038/0038_009.bmp");
-  };
 }
 
 void Game::render() {

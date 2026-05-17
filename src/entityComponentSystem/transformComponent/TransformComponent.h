@@ -12,6 +12,9 @@ namespace transformComponent {
 class TransformComponent : public entityComponentSystem::Component {
 public:
   vector2d::Vector2D position;
+  vector2d::Vector2D velocity;
+
+  int speed = 3;
 
   TransformComponent() {
     position.x = 0.0f;
@@ -23,7 +26,14 @@ public:
     position.y = y;
   }
 
-  void update() override {}
+  void init() override {
+    velocity.x = 0.0f;
+    velocity.y = 0.0f;
+  }
+  void update() override {
+    position.x += velocity.x * speed;
+    position.y += velocity.y * speed;
+  }
 };
 
 } // namespace transformComponent

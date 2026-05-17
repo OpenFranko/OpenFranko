@@ -24,6 +24,7 @@ public:
   bool running() { return m_running; }
 
   static SDL_Renderer *renderer;
+  static SDL_Event event;
 
 private:
   int m_count = 0;
