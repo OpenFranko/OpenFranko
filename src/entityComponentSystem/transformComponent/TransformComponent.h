@@ -20,14 +20,10 @@ public:
 
   int speed = 3;
 
-  TransformComponent() {
-    position.x = 0.0f;
-    position.y = 0.0f;
-  }
+  TransformComponent() { position.zero(); }
 
   TransformComponent(int sc) {
-    position.x = 0.0f;
-    position.y = 0.0f;
+    position.zero();
     scale = sc;
   }
 
@@ -44,10 +40,7 @@ public:
     scale = sc;
   }
 
-  void init() override {
-    velocity.x = 0.0f;
-    velocity.y = 0.0f;
-  }
+  void init() override { velocity.zero(); }
   void update() override {
     position.x += velocity.x * speed;
     position.y += velocity.y * speed;

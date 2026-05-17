@@ -91,6 +91,10 @@ void Game::update() {
         .getComponent<
             entityComponentSystem::transformComponent::TransformComponent>()
         .scale = 1;
+    player.getComponent<
+              entityComponentSystem::transformComponent::TransformComponent>()
+            .velocity *
+        -1;
     std::cout << "Wall hit!!!" << std::endl;
   }
 }
