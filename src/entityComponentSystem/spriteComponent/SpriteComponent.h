@@ -3,7 +3,7 @@
 
 #include "../../textureManager/TextureManager.h"
 #include "../EntityComponentSystem.h"
-#include "../positionComponent/PositionComponent.h"
+#include "../transformComponent/TransformComponent.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
@@ -14,7 +14,7 @@ namespace spriteComponent {
 
 class SpriteComponent : public Component {
 private:
-  positionComponent::PositionComponent *position;
+  transformComponent::TransformComponent *transform;
   SDL_Texture *texture;
   SDL_Rect srcRect;
   SDL_Rect destRect;
@@ -28,7 +28,7 @@ public:
   }
 
   void init() override {
-    position = &entity->getComponent<positionComponent::PositionComponent>();
+    transform = &entity->getComponent<transformComponent::TransformComponent>();
 
     srcRect.x = 0;
     srcRect.y = 0;
@@ -39,8 +39,8 @@ public:
   }
 
   void update() override {
-    destRect.x = position->x();
-    destRect.y = position->y();
+    destRect.x = (int)transform->position.x;
+    destRect.y = (int)transform->position.y;
   }
 
   void draw() override {

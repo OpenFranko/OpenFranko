@@ -2,8 +2,8 @@
 #define COMPONENTS_COMPONENETS_H_
 
 #include "../EntityComponentSystem.h"
-#include "../positionComponent/PositionComponent.h"
 #include "../spriteComponent/SpriteComponent.h"
+#include "../transformComponent/TransformComponent.h"
 
 namespace openfranko {
 namespace src {

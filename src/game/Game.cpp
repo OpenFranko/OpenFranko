@@ -1,6 +1,7 @@
 #include "Game.h"
 #include "../entityComponentSystem/components/Components.h"
 #include "../map/Map.h"
+#include "../vector2d/Vector2D.h"
 #include <iostream>
 
 namespace openfranko::src::game {
@@ -41,7 +42,7 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
   map = new map::Map();
 
   player.addComponent<
-      entityComponentSystem::positionComponent::PositionComponent>(0, 0);
+      entityComponentSystem::transformComponent::TransformComponent>();
   player.addComponent<entityComponentSystem::spriteComponent::SpriteComponent>(
       "assets/00FF/00FF_006.bmp");
 }
@@ -62,11 +63,15 @@ void Game::handleEvents() {
 void Game::update() {
   manager.refresh();
   manager.update();
+  player
+      .getComponent<
+          entityComponentSystem::transformComponent::TransformComponent>()
+      .position.add(vector2d::Vector2D(5, 0));
 
   if (player
           .getComponent<
-              entityComponentSystem::positionComponent::PositionComponent>()
-          .x() > 100) {
+              entityComponentSystem::transformComponent::TransformComponent>()
+          .position.x > 100) {
     player
         .getComponent<entityComponentSystem::spriteComponent::SpriteComponent>()
         .setTex("assets/0038/0038_009.bmp");
