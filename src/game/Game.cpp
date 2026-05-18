@@ -20,10 +20,6 @@ std::vector<openfranko::src::entityComponentSystem::colliderComponent::
 auto &player(manager.addEntity());
 auto &wall(manager.addEntity());
 
-auto &tile0(manager.addEntity());
-auto &tile1(manager.addEntity());
-auto &tile2(manager.addEntity());
-
 Game::Game() {}
 Game::~Game() {}
 
@@ -52,16 +48,7 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
 
   map = new map::Map();
 
-  tile0.addComponent<entityComponentSystem::tileComponent::TileComponent>(
-      200, 200, 32, 32, 0);
-  tile1.addComponent<entityComponentSystem::tileComponent::TileComponent>(
-      250, 250, 32, 32, 1);
-  tile1.addComponent<
-      entityComponentSystem::colliderComponent::ColliderComponent>("dirt");
-  tile2.addComponent<entityComponentSystem::tileComponent::TileComponent>(
-      150, 150, 32, 32, 2);
-  tile2.addComponent<
-      entityComponentSystem::colliderComponent::ColliderComponent>("grass");
+  map::Map::loadMap("assets/p16x16.map", 16, 16);
 
   player.addComponent<
       entityComponentSystem::transformComponent::TransformComponent>(2);
@@ -117,6 +104,12 @@ void Game::clean() {
   SDL_DestroyRenderer(renderer);
   SDL_Quit();
   std::cout << "Game cleaned!" << std::endl;
+}
+
+void Game::addTile(int id, int x, int y) {
+  auto &tile(manager.addEntity());
+  tile.addComponent<entityComponentSystem::tileComponent::TileComponent>(
+      x, y, 32, 32, id);
 }
 
 } // namespace openfranko::src::game
