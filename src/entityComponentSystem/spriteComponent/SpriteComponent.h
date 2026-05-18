@@ -15,17 +15,39 @@ namespace spriteComponent {
 class SpriteComponent : public Component {
 private:
   transformComponent::TransformComponent *transform;
-  SDL_Texture *texture;
+  int frame = 0;
+  std::vector<SDL_Texture *> textures;
   SDL_Rect srcRect;
   SDL_Rect destRect;
+
+  bool animated = false;
+  int frames = 0;
+  int speed = 100;
 
 public:
   SpriteComponent() = default;
   SpriteComponent(const char *path) { setTex(path); }
-  ~SpriteComponent() { SDL_DestroyTexture(texture); }
+  SpriteComponent(const std::vector<std::string> &paths, int mSpeed) {
+    animated = true;
+    frames = paths.size();
+    speed = mSpeed;
+    setTexs(paths);
+  }
+  ~SpriteComponent() {
+    for (auto texture : textures) {
+      SDL_DestroyTexture(texture);
+    }
+  }
 
   void setTex(const char *path) {
-    texture = textureManager::TextureManager::LoadTexture(path);
+    textures.emplace_back(textureManager::TextureManager::LoadTexture(path));
+  }
+
+  void setTexs(const std::vector<std::string> &paths) {
+    for (auto &path : paths) {
+      textures.emplace_back(
+          textureManager::TextureManager::LoadTexture(path.c_str()));
+    }
   }
 
   void init() override {
@@ -38,6 +60,10 @@ public:
   }
 
   void update() override {
+    if (animated) {
+      frame = static_cast<int>((SDL_GetTicks() / speed) % frames);
+    }
+
     destRect.x = static_cast<int>(transform->position.x);
     destRect.y = static_cast<int>(transform->position.y);
     destRect.w = transform->width * transform->scale;
@@ -45,7 +71,7 @@ public:
   }
 
   void draw() override {
-    textureManager::TextureManager::draw(texture, srcRect, destRect);
+    textureManager::TextureManager::draw(textures.at(frame), srcRect, destRect);
   }
 };
 

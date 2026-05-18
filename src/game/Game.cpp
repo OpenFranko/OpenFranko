@@ -60,7 +60,11 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
   player.addComponent<
       entityComponentSystem::transformComponent::TransformComponent>(2);
   player.addComponent<entityComponentSystem::spriteComponent::SpriteComponent>(
-      "assets/00FF/00FF_006.bmp");
+      std::vector<std::string>{
+          "assets/00FF/00FF_000.bmp", "assets/00FF/00FF_001.bmp",
+          "assets/00FF/00FF_002.bmp", "assets/00FF/00FF_003.bmp",
+          "assets/00FF/00FF_004.bmp", "assets/00FF/00FF_005.bmp"},
+      300);
   player.addComponent<
       entityComponentSystem::keyboardController::KeyboardController>();
   player.addComponent<
