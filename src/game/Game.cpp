@@ -20,6 +20,13 @@ std::vector<openfranko::src::entityComponentSystem::colliderComponent::
 auto &player(manager.addEntity());
 auto &wall(manager.addEntity());
 
+enum groupLabels : size_t {
+  groupMap,
+  groupPlayers,
+  groupEnemies,
+  groupColliders
+};
+
 Game::Game() {}
 Game::~Game() {}
 
@@ -58,6 +65,7 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
       entityComponentSystem::keyboardController::KeyboardController>();
   player.addComponent<
       entityComponentSystem::colliderComponent::ColliderComponent>("player");
+  player.addGroup(groupPlayers);
 
   wall.addComponent<
       entityComponentSystem::transformComponent::TransformComponent>(
@@ -66,6 +74,7 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
       "assets/038A.bmp");
   wall.addComponent<
       entityComponentSystem::colliderComponent::ColliderComponent>("wall");
+  wall.addGroup(groupMap);
 }
 
 void Game::handleEvents() {
@@ -93,9 +102,21 @@ void Game::update() {
   }
 }
 
+auto &tiles(manager.getGroup(groupMap));
+auto &players(manager.getGroup(groupPlayers));
+auto &enemies(manager.getGroup(groupEnemies));
+
 void Game::render() {
   SDL_RenderClear(renderer);
-  manager.draw();
+  for (auto &t : tiles) {
+    t->draw();
+  }
+  for (auto &p : players) {
+    p->draw();
+  }
+  for (auto &e : enemies) {
+    e->draw();
+  }
   SDL_RenderPresent(renderer);
 }
 
@@ -110,6 +131,7 @@ void Game::addTile(int id, int x, int y) {
   auto &tile(manager.addEntity());
   tile.addComponent<entityComponentSystem::tileComponent::TileComponent>(
       x, y, 32, 32, id);
+  tile.addGroup(groupMap);
 }
 
 } // namespace openfranko::src::game

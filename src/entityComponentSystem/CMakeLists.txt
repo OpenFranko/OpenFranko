@@ -1,0 +1,1 @@
+add_library(EntityComponentSystem EntityComponentSystem.cpp EntityComponentSystem.h)
