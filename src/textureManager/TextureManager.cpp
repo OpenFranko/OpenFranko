@@ -19,8 +19,9 @@ SDL_Texture *TextureManager::LoadTexture(const char *fileName) {
   return tex;
 }
 
-void TextureManager::draw(SDL_Texture *tex, SDL_Rect src, SDL_Rect dest) {
-  SDL_RenderCopy(game::Game::renderer, tex, &src, &dest);
+void TextureManager::draw(SDL_Texture *tex, SDL_Rect src, SDL_Rect dest,
+                          SDL_RendererFlip flip) {
+  SDL_RenderCopyEx(game::Game::renderer, tex, &src, &dest, NULL, NULL, flip);
 }
 
 } // namespace openfranko::src::textureManager

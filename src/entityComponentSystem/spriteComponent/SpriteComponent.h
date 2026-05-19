@@ -3,9 +3,11 @@
 
 #include "../../textureManager/TextureManager.h"
 #include "../EntityComponentSystem.h"
+#include "../animation/Animation.h"
 #include "../transformComponent/TransformComponent.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <map>
 
 namespace openfranko {
 namespace src {
@@ -16,37 +18,41 @@ class SpriteComponent : public Component {
 private:
   transformComponent::TransformComponent *transform;
   int frame = 0;
-  std::vector<SDL_Texture *> textures;
+  std::map<std::string, animation::Animation> animations;
+
   SDL_Rect srcRect;
   SDL_Rect destRect;
 
-  bool animated = false;
   int frames = 0;
   int speed = 100;
+  std::string animState = "Idle";
 
 public:
+  SDL_RendererFlip spriteFlip = SDL_FLIP_NONE;
+
   SpriteComponent() = default;
   SpriteComponent(const char *path) { setTex(path); }
-  SpriteComponent(const std::vector<std::string> &paths, int mSpeed) {
-    animated = true;
-    frames = paths.size();
-    speed = mSpeed;
+  SpriteComponent(
+      const std::map<std::string, std::vector<std::string>> &paths) {
     setTexs(paths);
   }
   ~SpriteComponent() {
-    for (auto texture : textures) {
-      SDL_DestroyTexture(texture);
+    for (auto &animation : animations) {
+      for (auto texture : animation.second.frameTexs) {
+        SDL_DestroyTexture(texture);
+      }
     }
   }
 
   void setTex(const char *path) {
-    textures.emplace_back(textureManager::TextureManager::LoadTexture(path));
+    auto idle = animation::Animation(speed, std::vector{std::string(path)});
+    animations.emplace("Idle", idle);
   }
 
-  void setTexs(const std::vector<std::string> &paths) {
-    for (auto &path : paths) {
-      textures.emplace_back(
-          textureManager::TextureManager::LoadTexture(path.c_str()));
+  void setTexs(const std::map<std::string, std::vector<std::string>> &pathMap) {
+    for (auto &paths : pathMap) {
+      animations.emplace(paths.first,
+                         animation::Animation(speed, paths.second));
     }
   }
 
@@ -60,9 +66,10 @@ public:
   }
 
   void update() override {
-    if (animated) {
-      frame = static_cast<int>((SDL_GetTicks() / speed) % frames);
-    }
+    auto animation = animations.at(animState);
+
+    frame = static_cast<int>((SDL_GetTicks() / animation.speed) %
+                             animation.frameTexs.size());
 
     destRect.x = static_cast<int>(transform->position.x);
     destRect.y = static_cast<int>(transform->position.y);
@@ -71,7 +78,16 @@ public:
   }
 
   void draw() override {
-    textureManager::TextureManager::draw(textures.at(frame), srcRect, destRect);
+    auto animation = animations.at(animState);
+    textureManager::TextureManager::draw(animation.frameTexs.at(frame), srcRect,
+                                         destRect, spriteFlip);
+  }
+
+  void play(const std::string &animName) {
+    if (animState != animName) {
+      frame = 0;
+    }
+    animState = animName;
   }
 };
 

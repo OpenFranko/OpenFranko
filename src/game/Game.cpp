@@ -59,12 +59,17 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
 
   player.addComponent<
       entityComponentSystem::transformComponent::TransformComponent>(2);
+
+  std::vector<std::string> idle = {"assets/00FF/00FF_006.bmp"};
+
+  std::vector<std::string> walk = {
+      "assets/00FF/00FF_000.bmp", "assets/00FF/00FF_001.bmp",
+      "assets/00FF/00FF_002.bmp", "assets/00FF/00FF_003.bmp",
+      "assets/00FF/00FF_004.bmp", "assets/00FF/00FF_005.bmp"};
+
   player.addComponent<entityComponentSystem::spriteComponent::SpriteComponent>(
-      std::vector<std::string>{
-          "assets/00FF/00FF_000.bmp", "assets/00FF/00FF_001.bmp",
-          "assets/00FF/00FF_002.bmp", "assets/00FF/00FF_003.bmp",
-          "assets/00FF/00FF_004.bmp", "assets/00FF/00FF_005.bmp"},
-      300);
+      std::map<std::string, std::vector<std::string>>{{"Idle", idle},
+                                                      {"Walk", walk}});
   player.addComponent<
       entityComponentSystem::keyboardController::KeyboardController>();
   player.addComponent<

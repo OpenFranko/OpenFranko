@@ -3,6 +3,7 @@
 
 #include "../../game/Game.h"
 #include "../EntityComponentSystem.h"
+#include "../spriteComponent/SpriteComponent.h"
 #include "../transformComponent/TransformComponent.h"
 
 namespace openfranko {
@@ -13,9 +14,11 @@ namespace keyboardController {
 class KeyboardController : public Component {
 public:
   transformComponent::TransformComponent *transform;
+  spriteComponent::SpriteComponent *sprite;
 
   void init() override {
     transform = &entity->getComponent<transformComponent::TransformComponent>();
+    sprite = &entity->getComponent<spriteComponent::SpriteComponent>();
   }
 
   void update() override {
@@ -23,18 +26,24 @@ public:
       switch (game::Game::event.key.keysym.sym) {
       case SDLK_a:
         transform->velocity.x = -1;
+        sprite->play("Walk");
+        sprite->spriteFlip = SDL_FLIP_HORIZONTAL;
         break;
 
       case SDLK_d:
         transform->velocity.x = 1;
+        sprite->play("Walk");
+        sprite->spriteFlip = SDL_FLIP_NONE;
         break;
 
       case SDLK_w:
         transform->velocity.y = -1;
+        sprite->play("Walk");
         break;
 
       case SDLK_s:
         transform->velocity.y = 1;
+        sprite->play("Walk");
         break;
 
       default:
@@ -46,18 +55,22 @@ public:
       switch (game::Game::event.key.keysym.sym) {
       case SDLK_a:
         transform->velocity.x = 0;
+        sprite->play("Idle");
         break;
 
       case SDLK_d:
         transform->velocity.x = 0;
+        sprite->play("Idle");
         break;
 
       case SDLK_w:
         transform->velocity.y = 0;
+        sprite->play("Idle");
         break;
 
       case SDLK_s:
         transform->velocity.y = 0;
+        sprite->play("Idle");
         break;
 
       default:
