@@ -21,60 +21,34 @@ public:
   }
 
   void update() override {
-    if (game::Game::event.type == SDL_KEYDOWN) {
-      switch (game::Game::event.key.keysym.sym) {
-      case SDLK_a:
-        transform->velocity.x = -1;
-        sprite->play("Walk");
-        sprite->spriteFlip = SDL_FLIP_HORIZONTAL;
-        break;
+    const Uint8 *keystate = SDL_GetKeyboardState(nullptr);
 
-      case SDLK_d:
-        transform->velocity.x = 1;
-        sprite->play("Walk");
-        sprite->spriteFlip = SDL_FLIP_NONE;
-        break;
+    transform->velocity.x = 0;
+    transform->velocity.y = 0;
+    bool isMoving = false;
 
-      case SDLK_w:
-        transform->velocity.y = -1;
-        sprite->play("Walk");
-        break;
-
-      case SDLK_s:
-        transform->velocity.y = 1;
-        sprite->play("Walk");
-        break;
-
-      default:
-        break;
-      }
+    if (keystate[SDL_SCANCODE_A]) {
+      transform->velocity.x = -1;
+      sprite->spriteFlip = SDL_FLIP_HORIZONTAL;
+      isMoving = true;
+    } else if (keystate[SDL_SCANCODE_D]) {
+      transform->velocity.x = 1;
+      sprite->spriteFlip = SDL_FLIP_NONE;
+      isMoving = true;
     }
 
-    if (game::Game::event.type == SDL_KEYUP) {
-      switch (game::Game::event.key.keysym.sym) {
-      case SDLK_a:
-        transform->velocity.x = 0;
-        sprite->play("Idle");
-        break;
+    if (keystate[SDL_SCANCODE_W]) {
+      transform->velocity.y = -1;
+      isMoving = true;
+    } else if (keystate[SDL_SCANCODE_S]) {
+      transform->velocity.y = 1;
+      isMoving = true;
+    }
 
-      case SDLK_d:
-        transform->velocity.x = 0;
-        sprite->play("Idle");
-        break;
-
-      case SDLK_w:
-        transform->velocity.y = 0;
-        sprite->play("Idle");
-        break;
-
-      case SDLK_s:
-        transform->velocity.y = 0;
-        sprite->play("Idle");
-        break;
-
-      default:
-        break;
-      }
+    if (isMoving) {
+      sprite->play("Walk");
+    } else {
+      sprite->play("Idle");
     }
   }
 };
