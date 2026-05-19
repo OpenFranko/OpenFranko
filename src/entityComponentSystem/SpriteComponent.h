@@ -59,6 +59,11 @@ public:
 
     srcRect.x = 0;
     srcRect.y = 0;
+
+    auto texture = animations.at(animState).frameTexs.at(frame);
+    SDL_QueryTexture(texture, nullptr, nullptr, &transform->width,
+                     &transform->height);
+
     srcRect.w = transform->width;
     srcRect.h = transform->height;
   }
@@ -69,8 +74,20 @@ public:
     frame = static_cast<int>((SDL_GetTicks() / animation.speed) %
                              animation.frameTexs.size());
 
-    destRect.x = static_cast<int>(transform->position.x);
+    auto texture = animation.frameTexs.at(frame);
+    SDL_QueryTexture(texture, nullptr, nullptr, &transform->width,
+                     &transform->height);
+
+    if (spriteFlip == SDL_FLIP_HORIZONTAL) {
+      destRect.x = static_cast<int>(transform->position.x - transform->width);
+    } else {
+      destRect.x = static_cast<int>(transform->position.x);
+    }
+
     destRect.y = static_cast<int>(transform->position.y);
+
+    srcRect.w = transform->width;
+    srcRect.h = transform->height;
     destRect.w = transform->width * transform->scale;
     destRect.h = transform->height * transform->scale;
   }

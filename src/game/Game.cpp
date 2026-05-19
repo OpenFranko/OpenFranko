@@ -15,13 +15,11 @@ std::vector<openfranko::src::entityComponentSystem::ColliderComponent *>
     Game::colliders;
 
 auto &player(manager.addEntity());
-auto &wall(manager.addEntity());
 
 enum groupLabels : size_t {
   groupMap,
   groupPlayers,
   groupEnemies,
-  groupColliders
 };
 
 Game::Game() {}
