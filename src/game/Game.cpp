@@ -1,13 +1,11 @@
 #include "Game.h"
 #include "../collision/Collision.h"
 #include "../entityComponentSystem/components/Components.h"
-#include "../map/Map.h"
 #include "../vector2d/Vector2D.h"
 #include <iostream>
 
 namespace openfranko::src::game {
 
-map::Map *map;
 entityComponentSystem::Manager manager;
 
 SDL_Renderer *Game::renderer = nullptr;
@@ -53,10 +51,6 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
     m_running = false;
   }
 
-  map = new map::Map();
-
-  map::Map::loadMap("assets/p16x16.map", 16, 16);
-
   player.addComponent<
       entityComponentSystem::transformComponent::TransformComponent>(2);
 
@@ -75,15 +69,6 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
   player.addComponent<
       entityComponentSystem::colliderComponent::ColliderComponent>("player");
   player.addGroup(groupPlayers);
-
-  wall.addComponent<
-      entityComponentSystem::transformComponent::TransformComponent>(
-      300.0f, 300.0f, 300, 20, 1);
-  wall.addComponent<entityComponentSystem::spriteComponent::SpriteComponent>(
-      "assets/038A.bmp");
-  wall.addComponent<
-      entityComponentSystem::colliderComponent::ColliderComponent>("wall");
-  wall.addGroup(groupMap);
 }
 
 void Game::handleEvents() {
@@ -134,13 +119,6 @@ void Game::clean() {
   SDL_DestroyRenderer(renderer);
   SDL_Quit();
   std::cout << "Game cleaned!" << std::endl;
-}
-
-void Game::addTile(int id, int x, int y) {
-  auto &tile(manager.addEntity());
-  tile.addComponent<entityComponentSystem::tileComponent::TileComponent>(
-      x, y, 32, 32, id);
-  tile.addGroup(groupMap);
 }
 
 } // namespace openfranko::src::game

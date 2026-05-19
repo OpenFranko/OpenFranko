@@ -36,7 +36,6 @@ public:
 
   bool running() { return m_running; }
 
-  static void addTile(int id, int x, int y);
   static SDL_Renderer *renderer;
   static SDL_Event event;
   static std::vector<openfranko::src::entityComponentSystem::colliderComponent::

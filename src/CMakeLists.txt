@@ -2,8 +2,6 @@ add_subdirectory(entityComponentSystem)
 add_subdirectory(collision)
 add_subdirectory(vector2d)
 add_subdirectory(textureManager)
-add_subdirectory(gameObject)
-add_subdirectory(map)
 add_subdirectory(game)
 
 add_executable(${PROJECT_NAME} main.cpp)
