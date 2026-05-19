@@ -1,10 +1,10 @@
 #ifndef ENTITYCOMPONENTSYSTEM_SPRITECOMPONENT_SPRITECOMPONENT_H_
 #define ENTITYCOMPONENTSYSTEM_SPRITECOMPONENT_SPRITECOMPONENT_H_
 
-#include "../../textureManager/TextureManager.h"
-#include "../EntityComponentSystem.h"
-#include "../animation/Animation.h"
-#include "../transformComponent/TransformComponent.h"
+#include "../textureManager/TextureManager.h"
+#include "Animation.h"
+#include "EntityComponentSystem.h"
+#include "TransformComponent.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <map>
@@ -12,13 +12,12 @@
 namespace openfranko {
 namespace src {
 namespace entityComponentSystem {
-namespace spriteComponent {
 
 class SpriteComponent : public Component {
 private:
-  transformComponent::TransformComponent *transform;
+  TransformComponent *transform;
   int frame = 0;
-  std::map<std::string, animation::Animation> animations;
+  std::map<std::string, Animation> animations;
 
   SDL_Rect srcRect;
   SDL_Rect destRect;
@@ -45,19 +44,18 @@ public:
   }
 
   void setTex(const char *path) {
-    auto idle = animation::Animation(speed, std::vector{std::string(path)});
+    auto idle = Animation(speed, std::vector{std::string(path)});
     animations.emplace("Idle", idle);
   }
 
   void setTexs(const std::map<std::string, std::vector<std::string>> &pathMap) {
     for (auto &paths : pathMap) {
-      animations.emplace(paths.first,
-                         animation::Animation(speed, paths.second));
+      animations.emplace(paths.first, Animation(speed, paths.second));
     }
   }
 
   void init() override {
-    transform = &entity->getComponent<transformComponent::TransformComponent>();
+    transform = &entity->getComponent<TransformComponent>();
 
     srcRect.x = 0;
     srcRect.y = 0;
@@ -91,7 +89,6 @@ public:
   }
 };
 
-} // namespace spriteComponent
 } // namespace entityComponentSystem
 } // namespace src
 } // namespace openfranko

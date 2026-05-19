@@ -1,24 +1,23 @@
 #ifndef ENTITYCOMPONENTSYSTEM_KEYBOARDCONTROLLER_KEYBOARDCONTROLLER_H_
 #define ENTITYCOMPONENTSYSTEM_KEYBOARDCONTROLLER_KEYBOARDCONTROLLER_H_
 
-#include "../../game/Game.h"
-#include "../EntityComponentSystem.h"
-#include "../spriteComponent/SpriteComponent.h"
-#include "../transformComponent/TransformComponent.h"
+#include "../game/Game.h"
+#include "EntityComponentSystem.h"
+#include "SpriteComponent.h"
+#include "TransformComponent.h"
 
 namespace openfranko {
 namespace src {
 namespace entityComponentSystem {
-namespace keyboardController {
 
 class KeyboardController : public Component {
 public:
-  transformComponent::TransformComponent *transform;
-  spriteComponent::SpriteComponent *sprite;
+  TransformComponent *transform;
+  SpriteComponent *sprite;
 
   void init() override {
-    transform = &entity->getComponent<transformComponent::TransformComponent>();
-    sprite = &entity->getComponent<spriteComponent::SpriteComponent>();
+    transform = &entity->getComponent<TransformComponent>();
+    sprite = &entity->getComponent<SpriteComponent>();
   }
 
   void update() override {
@@ -80,7 +79,6 @@ public:
   }
 };
 
-} // namespace keyboardController
 } // namespace entityComponentSystem
 } // namespace src
 } // namespace openfranko

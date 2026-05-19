@@ -1,9 +1,9 @@
 #ifndef ENTITYCOMPONENTSYSTEM_COLLIDERCOMPONENT_COLLIDERCOMPONENT_H_
 #define ENTITYCOMPONENTSYSTEM_COLLIDERCOMPONENT_COLLIDERCOMPONENT_H_
 
-#include "../../game/Game.h"
-#include "../EntityComponentSystem.h"
-#include "../transformComponent/TransformComponent.h"
+#include "../game/Game.h"
+#include "EntityComponentSystem.h"
+#include "TransformComponent.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <string>
@@ -11,22 +11,21 @@
 namespace openfranko {
 namespace src {
 namespace entityComponentSystem {
-namespace colliderComponent {
 
 class ColliderComponent : public entityComponentSystem::Component {
 public:
   SDL_Rect collider;
   std::string tag;
 
-  transformComponent::TransformComponent *transform;
+  TransformComponent *transform;
 
   ColliderComponent(const std::string &t) { tag = t; }
 
   void init() override {
-    if (!entity->hasComponent<transformComponent::TransformComponent>()) {
-      entity->addComponent<transformComponent::TransformComponent>();
+    if (!entity->hasComponent<TransformComponent>()) {
+      entity->addComponent<TransformComponent>();
     }
-    transform = &entity->getComponent<transformComponent::TransformComponent>();
+    transform = &entity->getComponent<TransformComponent>();
 
     openfranko::src::game::Game::colliders.push_back(this);
   }
@@ -39,7 +38,6 @@ public:
   }
 };
 
-} // namespace colliderComponent
 } // namespace entityComponentSystem
 } // namespace src
 } // namespace openfranko

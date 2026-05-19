@@ -1,13 +1,12 @@
 #ifndef ENTITYCOMPONENTSYSTEM_TRANSFORMCOMPONENT_TRANSFORMCOMPONENT_H_
 #define ENTITYCOMPONENTSYSTEM_TRANSFORMCOMPONENT_TRANSFORMCOMPONENT_H_
 
-#include "../../vector2d/Vector2D.h"
-#include "../EntityComponentSystem.h"
+#include "../vector2d/Vector2D.h"
+#include "EntityComponentSystem.h"
 
 namespace openfranko {
 namespace src {
 namespace entityComponentSystem {
-namespace transformComponent {
 
 class TransformComponent : public entityComponentSystem::Component {
 public:
@@ -47,7 +46,6 @@ public:
   }
 };
 
-} // namespace transformComponent
 } // namespace entityComponentSystem
 } // namespace src
 } // namespace openfranko

@@ -1,5 +1,5 @@
 #include "Collision.h"
-#include "../entityComponentSystem/colliderComponent/ColliderComponent.h"
+#include "../entityComponentSystem/ColliderComponent.h"
 
 namespace openfranko::src::collision {
 
@@ -8,10 +8,9 @@ bool Collision::AABB(const SDL_Rect &rectA, const SDL_Rect &rectB) {
           rectA.y + rectA.h >= rectB.y && rectB.y + rectB.h >= rectA.y);
 }
 
-bool Collision::AABB(const openfranko::src::entityComponentSystem::
-                         colliderComponent::ColliderComponent &colA,
-                     const openfranko::src::entityComponentSystem::
-                         colliderComponent::ColliderComponent &colB) {
+bool Collision::AABB(
+    const openfranko::src::entityComponentSystem::ColliderComponent &colA,
+    const openfranko::src::entityComponentSystem::ColliderComponent &colB) {
   return AABB(colA.collider, colB.collider);
 }
 

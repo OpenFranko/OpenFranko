@@ -1,14 +1,13 @@
 #ifndef ENTITYCOMPONENTSYSTEM_ANIMATION_ANIMATION_H_
 #define ENTITYCOMPONENTSYSTEM_ANIMATION_ANIMATION_H_
 
-#include "../../textureManager/TextureManager.h"
+#include "../textureManager/TextureManager.h"
 #include <string>
 #include <vector>
 
 namespace openfranko {
 namespace src {
 namespace entityComponentSystem {
-namespace animation {
 
 struct Animation {
   int speed;
@@ -24,7 +23,6 @@ struct Animation {
   }
 };
 
-} // namespace animation
 } // namespace entityComponentSystem
 } // namespace src
 } // namespace openfranko

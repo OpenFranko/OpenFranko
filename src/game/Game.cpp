@@ -1,6 +1,6 @@
 #include "Game.h"
 #include "../collision/Collision.h"
-#include "../entityComponentSystem/components/Components.h"
+#include "../entityComponentSystem/Components.h"
 #include "../vector2d/Vector2D.h"
 #include <iostream>
 
@@ -11,8 +11,7 @@ entityComponentSystem::Manager manager;
 SDL_Renderer *Game::renderer = nullptr;
 SDL_Event Game::event;
 
-std::vector<openfranko::src::entityComponentSystem::colliderComponent::
-                ColliderComponent *>
+std::vector<openfranko::src::entityComponentSystem::ColliderComponent *>
     Game::colliders;
 
 auto &player(manager.addEntity());
@@ -51,8 +50,7 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
     m_running = false;
   }
 
-  player.addComponent<
-      entityComponentSystem::transformComponent::TransformComponent>(2);
+  player.addComponent<entityComponentSystem::TransformComponent>(2);
 
   std::vector<std::string> idle = {"assets/00FF/00FF_006.bmp"};
 
@@ -61,13 +59,11 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
       "assets/00FF/00FF_002.bmp", "assets/00FF/00FF_003.bmp",
       "assets/00FF/00FF_004.bmp", "assets/00FF/00FF_005.bmp"};
 
-  player.addComponent<entityComponentSystem::spriteComponent::SpriteComponent>(
+  player.addComponent<entityComponentSystem::SpriteComponent>(
       std::map<std::string, std::vector<std::string>>{{"Idle", idle},
                                                       {"Walk", walk}});
-  player.addComponent<
-      entityComponentSystem::keyboardController::KeyboardController>();
-  player.addComponent<
-      entityComponentSystem::colliderComponent::ColliderComponent>("player");
+  player.addComponent<entityComponentSystem::KeyboardController>();
+  player.addComponent<entityComponentSystem::ColliderComponent>("player");
   player.addGroup(groupPlayers);
 }
 
@@ -90,9 +86,7 @@ void Game::update() {
 
   for (auto cc : colliders) {
     collision::Collision::AABB(
-        player.getComponent<
-            entityComponentSystem::colliderComponent::ColliderComponent>(),
-        *cc);
+        player.getComponent<entityComponentSystem::ColliderComponent>(), *cc);
   }
 }
 
