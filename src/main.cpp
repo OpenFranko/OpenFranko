@@ -6,7 +6,7 @@ int main() {
 
   engine::Engine engine;
 
-  if (!engine.init("OpenFranko Engine", 800, 600)) {
+  if (!engine.init("OpenFranko", 800, 600)) {
     return -1;
   }
 
@@ -17,6 +17,7 @@ int main() {
       "assets/00FF/00FF_002.bmp", "assets/00FF/00FF_003.bmp",
       "assets/00FF/00FF_004.bmp", "assets/00FF/00FF_005.bmp"};
 
+  engine.loadAnimation("idle", {"assets/00FF/00FF_006.bmp"});
   engine.loadAnimation("walk", walkFramePaths);
 
   int playerX = 100;
@@ -24,6 +25,9 @@ int main() {
   int animFrame = 0;
   Uint32 lastTime = SDL_GetTicks();
   SDL_RendererFlip flipState = SDL_FLIP_NONE;
+
+  std::string animState = "idle";
+  int currentFrameCount = 1;
 
   while (engine.loop()) {
     engine.cls(10, 20, 40);
@@ -50,9 +54,17 @@ int main() {
       flipState = SDL_FLIP_NONE;
     }
 
+    if (moving) {
+      animState = "walk";
+      currentFrameCount = walkFramePaths.size();
+    } else {
+      animState = "idle";
+      currentFrameCount = 1;
+    }
+
     if (moving && SDL_GetTicks() - lastTime > 100) {
       animFrame++;
-      if (animFrame >= walkFramePaths.size()) {
+      if (animFrame >= currentFrameCount) {
         animFrame = 0;
       }
       lastTime = SDL_GetTicks();
@@ -60,7 +72,7 @@ int main() {
       animFrame = 0;
     }
 
-    engine.sprite("walk", playerX, playerY, animFrame, flipState);
+    engine.sprite(animState, playerX, playerY, animFrame, flipState);
 
     engine.sync();
   }
