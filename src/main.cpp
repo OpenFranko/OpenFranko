@@ -1,19 +1,68 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_mixer.h>
-#include <iostream>
+#include "engine/Engine.h"
+
+using namespace openfranko::src;
 
 int main() {
-  SDL_Init(SDL_INIT_EVERYTHING);
-  SDL_Window *window =
-      SDL_CreateWindow("OpenFranko", SDL_WINDOWPOS_CENTERED,
-                       SDL_WINDOWPOS_CENTERED, 320, 256, SDL_WINDOW_SHOWN);
-  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
 
-  SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-  SDL_RenderClear(renderer);
-  SDL_RenderPresent(renderer);
+  engine::Engine engine;
 
-  SDL_Delay(3000);
+  if (!engine.init("OpenFranko Engine", 800, 600)) {
+    return -1;
+  }
+
+  engine.screenOpen(0, 320, 240);
+
+  const std::vector<std::string> walkFramePaths = {
+      "assets/00FF/00FF_000.bmp", "assets/00FF/00FF_001.bmp",
+      "assets/00FF/00FF_002.bmp", "assets/00FF/00FF_003.bmp",
+      "assets/00FF/00FF_004.bmp", "assets/00FF/00FF_005.bmp"};
+
+  engine.loadAnimation("walk", walkFramePaths);
+
+  int playerX = 100;
+  int playerY = 120;
+  int animFrame = 0;
+  Uint32 lastTime = SDL_GetTicks();
+  SDL_RendererFlip flipState = SDL_FLIP_NONE;
+
+  while (engine.loop()) {
+    engine.cls(10, 20, 40);
+
+    const Uint8 *keys = SDL_GetKeyboardState(nullptr);
+    bool moving = false;
+
+    if (keys[SDL_SCANCODE_W]) {
+      playerY--;
+      moving = true;
+    }
+    if (keys[SDL_SCANCODE_S]) {
+      playerY++;
+      moving = true;
+    }
+    if (keys[SDL_SCANCODE_A]) {
+      playerX--;
+      moving = true;
+      flipState = SDL_FLIP_HORIZONTAL;
+    }
+    if (keys[SDL_SCANCODE_D]) {
+      playerX++;
+      moving = true;
+      flipState = SDL_FLIP_NONE;
+    }
+
+    if (moving && SDL_GetTicks() - lastTime > 100) {
+      animFrame++;
+      if (animFrame >= walkFramePaths.size()) {
+        animFrame = 0;
+      }
+      lastTime = SDL_GetTicks();
+    } else if (!moving) {
+      animFrame = 0;
+    }
+
+    engine.sprite("walk", playerX, playerY, animFrame, flipState);
+
+    engine.sync();
+  }
   return 0;
 }
