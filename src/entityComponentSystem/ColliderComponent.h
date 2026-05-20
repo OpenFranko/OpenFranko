@@ -3,7 +3,7 @@
 
 #include "../game/Game.h"
 #include "EntityComponentSystem.h"
-#include "TransformComponent.h"
+#include "SpriteComponent.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <string>
@@ -12,29 +12,29 @@ namespace openfranko {
 namespace src {
 namespace entityComponentSystem {
 
-class ColliderComponent : public entityComponentSystem::Component {
+class ColliderComponent : public Component {
 public:
   SDL_Rect collider;
   std::string tag;
 
-  TransformComponent *transform;
+  SpriteComponent *sprite;
 
   ColliderComponent(const std::string &t) { tag = t; }
 
   void init() override {
-    if (!entity->hasComponent<TransformComponent>()) {
-      entity->addComponent<TransformComponent>();
+    if (!entity->hasComponent<SpriteComponent>()) {
+      entity->addComponent<SpriteComponent>();
     }
-    transform = &entity->getComponent<TransformComponent>();
+    sprite = &entity->getComponent<SpriteComponent>();
 
     openfranko::src::game::Game::colliders.push_back(this);
   }
 
   void update() override {
-    collider.x = static_cast<int>(transform->position.x);
-    collider.y = static_cast<int>(transform->position.y);
-    collider.w = transform->width * transform->scale;
-    collider.h = transform->height * transform->scale;
+    collider.x = static_cast<int>(sprite->spriteRect.x);
+    collider.y = static_cast<int>(sprite->spriteRect.y);
+    collider.w = sprite->spriteRect.w;
+    collider.h = sprite->spriteRect.h;
   }
 };
 

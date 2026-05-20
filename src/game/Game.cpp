@@ -48,15 +48,13 @@ void Game::init(const char *title, int xpos, int ypos, int width, int height,
     m_running = false;
   }
 
-  player.addComponent<entityComponentSystem::TransformComponent>(2);
-
+  player.addComponent<entityComponentSystem::TransformComponent>();
   std::vector<std::string> idle = {"assets/00FF/00FF_006.bmp"};
 
   std::vector<std::string> walk = {
       "assets/00FF/00FF_000.bmp", "assets/00FF/00FF_001.bmp",
       "assets/00FF/00FF_002.bmp", "assets/00FF/00FF_003.bmp",
       "assets/00FF/00FF_004.bmp", "assets/00FF/00FF_005.bmp"};
-
   player.addComponent<entityComponentSystem::SpriteComponent>(
       std::map<std::string, std::vector<std::string>>{{"Idle", idle},
                                                       {"Walk", walk}});
@@ -88,20 +86,12 @@ void Game::update() {
   }
 }
 
-auto &tiles(manager.getGroup(groupMap));
 auto &players(manager.getGroup(groupPlayers));
-auto &enemies(manager.getGroup(groupEnemies));
 
 void Game::render() {
   SDL_RenderClear(renderer);
-  for (auto &t : tiles) {
-    t->draw();
-  }
   for (auto &p : players) {
     p->draw();
-  }
-  for (auto &e : enemies) {
-    e->draw();
   }
   SDL_RenderPresent(renderer);
 }

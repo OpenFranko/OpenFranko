@@ -13,28 +13,13 @@ public:
   vector2d::Vector2D position;
   vector2d::Vector2D velocity;
 
-  int height = 10;
-  int width = 10;
-  int scale = 1;
-
   int speed = 3;
 
   TransformComponent() { position.zero(); }
 
-  TransformComponent(int sc) {
-    position.zero();
-    scale = sc;
-  }
-
   TransformComponent(float x, float y) {
     position.x = x;
     position.y = y;
-  }
-
-  TransformComponent(float x, float y, int sc) {
-    position.x = x;
-    position.y = y;
-    scale = sc;
   }
 
   void init() override { velocity.zero(); }

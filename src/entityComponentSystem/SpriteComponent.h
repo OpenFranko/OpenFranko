@@ -20,13 +20,13 @@ private:
   std::map<std::string, Animation> animations;
 
   SDL_Rect srcRect;
-  SDL_Rect destRect;
 
   int frames = 0;
   int speed = 100;
   std::string animState = "Idle";
 
 public:
+  SDL_Rect spriteRect;
   SDL_RendererFlip spriteFlip = SDL_FLIP_NONE;
 
   SpriteComponent() = default;
@@ -60,12 +60,14 @@ public:
     srcRect.x = 0;
     srcRect.y = 0;
 
-    auto texture = animations.at(animState).frameTexs.at(frame);
-    SDL_QueryTexture(texture, nullptr, nullptr, &transform->width,
-                     &transform->height);
+    int width = 0;
+    int height = 0;
 
-    srcRect.w = transform->width;
-    srcRect.h = transform->height;
+    auto texture = animations.at(animState).frameTexs.at(frame);
+    SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+
+    srcRect.w = width;
+    srcRect.h = height;
   }
 
   void update() override {
@@ -74,28 +76,31 @@ public:
     frame = static_cast<int>((SDL_GetTicks() / animation.speed) %
                              animation.frameTexs.size());
 
+    int width = 0;
+    int height = 0;
+
     auto texture = animation.frameTexs.at(frame);
-    SDL_QueryTexture(texture, nullptr, nullptr, &transform->width,
-                     &transform->height);
+    SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
 
     if (spriteFlip == SDL_FLIP_HORIZONTAL) {
-      destRect.x = static_cast<int>(transform->position.x - transform->width);
+      spriteRect.x = static_cast<int>(transform->position.x - width);
     } else {
-      destRect.x = static_cast<int>(transform->position.x);
+      spriteRect.x = static_cast<int>(transform->position.x);
     }
 
-    destRect.y = static_cast<int>(transform->position.y);
+    spriteRect.y = static_cast<int>(transform->position.y);
 
-    srcRect.w = transform->width;
-    srcRect.h = transform->height;
-    destRect.w = transform->width * transform->scale;
-    destRect.h = transform->height * transform->scale;
+    srcRect.w = width;
+    srcRect.h = height;
+
+    spriteRect.w = width * 2;
+    spriteRect.h = height * 2;
   }
 
   void draw() override {
     auto animation = animations.at(animState);
     textureManager::TextureManager::draw(animation.frameTexs.at(frame), srcRect,
-                                         destRect, spriteFlip);
+                                         spriteRect, spriteFlip);
   }
 
   void play(const std::string &animName) {
