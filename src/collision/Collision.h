@@ -24,6 +24,9 @@ public:
   static bool
   AABB(const openfranko::src::entityComponentSystem::ColliderComponent &colA,
        const openfranko::src::entityComponentSystem::ColliderComponent &colB);
+
+  static bool CheckPixelCollision(SDL_Surface *surfaceA, int xA, int yA,
+                                  SDL_Surface *surfaceB, int xB, int yB);
 };
 
 } // namespace collision
