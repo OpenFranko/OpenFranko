@@ -38,7 +38,8 @@ public:
   ~SpriteComponent() {
     for (auto &animation : animations) {
       for (auto texture : animation.second.frameTexs) {
-        SDL_DestroyTexture(texture);
+        SDL_DestroyTexture(texture.first);
+        SDL_FreeSurface(texture.second);
       }
     }
   }
@@ -64,7 +65,7 @@ public:
     int height = 0;
 
     auto texture = animations.at(animState).frameTexs.at(frame);
-    SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+    SDL_QueryTexture(texture.first, nullptr, nullptr, &width, &height);
 
     srcRect.w = width;
     srcRect.h = height;
@@ -80,7 +81,7 @@ public:
     int height = 0;
 
     auto texture = animation.frameTexs.at(frame);
-    SDL_QueryTexture(texture, nullptr, nullptr, &width, &height);
+    SDL_QueryTexture(texture.first, nullptr, nullptr, &width, &height);
 
     if (spriteFlip == SDL_FLIP_HORIZONTAL) {
       spriteRect.x = static_cast<int>(transform->position.x - width);
@@ -99,8 +100,8 @@ public:
 
   void draw() override {
     auto animation = animations.at(animState);
-    textureManager::TextureManager::draw(animation.frameTexs.at(frame), srcRect,
-                                         spriteRect, spriteFlip);
+    textureManager::TextureManager::draw(animation.frameTexs.at(frame).first,
+                                         srcRect, spriteRect, spriteFlip);
   }
 
   void play(const std::string &animName) {

@@ -11,7 +11,7 @@ namespace entityComponentSystem {
 
 struct Animation {
   int speed;
-  std::vector<SDL_Texture *> frameTexs;
+  std::vector<std::pair<SDL_Texture *, SDL_Surface *>> frameTexs;
 
   Animation() {}
   Animation(int s, const std::vector<std::string> &paths) {
