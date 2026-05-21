@@ -51,10 +51,14 @@ public:
   void screen(int screenId);
   void loadAnimation(const std::string &name,
                      const std::vector<std::string> &framePaths);
-  void hotspot(const std::string &name, size_t frameIndex, int x, int y);
-  void bob(const std::string &name, int x, int y, int frame);
+
+  void loadBackground(const std::string &path);
+
   void sprite(const std::string &name, int x, int y, int frame,
               SDL_RendererFlip flip = SDL_FLIP_NONE);
+
+  void drawBackground();
+
   void cls(uint8_t r = 0, uint8_t g = 0, uint8_t b = 0);
   void sync();
 
@@ -67,6 +71,8 @@ private:
   AnimationFrame loadFrame(const std::string &path);
 
   std::map<std::string, std::vector<AnimationFrame>> animationStates;
+
+  SDL_Texture *background;
 
   Mix_Music *trackerModule;
   Mix_Chunk *soundEffect;

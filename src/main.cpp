@@ -28,14 +28,16 @@ int main() {
   engine.loadAnimation("idle", {"assets/00FF/00FF_006.bmp"});
   engine.loadAnimation("walk", walkFramePaths);
 
-  int playerX = 100;
-  int playerY = 120;
+  int playerX = 150;
+  int playerY = 180;
   int animFrame = 0;
   Uint32 lastTime = SDL_GetTicks();
   SDL_RendererFlip flipState = SDL_FLIP_NONE;
 
   std::string animState = "idle";
   int currentFrameCount = 1;
+
+  engine.loadBackground("assets/0388.bmp");
 
   if (!engine.loadS3M("assets/0259.s3m")) {
     return -1;
@@ -90,6 +92,8 @@ int main() {
     } else if (!moving) {
       animFrame = 0;
     }
+
+    engine.drawBackground();
 
     engine.sprite(animState, playerX, playerY, animFrame, flipState);
 

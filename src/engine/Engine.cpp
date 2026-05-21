@@ -156,26 +156,10 @@ void Engine::loadAnimation(const std::string &name,
   animationStates.emplace(name, frames);
 }
 
-void Engine::hotspot(const std::string &name, size_t frameIndex, int x, int y) {
-  if (animationStates.find(name) != animationStates.end()) {
-    auto &frame = animationStates.at(name).at(frameIndex);
-    frame.hotspotX = x;
-    frame.hotspotY = y;
-  }
-}
-
-void Engine::bob(const std::string &name, int x, int y, int frame) {
-  if (animationStates.find(name) == animationStates.end())
-    return;
-
-  const auto frames = animationStates.at(name);
-  const auto animFrame = frames.at(frame);
-
-  SDL_Rect srcRect = {0, 0, animFrame.width, animFrame.height};
-  SDL_Rect dstRect = {x - animFrame.hotspotX, y - animFrame.hotspotY,
-                      animFrame.width, animFrame.height};
-
-  SDL_RenderCopy(renderer, animFrame.texture, &srcRect, &dstRect);
+void Engine::loadBackground(const std::string &path) {
+  SDL_Surface *tempSurface = IMG_Load(path.c_str());
+  background = SDL_CreateTextureFromSurface(renderer, tempSurface);
+  SDL_FreeSurface(tempSurface);
 }
 
 void Engine::sprite(const std::string &name, int x, int y, int frame,
@@ -202,6 +186,15 @@ void Engine::sprite(const std::string &name, int x, int y, int frame,
 
   SDL_RenderCopyEx(renderer, animFrame.texture, &srcRect, &dstRect, 0.0, &pivot,
                    flip);
+}
+
+void Engine::drawBackground() {
+  int width = 0;
+  int height = 0;
+  SDL_QueryTexture(background, nullptr, nullptr, &width, &height);
+  SDL_Rect srcRect = {0, 0, width, height};
+  SDL_Rect dstRect = {0, 0, width, height};
+  SDL_RenderCopy(renderer, background, &srcRect, &dstRect);
 }
 
 void Engine::cls(uint8_t r, uint8_t g, uint8_t b) {
