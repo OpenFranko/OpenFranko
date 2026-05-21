@@ -9,15 +9,6 @@
 
 using namespace openfranko::lib;
 
-namespace {
-
-std::vector<uint8_t> makeHotspotFile(uint16_t x, uint16_t y) {
-  std::string text = std::to_string(x) + " " + std::to_string(y) + "\n";
-  return {text.begin(), text.end()};
-}
-
-} // namespace
-
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
@@ -89,9 +80,6 @@ int main(int argc, char **argv) {
                fileId.c_str(), i);
       std::string bmpPath(buf);
       filesystem::writeFile::writeFile(bmpPath, sprites[i].bmpData);
-      filesystem::writeFile::writeFile(
-          bmpPath + ".hotspot",
-          makeHotspotFile(sprites[i].hotspotX, sprites[i].hotspotY));
       written++;
     }
     std::cerr << "Wrote " << written << " sprites to " << outDir << std::endl;

@@ -11,6 +11,19 @@ using converter::decodeAmosBitmap;
 
 static constexpr size_t BANK_HEADER_SIZE = 12;
 static constexpr size_t DESCRIPTOR_SIZE = 10;
+static constexpr size_t BMP_HOTSPOT_X_OFFSET = 6;
+static constexpr size_t BMP_HOTSPOT_Y_OFFSET = 8;
+
+void writeBmpHotspot(std::vector<uint8_t> &bmp, uint16_t x, uint16_t y) {
+  if (bmp.size() < 10 || bmp[0] != 'B' || bmp[1] != 'M') {
+    return;
+  }
+
+  bmp[BMP_HOTSPOT_X_OFFSET + 0] = static_cast<uint8_t>(x & 0xFF);
+  bmp[BMP_HOTSPOT_X_OFFSET + 1] = static_cast<uint8_t>((x >> 8) & 0xFF);
+  bmp[BMP_HOTSPOT_Y_OFFSET + 0] = static_cast<uint8_t>(y & 0xFF);
+  bmp[BMP_HOTSPOT_Y_OFFSET + 1] = static_cast<uint8_t>((y >> 8) & 0xFF);
+}
 
 SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
   if (data.size() < BANK_HEADER_SIZE) {
@@ -159,6 +172,7 @@ convertToIndividualWithHotspots(const std::vector<uint8_t> &data,
         sprite.bmpData = bmpWriter::pixelsToBmp(
             img.width, img.height, img.pixels.data(), palette.data(),
             static_cast<int>(palette.size()));
+        writeBmpHotspot(sprite.bmpData, sprite.hotspotX, sprite.hotspotY);
       }
     } catch (...) {
     }

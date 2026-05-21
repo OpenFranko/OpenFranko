@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include <algorithm>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -16,81 +17,30 @@ struct ParsedHotspot {
   int y;
 };
 
-std::optional<ParsedHotspot> parseHotspotText(const std::string &text) {
-  static const std::regex numberPattern(R"([-+]?\d+)");
-
-  std::sregex_iterator it(text.begin(), text.end(), numberPattern);
-  std::sregex_iterator end;
-
-  if (it == end) {
-    return std::nullopt;
-  }
-
-  try {
-    int x = std::stoi(it->str());
-    ++it;
-    if (it == end) {
-      return std::nullopt;
-    }
-    int y = std::stoi(it->str());
-    return ParsedHotspot{x, y};
-  } catch (const std::exception &) {
-    return std::nullopt;
-  }
+uint16_t readLittleEndian16(const char *bytes) {
+  return static_cast<uint16_t>(
+      static_cast<uint8_t>(bytes[0]) |
+      (static_cast<uint16_t>(static_cast<uint8_t>(bytes[1])) << 8));
 }
 
-std::optional<ParsedHotspot> parseHotspotSidecar(const std::string &path) {
-  const std::filesystem::path framePath(path);
-  std::vector<std::filesystem::path> candidates;
-
-  candidates.emplace_back(path + ".hotspot");
-
-  auto stemSidecar = framePath;
-  stemSidecar.replace_extension(".hotspot");
-  candidates.push_back(stemSidecar);
-
-  for (const auto &candidate : candidates) {
-    if (!std::filesystem::is_regular_file(candidate)) {
-      continue;
-    }
-
-    std::ifstream file(candidate);
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-
-    if (auto hotspot = parseHotspotText(buffer.str())) {
-      return hotspot;
-    }
-
-    std::cerr << "Warning: Could not parse hotspot metadata " << candidate
-              << "\n";
-  }
-
-  return std::nullopt;
-}
-
-std::optional<ParsedHotspot> parseHotspotFilename(const std::string &path) {
-  std::string name = std::filesystem::path(path).stem().string();
-  std::string lower = name;
-  std::transform(lower.begin(), lower.end(), lower.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
-
-  size_t marker = lower.find("hotspot");
-  if (marker == std::string::npos) {
-    marker = lower.find("hot");
-  }
-  if (marker == std::string::npos) {
+std::optional<ParsedHotspot> parseHotspotBmpHeader(const std::string &path) {
+  std::ifstream file(path, std::ios::binary);
+  if (!file) {
     return std::nullopt;
   }
 
-  return parseHotspotText(name.substr(marker));
+  char header[10]{};
+  file.read(header, sizeof(header));
+  if (file.gcount() != sizeof(header) || header[0] != 'B' || header[1] != 'M') {
+    return std::nullopt;
+  }
+
+  return ParsedHotspot{readLittleEndian16(header + 6),
+                       readLittleEndian16(header + 8)};
 }
 
 ParsedHotspot parseFrameHotspot(const std::string &path) {
-  if (auto hotspot = parseHotspotSidecar(path)) {
-    return *hotspot;
-  }
-  if (auto hotspot = parseHotspotFilename(path)) {
+  if (auto hotspot = parseHotspotBmpHeader(path)) {
     return *hotspot;
   }
   return ParsedHotspot{0, 0};
