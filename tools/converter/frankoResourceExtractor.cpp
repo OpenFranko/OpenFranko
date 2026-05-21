@@ -141,18 +141,17 @@ int processFile(const std::string &inputPath, const std::string &outDir,
     try {
       auto palette = lib::converter::spriteSheet::selectPalette(fileId);
       auto sprites =
-          lib::converter::spriteSheet::convertToIndividualWithHotspots(dec,
-                                                                       palette);
+          lib::converter::spriteSheet::convertToIndividual(dec, palette);
       int idx = 0;
       for (auto &sprite : sprites) {
-        if (!sprite.bmpData.empty()) {
+        if (!sprite.empty()) {
           if (fileId == "0038" && idx >= 43 && idx <= 100) {
-            patch0038SunsetBitmap(sprite.bmpData);
+            patch0038SunsetBitmap(sprite);
           }
           char buf[32];
           snprintf(buf, sizeof(buf), "%s_%03d.bmp", fileId.c_str(), idx);
           std::string bmpName(buf);
-          outputs.push_back({bmpName, std::move(sprite.bmpData)});
+          outputs.push_back({bmpName, std::move(sprite)});
         }
         idx++;
       }

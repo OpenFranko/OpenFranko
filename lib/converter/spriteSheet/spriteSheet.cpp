@@ -6,15 +6,15 @@
 
 namespace openfranko::lib::converter::spriteSheet {
 
-using converter::DecodedImage;
 using converter::decodeAmosBitmap;
+using converter::DecodedImage;
 
 static constexpr size_t BANK_HEADER_SIZE = 12;
 static constexpr size_t DESCRIPTOR_SIZE = 10;
 static constexpr size_t BMP_HOTSPOT_X_OFFSET = 6;
 static constexpr size_t BMP_HOTSPOT_Y_OFFSET = 8;
 
-void writeBmpHotspot(std::vector<uint8_t> &bmp, uint16_t x, uint16_t y) {
+void embedBmpHotspot(std::vector<uint8_t> &bmp, uint16_t x, uint16_t y) {
   if (bmp.size() < 10 || bmp[0] != 'B' || bmp[1] != 'M') {
     return;
   }
@@ -74,13 +74,12 @@ std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
   int okCount = 0;
 
   for (uint16_t i = 0; i < header.count; i++) {
-    size_t bmPos =
-        BANK_HEADER_SIZE +
-        static_cast<size_t>(header.descriptors[i].wordOffset) * 2;
+    size_t bmPos = BANK_HEADER_SIZE +
+                   static_cast<size_t>(header.descriptors[i].wordOffset) * 2;
 
     try {
       auto img = decodeAmosBitmap(data, bmPos, palette.data(),
-                                    static_cast<int>(palette.size()));
+                                  static_cast<int>(palette.size()));
       if (!img.pixels.empty()) {
         if (img.width > maxW) {
           maxW = img.width;
@@ -133,50 +132,31 @@ std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
 std::vector<std::vector<uint8_t>>
 convertToIndividual(const std::vector<uint8_t> &data,
                     const std::vector<uint16_t> &palette) {
-  auto sprites = convertToIndividualWithHotspots(data, palette);
-
-  std::vector<std::vector<uint8_t>> results;
-  results.reserve(sprites.size());
-
-  for (auto &sprite : sprites) {
-    results.push_back(std::move(sprite.bmpData));
-  }
-
-  return results;
-}
-
-std::vector<SpriteBitmap>
-convertToIndividualWithHotspots(const std::vector<uint8_t> &data,
-                                const std::vector<uint16_t> &palette) {
   auto header = parseHeader(data);
 
-  std::vector<SpriteBitmap> results;
+  std::vector<std::vector<uint8_t>> results;
   results.reserve(header.count);
 
   for (uint16_t i = 0; i < header.count; i++) {
     const auto &descriptor = header.descriptors[i];
     size_t bmPos =
-        BANK_HEADER_SIZE +
-        static_cast<size_t>(descriptor.wordOffset) * 2;
-
-    SpriteBitmap sprite;
-    sprite.hotspotX = descriptor.hotspotX;
-    sprite.hotspotY = descriptor.hotspotY;
+        BANK_HEADER_SIZE + static_cast<size_t>(descriptor.wordOffset) * 2;
 
     try {
       auto img = decodeAmosBitmap(data, bmPos, palette.data(),
-                                    static_cast<int>(palette.size()));
+                                  static_cast<int>(palette.size()));
       if (!img.pixels.empty()) {
-        sprite.width = img.width;
-        sprite.height = img.height;
-        sprite.bmpData = bmpWriter::pixelsToBmp(
-            img.width, img.height, img.pixels.data(), palette.data(),
-            static_cast<int>(palette.size()));
-        writeBmpHotspot(sprite.bmpData, sprite.hotspotX, sprite.hotspotY);
+        auto bmp = bmpWriter::pixelsToBmp(img.width, img.height,
+                                          img.pixels.data(), palette.data(),
+                                          static_cast<int>(palette.size()));
+        embedBmpHotspot(bmp, descriptor.hotspotX, descriptor.hotspotY);
+        results.push_back(std::move(bmp));
+      } else {
+        results.emplace_back();
       }
     } catch (...) {
+      results.emplace_back();
     }
-    results.push_back(std::move(sprite));
   }
 
   return results;

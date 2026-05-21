@@ -17,9 +17,9 @@ int main(int argc, char **argv) {
     std::cerr << "Usage: " << argv[0]
               << " -i <input_file> [-o <output_dir>] [-p <palette>]"
               << std::endl;
-    std::cerr
-        << "Extracts individual sprites from a Franko sprite bank (type 0x0000)."
-        << std::endl;
+    std::cerr << "Extracts individual sprites from a Franko sprite bank (type "
+                 "0x0000)."
+              << std::endl;
     std::cerr << "Palettes: level (default), sunset, story, menu, menu35, "
                  "cemetery"
               << std::endl;
@@ -27,8 +27,7 @@ int main(int argc, char **argv) {
   }
 
   std::string inputPath = inputOptional.value();
-  std::string fileId =
-      std::filesystem::path(inputPath).filename().string();
+  std::string fileId = std::filesystem::path(inputPath).filename().string();
 
   std::string outDir = ".";
   const auto outputOptional = parser.getCmdOption("-o");
@@ -69,17 +68,16 @@ int main(int argc, char **argv) {
 
     std::filesystem::create_directories(outDir);
 
-    auto sprites =
-        converter::spriteSheet::convertToIndividualWithHotspots(dec, palette);
+    auto sprites = converter::spriteSheet::convertToIndividual(dec, palette);
     int written = 0;
     for (int i = 0; i < static_cast<int>(sprites.size()); i++) {
-      if (sprites[i].bmpData.empty())
+      if (sprites[i].empty())
         continue;
       char buf[64];
       snprintf(buf, sizeof(buf), "%s/%s_%03d.bmp", outDir.c_str(),
                fileId.c_str(), i);
       std::string bmpPath(buf);
-      filesystem::writeFile::writeFile(bmpPath, sprites[i].bmpData);
+      filesystem::writeFile::writeFile(bmpPath, sprites[i]);
       written++;
     }
     std::cerr << "Wrote " << written << " sprites to " << outDir << std::endl;

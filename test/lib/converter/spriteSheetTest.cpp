@@ -101,29 +101,6 @@ SCENARIO("parseHeader reads sprite bank header and descriptors") {
   }
 }
 
-SCENARIO("convertToIndividualWithHotspots keeps descriptor hotspots per frame") {
-  GIVEN("A bank header with two sprite descriptors") {
-    std::vector<SpriteDescriptor> descs = {
-        {100, 4, 32, 8, 16},
-        {200, 2, 16, 4, 8},
-    };
-    auto data = buildBankHeader(2, 64, 32, 16, 0x1000, descs);
-    std::vector<uint16_t> palette(pal::LEVEL.begin(), pal::LEVEL.end());
-
-    WHEN("sprites are converted with hotspot metadata") {
-      auto sprites = convertToIndividualWithHotspots(data, palette);
-
-      THEN("each bitmap result keeps the matching descriptor hotspot") {
-        REQUIRE(sprites.size() == 2);
-        REQUIRE(sprites[0].hotspotX == 8);
-        REQUIRE(sprites[0].hotspotY == 16);
-        REQUIRE(sprites[1].hotspotX == 4);
-        REQUIRE(sprites[1].hotspotY == 8);
-      }
-    }
-  }
-}
-
 SCENARIO("selectPalette returns the correct palette for known file IDs") {
   GIVEN("Known file IDs with specific palettes") {
     WHEN("selectPalette is called with '0038'") {
