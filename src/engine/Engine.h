@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -34,6 +35,18 @@ public:
   ~Engine();
 
   bool init(const std::string &title, int windowWidth, int windowHeight);
+
+  bool initAudio();
+
+  bool initTracker();
+
+  bool loadS3M(const std::string &path);
+
+  bool loadSFX(const std::string &path);
+
+  void playMusic();
+  void playSFX();
+
   void screenOpen(int screenId, int width, int height);
   void screen(int screenId);
   void loadAnimation(const std::string &name,
@@ -54,6 +67,9 @@ private:
   AnimationFrame loadFrame(const std::string &path);
 
   std::map<std::string, std::vector<AnimationFrame>> animationStates;
+
+  Mix_Music *trackerModule;
+  Mix_Chunk *soundEffect;
 
   SDL_Window *window;
   SDL_Renderer *renderer;

@@ -10,6 +10,14 @@ int main() {
     return -1;
   }
 
+  if (!engine.initAudio()) {
+    return -1;
+  }
+
+  if (!engine.initTracker()) {
+    return -1;
+  }
+
   engine.screenOpen(0, 320, 240);
 
   const std::vector<std::string> walkFramePaths = {
@@ -28,6 +36,17 @@ int main() {
 
   std::string animState = "idle";
   int currentFrameCount = 1;
+
+  if (!engine.loadS3M("assets/0259.s3m")) {
+    return -1;
+  }
+
+  if (!engine.loadSFX("assets/00FF/00FF_sam12_6573Hz.wav")) {
+    return -1;
+  }
+
+  engine.playMusic();
+  engine.playSFX();
 
   while (engine.loop()) {
     engine.cls(10, 20, 40);

@@ -75,6 +75,58 @@ bool Engine::init(const std::string &title, int windowWidth, int windowHeight) {
   return true;
 }
 
+bool Engine::initAudio() {
+  setenv("MODPLUG_RESAMPLING_MODE", "1", 1);
+
+  if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+    return false;
+  }
+
+  if (Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 1024) < 0) {
+    std::cerr << "SDL_mixer could not initialize! Mix_Error: " << Mix_GetError()
+              << std::endl;
+    SDL_Quit();
+    return false;
+  }
+  return true;
+}
+
+bool Engine::initTracker() {
+  int flags = MIX_INIT_MOD;
+  int initted = Mix_Init(flags);
+  if ((initted & flags) != flags) {
+    std::cerr << "Mix_Init: Failed to init required mod support!\n";
+    std::cerr << "Mix_Error: " << Mix_GetError() << std::endl;
+    Mix_CloseAudio();
+    SDL_Quit();
+    return false;
+  }
+  return true;
+}
+
+bool Engine::loadS3M(const std::string &path) {
+  trackerModule = Mix_LoadMUS(path.c_str());
+  if (!trackerModule) {
+    std::cerr << "Failed to load S3M file! Mix_Error: " << Mix_GetError()
+              << std::endl;
+    return false;
+  }
+  return true;
+}
+
+bool Engine::loadSFX(const std::string &path) {
+  soundEffect = Mix_LoadWAV(path.c_str());
+  if (!soundEffect) {
+    std::cerr << "Failed to load WAV! " << Mix_GetError() << std::endl;
+    return false;
+  }
+  return true;
+}
+
+void Engine::playMusic() { Mix_PlayMusic(trackerModule, -1); }
+
+void Engine::playSFX() { Mix_PlayChannel(-1, soundEffect, 0); }
+
 void Engine::screenOpen(int screenId, int width, int height) {
   SDL_Texture *target =
       SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
@@ -214,6 +266,12 @@ void Engine::shutdown() {
   if (window)
     SDL_DestroyWindow(window);
   IMG_Quit();
+
+  Mix_FreeChunk(soundEffect);
+  Mix_FreeMusic(trackerModule);
+  Mix_Quit();
+  Mix_CloseAudio();
+
   SDL_Quit();
 }
 
