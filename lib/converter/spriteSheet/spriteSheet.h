@@ -28,6 +28,14 @@ struct SpriteBankHeader {
   std::vector<SpriteDescriptor> descriptors;
 };
 
+struct SpriteBitmap {
+  std::vector<uint8_t> bmpData;
+  uint16_t width = 0;
+  uint16_t height = 0;
+  uint16_t hotspotX = 0;
+  uint16_t hotspotY = 0;
+};
+
 SpriteBankHeader parseHeader(const std::vector<uint8_t> &data);
 
 std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &decompressedData,
@@ -37,6 +45,10 @@ std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &decompressedData
 std::vector<std::vector<uint8_t>>
 convertToIndividual(const std::vector<uint8_t> &decompressedData,
                     const std::vector<uint16_t> &palette);
+
+std::vector<SpriteBitmap>
+convertToIndividualWithHotspots(const std::vector<uint8_t> &decompressedData,
+                                const std::vector<uint16_t> &palette);
 
 std::vector<uint16_t> selectPalette(const std::string &fileId);
 

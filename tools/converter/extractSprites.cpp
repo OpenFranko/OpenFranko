@@ -9,6 +9,15 @@
 
 using namespace openfranko::lib;
 
+namespace {
+
+std::vector<uint8_t> makeHotspotFile(uint16_t x, uint16_t y) {
+  std::string text = std::to_string(x) + " " + std::to_string(y) + "\n";
+  return {text.begin(), text.end()};
+}
+
+} // namespace
+
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
@@ -69,15 +78,20 @@ int main(int argc, char **argv) {
 
     std::filesystem::create_directories(outDir);
 
-    auto bmps = converter::spriteSheet::convertToIndividual(dec, palette);
+    auto sprites =
+        converter::spriteSheet::convertToIndividualWithHotspots(dec, palette);
     int written = 0;
-    for (int i = 0; i < static_cast<int>(bmps.size()); i++) {
-      if (bmps[i].empty())
+    for (int i = 0; i < static_cast<int>(sprites.size()); i++) {
+      if (sprites[i].bmpData.empty())
         continue;
       char buf[64];
       snprintf(buf, sizeof(buf), "%s/%s_%03d.bmp", outDir.c_str(),
                fileId.c_str(), i);
-      filesystem::writeFile::writeFile(std::string(buf), bmps[i]);
+      std::string bmpPath(buf);
+      filesystem::writeFile::writeFile(bmpPath, sprites[i].bmpData);
+      filesystem::writeFile::writeFile(
+          bmpPath + ".hotspot",
+          makeHotspotFile(sprites[i].hotspotX, sprites[i].hotspotY));
       written++;
     }
     std::cerr << "Wrote " << written << " sprites to " << outDir << std::endl;

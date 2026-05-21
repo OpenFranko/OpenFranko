@@ -120,29 +120,49 @@ std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
 std::vector<std::vector<uint8_t>>
 convertToIndividual(const std::vector<uint8_t> &data,
                     const std::vector<uint16_t> &palette) {
-  auto header = parseHeader(data);
+  auto sprites = convertToIndividualWithHotspots(data, palette);
 
   std::vector<std::vector<uint8_t>> results;
+  results.reserve(sprites.size());
+
+  for (auto &sprite : sprites) {
+    results.push_back(std::move(sprite.bmpData));
+  }
+
+  return results;
+}
+
+std::vector<SpriteBitmap>
+convertToIndividualWithHotspots(const std::vector<uint8_t> &data,
+                                const std::vector<uint16_t> &palette) {
+  auto header = parseHeader(data);
+
+  std::vector<SpriteBitmap> results;
   results.reserve(header.count);
 
   for (uint16_t i = 0; i < header.count; i++) {
+    const auto &descriptor = header.descriptors[i];
     size_t bmPos =
         BANK_HEADER_SIZE +
-        static_cast<size_t>(header.descriptors[i].wordOffset) * 2;
+        static_cast<size_t>(descriptor.wordOffset) * 2;
+
+    SpriteBitmap sprite;
+    sprite.hotspotX = descriptor.hotspotX;
+    sprite.hotspotY = descriptor.hotspotY;
 
     try {
       auto img = decodeAmosBitmap(data, bmPos, palette.data(),
                                     static_cast<int>(palette.size()));
       if (!img.pixels.empty()) {
-        results.push_back(bmpWriter::pixelsToBmp(
+        sprite.width = img.width;
+        sprite.height = img.height;
+        sprite.bmpData = bmpWriter::pixelsToBmp(
             img.width, img.height, img.pixels.data(), palette.data(),
-            static_cast<int>(palette.size())));
-      } else {
-        results.push_back({});
+            static_cast<int>(palette.size()));
       }
     } catch (...) {
-      results.push_back({});
     }
+    results.push_back(std::move(sprite));
   }
 
   return results;
