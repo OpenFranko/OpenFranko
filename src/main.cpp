@@ -6,27 +6,24 @@ int main() {
 
   engine::Engine engine;
 
-  if (!engine.init("OpenFranko", 800, 600)) {
-    return -1;
-  }
-
-  if (!engine.initAudio()) {
-    return -1;
-  }
-
-  if (!engine.initTracker()) {
-    return -1;
-  }
-
-  engine.screenOpen(0, 320, 240);
+  engine.videoSystem.createScreen(0, 320, 240);
+  engine.videoSystem.switchScreen(0);
 
   const std::vector<std::string> walkFramePaths = {
       "assets/00FF/00FF_000.bmp", "assets/00FF/00FF_001.bmp",
       "assets/00FF/00FF_002.bmp", "assets/00FF/00FF_003.bmp",
       "assets/00FF/00FF_004.bmp", "assets/00FF/00FF_005.bmp"};
 
-  engine.loadAnimation("idle", {"assets/00FF/00FF_006.bmp"});
-  engine.loadAnimation("walk", walkFramePaths);
+  engine.videoSystem.loadAnimation("idle", {"assets/00FF/00FF_006.bmp"});
+  engine.videoSystem.loadAnimation("walk", walkFramePaths);
+
+  engine.videoSystem.loadBackground("assets/0388.bmp");
+
+  engine.audioSystem.loadMusic("assets/0259.s3m");
+  engine.audioSystem.loadSFX("ready", "assets/00FF/00FF_sam12_6573Hz.wav");
+
+  engine.audioSystem.playMusic();
+  engine.audioSystem.playSFX("ready");
 
   int playerX = 150;
   int playerY = 180;
@@ -37,22 +34,7 @@ int main() {
   std::string animState = "idle";
   int currentFrameCount = 1;
 
-  engine.loadBackground("assets/0388.bmp");
-
-  if (!engine.loadS3M("assets/0259.s3m")) {
-    return -1;
-  }
-
-  if (!engine.loadSFX("assets/00FF/00FF_sam12_6573Hz.wav")) {
-    return -1;
-  }
-
-  engine.playMusic();
-  engine.playSFX();
-
-  while (engine.loop()) {
-    engine.cls(10, 20, 40);
-
+  while (engine.isRunning()) {
     const Uint8 *keys = SDL_GetKeyboardState(nullptr);
     bool moving = false;
 
@@ -93,11 +75,12 @@ int main() {
       animFrame = 0;
     }
 
-    engine.drawBackground();
+    engine.videoSystem.drawBackground();
 
-    engine.sprite(animState, playerX, playerY, animFrame, flipState);
+    engine.videoSystem.drawAnimationFrame(animState, playerX, playerY,
+                                          animFrame, flipState);
 
-    engine.sync();
+    engine.videoSystem.sync();
   }
   return 0;
 }
