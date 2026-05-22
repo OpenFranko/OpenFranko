@@ -1,10 +1,10 @@
 #ifndef ENGINE_ENGINE_H_
 #define ENGINE_ENGINE_H_
 
+#include "../player/Player.h"
 #include "../systems/AudioSystem.h"
+#include "../systems/ControllerSystem.h"
 #include "../systems/VideoSystem.h"
-#include <SDL2/SDL_mixer.h>
-#include <string>
 
 namespace openfranko {
 namespace src {
@@ -12,21 +12,22 @@ namespace engine {
 
 class Engine {
 public:
-  static SDL_Event event;
-
   Engine();
   ~Engine();
 
   bool isRunning();
 
-  systems::VideoSystem videoSystem;
-  systems::AudioSystem audioSystem;
+  void update();
 
 private:
+  SDL_Event event;
   bool running;
-};
+  systems::VideoSystem videoSystem;
+  systems::AudioSystem audioSystem;
+  systems::ControllerSystem controllerSystem;
 
-inline SDL_Event Engine::event;
+  player::Player player;
+};
 
 } // namespace engine
 } // namespace src
