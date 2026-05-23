@@ -64,7 +64,7 @@ void Player::animate() {
     currentFrameCount = 1;
   }
 
-  if (moving && SDL_GetTicks() - lastTime > 100) {
+  if (moving && SDL_GetTicks() - lastTime > 120) {
     animFrame++;
     if (animFrame >= currentFrameCount) {
       animFrame = 0;
