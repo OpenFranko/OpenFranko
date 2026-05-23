@@ -32,7 +32,6 @@ private:
 
   std::string animState = "idle";
   int currentFrameCount = 1;
-  bool moving = false;
 };
 
 } // namespace player

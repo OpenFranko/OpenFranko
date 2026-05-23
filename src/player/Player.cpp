@@ -12,6 +12,8 @@ const std::vector<std::string> walkFramePaths = {
 
 const std::vector<std::string> idleFramePaths = {"assets/00FF/00FF_006.bmp"};
 
+constexpr auto ANIMATION_DELAY = 120;
+
 } // namespace
 
 Player::Player(systems::VideoSystem &videoSystem,
@@ -33,44 +35,40 @@ void Player::draw() {
 
 void Player::move() {
   auto buttons = m_controllerSystem.states;
-  moving = false;
+  animState = "idle";
+  currentFrameCount = idleFramePaths.size();
 
   if (buttons.up) {
     y--;
-    moving = true;
+    animState = "walk";
+    currentFrameCount = walkFramePaths.size();
   }
   if (buttons.down) {
     y++;
-    moving = true;
+    animState = "walk";
+    currentFrameCount = walkFramePaths.size();
   }
   if (buttons.left) {
     x--;
-    moving = true;
+    animState = "walk";
+    currentFrameCount = walkFramePaths.size();
     flipState = SDL_FLIP_HORIZONTAL;
   }
   if (buttons.right) {
     x++;
-    moving = true;
+    animState = "walk";
+    currentFrameCount = walkFramePaths.size();
     flipState = SDL_FLIP_NONE;
   }
 }
 
 void Player::animate() {
-  if (moving) {
-    animState = "walk";
-    currentFrameCount = walkFramePaths.size();
-  } else {
-    animState = "idle";
-    currentFrameCount = 1;
+  if (SDL_GetTicks() - lastTime > ANIMATION_DELAY) {
+    animFrame++;
+    lastTime = SDL_GetTicks();
   }
 
-  if (moving && SDL_GetTicks() - lastTime > 120) {
-    animFrame++;
-    if (animFrame >= currentFrameCount) {
-      animFrame = 0;
-    }
-    lastTime = SDL_GetTicks();
-  } else if (!moving) {
+  if (animFrame >= currentFrameCount) {
     animFrame = 0;
   }
 }
