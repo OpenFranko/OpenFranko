@@ -16,12 +16,15 @@ Install dependencies:
 Debian/Ubuntu
 
 ```
+sudo apt update
+sudo apt upgrade
 sudo apt install build-essential cmake git libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev catch2
 ```
 
 Arch
 
 ```
+sudo pacman -Syu
 sudo pacman -S base-devel cmake git sdl2 sdl2_image sdl2_mixer catch2
 ```
 
