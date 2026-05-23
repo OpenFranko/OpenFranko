@@ -170,6 +170,16 @@ void VideoSystem::drawAnimationFrame(const std::string &name, int x, int y,
                    flip);
 }
 
+size_t VideoSystem::getAnimationSize(const std::string &name) {
+  if (animationStates.find(name) == animationStates.end()) {
+    return 0;
+  }
+
+  const auto frames = animationStates.at(name);
+
+  return frames.size();
+}
+
 void VideoSystem::drawBackground() {
   int width = 0;
   int height = 0;

@@ -35,29 +35,24 @@ void Player::draw() {
 
 void Player::move() {
   auto buttons = m_controllerSystem.states;
-  animState = "idle";
-  currentFrameCount = idleFramePaths.size();
+  setAnimationState("idle");
 
   if (buttons.up) {
     y--;
-    animState = "walk";
-    currentFrameCount = walkFramePaths.size();
+    setAnimationState("walk");
   }
   if (buttons.down) {
     y++;
-    animState = "walk";
-    currentFrameCount = walkFramePaths.size();
+    setAnimationState("walk");
   }
   if (buttons.left) {
     x--;
-    animState = "walk";
-    currentFrameCount = walkFramePaths.size();
+    setAnimationState("walk");
     flipState = SDL_FLIP_HORIZONTAL;
   }
   if (buttons.right) {
     x++;
-    animState = "walk";
-    currentFrameCount = walkFramePaths.size();
+    setAnimationState("walk");
     flipState = SDL_FLIP_NONE;
   }
 }
@@ -71,6 +66,11 @@ void Player::animate() {
   if (animFrame >= currentFrameCount) {
     animFrame = 0;
   }
+}
+
+void Player::setAnimationState(const std::string &name) {
+  animState = name;
+  currentFrameCount = m_videoSystem.getAnimationSize(name);
 }
 
 } // namespace openfranko::src::player

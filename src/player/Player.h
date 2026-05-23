@@ -21,6 +21,8 @@ private:
   void move();
   void animate();
 
+  void setAnimationState(const std::string &name);
+
   systems::VideoSystem &m_videoSystem;
   systems::ControllerSystem &m_controllerSystem;
 

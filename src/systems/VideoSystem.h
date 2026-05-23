@@ -31,6 +31,8 @@ public:
   void drawAnimationFrame(const std::string &name, int x, int y, int frame,
                           SDL_RendererFlip flip = SDL_FLIP_NONE);
 
+  size_t getAnimationSize(const std::string &name);
+
   void drawBackground();
 
   void sync();
