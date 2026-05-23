@@ -40,7 +40,7 @@ cmake --build -j $(nproc)
 
 Executables can be located in the build directory
 
-### FrankoExtract
+# FrankoExtract
 
 it's a tool to extract graphics/sounds/music from original franko game data.
 
