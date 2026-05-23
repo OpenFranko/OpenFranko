@@ -140,17 +140,18 @@ int processFile(const std::string &inputPath, const std::string &outDir,
   case lib::converter::gameData::resourceTypes::SPRITES: {
     try {
       auto palette = lib::converter::spriteSheet::selectPalette(fileId);
-      auto bmps =
+      auto sprites =
           lib::converter::spriteSheet::convertToIndividual(dec, palette);
       int idx = 0;
-      for (auto &bmp : bmps) {
-        if (!bmp.empty()) {
+      for (auto &sprite : sprites) {
+        if (!sprite.empty()) {
           if (fileId == "0038" && idx >= 43 && idx <= 100) {
-            patch0038SunsetBitmap(bmp);
+            patch0038SunsetBitmap(sprite);
           }
           char buf[32];
           snprintf(buf, sizeof(buf), "%s_%03d.bmp", fileId.c_str(), idx);
-          outputs.push_back({std::string(buf), std::move(bmp)});
+          std::string bmpName(buf);
+          outputs.push_back({bmpName, std::move(sprite)});
         }
         idx++;
       }
