@@ -38,6 +38,13 @@ cmake -DBUILD_TOOLS=ON ..
 cmake --build -j $(nproc)
 ```
 
+To enable tests add `-DBUILD_TESTS=ON` to `cmake -DBUILD_TOOLS=ON ..`
+Tests can be launched by:
+
+```
+ctest --output-on-failure
+```
+
 Executables can be located in the build directory
 
 # FrankoExtract
