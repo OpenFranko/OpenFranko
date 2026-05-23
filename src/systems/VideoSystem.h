@@ -37,6 +37,10 @@ public:
 
   void sync();
 
+  bool checkPixelCollision(const std::string &nameA, int frameA, int xA, int yA,
+                           SDL_RendererFlip flipA, const std::string &nameB,
+                           int frameB, int xB, int yB, SDL_RendererFlip flipB);
+
 private:
   struct VirtualScreen {
     int id;
@@ -50,9 +54,8 @@ private:
     int height;
     int hotspotX;
     int hotspotY;
+    std::map<int, std::vector<uint8_t>> solidPixels;
   };
-
-  SDL_Texture *loadTexture(const char *fileName);
 
   AnimationFrame loadFrame(const std::string &path);
 

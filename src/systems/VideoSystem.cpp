@@ -221,25 +221,150 @@ void VideoSystem::sync() {
   SDL_SetRenderTarget(renderer, activeScr.targetTexture);
 }
 
-SDL_Texture *VideoSystem::loadTexture(const char *fileName) {
-  SDL_Surface *tempSurface = IMG_Load(fileName);
-  Uint32 colorKey = SDL_MapRGB(tempSurface->format, 85, 85, 85);
+VideoSystem::AnimationFrame VideoSystem::loadFrame(const std::string &path) {
 
+  SDL_Surface *tempSurface = IMG_Load(path.c_str());
+  if (!tempSurface) {
+    throwError("Failed to load frame: " + path);
+  }
+
+  uint32_t colorKey = SDL_MapRGB(tempSurface->format, 85, 85, 85);
   SDL_SetColorKey(tempSurface, SDL_TRUE, colorKey);
+
+  int width = tempSurface->w;
+  int height = tempSurface->h;
+
+  std::map<int, std::vector<uint8_t>> solidPixels;
+
+  if (SDL_MUSTLOCK(tempSurface))
+    SDL_LockSurface(tempSurface);
+
+  uint8_t bytesPerPixel = tempSurface->format->BytesPerPixel;
+  uint8_t *pixels = static_cast<uint8_t *>(tempSurface->pixels);
+
+  for (int y = 0; y < height; ++y) {
+    std::vector<uint8_t> row(width, 0);
+    bool rowHasSolidPixels = false;
+
+    for (int x = 0; x < width; ++x) {
+      uint8_t *p = pixels + y * tempSurface->pitch + x * bytesPerPixel;
+      uint32_t pixelData = 0;
+
+      switch (bytesPerPixel) {
+      case 1:
+        pixelData = *p;
+        break;
+      case 2:
+        pixelData = *reinterpret_cast<uint16_t *>(p);
+        break;
+      case 3:
+        if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
+          pixelData = p[0] << 16 | p[1] << 8 | p[2];
+        else
+          pixelData = p[0] | p[1] << 8 | p[2] << 16;
+        break;
+      case 4:
+        pixelData = *reinterpret_cast<uint32_t *>(p);
+        break;
+      }
+
+      uint8_t r, g, b, a;
+      SDL_GetRGBA(pixelData, tempSurface->format, &r, &g, &b, &a);
+
+      bool isTransparent = (r == 85 && g == 85 && b == 85) || (a == 0);
+
+      if (!isTransparent) {
+        row[x] = 1;
+        rowHasSolidPixels = true;
+      }
+    }
+
+    if (rowHasSolidPixels) {
+      solidPixels[y] = row;
+    }
+  }
+
+  if (SDL_MUSTLOCK(tempSurface))
+    SDL_UnlockSurface(tempSurface);
 
   SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, tempSurface);
   SDL_FreeSurface(tempSurface);
-  return tex;
-}
 
-VideoSystem::AnimationFrame VideoSystem::loadFrame(const std::string &path) {
-  SDL_Texture *tex = loadTexture(path.c_str());
-
-  int width, height;
-  SDL_QueryTexture(tex, nullptr, nullptr, &width, &height);
   auto hotspot = parseFrameHotspot(path);
 
-  return AnimationFrame{tex, width, height, hotspot.first, hotspot.second};
+  return AnimationFrame{tex,           width,          height,
+                        hotspot.first, hotspot.second, solidPixels};
+}
+
+bool VideoSystem::checkPixelCollision(const std::string &nameA, int frameA,
+                                      int xA, int yA, SDL_RendererFlip flipA,
+                                      const std::string &nameB, int frameB,
+                                      int xB, int yB, SDL_RendererFlip flipB) {
+  if (animationStates.find(nameA) == animationStates.end() ||
+      animationStates.find(nameB) == animationStates.end()) {
+    return false;
+  }
+
+  const auto &animFrameA = animationStates.at(nameA)[frameA];
+  const auto &animFrameB = animationStates.at(nameB)[frameB];
+
+  int hotXA = (flipA & SDL_FLIP_HORIZONTAL)
+                  ? (animFrameA.width - animFrameA.hotspotX)
+                  : animFrameA.hotspotX;
+  int hotYA = (flipA & SDL_FLIP_VERTICAL)
+                  ? (animFrameA.height - animFrameA.hotspotY)
+                  : animFrameA.hotspotY;
+  SDL_Rect dstA = {xA - hotXA, yA - hotYA, animFrameA.width, animFrameA.height};
+
+  int hotXB = (flipB & SDL_FLIP_HORIZONTAL)
+                  ? (animFrameB.width - animFrameB.hotspotX)
+                  : animFrameB.hotspotX;
+  int hotYB = (flipB & SDL_FLIP_VERTICAL)
+                  ? (animFrameB.height - animFrameB.hotspotY)
+                  : animFrameB.hotspotY;
+  SDL_Rect dstB = {xB - hotXB, yB - hotYB, animFrameB.width, animFrameB.height};
+
+  SDL_Rect intersect;
+  if (!SDL_IntersectRect(&dstA, &dstB, &intersect)) {
+    return false;
+  }
+
+  for (int y = intersect.y; y < intersect.y + intersect.h; ++y) {
+    int localYA = y - dstA.y;
+    int localYB = y - dstB.y;
+
+    if (flipA & SDL_FLIP_VERTICAL)
+      localYA = animFrameA.height - 1 - localYA;
+    if (flipB & SDL_FLIP_VERTICAL)
+      localYB = animFrameB.height - 1 - localYB;
+
+    auto rowItA = animFrameA.solidPixels.find(localYA);
+    if (rowItA == animFrameA.solidPixels.end())
+      continue;
+
+    auto rowItB = animFrameB.solidPixels.find(localYB);
+    if (rowItB == animFrameB.solidPixels.end())
+      continue;
+
+    const std::vector<uint8_t> &rowA = rowItA->second;
+    const std::vector<uint8_t> &rowB = rowItB->second;
+
+    for (int x = intersect.x; x < intersect.x + intersect.w; ++x) {
+      int localXA = x - dstA.x;
+      int localXB = x - dstB.x;
+
+      if (flipA & SDL_FLIP_HORIZONTAL)
+        localXA = animFrameA.width - 1 - localXA;
+      if (flipB & SDL_FLIP_HORIZONTAL)
+        localXB = animFrameB.width - 1 - localXB;
+
+      if (rowA[localXA] && rowB[localXB]) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 } // namespace openfranko::src::systems
