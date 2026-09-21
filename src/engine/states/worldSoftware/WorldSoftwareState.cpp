@@ -1,6 +1,6 @@
 #include "WorldSoftwareState.h"
 
-namespace openfranko::src::engine::states {
+namespace openfranko::src::engine::states::worldSoftware {
 
 WorldSoftwareState::WorldSoftwareState(systems::VideoSystem &videoSystem)
     : m_videoSystem(videoSystem) {
@@ -19,4 +19,4 @@ std::optional<EngineStateEnum> WorldSoftwareState::update() {
   return std::nullopt;
 }
 
-} // namespace openfranko::src::engine::states
+} // namespace openfranko::src::engine::states::worldSoftware

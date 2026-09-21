@@ -8,6 +8,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace states {
+namespace worldSoftware {
 
 class WorldSoftwareState : public IEngineState {
 public:
@@ -20,6 +21,7 @@ private:
   systems::VideoSystem m_videoSystem;
 };
 
+} // namespace worldSoftware
 } // namespace states
 } // namespace engine
 } // namespace src

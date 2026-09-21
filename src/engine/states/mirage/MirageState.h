@@ -9,6 +9,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace states {
+namespace mirage {
 
 class MirageState : public IEngineState {
 public:
@@ -23,6 +24,7 @@ private:
   systems::ControllerSystem &m_controllerSystem;
 };
 
+} // namespace mirage
 } // namespace states
 } // namespace engine
 } // namespace src

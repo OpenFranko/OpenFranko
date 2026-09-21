@@ -1,6 +1,6 @@
 #include "MirageState.h"
 
-namespace openfranko::src::engine::states {
+namespace openfranko::src::engine::states::mirage {
 
 MirageState::MirageState(systems::VideoSystem &videoSystem,
                          systems::ControllerSystem &controllerSystem)
@@ -21,4 +21,4 @@ std::optional<EngineStateEnum> MirageState::update() {
   return std::nullopt;
 }
 
-} // namespace openfranko::src::engine::states
+} // namespace openfranko::src::engine::states::mirage

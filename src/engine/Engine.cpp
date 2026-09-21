@@ -5,8 +5,8 @@
 namespace openfranko::src::engine {
 
 Engine::Engine()
-    : currentState(
-          std::make_unique<states::MirageState>(videoSystem, controllerSystem)),
+    : currentState(std::make_unique<states::mirage::MirageState>(
+          videoSystem, controllerSystem)),
       running(true) {
   videoSystem.createScreen(0, 320, 240);
   videoSystem.switchScreen(0);
@@ -42,11 +42,12 @@ void Engine::switchState(states::EngineStateEnum nextState) {
 
   switch (nextState) {
   case states::EngineStateEnum::Mirage:
-    currentState =
-        std::make_unique<states::MirageState>(videoSystem, controllerSystem);
+    currentState = std::make_unique<states::mirage::MirageState>(
+        videoSystem, controllerSystem);
     break;
   case states::EngineStateEnum::WorldSoftware:
-    currentState = std::make_unique<states::WorldSoftwareState>(videoSystem);
+    currentState = std::make_unique<states::worldSoftware::WorldSoftwareState>(
+        videoSystem);
     break;
   }
 }
