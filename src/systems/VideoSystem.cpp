@@ -99,7 +99,21 @@ void VideoSystem::createScreen(int screenId, int width, int height) {
       SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
                         SDL_TEXTUREACCESS_TARGET, width, height);
 
+  SDL_SetTextureBlendMode(target, SDL_BLENDMODE_BLEND);
+
   screens[screenId] = {screenId, width, height, target};
+}
+
+void VideoSystem::fillScreen(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+  if (a < 255) {
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+  } else {
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+  }
+
+  SDL_SetRenderDrawColor(renderer, r, g, b, a);
+
+  SDL_RenderFillRect(renderer, nullptr);
 }
 
 void VideoSystem::switchScreen(int screenId) {
@@ -141,9 +155,10 @@ void VideoSystem::sync() {
   SDL_SetRenderTarget(renderer, activeScr.targetTexture);
 }
 
-void VideoSystem::loadImage(const std::string &name, const std::string &path) {
+void VideoSystem::loadImage(const std::string &name, const std::string &path,
+                            bool applyColorKey) {
   clearImage(name);
-  imageStates.emplace(name, loadImageFile(path));
+  imageStates.emplace(name, loadImageFile(path, applyColorKey));
 }
 
 void VideoSystem::clearImage(const std::string &name) {
@@ -183,14 +198,17 @@ void VideoSystem::drawImage(const std::string &name, int x, int y,
                    flip);
 }
 
-VideoSystem::Image VideoSystem::loadImageFile(const std::string &path) {
+VideoSystem::Image VideoSystem::loadImageFile(const std::string &path,
+                                              bool applyColorKey) {
   SDL_Surface *tempSurface = IMG_Load(path.c_str());
   if (!tempSurface) {
     throwError("Failed to load image: " + path);
   }
 
-  uint32_t colorKey = SDL_MapRGB(tempSurface->format, 85, 85, 85);
-  SDL_SetColorKey(tempSurface, SDL_TRUE, colorKey);
+  if (applyColorKey) {
+    uint32_t colorKey = SDL_MapRGB(tempSurface->format, 85, 85, 85);
+    SDL_SetColorKey(tempSurface, SDL_TRUE, colorKey);
+  }
 
   SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, tempSurface);
   int width = tempSurface->w;

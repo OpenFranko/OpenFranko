@@ -18,9 +18,11 @@ public:
 
   void createScreen(int screenId, int width, int height);
   void switchScreen(int screenId);
+  void fillScreen(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
   void sync();
 
-  void loadImage(const std::string &name, const std::string &path);
+  void loadImage(const std::string &name, const std::string &path,
+                 bool applyColorKey = false);
   void clearImage(const std::string &name);
   void drawImage(const std::string &name, int x, int y,
                  SDL_RendererFlip flip = SDL_FLIP_NONE);
@@ -40,7 +42,7 @@ private:
     int hotspotY = 0;
   };
 
-  Image loadImageFile(const std::string &path);
+  Image loadImageFile(const std::string &path, bool applyColorKey);
 
   std::map<std::string, Image> imageStates;
   std::unordered_map<int, VirtualScreen> screens;
