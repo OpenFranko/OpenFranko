@@ -95,13 +95,54 @@ VideoSystem::~VideoSystem() {
 }
 
 void VideoSystem::createScreen(int screenId, int width, int height) {
+  auto it = screens.find(screenId);
+  if (it != screens.end()) {
+    if (it->second.targetTexture) {
+      SDL_DestroyTexture(it->second.targetTexture);
+    }
+  }
+
   SDL_Texture *target =
       SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
                         SDL_TEXTUREACCESS_TARGET, width, height);
 
+  if (!target) {
+    throwError("Failed to create screen texture: " +
+               std::string(SDL_GetError()));
+  }
+
   SDL_SetTextureBlendMode(target, SDL_BLENDMODE_BLEND);
 
   screens[screenId] = {screenId, width, height, target};
+
+  if (currentScreenId == screenId) {
+    SDL_SetRenderTarget(renderer, target);
+  }
+}
+
+void VideoSystem::switchScreen(int screenId) {
+  if (screens.find(screenId) != screens.end()) {
+    currentScreenId = screenId;
+    SDL_SetRenderTarget(renderer, screens[currentScreenId].targetTexture);
+  }
+}
+
+void VideoSystem::destroyScreen(int screenId) {
+  auto it = screens.find(screenId);
+
+  if (it == screens.end()) {
+    return;
+  }
+
+  if (currentScreenId == screenId) {
+    SDL_SetRenderTarget(renderer, nullptr);
+  }
+
+  if (it->second.targetTexture) {
+    SDL_DestroyTexture(it->second.targetTexture);
+  }
+
+  screens.erase(it);
 }
 
 void VideoSystem::fillScreen(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -116,19 +157,20 @@ void VideoSystem::fillScreen(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
   SDL_RenderFillRect(renderer, nullptr);
 }
 
-void VideoSystem::switchScreen(int screenId) {
-  if (screens.find(screenId) != screens.end()) {
-    currentScreenId = screenId;
-    SDL_SetRenderTarget(renderer, screens[currentScreenId].targetTexture);
-  }
-}
-
 void VideoSystem::sync() {
   SDL_SetRenderTarget(renderer, nullptr);
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
   SDL_RenderClear(renderer);
 
-  auto &activeScr = screens[currentScreenId];
+  auto it = screens.find(currentScreenId);
+
+  if (it == screens.end() || !it->second.targetTexture ||
+      it->second.height == 0) {
+    SDL_RenderPresent(renderer);
+    return;
+  }
+
+  const auto &activeScr = it->second;
 
   int windowWidth, windowHeight;
   SDL_GetWindowSize(window, &windowWidth, &windowHeight);
