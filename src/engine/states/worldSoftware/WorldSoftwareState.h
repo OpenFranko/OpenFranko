@@ -1,7 +1,7 @@
 #ifndef ENGINE_STATES_WORLDSOFTWARESTATE_H_
 #define ENGINE_STATES_WORLDSOFTWARESTATE_H_
 
-#include "../../systems/VideoSystem.h"
+#include "../../../systems/VideoSystem.h"
 #include "../IEngineState.h"
 
 namespace openfranko {

@@ -4,7 +4,7 @@
 #include "../systems/AudioSystem.h"
 #include "../systems/ControllerSystem.h"
 #include "../systems/VideoSystem.h"
-#include "IEngineState.h"
+#include "states/IEngineState.h"
 
 #include <memory>
 
@@ -24,14 +24,14 @@ public:
 private:
   void updateState();
 
-  void switchState(EngineStateEnum nextState);
+  void switchState(states::EngineStateEnum nextState);
 
   SDL_Event event;
   systems::VideoSystem videoSystem;
   systems::AudioSystem audioSystem;
   systems::ControllerSystem controllerSystem;
 
-  std::unique_ptr<IEngineState> currentState;
+  std::unique_ptr<states::IEngineState> currentState;
   bool running;
 };
 

@@ -1,6 +1,6 @@
 #include "Engine.h"
-#include "states/MirageState.h"
-#include "states/WorldSoftwareState.h"
+#include "states/mirage/MirageState.h"
+#include "states/worldSoftware/WorldSoftwareState.h"
 
 namespace openfranko::src::engine {
 
@@ -37,15 +37,15 @@ void Engine::updateState() {
   }
 }
 
-void Engine::switchState(EngineStateEnum nextState) {
+void Engine::switchState(states::EngineStateEnum nextState) {
   currentState.reset();
 
   switch (nextState) {
-  case EngineStateEnum::Mirage:
+  case states::EngineStateEnum::Mirage:
     currentState =
         std::make_unique<states::MirageState>(videoSystem, controllerSystem);
     break;
-  case EngineStateEnum::WorldSoftware:
+  case states::EngineStateEnum::WorldSoftware:
     currentState = std::make_unique<states::WorldSoftwareState>(videoSystem);
     break;
   }

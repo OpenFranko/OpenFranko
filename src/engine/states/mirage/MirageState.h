@@ -1,8 +1,8 @@
 #ifndef ENGINE_STATES_MIRAGESTATE_H_
 #define ENGINE_STATES_MIRAGESTATE_H_
 
-#include "../../systems/ControllerSystem.h"
-#include "../../systems/VideoSystem.h"
+#include "../../../systems/ControllerSystem.h"
+#include "../../../systems/VideoSystem.h"
 #include "../IEngineState.h"
 
 namespace openfranko {
