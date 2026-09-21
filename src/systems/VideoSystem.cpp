@@ -4,8 +4,9 @@
 
 namespace openfranko::src::systems {
 namespace {
+
 void throwError(const std::string &cause) {
-  throw std::runtime_error("Video system could not be initialised!: " + cause);
+  throw std::runtime_error("Video system error: " + cause);
 }
 
 constexpr auto WINDOW_NAME = "OpenFranko";
@@ -18,7 +19,7 @@ uint16_t readUint16LittleEndian(const char *bytes) {
       (static_cast<uint16_t>(static_cast<uint8_t>(bytes[1])) << 8));
 }
 
-std::pair<int, int> parseFrameHotspot(const std::string &path) {
+std::pair<int, int> parseImageHotspot(const std::string &path) {
   auto hotspotValues = std::make_pair(0, 0);
 
   std::ifstream file(path, std::ios::binary);
@@ -43,11 +44,11 @@ std::pair<int, int> parseFrameHotspot(const std::string &path) {
 VideoSystem::VideoSystem()
     : window(nullptr), renderer(nullptr), currentScreenId(0) {
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
-    throwError("SDL");
+    throwError("SDL initialization failed");
   }
 
   if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
-    throwError("IMG");
+    throwError("SDL_image initialization failed");
   }
 
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
@@ -57,35 +58,39 @@ VideoSystem::VideoSystem()
                             SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 
   if (!window) {
-    throwError("Window");
+    throwError("Window creation failed");
   }
 
   renderer = SDL_CreateRenderer(
       window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
   if (!renderer) {
-    throwError("Renderer");
+    throwError("Renderer creation failed");
   }
 }
 
 VideoSystem::~VideoSystem() {
-  for (auto &state : animationStates) {
-    for (auto &frame : state.second) {
-      SDL_DestroyTexture(frame.texture);
+  for (auto &pair : imageStates) {
+    if (pair.second.texture) {
+      SDL_DestroyTexture(pair.second.texture);
     }
   }
 
-  SDL_DestroyTexture(background);
-
   for (auto &pair : screens) {
-    SDL_DestroyTexture(pair.second.targetTexture);
+    if (pair.second.targetTexture) {
+      SDL_DestroyTexture(pair.second.targetTexture);
+    }
   }
-  animationStates.clear();
+
+  imageStates.clear();
   screens.clear();
 
-  if (renderer)
+  if (renderer) {
     SDL_DestroyRenderer(renderer);
-  if (window)
+  }
+  if (window) {
     SDL_DestroyWindow(window);
+  }
+
   IMG_Quit();
 }
 
@@ -102,91 +107,6 @@ void VideoSystem::switchScreen(int screenId) {
     currentScreenId = screenId;
     SDL_SetRenderTarget(renderer, screens[currentScreenId].targetTexture);
   }
-}
-
-void VideoSystem::loadAnimation(const std::string &name,
-                                const std::vector<std::string> &framePaths) {
-  std::vector<AnimationFrame> frames;
-
-  for (auto &path : framePaths) {
-    const auto frame = loadFrame(path);
-    frames.emplace_back(frame);
-  }
-
-  animationStates.emplace(name, frames);
-}
-
-void VideoSystem::clearAnimation(const std::string &name) {
-  if (animationStates.find(name) == animationStates.end()) {
-    return;
-  }
-
-  auto &frames = animationStates.at(name);
-
-  for (auto &frame : frames) {
-    SDL_DestroyTexture(frame.texture);
-  }
-
-  animationStates.erase(name);
-}
-
-void VideoSystem::loadBackground(const std::string &path) {
-  SDL_Surface *tempSurface = IMG_Load(path.c_str());
-  background = SDL_CreateTextureFromSurface(renderer, tempSurface);
-  SDL_FreeSurface(tempSurface);
-}
-
-void VideoSystem::clearBackground() { SDL_DestroyTexture(background); }
-
-void VideoSystem::drawAnimationFrame(const std::string &name, int x, int y,
-                                     int frame, SDL_RendererFlip flip) {
-  if (animationStates.find(name) == animationStates.end()) {
-    return;
-  }
-
-  const auto frames = animationStates.at(name);
-
-  if (frame >= frames.size()) {
-    return;
-  }
-
-  const auto animFrame = frames.at(frame);
-
-  SDL_Rect srcRect = {0, 0, animFrame.width, animFrame.height};
-
-  int currentHotX = animFrame.hotspotX;
-  int currentHotY = animFrame.hotspotY;
-
-  if (flip & SDL_FLIP_HORIZONTAL) {
-    currentHotX = animFrame.width - animFrame.hotspotX;
-  }
-
-  SDL_Rect dstRect = {x - currentHotX, y - currentHotY, animFrame.width,
-                      animFrame.height};
-
-  SDL_Point pivot = {currentHotX, currentHotY};
-
-  SDL_RenderCopyEx(renderer, animFrame.texture, &srcRect, &dstRect, 0.0, &pivot,
-                   flip);
-}
-
-size_t VideoSystem::getAnimationSize(const std::string &name) {
-  if (animationStates.find(name) == animationStates.end()) {
-    return 0;
-  }
-
-  const auto frames = animationStates.at(name);
-
-  return frames.size();
-}
-
-void VideoSystem::drawBackground() {
-  int width = 0;
-  int height = 0;
-  SDL_QueryTexture(background, nullptr, nullptr, &width, &height);
-  SDL_Rect srcRect = {0, 0, width, height};
-  SDL_Rect dstRect = {0, 0, width, height};
-  SDL_RenderCopy(renderer, background, &srcRect, &dstRect);
 }
 
 void VideoSystem::sync() {
@@ -221,150 +141,66 @@ void VideoSystem::sync() {
   SDL_SetRenderTarget(renderer, activeScr.targetTexture);
 }
 
-VideoSystem::AnimationFrame VideoSystem::loadFrame(const std::string &path) {
+void VideoSystem::loadImage(const std::string &name, const std::string &path) {
+  clearImage(name);
+  imageStates.emplace(name, loadImageFile(path));
+}
 
+void VideoSystem::clearImage(const std::string &name) {
+  auto it = imageStates.find(name);
+  if (it == imageStates.end()) {
+    return;
+  }
+
+  if (it->second.texture) {
+    SDL_DestroyTexture(it->second.texture);
+  }
+  imageStates.erase(it);
+}
+
+void VideoSystem::drawImage(const std::string &name, int x, int y,
+                            SDL_RendererFlip flip) {
+  auto it = imageStates.find(name);
+  if (it == imageStates.end()) {
+    return;
+  }
+
+  const auto &img = it->second;
+
+  SDL_Rect srcRect = {0, 0, img.width, img.height};
+
+  int currentHotX = img.hotspotX;
+  int currentHotY = img.hotspotY;
+
+  if (flip & SDL_FLIP_HORIZONTAL) {
+    currentHotX = img.width - img.hotspotX;
+  }
+
+  SDL_Rect dstRect = {x - currentHotX, y - currentHotY, img.width, img.height};
+  SDL_Point pivot = {currentHotX, currentHotY};
+
+  SDL_RenderCopyEx(renderer, img.texture, &srcRect, &dstRect, 0.0, &pivot,
+                   flip);
+}
+
+VideoSystem::Image VideoSystem::loadImageFile(const std::string &path) {
   SDL_Surface *tempSurface = IMG_Load(path.c_str());
   if (!tempSurface) {
-    throwError("Failed to load frame: " + path);
+    throwError("Failed to load image: " + path);
   }
 
   uint32_t colorKey = SDL_MapRGB(tempSurface->format, 85, 85, 85);
   SDL_SetColorKey(tempSurface, SDL_TRUE, colorKey);
 
+  SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, tempSurface);
   int width = tempSurface->w;
   int height = tempSurface->h;
 
-  std::map<int, std::vector<uint8_t>> solidPixels;
-
-  if (SDL_MUSTLOCK(tempSurface))
-    SDL_LockSurface(tempSurface);
-
-  uint8_t bytesPerPixel = tempSurface->format->BytesPerPixel;
-  uint8_t *pixels = static_cast<uint8_t *>(tempSurface->pixels);
-
-  for (int y = 0; y < height; ++y) {
-    std::vector<uint8_t> row(width, 0);
-    bool rowHasSolidPixels = false;
-
-    for (int x = 0; x < width; ++x) {
-      uint8_t *p = pixels + y * tempSurface->pitch + x * bytesPerPixel;
-      uint32_t pixelData = 0;
-
-      switch (bytesPerPixel) {
-      case 1:
-        pixelData = *p;
-        break;
-      case 2:
-        pixelData = *reinterpret_cast<uint16_t *>(p);
-        break;
-      case 3:
-        if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-          pixelData = p[0] << 16 | p[1] << 8 | p[2];
-        else
-          pixelData = p[0] | p[1] << 8 | p[2] << 16;
-        break;
-      case 4:
-        pixelData = *reinterpret_cast<uint32_t *>(p);
-        break;
-      }
-
-      uint8_t r, g, b, a;
-      SDL_GetRGBA(pixelData, tempSurface->format, &r, &g, &b, &a);
-
-      bool isTransparent = (r == 85 && g == 85 && b == 85) || (a == 0);
-
-      if (!isTransparent) {
-        row[x] = 1;
-        rowHasSolidPixels = true;
-      }
-    }
-
-    if (rowHasSolidPixels) {
-      solidPixels[y] = row;
-    }
-  }
-
-  if (SDL_MUSTLOCK(tempSurface))
-    SDL_UnlockSurface(tempSurface);
-
-  SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer, tempSurface);
   SDL_FreeSurface(tempSurface);
 
-  auto hotspot = parseFrameHotspot(path);
+  auto hotspot = parseImageHotspot(path);
 
-  return AnimationFrame{tex,           width,          height,
-                        hotspot.first, hotspot.second, solidPixels};
-}
-
-bool VideoSystem::checkPixelCollision(const std::string &nameA, int frameA,
-                                      int xA, int yA, SDL_RendererFlip flipA,
-                                      const std::string &nameB, int frameB,
-                                      int xB, int yB, SDL_RendererFlip flipB) {
-  if (animationStates.find(nameA) == animationStates.end() ||
-      animationStates.find(nameB) == animationStates.end()) {
-    return false;
-  }
-
-  const auto &animFrameA = animationStates.at(nameA)[frameA];
-  const auto &animFrameB = animationStates.at(nameB)[frameB];
-
-  int hotXA = (flipA & SDL_FLIP_HORIZONTAL)
-                  ? (animFrameA.width - animFrameA.hotspotX)
-                  : animFrameA.hotspotX;
-  int hotYA = (flipA & SDL_FLIP_VERTICAL)
-                  ? (animFrameA.height - animFrameA.hotspotY)
-                  : animFrameA.hotspotY;
-  SDL_Rect dstA = {xA - hotXA, yA - hotYA, animFrameA.width, animFrameA.height};
-
-  int hotXB = (flipB & SDL_FLIP_HORIZONTAL)
-                  ? (animFrameB.width - animFrameB.hotspotX)
-                  : animFrameB.hotspotX;
-  int hotYB = (flipB & SDL_FLIP_VERTICAL)
-                  ? (animFrameB.height - animFrameB.hotspotY)
-                  : animFrameB.hotspotY;
-  SDL_Rect dstB = {xB - hotXB, yB - hotYB, animFrameB.width, animFrameB.height};
-
-  SDL_Rect intersect;
-  if (!SDL_IntersectRect(&dstA, &dstB, &intersect)) {
-    return false;
-  }
-
-  for (int y = intersect.y; y < intersect.y + intersect.h; ++y) {
-    int localYA = y - dstA.y;
-    int localYB = y - dstB.y;
-
-    if (flipA & SDL_FLIP_VERTICAL)
-      localYA = animFrameA.height - 1 - localYA;
-    if (flipB & SDL_FLIP_VERTICAL)
-      localYB = animFrameB.height - 1 - localYB;
-
-    auto rowItA = animFrameA.solidPixels.find(localYA);
-    if (rowItA == animFrameA.solidPixels.end())
-      continue;
-
-    auto rowItB = animFrameB.solidPixels.find(localYB);
-    if (rowItB == animFrameB.solidPixels.end())
-      continue;
-
-    const std::vector<uint8_t> &rowA = rowItA->second;
-    const std::vector<uint8_t> &rowB = rowItB->second;
-
-    for (int x = intersect.x; x < intersect.x + intersect.w; ++x) {
-      int localXA = x - dstA.x;
-      int localXB = x - dstB.x;
-
-      if (flipA & SDL_FLIP_HORIZONTAL)
-        localXA = animFrameA.width - 1 - localXA;
-      if (flipB & SDL_FLIP_HORIZONTAL)
-        localXB = animFrameB.width - 1 - localXB;
-
-      if (rowA[localXA] && rowB[localXB]) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  return Image{tex, width, height, hotspot.first, hotspot.second};
 }
 
 } // namespace openfranko::src::systems

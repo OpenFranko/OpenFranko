@@ -1,7 +1,6 @@
 #ifndef ENGINE_ENGINE_H_
 #define ENGINE_ENGINE_H_
 
-#include "../player/Player.h"
 #include "../systems/AudioSystem.h"
 #include "../systems/ControllerSystem.h"
 #include "../systems/VideoSystem.h"
@@ -25,8 +24,6 @@ private:
   systems::VideoSystem videoSystem;
   systems::AudioSystem audioSystem;
   systems::ControllerSystem controllerSystem;
-
-  player::Player player;
 };
 
 } // namespace engine
