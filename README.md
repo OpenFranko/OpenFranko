@@ -3,9 +3,9 @@
 Open source C++ implementation of Franko: The Crazy Revenge engine
 
 Motivation:
-Franko: The Crazy Revenge is a Polish cult classic video game from the Amiga computer. The goal of this project is to make a implementation that will run on any computer/operating system, and will be modable.
+Franko: The Crazy Revenge is a Polish cult classic video game from the Amiga computer. The goal of this project is to make a implementation that will run on any computer/operating system, and will be easy to modify.
 
-THE PROJECT IS WIP
+THIS PROJECT IS WIP, SOME PARTS OF THE CODEBASE WERE DEVELOPED WITH ASSISTANCE OF LLM
 
 # Build instructions
 
