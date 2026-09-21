@@ -1,2 +1,2 @@
-add_library(Engine Engine.cpp Engine.h)
+add_library(Engine Engine.cpp Engine.h states/MirageState.cpp states/MirageState.h states/WorldSoftwareState.cpp states/WorldSoftwareState.h)
 target_link_libraries(Engine PRIVATE VideoSystem AudioSystem ControllerSystem)

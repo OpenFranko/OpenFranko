@@ -4,6 +4,9 @@
 #include "../systems/AudioSystem.h"
 #include "../systems/ControllerSystem.h"
 #include "../systems/VideoSystem.h"
+#include "IEngineState.h"
+
+#include <memory>
 
 namespace openfranko {
 namespace src {
@@ -19,11 +22,17 @@ public:
   void update();
 
 private:
+  void updateInternalEngine();
+
+  void switchState(EngineStateEnum nextState);
+
   SDL_Event event;
-  bool running;
   systems::VideoSystem videoSystem;
   systems::AudioSystem audioSystem;
   systems::ControllerSystem controllerSystem;
+
+  std::unique_ptr<IEngineState> currentState;
+  bool running;
 };
 
 } // namespace engine
