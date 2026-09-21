@@ -28,7 +28,7 @@ bool Engine::isRunning() {
   return running;
 }
 
-void Engine::updateInternalEngine() {
+void Engine::updateState() {
   if (currentState) {
     auto nextState = currentState->update();
     if (nextState) {
@@ -53,7 +53,7 @@ void Engine::switchState(EngineStateEnum nextState) {
 
 void Engine::update() {
   controllerSystem.update();
-  updateInternalEngine();
+  updateState();
   videoSystem.sync();
 }
 

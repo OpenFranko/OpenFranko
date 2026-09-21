@@ -22,7 +22,7 @@ public:
   void update();
 
 private:
-  void updateInternalEngine();
+  void updateState();
 
   void switchState(EngineStateEnum nextState);
 
