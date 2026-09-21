@@ -5,6 +5,8 @@ namespace openfranko::src::engine::states::mirage {
 MirageState::MirageState(systems::VideoSystem &videoSystem,
                          systems::ControllerSystem &controllerSystem)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem) {
+  videoSystem.createScreen(0, 368, 290);
+  videoSystem.switchScreen(0);
   m_videoSystem.loadImage("background", "assets/03C3.bmp");
 };
 

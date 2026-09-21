@@ -8,9 +8,6 @@ Engine::Engine()
     : currentState(std::make_unique<states::mirage::MirageState>(
           videoSystem, controllerSystem)),
       running(true) {
-  videoSystem.createScreen(0, 320, 240);
-  videoSystem.switchScreen(0);
-
   audioSystem.loadMusic("assets/0261.s3m");
   audioSystem.playMusic();
 }
