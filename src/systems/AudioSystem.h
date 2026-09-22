@@ -20,7 +20,9 @@ public:
   void loadSFX(const std::string &name, const std::string &path);
   void clearSFX(const std::string &name);
   void playMusic();
+  void stopMusic();
   void playSFX(const std::string &name);
+  void stopSFX();
 
 private:
   Mix_Music *trackerModule;

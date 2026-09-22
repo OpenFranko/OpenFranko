@@ -60,6 +60,8 @@ void AudioSystem::clearSFX(const std::string &name) {
 
 void AudioSystem::playMusic() { Mix_PlayMusic(trackerModule, -1); }
 
+void AudioSystem::stopMusic() { Mix_HaltMusic(); }
+
 void AudioSystem::playSFX(const std::string &name) {
   if (soundEffects.find(name) == soundEffects.end()) {
     return;
@@ -69,5 +71,7 @@ void AudioSystem::playSFX(const std::string &name) {
 
   Mix_PlayChannel(-1, soundEffect, 0);
 }
+
+void AudioSystem::stopSFX() { Mix_HaltChannel(-1); }
 
 } // namespace openfranko::src::systems

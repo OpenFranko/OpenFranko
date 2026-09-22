@@ -6,7 +6,6 @@
 #include <map>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 namespace openfranko {
 namespace src {
@@ -19,27 +18,15 @@ public:
 
   void createScreen(int screenId, int width, int height);
   void switchScreen(int screenId);
-  void loadAnimation(const std::string &name,
-                     const std::vector<std::string> &framePaths);
-
-  void clearAnimation(const std::string &name);
-
-  void loadBackground(const std::string &path);
-
-  void clearBackground();
-
-  void drawAnimationFrame(const std::string &name, int x, int y, int frame,
-                          SDL_RendererFlip flip = SDL_FLIP_NONE);
-
-  size_t getAnimationSize(const std::string &name);
-
-  void drawBackground();
-
+  void destroyScreen(int screenId);
+  void fillScreen(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
   void sync();
 
-  bool checkPixelCollision(const std::string &nameA, int frameA, int xA, int yA,
-                           SDL_RendererFlip flipA, const std::string &nameB,
-                           int frameB, int xB, int yB, SDL_RendererFlip flipB);
+  void loadImage(const std::string &name, const std::string &path,
+                 bool applyColorKey = false);
+  void clearImage(const std::string &name);
+  void drawImage(const std::string &name, int x, int y,
+                 SDL_RendererFlip flip = SDL_FLIP_NONE);
 
 private:
   struct VirtualScreen {
@@ -48,19 +35,17 @@ private:
     SDL_Texture *targetTexture;
   };
 
-  struct AnimationFrame {
-    SDL_Texture *texture;
-    int width;
-    int height;
-    int hotspotX;
-    int hotspotY;
-    std::map<int, std::vector<uint8_t>> solidPixels;
+  struct Image {
+    SDL_Texture *texture = nullptr;
+    int width = 0;
+    int height = 0;
+    int hotspotX = 0;
+    int hotspotY = 0;
   };
 
-  AnimationFrame loadFrame(const std::string &path);
+  Image loadImageFile(const std::string &path, bool applyColorKey);
 
-  std::map<std::string, std::vector<AnimationFrame>> animationStates;
-  SDL_Texture *background;
+  std::map<std::string, Image> imageStates;
   std::unordered_map<int, VirtualScreen> screens;
 
   SDL_Window *window;

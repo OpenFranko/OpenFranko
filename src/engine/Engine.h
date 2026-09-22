@@ -1,10 +1,12 @@
 #ifndef ENGINE_ENGINE_H_
 #define ENGINE_ENGINE_H_
 
-#include "../player/Player.h"
 #include "../systems/AudioSystem.h"
 #include "../systems/ControllerSystem.h"
 #include "../systems/VideoSystem.h"
+#include "states/IEngineState.h"
+
+#include <memory>
 
 namespace openfranko {
 namespace src {
@@ -20,13 +22,17 @@ public:
   void update();
 
 private:
+  void updateState();
+
+  void switchState(states::EngineStateEnum nextState);
+
   SDL_Event event;
-  bool running;
   systems::VideoSystem videoSystem;
   systems::AudioSystem audioSystem;
   systems::ControllerSystem controllerSystem;
 
-  player::Player player;
+  std::unique_ptr<states::IEngineState> currentState;
+  bool running;
 };
 
 } // namespace engine

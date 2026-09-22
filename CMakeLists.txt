@@ -15,11 +15,10 @@ find_package(SDL2_image REQUIRED)
 find_package(SDL2_mixer REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS} ${SDL2_MIXER_INCLUDE_DIRS})
 
-add_subdirectory(lib)
-
 add_subdirectory(src)
 
 if (BUILD_TOOLS)
+    add_subdirectory(lib)
     add_subdirectory(tools)
 endif()
 

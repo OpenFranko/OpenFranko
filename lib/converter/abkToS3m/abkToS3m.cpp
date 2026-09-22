@@ -1,6 +1,6 @@
 #include "abkToS3m.h"
-#include "../gameData/gameData.h"
 #include "../../helpers/helpers.h"
+#include "../gameData/gameData.h"
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
@@ -50,7 +50,8 @@ constexpr uint16_t PERIOD_TABLE[] = {
     214,  202,  190,  180,  170,  160,  151,  143,  135,  127,  120, 113,
     107,  101,  95,   90,   85,   80,   75,   71,   67,   63,   60,  56,
 };
-constexpr int PERIOD_TABLE_SIZE = sizeof(PERIOD_TABLE) / sizeof(PERIOD_TABLE[0]);
+constexpr int PERIOD_TABLE_SIZE =
+    sizeof(PERIOD_TABLE) / sizeof(PERIOD_TABLE[0]);
 
 uint8_t periodToS3mNote(uint16_t period) {
   if (period == 0) {
@@ -102,12 +103,8 @@ std::vector<AmosSample> parseSamples(const uint8_t *music, size_t musicSize,
   }
   const std::vector<uint8_t> musicVec(music, music + musicSize);
   helpers::BigEndianReader reader(musicVec);
-  auto read32 = [&](size_t offset) {
-    return reader.readUint32(offset);
-  };
-  auto read16 = [&](size_t offset) {
-    return reader.readUint16(offset);
-  };
+  auto read32 = [&](size_t offset) { return reader.readUint32(offset); };
+  auto read16 = [&](size_t offset) { return reader.readUint16(offset); };
   uint16_t count = read16(sampleInfoOff);
   if (count == 0 || count > 64) {
     return samples;
@@ -143,9 +140,7 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
   info.speed = 17;
   const std::vector<uint8_t> musicVec(music, music + musicSize);
   helpers::BigEndianReader reader(musicVec);
-  auto read16 = [&](size_t offset) {
-    return reader.readUint16(offset);
-  };
+  auto read16 = [&](size_t offset) { return reader.readUint16(offset); };
   if (songOff + 6 > musicSize) {
     return info;
   }
@@ -191,9 +186,7 @@ TrackInfo parseTrackData(const uint8_t *music, size_t musicSize,
   info.trackDataBase = trackOff;
   const std::vector<uint8_t> musicVec(music, music + musicSize);
   helpers::BigEndianReader reader(musicVec);
-  auto read16 = [&](size_t offset) {
-    return reader.readUint16(offset);
-  };
+  auto read16 = [&](size_t offset) { return reader.readUint16(offset); };
   if (trackOff + 2 > musicSize) {
     return info;
   }
@@ -629,8 +622,8 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData) {
   bool isE1 = (std::strncmp(song.name, "e1", 2) == 0);
 
   std::vector<uint8_t> orderList;
-  auto patterns = decodeAllPatterns(music, musicSize, track, song, isE1,
-                                    orderList);
+  auto patterns =
+      decodeAllPatterns(music, musicSize, track, song, isE1, orderList);
   if (patterns.empty()) {
     throw std::runtime_error("empty song");
   }
@@ -647,7 +640,7 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData) {
   uint8_t tempo;
   if (isE1) {
     speed = 3;
-    tempo = 130;
+    tempo = 135;
   } else {
     auto initialST = amosTempoToS3m(
         static_cast<uint8_t>(std::min<uint16_t>(song.speed, 255)));

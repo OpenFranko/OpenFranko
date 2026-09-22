@@ -1,21 +1,21 @@
 #include "Engine.h"
+#include "states/mirage/MirageState.h"
+#include "states/worldSoftware/WorldSoftwareState.h"
 
 namespace openfranko::src::engine {
 
-Engine::Engine() : player{videoSystem, controllerSystem}, running(true) {
-  videoSystem.createScreen(0, 320, 240);
-  videoSystem.switchScreen(0);
-
-  videoSystem.loadBackground("assets/0388.bmp");
-
-  audioSystem.loadMusic("assets/0259.s3m");
-  audioSystem.loadSFX("ready", "assets/00FF/00FF_sam12_6573Hz.wav");
-
+Engine::Engine()
+    : currentState(std::make_unique<states::mirage::MirageState>(
+          videoSystem, controllerSystem)),
+      running(true) {
+  audioSystem.loadMusic("assets/0261.s3m");
   audioSystem.playMusic();
-  audioSystem.playSFX("ready");
 }
 
-Engine::~Engine() { SDL_Quit(); }
+Engine::~Engine() {
+  currentState.reset();
+  SDL_Quit();
+}
 
 bool Engine::isRunning() {
   while (SDL_PollEvent(&event)) {
@@ -25,11 +25,33 @@ bool Engine::isRunning() {
   return running;
 }
 
+void Engine::updateState() {
+  if (currentState) {
+    auto nextState = currentState->update();
+    if (nextState) {
+      switchState(nextState.value());
+    }
+  }
+}
+
+void Engine::switchState(states::EngineStateEnum nextState) {
+  currentState.reset();
+
+  switch (nextState) {
+  case states::EngineStateEnum::Mirage:
+    currentState = std::make_unique<states::mirage::MirageState>(
+        videoSystem, controllerSystem);
+    break;
+  case states::EngineStateEnum::WorldSoftware:
+    currentState = std::make_unique<states::worldSoftware::WorldSoftwareState>(
+        videoSystem);
+    break;
+  }
+}
+
 void Engine::update() {
   controllerSystem.update();
-  player.update();
-  videoSystem.drawBackground();
-  player.draw();
+  updateState();
   videoSystem.sync();
 }
 
