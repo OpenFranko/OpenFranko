@@ -52,8 +52,7 @@ WorldSoftwareState::~WorldSoftwareState() {
 
 std::optional<EngineStateEnum> WorldSoftwareState::update() {
   if (m_sequence.isFinished()) {
-    m_videoSystem.fillScreen(0, 0, 0);
-    return std::nullopt;
+    return EngineStateEnum::KneeAnimation;
   }
 
   if (m_sequence.frame() == m_sequence.holdStart()) {

@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "states/kneeAnimation/KneeAnimationState.h"
 #include "states/mirage/MirageState.h"
 #include "states/worldSoftware/WorldSoftwareState.h"
 
@@ -39,6 +40,10 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     break;
   case states::EngineStateEnum::WorldSoftware:
     currentState = std::make_unique<states::worldSoftware::WorldSoftwareState>(
+        videoSystem, audioSystem);
+    break;
+  case states::EngineStateEnum::KneeAnimation:
+    currentState = std::make_unique<states::kneeAnimation::KneeAnimationState>(
         videoSystem, audioSystem);
     break;
   }

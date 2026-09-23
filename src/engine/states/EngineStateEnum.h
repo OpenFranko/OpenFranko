@@ -6,7 +6,7 @@ namespace src {
 namespace engine {
 namespace states {
 
-enum class EngineStateEnum { Mirage, WorldSoftware };
+enum class EngineStateEnum { Mirage, WorldSoftware, KneeAnimation };
 
 }
 } // namespace engine
