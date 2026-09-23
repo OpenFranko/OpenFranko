@@ -39,49 +39,56 @@ int main(int argc, char **argv) {
     outDir = outputOptional.value();
   }
 
-  std::filesystem::create_directories(outDir);
+  try {
+    std::filesystem::create_directories(outDir);
 
-  int errors = 0;
+    int errors = 0;
 
-  if (std::filesystem::is_directory(inputPath)) {
-    std::vector<std::string> files;
-    for (const auto &entry : std::filesystem::directory_iterator(inputPath)) {
-      if (entry.is_regular_file()) {
-        std::string name = entry.path().filename().string();
-        if (name.size() == 4) {
-          bool isHex = true;
-          for (char c : name) {
-            if (!std::isxdigit(static_cast<unsigned char>(c))) {
-              isHex = false;
-              break;
+    if (std::filesystem::is_directory(inputPath)) {
+      std::vector<std::string> files;
+      for (const auto &entry : std::filesystem::directory_iterator(inputPath)) {
+        if (entry.is_regular_file()) {
+          std::string name = entry.path().filename().string();
+          if (name.size() == 4) {
+            bool isHex = true;
+            for (char c : name) {
+              if (!std::isxdigit(static_cast<unsigned char>(c))) {
+                isHex = false;
+                break;
+              }
             }
-          }
-          if (isHex) {
-            files.push_back(entry.path().string());
+            if (isHex) {
+              files.push_back(entry.path().string());
+            }
           }
         }
       }
-    }
-    std::sort(files.begin(), files.end());
+      std::sort(files.begin(), files.end());
 
-    int missing = extractor::validateDirectory(inputPath);
-    if (missing > 0) {
-      std::cerr << missing << " expected game data file(s) missing." << std::endl;
-      return 1;
+      int missing = extractor::validateDirectory(inputPath);
+      if (missing > 0) {
+        std::cerr << missing << " expected game data file(s) missing."
+                  << std::endl;
+        return 1;
+      }
+
+      std::set<size_t> seenSamBanks;
+      std::cerr << "Processing " << files.size() << " data files..."
+                << std::endl;
+      for (const auto &f : files) {
+        errors += extractor::processFile(f, outDir, seenSamBanks);
+      }
+
+      std::cerr << "\nDone. " << files.size() << " files processed, " << errors
+                << " errors." << std::endl;
+    } else {
+      std::set<size_t> seenSamBanks;
+      errors = extractor::processFile(inputPath, outDir, seenSamBanks);
     }
 
-    std::set<size_t> seenSamBanks;
-    std::cerr << "Processing " << files.size() << " data files..." << std::endl;
-    for (const auto &f : files) {
-      errors += extractor::processFile(f, outDir, seenSamBanks);
-    }
-
-    std::cerr << "\nDone. " << files.size() << " files processed, " << errors
-              << " errors." << std::endl;
-  } else {
-    std::set<size_t> seenSamBanks;
-    errors = extractor::processFile(inputPath, outDir, seenSamBanks);
+    return errors > 0 ? 1 : 0;
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
   }
-
-  return errors > 0 ? 1 : 0;
 }
