@@ -2,7 +2,7 @@ add_executable(backwardLZ77Decompressor decompressor/backwardLZ77.cpp)
 target_link_libraries(backwardLZ77Decompressor argumentParser readFile backwardLZ77 writeFile)
 
 add_executable(extractSpriteSheet converter/extractSpriteSheet.cpp)
-target_link_libraries(extractSpriteSheet argumentParser readFile backwardLZ77 spriteSheet writeFile)
+target_link_libraries(extractSpriteSheet argumentParser readFile backwardLZ77 spriteSheet writeFile fileContainer)
 
 add_executable(frankoExtract
     converter/frankoExtract.cpp
@@ -11,22 +11,22 @@ add_executable(frankoExtract
 target_link_libraries(frankoExtract argumentParser readFile writeFile backwardLZ77 amosCompact spriteSheet bitmapExtractor audioExtractor fileContainer abkToS3m levelScript gameData)
 
 add_executable(extractSprites converter/extractSprites.cpp)
-target_link_libraries(extractSprites argumentParser readFile writeFile backwardLZ77 spriteSheet)
+target_link_libraries(extractSprites argumentParser readFile writeFile backwardLZ77 spriteSheet fileContainer)
 
 add_executable(extractBitmaps converter/extractBitmaps.cpp)
-target_link_libraries(extractBitmaps argumentParser readFile writeFile backwardLZ77 bitmapExtractor)
+target_link_libraries(extractBitmaps argumentParser readFile writeFile backwardLZ77 bitmapExtractor fileContainer)
 
 add_executable(extractScreen converter/extractScreen.cpp)
-target_link_libraries(extractScreen argumentParser readFile writeFile amosCompact)
+target_link_libraries(extractScreen argumentParser readFile writeFile amosCompact fileContainer)
 
 add_executable(extractSamples converter/extractSamples.cpp)
-target_link_libraries(extractSamples argumentParser readFile writeFile backwardLZ77 audioExtractor)
+target_link_libraries(extractSamples argumentParser readFile writeFile backwardLZ77 audioExtractor fileContainer)
 
 add_executable(extractMusic converter/extractMusic.cpp)
-target_link_libraries(extractMusic argumentParser readFile writeFile backwardLZ77 audioExtractor)
+target_link_libraries(extractMusic argumentParser readFile writeFile backwardLZ77 audioExtractor fileContainer)
 
 add_executable(extractLevelScript converter/extractLevelScript.cpp)
-target_link_libraries(extractLevelScript argumentParser readFile writeFile backwardLZ77 levelScript gameData)
+target_link_libraries(extractLevelScript argumentParser readFile writeFile backwardLZ77 levelScript gameData fileContainer)
 
 add_executable(abk2s3m converter/abk2s3m.cpp)
 target_link_libraries(abk2s3m argumentParser readFile writeFile abkToS3m)

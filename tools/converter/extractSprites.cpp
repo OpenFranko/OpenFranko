@@ -1,4 +1,5 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
+#include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
@@ -27,7 +28,6 @@ int main(int argc, char **argv) {
   }
 
   std::string inputPath = inputOptional.value();
-  std::string fileId = std::filesystem::path(inputPath).filename().string();
 
   std::string outDir = ".";
   const auto outputOptional = parser.getCmdOption("-o");
@@ -35,29 +35,17 @@ int main(int argc, char **argv) {
     outDir = outputOptional.value();
 
   const auto paletteOptional = parser.getCmdOption("-p");
-  std::vector<uint16_t> palette;
-  if (paletteOptional.has_value()) {
-    const std::string &p = paletteOptional.value();
-    namespace pal = converter::spriteSheet::palettes;
-    if (p == "sunset")
-      palette = {pal::SUNSET.begin(), pal::SUNSET.end()};
-    else if (p == "story")
-      palette = {pal::STORY.begin(), pal::STORY.end()};
-    else if (p == "menu")
-      palette = {pal::MENU.begin(), pal::MENU.end()};
-    else if (p == "menu35")
-      palette = {pal::MENU_35.begin(), pal::MENU_35.end()};
-    else if (p == "cemetery")
-      palette = {pal::CEMETERY.begin(), pal::CEMETERY.end()};
-    else
-      palette = {pal::LEVEL.begin(), pal::LEVEL.end()};
-  } else {
-    palette = converter::spriteSheet::selectPalette(fileId);
-  }
 
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
+    std::string fileId = converter::fileContainer::fileIdToHex(
+        converter::fileContainer::parseFooter(raw).fileId);
+
+    auto palette =
+        paletteOptional.has_value()
+            ? converter::spriteSheet::palettes::byName(paletteOptional.value())
+            : converter::spriteSheet::selectPalette(fileId);
 
     auto dec = decompressor::backwardLZ77::decompress(raw);
     std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
@@ -69,6 +57,9 @@ int main(int argc, char **argv) {
     std::filesystem::create_directories(outDir);
 
     auto sprites = converter::spriteSheet::convertToIndividual(dec, palette);
+    if (!paletteOptional.has_value()) {
+      converter::spriteSheet::applySpritePaletteFixes(fileId, sprites);
+    }
     int written = 0;
     for (int i = 0; i < static_cast<int>(sprites.size()); i++) {
       if (sprites[i].bmpData.empty()) {
@@ -76,10 +67,9 @@ int main(int argc, char **argv) {
                   << std::endl;
         continue;
       }
-      char buf[64];
-      snprintf(buf, sizeof(buf), "%s/%s_%03d.bmp", outDir.c_str(),
-               fileId.c_str(), i);
-      std::string bmpPath(buf);
+      char name[32];
+      snprintf(name, sizeof(name), "%s_%03d.bmp", fileId.c_str(), i);
+      std::string bmpPath = outDir + "/" + name;
       filesystem::writeFile::writeFile(bmpPath, sprites[i].bmpData);
       written++;
     }

@@ -1,5 +1,6 @@
 #include "fileContainer.h"
 #include "../../helpers/helpers.h"
+#include <cstdio>
 #include <stdexcept>
 
 namespace openfranko::lib::converter::fileContainer {
@@ -21,6 +22,12 @@ FileInfo parseFooter(const std::vector<uint8_t> &rawData) {
   info.bankType = static_cast<uint8_t>(info.resourceType >> 8);
   info.compressed = (info.resourceType & 0xFF) == 0;
   return info;
+}
+
+std::string fileIdToHex(uint16_t fileId) {
+  char buf[5];
+  snprintf(buf, sizeof(buf), "%04X", fileId);
+  return buf;
 }
 
 } // namespace openfranko::lib::converter::fileContainer

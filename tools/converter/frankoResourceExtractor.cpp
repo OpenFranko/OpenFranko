@@ -14,10 +14,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
-#include <functional>
-#include <iomanip>
 #include <iostream>
-#include <sstream>
 #include <string_view>
 #include <vector>
 
@@ -27,25 +24,15 @@ namespace lib = openfranko::lib;
 
 namespace {
 
-size_t hashSamBank(const std::vector<uint8_t> &data) {
+std::vector<uint8_t> embeddedSamBank(const std::vector<uint8_t> &data) {
   if (data.size() < 12) {
-    return 0;
+    return {};
   }
   uint32_t sbOff = lib::helpers::BigEndianReader(data).readUint32(8);
   if (sbOff == 0 || sbOff >= data.size()) {
-    return 0;
+    return {};
   }
-  size_t h = 0;
-  for (size_t i = sbOff; i < data.size(); i++) {
-    h ^= std::hash<uint8_t>{}(data[i]) + 0x9e3779b9 + (h << 6) + (h >> 2);
-  }
-  return h;
-}
-
-std::string fileIdToHex(uint16_t id) {
-  std::ostringstream ss;
-  ss << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << id;
-  return ss.str();
+  return {data.begin() + static_cast<std::ptrdiff_t>(sbOff), data.end()};
 }
 
 bool isLevelFile(const std::string &fileId) {
@@ -77,26 +64,6 @@ void writeOutputs(const std::string &outDir, const std::string &fileId,
   }
 }
 
-void patch0038SunsetBitmap(std::vector<uint8_t> &bmp) {
-  if (bmp.size() < 54 + 4 * 3) {
-    return;
-  }
-
-  auto setPaletteEntry = [&](int index, uint8_t r, uint8_t g, uint8_t b) {
-    size_t offset = 54 + static_cast<size_t>(index) * 4;
-    if (offset + 4 > bmp.size()) {
-      return;
-    }
-    bmp[offset + 0] = b;
-    bmp[offset + 1] = g;
-    bmp[offset + 2] = r;
-    bmp[offset + 3] = 0;
-  };
-
-  setPaletteEntry(1, 0xFF, 0xFF, 0xFF);
-  setPaletteEntry(2, 0x77, 0x77, 0x77);
-}
-
 } // namespace
 
 int validateDirectory(const std::string &dirPath) {
@@ -114,10 +81,10 @@ int validateDirectory(const std::string &dirPath) {
 namespace {
 
 int extractFile(const std::string &inputPath, const std::string &outDir,
-                std::set<size_t> &seenSamBanks) {
+                SeenSampleBanks &seenSamBanks) {
   auto rawData = lib::filesystem::readFile::readFile(inputPath);
   auto info = lib::converter::fileContainer::parseFooter(rawData);
-  std::string fileId = fileIdToHex(info.fileId);
+  std::string fileId = lib::converter::fileContainer::fileIdToHex(info.fileId);
 
   std::cerr << fileId << " ["
             << lib::converter::gameData::resourceTypes::name(info.resourceType)
@@ -155,13 +122,11 @@ int extractFile(const std::string &inputPath, const std::string &outDir,
       auto palette = lib::converter::spriteSheet::selectPalette(fileId);
       auto sprites =
           lib::converter::spriteSheet::convertToIndividual(dec, palette);
+      lib::converter::spriteSheet::applySpritePaletteFixes(fileId, sprites);
       std::vector<int> skipped;
       int idx = 0;
       for (auto &sprite : sprites) {
         if (!sprite.bmpData.empty()) {
-          if (fileId == "0038" && idx >= 43 && idx <= 100) {
-            patch0038SunsetBitmap(sprite.bmpData);
-          }
           char buf[32];
           snprintf(buf, sizeof(buf), "%s_%03d.bmp", fileId.c_str(), idx);
           std::string bmpName(buf);
@@ -183,8 +148,8 @@ int extractFile(const std::string &inputPath, const std::string &outDir,
       failed = true;
     }
     try {
-      size_t samHash = hashSamBank(dec);
-      if (samHash != 0 && seenSamBanks.insert(samHash).second) {
+      auto samBank = embeddedSamBank(dec);
+      if (!samBank.empty() && seenSamBanks.insert(std::move(samBank)).second) {
         auto samples =
             lib::converter::audioExtractor::extractEmbeddedSamBank(dec, fileId);
         for (auto &s : samples) {
@@ -281,7 +246,7 @@ int extractFile(const std::string &inputPath, const std::string &outDir,
 } // namespace
 
 int processFile(const std::string &inputPath, const std::string &outDir,
-                std::set<size_t> &seenSamBanks) {
+                SeenSampleBanks &seenSamBanks) {
   try {
     return extractFile(inputPath, outDir, seenSamBanks);
   } catch (const std::exception &e) {

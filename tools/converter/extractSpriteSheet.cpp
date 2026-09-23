@@ -1,4 +1,5 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
+#include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
@@ -24,44 +25,19 @@ int main(int argc, char **argv) {
   }
 
   std::string inputFilePath = inputOptional.value();
-  std::string fileId =
-      std::filesystem::path(inputFilePath).filename().string();
-
-  std::string outputFilePath = fileId + "_sheet.bmp";
   const auto outputOptional = parser.getCmdOption("-o");
-  if (outputOptional.has_value()) {
-    outputFilePath = outputOptional.value();
-  }
-
   const auto paletteOptional = parser.getCmdOption("-p");
-  std::vector<uint16_t> palette;
-  if (paletteOptional.has_value()) {
-    const std::string &palName = paletteOptional.value();
-    if (palName == "sunset") {
-      palette = {converter::spriteSheet::palettes::SUNSET.begin(),
-                 converter::spriteSheet::palettes::SUNSET.end()};
-    } else if (palName == "story") {
-      palette = {converter::spriteSheet::palettes::STORY.begin(),
-                 converter::spriteSheet::palettes::STORY.end()};
-    } else if (palName == "menu") {
-      palette = {converter::spriteSheet::palettes::MENU.begin(),
-                 converter::spriteSheet::palettes::MENU.end()};
-    } else if (palName == "menu35") {
-      palette = {converter::spriteSheet::palettes::MENU_35.begin(),
-                 converter::spriteSheet::palettes::MENU_35.end()};
-    } else if (palName == "cemetery") {
-      palette = {converter::spriteSheet::palettes::CEMETERY.begin(),
-                 converter::spriteSheet::palettes::CEMETERY.end()};
-    } else {
-      palette = {converter::spriteSheet::palettes::LEVEL.begin(),
-                 converter::spriteSheet::palettes::LEVEL.end()};
-    }
-  } else {
-    palette = converter::spriteSheet::selectPalette(fileId);
-  }
 
   try {
     auto compressedData = filesystem::readFile::readFile(inputFilePath);
+    std::string fileId = converter::fileContainer::fileIdToHex(
+        converter::fileContainer::parseFooter(compressedData).fileId);
+
+    std::string outputFilePath = outputOptional.value_or(fileId + "_sheet.bmp");
+    auto palette =
+        paletteOptional.has_value()
+            ? converter::spriteSheet::palettes::byName(paletteOptional.value())
+            : converter::spriteSheet::selectPalette(fileId);
 
     std::cerr << "Decompressing " << inputFilePath << " (" << compressedData.size()
               << " bytes)..." << std::endl;

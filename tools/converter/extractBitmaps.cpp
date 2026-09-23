@@ -1,5 +1,6 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "../../lib/converter/bitmapExtractor/bitmapExtractor.h"
+#include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
@@ -23,8 +24,6 @@ int main(int argc, char **argv) {
   }
 
   std::string inputPath = inputOptional.value();
-  std::string fileId =
-      std::filesystem::path(inputPath).filename().string();
 
   std::string outDir = ".";
   const auto outputOptional = parser.getCmdOption("-o");
@@ -34,6 +33,8 @@ int main(int argc, char **argv) {
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
+    std::string fileId = converter::fileContainer::fileIdToHex(
+        converter::fileContainer::parseFooter(raw).fileId);
 
     auto dec = decompressor::backwardLZ77::decompress(raw);
     std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;

@@ -2,6 +2,7 @@
 #define FILECONTAINER_H_
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace openfranko {
@@ -18,6 +19,8 @@ struct FileInfo {
 };
 
 FileInfo parseFooter(const std::vector<uint8_t> &rawData);
+
+std::string fileIdToHex(uint16_t fileId);
 
 } // namespace fileContainer
 } // namespace converter

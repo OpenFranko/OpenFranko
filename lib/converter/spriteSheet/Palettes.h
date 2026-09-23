@@ -89,6 +89,25 @@ inline std::vector<uint16_t> selectPalette(const std::string &fileId) {
   return {LEVEL.begin(), LEVEL.end()};
 }
 
+inline std::vector<uint16_t> byName(const std::string &name) {
+  if (name == "sunset") {
+    return {SUNSET.begin(), SUNSET.end()};
+  }
+  if (name == "story") {
+    return {STORY.begin(), STORY.end()};
+  }
+  if (name == "menu") {
+    return {MENU.begin(), MENU.end()};
+  }
+  if (name == "menu35") {
+    return {MENU_35.begin(), MENU_35.end()};
+  }
+  if (name == "cemetery") {
+    return {CEMETERY.begin(), CEMETERY.end()};
+  }
+  return {LEVEL.begin(), LEVEL.end()};
+}
+
 } // namespace palettes
 } // namespace spriteSheet
 } // namespace converter

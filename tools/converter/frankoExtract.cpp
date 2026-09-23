@@ -4,7 +4,6 @@
 #include <cctype>
 #include <filesystem>
 #include <iostream>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -72,7 +71,7 @@ int main(int argc, char **argv) {
         return 1;
       }
 
-      std::set<size_t> seenSamBanks;
+      extractor::SeenSampleBanks seenSamBanks;
       std::cerr << "Processing " << files.size() << " data files..."
                 << std::endl;
       for (const auto &f : files) {
@@ -82,7 +81,7 @@ int main(int argc, char **argv) {
       std::cerr << "\nDone. " << files.size() << " files processed, " << errors
                 << " errors." << std::endl;
     } else {
-      std::set<size_t> seenSamBanks;
+      extractor::SeenSampleBanks seenSamBanks;
       errors = extractor::processFile(inputPath, outDir, seenSamBanks);
     }
 

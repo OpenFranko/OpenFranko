@@ -54,3 +54,14 @@ SCENARIO("parseFooter reads the last 8 bytes as big-endian fields") {
     }
   }
 }
+
+SCENARIO("fileIdToHex formats a file ID like the game's file names") {
+  GIVEN("File IDs across the 16-bit range") {
+    THEN("They become four upper-case hex digits") {
+      REQUIRE(fileIdToHex(0x0385) == "0385");
+      REQUIRE(fileIdToHex(0x03BE) == "03BE");
+      REQUIRE(fileIdToHex(0x0000) == "0000");
+      REQUIRE(fileIdToHex(0xFFFF) == "FFFF");
+    }
+  }
+}

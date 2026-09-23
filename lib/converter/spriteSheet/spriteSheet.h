@@ -48,6 +48,9 @@ std::vector<ConvertedSprite>
 convertToIndividual(const std::vector<uint8_t> &decompressedData,
                     const std::vector<uint16_t> &palette);
 
+void applySpritePaletteFixes(const std::string &fileId,
+                             std::vector<ConvertedSprite> &sprites);
+
 std::vector<uint16_t> selectPalette(const std::string &fileId);
 
 } // namespace spriteSheet

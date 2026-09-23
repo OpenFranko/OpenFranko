@@ -227,3 +227,69 @@ SCENARIO("Sprite conversion says why a sprite could not be converted") {
     }
   }
 }
+
+SCENARIO("byName picks a palette by its command line name") {
+  GIVEN("The palette names the tools accept") {
+    THEN("Each returns its palette") {
+      using Pal = std::vector<uint16_t>;
+      REQUIRE(pal::byName("sunset") ==
+              Pal(pal::SUNSET.begin(), pal::SUNSET.end()));
+      REQUIRE(pal::byName("story") ==
+              Pal(pal::STORY.begin(), pal::STORY.end()));
+      REQUIRE(pal::byName("menu") == Pal(pal::MENU.begin(), pal::MENU.end()));
+      REQUIRE(pal::byName("menu35") ==
+              Pal(pal::MENU_35.begin(), pal::MENU_35.end()));
+      REQUIRE(pal::byName("cemetery") ==
+              Pal(pal::CEMETERY.begin(), pal::CEMETERY.end()));
+    }
+  }
+
+  GIVEN("\"level\" or an unknown name") {
+    THEN("It returns the level palette") {
+      using Pal = std::vector<uint16_t>;
+      REQUIRE(pal::byName("level") ==
+              Pal(pal::LEVEL.begin(), pal::LEVEL.end()));
+      REQUIRE(pal::byName("nope") == Pal(pal::LEVEL.begin(), pal::LEVEL.end()));
+    }
+  }
+}
+
+SCENARIO("applySpritePaletteFixes makes the sunset bank's font white") {
+  GIVEN("44 converted sprites") {
+    std::vector<ConvertedSprite> sprites(
+        44, ConvertedSprite{std::vector<uint8_t>(1078, 0), {}});
+    const std::vector<uint8_t> fixedEntries = {0xFF, 0xFF, 0xFF, 0x00,
+                                               0x77, 0x77, 0x77, 0x00};
+    auto entries1And2 = [](const ConvertedSprite &sprite) {
+      return std::vector<uint8_t>(sprite.bmpData.begin() + 58,
+                                  sprite.bmpData.begin() + 66);
+    };
+
+    WHEN("They come from bank 0038") {
+      applySpritePaletteFixes("0038", sprites);
+
+      THEN("Font sprite 43 gets white and grey as colours 1 and 2") {
+        REQUIRE(entries1And2(sprites[43]) == fixedEntries);
+      }
+
+      THEN("Sprite 42, before the font, is unchanged") {
+        REQUIRE(entries1And2(sprites[42]) == std::vector<uint8_t>(8, 0));
+      }
+    }
+
+    WHEN("They come from another bank") {
+      applySpritePaletteFixes("0001", sprites);
+
+      THEN("Nothing changes") {
+        REQUIRE(entries1And2(sprites[43]) == std::vector<uint8_t>(8, 0));
+      }
+    }
+
+    WHEN("A font sprite was skipped") {
+      sprites[43] = {{}, "Invalid bitmap magic number"};
+      applySpritePaletteFixes("0038", sprites);
+
+      THEN("It stays empty") { REQUIRE(sprites[43].bmpData.empty()); }
+    }
+  }
+}
