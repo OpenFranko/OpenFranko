@@ -142,16 +142,18 @@ SCENARIO("convert produces a valid S3M file") {
   }
 }
 
-SCENARIO("convert handles isE1 special case") {
-  GIVEN("An ABK with song name 'e1'") {
+SCENARIO("convert uses the Franko menu tempo for song 'e1'") {
+  GIVEN("An ABK with song name 'e1' and AMOS tempo 33") {
     auto abk = buildMinimalAbk("e1", 33);
 
     WHEN("convert is called") {
       auto s3m = convert(abk);
 
-      THEN("speed is hardcoded to 3") { REQUIRE(s3m[0x31] == 3); }
+      THEN("speed = round(100/37) = 3") { REQUIRE(s3m[0x31] == 3); }
 
-      THEN("tempo is hardcoded to 130") { REQUIRE(s3m[0x32] == 130); }
+      THEN("BPM = round(5*3*37/4) = 139, not 124 from tempo 33") {
+        REQUIRE(s3m[0x32] == 139);
+      }
     }
   }
 }
@@ -165,11 +167,7 @@ SCENARIO("convert maps AMOS tempo to S3M speed/tempo") {
 
       THEN("speed = round(100/25) = 4") { REQUIRE(s3m[0x31] == 4); }
 
-      THEN("BPM = round(122*4*25/95) = 128") {
-        uint8_t bpm = s3m[0x32];
-        REQUIRE(bpm >= 126);
-        REQUIRE(bpm <= 131);
-      }
+      THEN("BPM = 5*4*25/4 = 125") { REQUIRE(s3m[0x32] == 125); }
     }
   }
 

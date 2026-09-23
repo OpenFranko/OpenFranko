@@ -20,6 +20,18 @@ bool isPackedBitmap(const std::vector<uint8_t> &data) {
   return header == consts::AMOS_BMCODE;
 }
 
+std::vector<uint16_t> defaultPalette(uint16_t numberOfBitplanes) {
+  const int numberOfColors = std::min(
+      1 << numberOfBitplanes, static_cast<int>(consts::SPACK_PALETTE_SIZE));
+
+  std::vector<uint16_t> palette(consts::SPACK_PALETTE_SIZE, 0);
+  for (int i = 0; i < numberOfColors; i++) {
+    const auto level = static_cast<uint16_t>(i * 15 / (numberOfColors - 1));
+    palette[i] = static_cast<uint16_t>(level * 0x111);
+  }
+  return palette;
+}
+
 } // namespace
 
 std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
@@ -28,12 +40,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   }
 
   std::vector<uint8_t> data = compressedData;
-
-  std::vector<uint16_t> palette(32);
-  for (int i = 0; i < 32; i++) {
-    const auto level = static_cast<uint16_t>(i * 15 / 31);
-    palette[i] = static_cast<uint16_t>(level * 0x111);
-  }
+  std::vector<uint16_t> palette;
 
   if (isSPACK(data)) {
     if (data.size() <
@@ -62,6 +69,10 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   if (bitmapHeader.gridX == 0 || bitmapHeader.gridY == 0 ||
       bitmapHeader.tileHeight == 0) {
     throw std::runtime_error("Invalid bitmap dimensions");
+  }
+
+  if (palette.empty()) {
+    palette = defaultPalette(bitmapHeader.numberOfBitplanes);
   }
 
   auto unpackedBitmap = detail::bitmapUnpack(data, bitmapHeader, palette);
