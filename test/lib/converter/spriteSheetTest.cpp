@@ -172,7 +172,7 @@ SCENARIO("selectPalette returns the correct palette for known file IDs") {
   }
 }
 
-SCENARIO("convertToIndividual says why a sprite could not be converted") {
+SCENARIO("Sprite conversion says why a sprite could not be converted") {
   GIVEN("A bank with a valid sprite, one without a bitmap and one past the "
         "end") {
     std::vector<SpriteDescriptor> descs = {
@@ -206,6 +206,23 @@ SCENARIO("convertToIndividual says why a sprite could not be converted") {
       THEN("A sprite pointing past the end says so") {
         REQUIRE(sprites[2].bmpData.empty());
         REQUIRE(sprites[2].error == "Data too small for bitmap header");
+      }
+    }
+
+    WHEN("convertToSheet is called") {
+      auto sheet = convertToSheet(data, palette);
+      REQUIRE(sheet.spriteErrors.size() == 3);
+
+      THEN("The sheet is still written as a BMP") {
+        REQUIRE(sheet.bmpData.size() > 2);
+        REQUIRE(sheet.bmpData[0] == 'B');
+        REQUIRE(sheet.bmpData[1] == 'M');
+      }
+
+      THEN("Each skipped sprite has its reason") {
+        REQUIRE(sheet.spriteErrors[0].empty());
+        REQUIRE(sheet.spriteErrors[1] == "Invalid bitmap magic number");
+        REQUIRE(sheet.spriteErrors[2] == "Data too small for bitmap header");
       }
     }
   }

@@ -33,11 +33,16 @@ struct ConvertedSprite {
   std::string error;
 };
 
+struct SpriteSheet {
+  std::vector<uint8_t> bmpData;
+  std::vector<std::string> spriteErrors;
+};
+
 SpriteBankHeader parseHeader(const std::vector<uint8_t> &data);
 
-std::vector<uint8_t>
-convertToSheet(const std::vector<uint8_t> &decompressedData,
-               const std::vector<uint16_t> &palette, int columns = 5);
+SpriteSheet convertToSheet(const std::vector<uint8_t> &decompressedData,
+                           const std::vector<uint16_t> &palette,
+                           int columns = 5);
 
 std::vector<ConvertedSprite>
 convertToIndividual(const std::vector<uint8_t> &decompressedData,

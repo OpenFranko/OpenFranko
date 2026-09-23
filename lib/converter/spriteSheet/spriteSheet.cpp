@@ -61,9 +61,8 @@ SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
   return header;
 }
 
-std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
-                                    const std::vector<uint16_t> &palette,
-                                    int columns) {
+SpriteSheet convertToSheet(const std::vector<uint8_t> &data,
+                           const std::vector<uint16_t> &palette, int columns) {
   if (columns <= 0) {
     throw std::runtime_error("Column count must be positive");
   }
@@ -72,6 +71,7 @@ std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
 
   std::vector<DecodedImage> sprites;
   sprites.reserve(header.count);
+  std::vector<std::string> spriteErrors(header.count);
 
   uint16_t maxW = 0;
   uint16_t maxH = 0;
@@ -92,9 +92,12 @@ std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
           maxH = img.height;
         }
         okCount++;
+      } else {
+        spriteErrors[i] = "Sprite decoded to an empty image";
       }
       sprites.push_back(std::move(img));
-    } catch (...) {
+    } catch (const std::exception &e) {
+      spriteErrors[i] = e.what();
       sprites.push_back({});
     }
   }
@@ -129,8 +132,9 @@ std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
     }
   }
 
-  return bmpWriter::pixelsToBmp(sheetW, sheetH, sheet.data(), palette.data(),
-                                static_cast<int>(palette.size()));
+  return {bmpWriter::pixelsToBmp(sheetW, sheetH, sheet.data(), palette.data(),
+                                 static_cast<int>(palette.size())),
+          std::move(spriteErrors)};
 }
 
 std::vector<ConvertedSprite>

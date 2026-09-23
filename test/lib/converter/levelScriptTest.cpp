@@ -60,13 +60,13 @@ SCENARIO("parse reads the level length and enemy waves") {
 
     WHEN("parse is called") {
       auto level = parse(data);
+      REQUIRE(level.waves.size() == 2);
 
       THEN("The level length is read as big-endian") {
         REQUIRE(level.lengthInColumns == 568);
       }
 
       THEN("Both waves are read in order") {
-        REQUIRE(level.waves.size() == 2);
         REQUIRE(level.waves[0].triggerColumn == 300);
         REQUIRE(level.waves[1].triggerColumn == 551);
       }

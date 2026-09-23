@@ -75,10 +75,16 @@ int main(int argc, char **argv) {
               << header.maxWidth << "x" << header.maxHeight << ", "
               << header.numColors << " colors" << std::endl;
 
-    auto bmpData =
+    auto sheet =
         converter::spriteSheet::convertToSheet(decompressedData, palette);
-    filesystem::writeFile::writeFile(outputFilePath, bmpData);
-    std::cerr << "Wrote " << outputFilePath << " (" << bmpData.size()
+    for (size_t i = 0; i < sheet.spriteErrors.size(); i++) {
+      if (!sheet.spriteErrors[i].empty()) {
+        std::cerr << "Skipped sprite " << i << ": " << sheet.spriteErrors[i]
+                  << std::endl;
+      }
+    }
+    filesystem::writeFile::writeFile(outputFilePath, sheet.bmpData);
+    std::cerr << "Wrote " << outputFilePath << " (" << sheet.bmpData.size()
               << " bytes)" << std::endl;
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
