@@ -62,3 +62,17 @@ add_executable(${ATTRACT_SEQUENCE_TEST_TARGET}
 )
 target_link_libraries(${ATTRACT_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${ATTRACT_SEQUENCE_TEST_TARGET} COMMAND ${ATTRACT_SEQUENCE_TEST_TARGET})
+
+set(AMAL_ANIM_TEST_TARGET amalAnimTest)
+add_executable(${AMAL_ANIM_TEST_TARGET}
+    engine/effects/amalAnimTest.cpp
+)
+target_link_libraries(${AMAL_ANIM_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${AMAL_ANIM_TEST_TARGET} COMMAND ${AMAL_ANIM_TEST_TARGET})
+
+set(CHARACTER_SELECTION_TEST_TARGET characterSelectionTest)
+add_executable(${CHARACTER_SELECTION_TEST_TARGET}
+    engine/effects/characterSelectionTest.cpp
+)
+target_link_libraries(${CHARACTER_SELECTION_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${CHARACTER_SELECTION_TEST_TARGET} COMMAND ${CHARACTER_SELECTION_TEST_TARGET})

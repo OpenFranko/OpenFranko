@@ -6,12 +6,15 @@ namespace src {
 namespace engine {
 namespace effects {
 
+enum class Character { Franko, Alex };
+
 struct GameOptions {
-  bool music = false;
+  bool music = true;
   bool bass = false;
   bool mono = false;
   bool ntsc = false;
   bool tallScreen = false;
+  Character character = Character::Franko;
 };
 
 } // namespace effects

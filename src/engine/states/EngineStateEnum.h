@@ -12,7 +12,8 @@ enum class EngineStateEnum {
   KneeAnimation,
   TitleAndStory,
   ProtectionCheck,
-  Menu
+  Menu,
+  CharacterSelection
 };
 
 }

@@ -152,6 +152,9 @@ std::optional<EngineStateEnum> MenuState::update() {
   if (m_options.music != music) {
     m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
   }
+  if (m_menu.isFinished()) {
+    return EngineStateEnum::CharacterSelection;
+  }
 
   if (m_menu.isAttractDue()) {
     startAttract();

@@ -32,7 +32,7 @@ const MenuSequence::Bob &bob(const MenuSequence &menu, int number) {
 } // namespace
 
 SCENARIO("MenuSequence opens the menu as state_07 does") {
-  GIVEN("A menu with every option off") {
+  GIVEN("A menu with the options boot sets") {
     GameOptions options;
     MenuSequence menu(options, BACKDROP_PALETTE);
 
@@ -40,7 +40,8 @@ SCENARIO("MenuSequence opens the menu as state_07 does") {
       REQUIRE(bob(menu, 4).x == -64);
       REQUIRE(bob(menu, 7).x == 384);
       REQUIRE(bob(menu, 4).image == 42);
-      REQUIRE(bob(menu, 5).image == 44);
+      REQUIRE(bob(menu, 5).image == 45);
+      REQUIRE(bob(menu, 6).image == 46);
       REQUIRE(bob(menu, 9).image == 52);
       REQUIRE(bob(menu, 10).x == 128);
       REQUIRE(bob(menu, 10).y == 32);
@@ -125,9 +126,9 @@ SCENARIO("MenuSequence moves the hand and toggles the options") {
       run(menu, 9);
       menu.advance(FIRE);
 
-      THEN("Music is on, its icon says so and the hand waggles") {
-        REQUIRE(options.music);
-        REQUIRE(bob(menu, 5).image == 45);
+      THEN("Music is off, its icon says so and the hand waggles") {
+        REQUIRE_FALSE(options.music);
+        REQUIRE(bob(menu, 5).image == 44);
         REQUIRE(bob(menu, 10).x == 130);
       }
 
@@ -137,9 +138,9 @@ SCENARIO("MenuSequence moves the hand and toggles the options") {
         menu.advance(FIRE);
 
         THEN("The icon only toggles again after the wait") {
-          REQUIRE(musicDuringWait);
-          REQUIRE_FALSE(options.music);
-          REQUIRE(bob(menu, 5).image == 44);
+          REQUIRE_FALSE(musicDuringWait);
+          REQUIRE(options.music);
+          REQUIRE(bob(menu, 5).image == 45);
         }
       }
     }
@@ -159,14 +160,14 @@ SCENARIO("MenuSequence moves the hand and toggles the options") {
     }
   }
 
-  GIVEN("Options already on when the menu opens") {
+  GIVEN("Options changed before the menu opens") {
     GameOptions options;
-    options.music = true;
+    options.music = false;
     options.mono = true;
     MenuSequence menu(options, BACKDROP_PALETTE);
 
     THEN("Their icons show them") {
-      REQUIRE(bob(menu, 5).image == 45);
+      REQUIRE(bob(menu, 5).image == 44);
       REQUIRE(bob(menu, 7).image == 49);
       REQUIRE(bob(menu, 6).image == 46);
     }
