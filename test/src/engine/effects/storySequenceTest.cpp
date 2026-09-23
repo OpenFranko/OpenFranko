@@ -10,13 +10,16 @@ const std::vector<StorySequence::Page> PAGES = {
     {1, 8, 0}, {8, 11, 1}, {11, 14, 2}, {14, 20, 3}, {20, 28, 4}, {28, 69, 5}};
 constexpr int CLOSING_PICTURE = 6;
 
+constexpr int FRAME = StorySequence::FRAMES_PER_ANIMATION_FRAME;
 constexpr int PAGE_TAIL =
     StorySequence::PICTURE_FRAMES + StorySequence::TEXT_FRAMES +
     StorySequence::PAUSE_FRAMES + StorySequence::READING_FRAMES;
+constexpr int FIRST_PAGE_PICTURE = 8 * FRAME + StorySequence::PICTURE_FRAMES;
+constexpr int FIRST_PAGE_TEXT = FIRST_PAGE_PICTURE + StorySequence::TEXT_FRAMES;
 constexpr int FIRST_PAGE_READING_START =
-    8 * StorySequence::FRAMES_PER_ANIMATION_FRAME +
-    StorySequence::PICTURE_FRAMES + StorySequence::TEXT_FRAMES +
-    StorySequence::PAUSE_FRAMES;
+    FIRST_PAGE_TEXT + StorySequence::PAUSE_FRAMES;
+constexpr int FIRST_PAGE_END =
+    FIRST_PAGE_READING_START + StorySequence::READING_FRAMES;
 
 std::vector<StorySequence::View> run(StorySequence &story, int frames,
                                      bool skipLatched = false,
@@ -63,31 +66,30 @@ SCENARIO("StorySequence plays the story pages as ANI, TEX and KLIKER do") {
     StorySequence story(PAGES, CLOSING_PICTURE);
 
     WHEN("The first page plays without any input") {
-      const auto views = run(story, FIRST_PAGE_READING_START +
-                                        StorySequence::READING_FRAMES + 11);
+      const auto views = run(story, FIRST_PAGE_END + FRAME + 1);
 
-      THEN("The page starts blank and each frame shows once it is unpacked") {
+      THEN("Blank at first, then a new frame every 8 frames (ANI's Timer>7)") {
         REQUIRE(isBlank(views[0]));
-        REQUIRE(isBlank(views[9]));
-        REQUIRE(views[10].frame == 1);
-        REQUIRE(views[19].frame == 1);
-        REQUIRE(views[20].frame == 2);
-        REQUIRE(views[80].frame == 8);
+        REQUIRE(isBlank(views[7]));
+        REQUIRE(views[8].frame == 1);
+        REQUIRE(views[15].frame == 1);
+        REQUIRE(views[16].frame == 2);
+        REQUIRE(views[64].frame == 8);
       }
 
       THEN("The picture follows the last frame, and the text the picture") {
-        REQUIRE_FALSE(views[82].picture.has_value());
-        REQUIRE(views[83].picture == 0);
-        REQUIRE(views[83].frame == 8);
-        REQUIRE_FALSE(views[97].text.has_value());
-        REQUIRE(views[98].text == 0);
+        REQUIRE_FALSE(views[FIRST_PAGE_PICTURE - 1].picture.has_value());
+        REQUIRE(views[FIRST_PAGE_PICTURE].picture == 0);
+        REQUIRE(views[FIRST_PAGE_PICTURE].frame == 8);
+        REQUIRE_FALSE(views[FIRST_PAGE_TEXT - 1].text.has_value());
+        REQUIRE(views[FIRST_PAGE_TEXT].text == 0);
       }
 
       THEN("KLIKER[20] keeps the page up for 2000 frames after its Wait 10") {
-        REQUIRE(views[2107].text == 0);
-        REQUIRE(isBlank(views[2108]));
-        REQUIRE(isBlank(views[2117]));
-        REQUIRE(views[2118].frame == 8);
+        REQUIRE(views[FIRST_PAGE_END - 1].text == 0);
+        REQUIRE(isBlank(views[FIRST_PAGE_END]));
+        REQUIRE(isBlank(views[FIRST_PAGE_END + FRAME - 1]));
+        REQUIRE(views[FIRST_PAGE_END + FRAME].frame == 8);
       }
     }
 
@@ -97,9 +99,9 @@ SCENARIO("StorySequence plays the story pages as ANI, TEX and KLIKER do") {
 
       THEN("The screen clears and the next page starts at once") {
         REQUIRE(isBlank(story.view()));
-        const auto views = run(story, 10);
-        REQUIRE(isBlank(views[8]));
-        REQUIRE(views[9].frame == 8);
+        const auto views = run(story, FRAME);
+        REQUIRE(isBlank(views[FRAME - 2]));
+        REQUIRE(views[FRAME - 1].frame == 8);
       }
     }
 
@@ -107,7 +109,7 @@ SCENARIO("StorySequence plays the story pages as ANI, TEX and KLIKER do") {
       const auto views = run(story, FIRST_PAGE_READING_START, false, true);
 
       THEN("It is ignored") {
-        REQUIRE(views[80].frame == 8);
+        REQUIRE(views[8 * FRAME].frame == 8);
         REQUIRE(views.back().text == 0);
         REQUIRE_FALSE(story.isFinished());
       }
@@ -173,12 +175,12 @@ SCENARIO("StorySequence stops when fire has been latched") {
     }
 
     WHEN("Fire is latched while a frame is being unpacked") {
-      run(story, 25);
-      const auto views = run(story, 6, true);
+      run(story, 2 * FRAME + 1);
+      const auto views = run(story, FRAME, true);
 
       THEN("The story ends when that unpack is over, before the frame shows") {
-        REQUIRE(views[4].frame == 2);
-        REQUIRE(isBlank(views[5]));
+        REQUIRE(views[FRAME - 2].frame == 2);
+        REQUIRE(isBlank(views[FRAME - 1]));
         REQUIRE(story.isFinished());
       }
     }
@@ -194,11 +196,10 @@ SCENARIO("StorySequence stops when fire has been latched") {
     }
 
     WHEN("Fire is latched while the text is built, then let go") {
-      run(story, 90);
+      run(story, FIRST_PAGE_PICTURE);
       run(story, 5, true, true);
-      const auto views = run(
-          story, FIRST_PAGE_READING_START - 95 + StorySequence::READING_FRAMES,
-          true, false);
+      const auto views =
+          run(story, FIRST_PAGE_END - FIRST_PAGE_PICTURE - 5, true, false);
 
       THEN("KLIKER still waits out the page") {
         REQUIRE(views.back().text == 0);

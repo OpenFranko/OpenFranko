@@ -24,7 +24,7 @@ public:
     std::optional<int> text;
   };
 
-  static constexpr int FRAMES_PER_ANIMATION_FRAME = 10;
+  static constexpr int FRAMES_PER_ANIMATION_FRAME = 8;
   static constexpr int PICTURE_FRAMES = 3;
   static constexpr int TEXT_FRAMES = 15;
   static constexpr int PAUSE_FRAMES = 10;
