@@ -25,7 +25,7 @@ public:
   void stopSFX();
 
 private:
-  Mix_Music *trackerModule;
+  Mix_Music *trackerModule = nullptr;
   std::map<std::string, Mix_Chunk *> soundEffects;
 };
 

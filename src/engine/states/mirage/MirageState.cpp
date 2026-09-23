@@ -11,7 +11,7 @@ constexpr auto PICTURE_PATH = "assets/03C3.bmp";
 constexpr int SCREEN_ID = 0;
 constexpr int SCREEN_WIDTH = 368;
 constexpr int SCREEN_HEIGHT = 290;
-constexpr std::size_t SCREEN_COLOURS = 32;
+constexpr std::size_t SCREEN_COLORS = 32;
 
 constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 70};
 
@@ -21,7 +21,7 @@ effects::AmigaPalette openScreen(systems::VideoSystem &videoSystem) {
   videoSystem.loadIndexedImage(PICTURE, PICTURE_PATH);
 
   auto palette = videoSystem.getImagePalette(PICTURE);
-  palette.resize(SCREEN_COLOURS);
+  palette.resize(SCREEN_COLORS);
   return palette;
 }
 

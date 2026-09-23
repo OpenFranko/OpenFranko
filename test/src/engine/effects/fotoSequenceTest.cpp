@@ -1,5 +1,7 @@
 #include "../../../../src/engine/effects/FotoSequence.h"
 #include <catch2/catch_all.hpp>
+#include <cstddef>
+#include <vector>
 
 using namespace openfranko::src::engine::effects;
 
@@ -12,12 +14,37 @@ const AmigaPalette MIRAGE_PALETTE = {
 
 constexpr FotoSequence::Timings MIRAGE_TIMINGS{5, 200, 5, 70};
 
+const AmigaPalette SPIDER_PALETTE = {
+    0x004, 0x999, 0x666, 0x777, 0x888, 0x999, 0xAAA, 0xBBB, 0xCCC, 0xDDD, 0xBBB,
+    0xAAA, 0xCDE, 0xBDE, 0xACD, 0x9BD, 0x8AD, 0x79D, 0x68D, 0x57D, 0x000, 0xFFF,
+    0xF55, 0x555, 0x777, 0x888, 0x999, 0xAAA, 0xCCC, 0xDDD, 0x400, 0x300};
+
+constexpr FotoSequence::Timings SPIDER_TIMINGS{5, 200, 5, 75};
+
+constexpr std::size_t EYES = 22;
+const FlashSteps EYES_FLASH = {{0xF00, 4}, {0xE00, 4}, {0xD00, 4}, {0xC00, 4},
+                               {0xB00, 4}, {0xA00, 4}, {0x900, 4}, {0x800, 4},
+                               {0x900, 4}, {0xA00, 4}, {0xB00, 4}, {0xC00, 4},
+                               {0xD00, 4}, {0xE00, 4}};
+
 bool run(FotoSequence &sequence, int frames) {
   bool changed = false;
   for (int frame = 0; frame < frames; ++frame) {
     changed = sequence.advance() || changed;
   }
   return changed;
+}
+
+std::vector<AmigaColor> runFlashingEyes(FotoSequence &sequence, int frames) {
+  std::vector<AmigaColor> eyes;
+  for (int frame = 0; frame < frames; ++frame) {
+    if (sequence.frame() == sequence.holdStart()) {
+      sequence.flash(EYES, EYES_FLASH);
+    }
+    sequence.advance();
+    eyes.push_back(sequence.palette()[EYES]);
+  }
+  return eyes;
 }
 
 } // namespace
@@ -103,6 +130,69 @@ SCENARIO("FotoSequence plays the Mirage logo as state_02 does") {
       THEN("It ends completely black") {
         REQUIRE(sequence.isFinished());
         REQUIRE(sequence.palette() == AmigaPalette(32, 0x000));
+      }
+    }
+  }
+}
+
+SCENARIO("FotoSequence flashes the spider's eyes as state_02 does") {
+  GIVEN("The World Software screen, flashing colour 22 once FOTO returns") {
+    FotoSequence sequence(SPIDER_PALETTE, SPIDER_TIMINGS);
+
+    THEN("FOTO returns after its Wait 5 and Wait 75") {
+      REQUIRE(sequence.holdStart() == 5 + 75);
+    }
+
+    WHEN("The picture has been up for the whole Wait 200") {
+      runFlashingEyes(sequence, 5 + 75 + 200);
+
+      THEN("Only the eyes differ from the picture's own colours") {
+        AmigaPalette expected = SPIDER_PALETTE;
+        expected[EYES] = 0x800;
+        REQUIRE(sequence.palette() == expected);
+      }
+    }
+
+    WHEN("The screen has played to its end") {
+      const auto eyes = runFlashingEyes(sequence, 5 + 75 + 200 + 75);
+
+      THEN("The eyes fade in with the rest of the picture") {
+        REQUIRE(eyes[79] == 0xF55);
+      }
+
+      THEN("The flash starts at once and changes colour every 4 frames") {
+        REQUIRE(eyes[80] == 0xF00);
+        REQUIRE(eyes[83] == 0xF00);
+        REQUIRE(eyes[84] == 0xE00);
+        REQUIRE(eyes[108] == 0x800);
+        REQUIRE(eyes[111] == 0x800);
+        REQUIRE(eyes[112] == 0x900);
+        REQUIRE(eyes[135] == 0xE00);
+        REQUIRE(eyes[136] == 0xF00);
+      }
+
+      THEN("The fade wins when it changes the eyes on a flash frame") {
+        REQUIRE(eyes[280] == 0x700);
+        REQUIRE(eyes[300] == 0x300);
+      }
+
+      THEN("Between fade steps the flash puts its own colour back") {
+        REQUIRE(eyes[284] == 0xA00);
+        REQUIRE(eyes[285] == 0x600);
+        REQUIRE(eyes[304] == 0xF00);
+      }
+
+      THEN("Once the fade has taken the eyes to black, the flash goes on") {
+        REQUIRE(eyes[315] == 0x000);
+        REQUIRE(eyes[316] == 0xC00);
+        REQUIRE(eyes[320] == 0xB00);
+      }
+
+      THEN("The screen closes black except for the eyes") {
+        REQUIRE(sequence.isFinished());
+        AmigaPalette expected(32, 0x000);
+        expected[EYES] = 0xD00;
+        REQUIRE(sequence.palette() == expected);
       }
     }
   }

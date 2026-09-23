@@ -7,6 +7,13 @@ add_executable(${PALETTE_FADER_TEST_TARGET}
 target_link_libraries(${PALETTE_FADER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${PALETTE_FADER_TEST_TARGET} COMMAND ${PALETTE_FADER_TEST_TARGET})
 
+set(PALETTE_FLASHER_TEST_TARGET paletteFlasherTest)
+add_executable(${PALETTE_FLASHER_TEST_TARGET}
+    engine/effects/paletteFlasherTest.cpp
+)
+target_link_libraries(${PALETTE_FLASHER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${PALETTE_FLASHER_TEST_TARGET} COMMAND ${PALETTE_FLASHER_TEST_TARGET})
+
 set(FOTO_SEQUENCE_TEST_TARGET fotoSequenceTest)
 add_executable(${FOTO_SEQUENCE_TEST_TARGET}
     engine/effects/fotoSequenceTest.cpp

@@ -2,6 +2,9 @@
 #define ENGINE_EFFECTS_FOTOSEQUENCE_H_
 
 #include "PaletteFader.h"
+#include "PaletteFlasher.h"
+
+#include <cstddef>
 
 namespace openfranko {
 namespace src {
@@ -21,8 +24,13 @@ public:
 
   bool advance();
 
+  void flash(std::size_t color, FlashSteps steps);
+
   const AmigaPalette &palette() const;
   bool isFinished() const;
+
+  int frame() const;
+  int holdStart() const;
 
 private:
   int fadeInStart() const;
@@ -33,6 +41,7 @@ private:
   AmigaPalette m_palette;
   Timings m_timings;
   PaletteFader m_fader;
+  PaletteFlasher m_flasher;
   int m_frame = 0;
 };
 

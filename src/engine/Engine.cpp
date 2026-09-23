@@ -39,7 +39,7 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     break;
   case states::EngineStateEnum::WorldSoftware:
     currentState = std::make_unique<states::worldSoftware::WorldSoftwareState>(
-        videoSystem);
+        videoSystem, audioSystem);
     break;
   }
 }

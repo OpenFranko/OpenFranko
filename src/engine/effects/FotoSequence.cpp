@@ -29,20 +29,30 @@ bool FotoSequence::advance() {
                   AmigaPalette(m_palette.size(), BLACK));
   }
 
-  const bool changed = m_fader.tick(m_palette);
+  const bool flashed = m_flasher.tick(m_palette);
+  const bool faded = m_fader.tick(m_palette);
   ++m_frame;
-  return changed;
+  return flashed || faded;
+}
+
+void FotoSequence::flash(std::size_t color, FlashSteps steps) {
+  m_flasher.start(color, std::move(steps));
 }
 
 const AmigaPalette &FotoSequence::palette() const { return m_palette; }
 
 bool FotoSequence::isFinished() const { return m_frame >= totalFrames(); }
 
+int FotoSequence::frame() const { return m_frame; }
+
+int FotoSequence::holdStart() const {
+  return fadeInStart() + FOTO_WAIT_PER_SPEED * m_timings.fadeInSpeed;
+}
+
 int FotoSequence::fadeInStart() const { return WHITE_FRAMES; }
 
 int FotoSequence::fadeOutStart() const {
-  return fadeInStart() + FOTO_WAIT_PER_SPEED * m_timings.fadeInSpeed +
-         m_timings.holdFrames;
+  return holdStart() + m_timings.holdFrames;
 }
 
 int FotoSequence::totalFrames() const {

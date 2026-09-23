@@ -1,7 +1,9 @@
 #ifndef ENGINE_STATES_WORLDSOFTWARESTATE_H_
 #define ENGINE_STATES_WORLDSOFTWARESTATE_H_
 
+#include "../../../systems/AudioSystem.h"
 #include "../../../systems/VideoSystem.h"
+#include "../../effects/FotoSequence.h"
 #include "../IEngineState.h"
 
 namespace openfranko {
@@ -12,13 +14,16 @@ namespace worldSoftware {
 
 class WorldSoftwareState : public IEngineState {
 public:
-  WorldSoftwareState(systems::VideoSystem &videoSystem);
+  WorldSoftwareState(systems::VideoSystem &videoSystem,
+                     systems::AudioSystem &audioSystem);
   ~WorldSoftwareState();
 
   std::optional<EngineStateEnum> update() override;
 
 private:
   systems::VideoSystem &m_videoSystem;
+  systems::AudioSystem &m_audioSystem;
+  effects::FotoSequence m_sequence;
 };
 
 } // namespace worldSoftware
