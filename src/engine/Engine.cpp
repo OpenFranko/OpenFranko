@@ -5,8 +5,7 @@
 namespace openfranko::src::engine {
 
 Engine::Engine()
-    : currentState(std::make_unique<states::mirage::MirageState>(
-          videoSystem, controllerSystem)),
+    : currentState(std::make_unique<states::mirage::MirageState>(videoSystem)),
       running(true) {
   audioSystem.loadMusic("assets/0261.s3m");
   audioSystem.playMusic();
@@ -39,8 +38,7 @@ void Engine::switchState(states::EngineStateEnum nextState) {
 
   switch (nextState) {
   case states::EngineStateEnum::Mirage:
-    currentState = std::make_unique<states::mirage::MirageState>(
-        videoSystem, controllerSystem);
+    currentState = std::make_unique<states::mirage::MirageState>(videoSystem);
     break;
   case states::EngineStateEnum::WorldSoftware:
     currentState = std::make_unique<states::worldSoftware::WorldSoftwareState>(

@@ -13,15 +13,13 @@ namespace mirage {
 
 class MirageState : public IEngineState {
 public:
-  MirageState(systems::VideoSystem &videoSystem,
-              systems::ControllerSystem &controllerSystem);
+  MirageState(systems::VideoSystem &videoSystem);
   ~MirageState();
 
   std::optional<EngineStateEnum> update() override;
 
 private:
   systems::VideoSystem &m_videoSystem;
-  systems::ControllerSystem &m_controllerSystem;
 };
 
 } // namespace mirage
