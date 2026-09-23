@@ -111,7 +111,9 @@ int validateDirectory(const std::string &dirPath) {
   return missing;
 }
 
-int processFile(const std::string &inputPath, const std::string &outDir,
+namespace {
+
+int extractFile(const std::string &inputPath, const std::string &outDir,
                 std::set<size_t> &seenSamBanks) {
   auto rawData = lib::filesystem::readFile::readFile(inputPath);
   auto info = lib::converter::fileContainer::parseFooter(rawData);
@@ -122,6 +124,7 @@ int processFile(const std::string &inputPath, const std::string &outDir,
             << "] " << rawData.size() << " bytes" << std::endl;
 
   std::vector<OutputFile> outputs;
+  bool failed = false;
 
   if (info.resourceType ==
       lib::converter::gameData::resourceTypes::SCREEN_PACKAGE) {
@@ -130,9 +133,10 @@ int processFile(const std::string &inputPath, const std::string &outDir,
       outputs.push_back({fileId + ".bmp", std::move(bmpData)});
     } catch (const std::exception &e) {
       std::cerr << "  SPACK error: " << e.what() << std::endl;
+      failed = true;
     }
     writeOutputs(outDir, fileId, outputs);
-    return 0;
+    return failed ? 1 : 0;
   }
 
   std::vector<uint8_t> dec;
@@ -151,6 +155,7 @@ int processFile(const std::string &inputPath, const std::string &outDir,
       auto palette = lib::converter::spriteSheet::selectPalette(fileId);
       auto sprites =
           lib::converter::spriteSheet::convertToIndividual(dec, palette);
+      std::vector<int> skipped;
       int idx = 0;
       for (auto &sprite : sprites) {
         if (!sprite.empty()) {
@@ -161,13 +166,24 @@ int processFile(const std::string &inputPath, const std::string &outDir,
           snprintf(buf, sizeof(buf), "%s_%03d.bmp", fileId.c_str(), idx);
           std::string bmpName(buf);
           outputs.push_back({bmpName, std::move(sprite)});
+        } else {
+          skipped.push_back(idx);
         }
         idx++;
       }
+      if (!skipped.empty()) {
+        std::cerr << "  skipped " << skipped.size() << " of " << sprites.size()
+                  << " sprites that could not be decoded:";
+        for (size_t i = 0; i < skipped.size(); i++) {
+          std::cerr << (i == 0 ? " " : ", ") << skipped[i];
+        }
+        std::cerr << std::endl;
+      }
     } catch (const std::exception &e) {
       std::cerr << "  sprite error: " << e.what() << std::endl;
+      failed = true;
     }
-    {
+    try {
       size_t samHash = hashSamBank(dec);
       if (samHash != 0 && seenSamBanks.insert(samHash).second) {
         auto samples =
@@ -176,6 +192,9 @@ int processFile(const std::string &inputPath, const std::string &outDir,
           outputs.push_back({std::move(s.name), std::move(s.data)});
         }
       }
+    } catch (const std::exception &e) {
+      std::cerr << "  sample error: " << e.what() << std::endl;
+      failed = true;
     }
     break;
   }
@@ -188,35 +207,51 @@ int processFile(const std::string &inputPath, const std::string &outDir,
                            lib::converter::levelScript::toJson(level, fileId)});
       } catch (const std::exception &e) {
         std::cerr << "  level script error: " << e.what() << std::endl;
+        failed = true;
       }
       break;
     }
-    auto bitmaps = lib::converter::bitmapExtractor::extract(dec, fileId);
-    for (auto &bm : bitmaps) {
-      outputs.push_back({bm.name + ".bmp", std::move(bm.bmpData)});
-    }
-    if (bitmaps.empty()) {
-      std::cerr << "  (no bitmaps extracted)" << std::endl;
+    try {
+      auto bitmaps = lib::converter::bitmapExtractor::extract(dec, fileId);
+      for (auto &bm : bitmaps) {
+        outputs.push_back({bm.name + ".bmp", std::move(bm.bmpData)});
+      }
+      if (bitmaps.empty()) {
+        std::cerr << "  (no bitmaps extracted)" << std::endl;
+      }
+    } catch (const std::exception &e) {
+      std::cerr << "  bitmap error: " << e.what() << std::endl;
+      failed = true;
     }
     break;
   }
 
   case lib::converter::gameData::resourceTypes::SAMPLES: {
-    auto samples =
-        lib::converter::audioExtractor::extractStandaloneSamBank(dec, fileId);
-    for (auto &s : samples) {
-      outputs.push_back({std::move(s.name), std::move(s.data)});
-    }
-    if (samples.empty()) {
-      std::cerr << "  (no samples extracted)" << std::endl;
+    try {
+      auto samples =
+          lib::converter::audioExtractor::extractStandaloneSamBank(dec, fileId);
+      for (auto &s : samples) {
+        outputs.push_back({std::move(s.name), std::move(s.data)});
+      }
+      if (samples.empty()) {
+        std::cerr << "  (no samples extracted)" << std::endl;
+      }
+    } catch (const std::exception &e) {
+      std::cerr << "  sample error: " << e.what() << std::endl;
+      failed = true;
     }
     break;
   }
 
   case lib::converter::gameData::resourceTypes::MUSIC: {
-    auto abk = lib::converter::audioExtractor::wrapMusicBank(dec, fileId);
-    auto s3mData = lib::converter::abkToS3m::convert(abk.data);
-    outputs.push_back({fileId + ".s3m", std::move(s3mData)});
+    try {
+      auto abk = lib::converter::audioExtractor::wrapMusicBank(dec, fileId);
+      auto s3mData = lib::converter::abkToS3m::convert(abk.data);
+      outputs.push_back({fileId + ".s3m", std::move(s3mData)});
+    } catch (const std::exception &e) {
+      std::cerr << "  music error: " << e.what() << std::endl;
+      failed = true;
+    }
     break;
   }
 
@@ -227,7 +262,19 @@ int processFile(const std::string &inputPath, const std::string &outDir,
   }
 
   writeOutputs(outDir, fileId, outputs);
-  return 0;
+  return failed ? 1 : 0;
+}
+
+} // namespace
+
+int processFile(const std::string &inputPath, const std::string &outDir,
+                std::set<size_t> &seenSamBanks) {
+  try {
+    return extractFile(inputPath, outDir, seenSamBanks);
+  } catch (const std::exception &e) {
+    std::cerr << inputPath << ": " << e.what() << std::endl;
+    return 1;
+  }
 }
 
 } // namespace openfranko::tools::converter::frankoResourceExtractor
