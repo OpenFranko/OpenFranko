@@ -64,6 +64,10 @@ SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
 std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
                                     const std::vector<uint16_t> &palette,
                                     int columns) {
+  if (columns <= 0) {
+    throw std::runtime_error("Column count must be positive");
+  }
+
   auto header = parseHeader(data);
 
   std::vector<DecodedImage> sprites;

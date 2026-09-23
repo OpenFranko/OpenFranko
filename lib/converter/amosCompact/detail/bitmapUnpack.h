@@ -1,3 +1,6 @@
+#ifndef AMOSCOMPACT_BITMAPUNPACK_H_
+#define AMOSCOMPACT_BITMAPUNPACK_H_
+
 #include "../../shared/headers.h"
 #include "unpackedBitmap.h"
 #include <cstdint>
@@ -18,3 +21,5 @@ UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
 } // namespace converter
 } // namespace lib
 } // namespace openfranko
+
+#endif // AMOSCOMPACT_BITMAPUNPACK_H_

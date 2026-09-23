@@ -1,3 +1,6 @@
+#ifndef AMOSCOMPACT_H_
+#define AMOSCOMPACT_H_
+
 #include <cstdint>
 #include <vector>
 
@@ -12,3 +15,5 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData);
 } // namespace converter
 } // namespace lib
 } // namespace openfranko
+
+#endif // AMOSCOMPACT_H_

@@ -1,10 +1,11 @@
 #include "bitmapUnpack.h"
+#include "../Consts.h"
 #include "BitReader.h"
 #include "ByteReader.h"
-#include "../Consts.h"
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
+#include <string>
 
 namespace openfranko::lib::converter::amosCompact::detail {
 
@@ -13,8 +14,8 @@ namespace {
 void mainDecompression(UnpackedBitmap &bitmap,
                        const headers::BitmapHeader &header, ByteReader &bytes1,
                        ByteReader &bytes2, BitReader &pointerBits) {
-  uint16_t lineSize = header.gridX;
-  uint16_t heightLines = header.gridY * header.tileHeight;
+  const size_t lineSize = header.gridX;
+  const size_t heightLines = bitmap.height;
 
   uint8_t mask = bytes2.read();
   uint8_t val = bytes1.read();
@@ -35,8 +36,9 @@ void mainDecompression(UnpackedBitmap &bitmap,
             val = bytes1.read();
           }
 
-          int outY = tileRow * header.tileHeight + row;
-          int outX = tileCol;
+          const size_t outY =
+              static_cast<size_t>(tileRow) * header.tileHeight + row;
+          const size_t outX = tileCol;
 
           if (outY < heightLines && outX < lineSize) {
             planeData[outY * lineSize + outX] = val;
@@ -55,26 +57,28 @@ void mainDecompression(UnpackedBitmap &bitmap,
 }
 
 void unpackChunkyPixels(UnpackedBitmap &bitmap) {
-  size_t totalPixels = bitmap.width * bitmap.height;
+  size_t totalPixels = static_cast<size_t>(bitmap.width) * bitmap.height;
   uint16_t widthByBytes = bitmap.width / 8;
 
   bitmap.chunkyPixels.assign(totalPixels, 0);
 
-  for (int y = 0; y < bitmap.height; y++) {
-    for (int x = 0; x < widthByBytes; x++) {
+  for (size_t y = 0; y < bitmap.height; y++) {
+    for (size_t x = 0; x < widthByBytes; x++) {
       uint8_t planeBytes[consts::MAX_SUPPORTED_BITPLANES];
       for (int p = 0; p < bitmap.numberOfBitplanes; p++) {
         planeBytes[p] = bitmap.bitplaneData[p][y * widthByBytes + x];
       }
 
-      // Interleave bits from each bitplane into a single palette index per pixel
       for (int bit = 7; bit >= 0; bit--) {
         int shift = 7 - bit;
         uint8_t pixelValue = 0;
         for (int p = 0; p < bitmap.numberOfBitplanes; p++) {
-          pixelValue |= ((planeBytes[p] >> shift) & 1) << p;
+          pixelValue |=
+              static_cast<uint8_t>(((planeBytes[p] >> shift) & 1) << p);
         }
-        bitmap.chunkyPixels[y * bitmap.width + x * 8 + bit] = pixelValue;
+        bitmap
+            .chunkyPixels[y * bitmap.width + x * 8 + static_cast<size_t>(bit)] =
+            pixelValue;
       }
     }
   }
@@ -85,9 +89,28 @@ void unpackChunkyPixels(UnpackedBitmap &bitmap) {
 UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
                             const headers::BitmapHeader &header,
                             const std::vector<uint16_t> &palette) {
-  const uint16_t widthInPixels = header.gridX * 8;
-  const uint16_t heightInLines = header.gridY * header.tileHeight;
-  const size_t planeSize = header.gridX * heightInLines;
+  const size_t widthFull = static_cast<size_t>(header.gridX) * 8;
+  const size_t heightFull =
+      static_cast<size_t>(header.gridY) * header.tileHeight;
+
+  if (widthFull == 0 || heightFull == 0) {
+    throw std::runtime_error("Bitmap has zero dimensions");
+  }
+  if (widthFull > consts::MAX_BITMAP_DIMENSION ||
+      heightFull > consts::MAX_BITMAP_DIMENSION) {
+    throw std::runtime_error(
+        "Bitmap dimensions out of range: " + std::to_string(widthFull) + "x" +
+        std::to_string(heightFull));
+  }
+  if (widthFull * heightFull > consts::MAX_BITMAP_PIXELS) {
+    throw std::runtime_error(
+        "Bitmap is implausibly large: " + std::to_string(widthFull) + "x" +
+        std::to_string(heightFull));
+  }
+
+  const uint16_t widthInPixels = static_cast<uint16_t>(widthFull);
+  const uint16_t heightInLines = static_cast<uint16_t>(heightFull);
+  const size_t planeSize = static_cast<size_t>(header.gridX) * heightInLines;
 
   size_t byteTable1Pointer = consts::PACKED_BITMAP_HEADER_SIZE;
   size_t byteTable2Pointer = header.offsetToByteTable2;
@@ -96,6 +119,12 @@ UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
   if (packedData.size() <= bitstreamPointer ||
       packedData.size() <= byteTable2Pointer) {
     throw std::runtime_error("Packed data is too small to contain bitstream");
+  }
+
+  if (header.numberOfBitplanes == 0 ||
+      header.numberOfBitplanes > consts::MAX_SUPPORTED_BITPLANES) {
+    throw std::runtime_error("Unsupported bitplane count: " +
+                             std::to_string(header.numberOfBitplanes));
   }
 
   UnpackedBitmap bitmap;

@@ -38,7 +38,11 @@ bool isTileFile(const std::string &id) {
 
 std::vector<uint16_t> readSPACKPalette(const std::vector<uint8_t> &data,
                                        size_t offset) {
-  std::vector<uint8_t> slice(data.begin() + offset, data.end());
+  if (offset > data.size()) {
+    throw std::runtime_error("SPACK palette offset is past the end of data");
+  }
+  std::vector<uint8_t> slice(data.begin() + static_cast<std::ptrdiff_t>(offset),
+                             data.end());
   auto hdr = headers::parseSPACKHeader(slice);
   return {std::begin(hdr.amigaPalette), std::end(hdr.amigaPalette)};
 }

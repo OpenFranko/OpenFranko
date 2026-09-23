@@ -3,6 +3,8 @@
 #include "../../helpers/helpers.h"
 #include "Consts.h"
 #include "detail/bitmapUnpack.h"
+#include <algorithm>
+#include <iterator>
 #include <stdexcept>
 
 namespace openfranko::lib::converter::amosCompact {
@@ -29,7 +31,8 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
 
   std::vector<uint16_t> palette(32);
   for (int i = 0; i < 32; i++) {
-    palette[i] = static_cast<uint16_t>((i * 0x111) & 0xFFF);
+    const auto level = static_cast<uint16_t>(i * 15 / 31);
+    palette[i] = static_cast<uint16_t>(level * 0x111);
   }
 
   if (isSPACK(data)) {
@@ -70,14 +73,22 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("Bitmap has no chunky pixel data");
   }
 
-  int numberOfColors = 1 << unpackedBitmap.numberOfBitplanes;
-  if (numberOfColors > 32) {
-    numberOfColors = 32;
+  const int numberOfColors = 1 << unpackedBitmap.numberOfBitplanes;
+
+  std::vector<uint16_t> outPalette(std::begin(unpackedBitmap.palette),
+                                   std::end(unpackedBitmap.palette));
+
+  if (numberOfColors > static_cast<int>(consts::SPACK_PALETTE_SIZE)) {
+    outPalette.resize(static_cast<size_t>(numberOfColors));
+    for (size_t i = consts::SPACK_PALETTE_SIZE; i < outPalette.size(); i++) {
+      const uint16_t base = outPalette[i - consts::SPACK_PALETTE_SIZE];
+      outPalette[i] = static_cast<uint16_t>((base >> 1) & 0x777);
+    }
   }
 
   return bmpWriter::pixelsToBmp(unpackedBitmap.width, unpackedBitmap.height,
                                 unpackedBitmap.chunkyPixels.data(),
-                                unpackedBitmap.palette, numberOfColors);
+                                outPalette.data(), numberOfColors);
 }
 
 } // namespace openfranko::lib::converter::amosCompact

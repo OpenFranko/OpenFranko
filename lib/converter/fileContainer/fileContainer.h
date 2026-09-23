@@ -13,6 +13,8 @@ struct FileInfo {
   uint32_t unpackSize;
   uint16_t fileId;
   uint16_t resourceType;
+  uint8_t bankType;
+  bool compressed;
 };
 
 FileInfo parseFooter(const std::vector<uint8_t> &rawData);

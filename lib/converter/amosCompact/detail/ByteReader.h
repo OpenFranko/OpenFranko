@@ -1,3 +1,6 @@
+#ifndef AMOSCOMPACT_BYTEREADER_H_
+#define AMOSCOMPACT_BYTEREADER_H_
+
 #include <cstdint>
 #include <vector>
 
@@ -23,3 +26,5 @@ private:
 } // namespace converter
 } // namespace lib
 } // namespace openfranko
+
+#endif // AMOSCOMPACT_BYTEREADER_H_
