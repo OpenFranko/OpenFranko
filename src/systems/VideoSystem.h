@@ -3,9 +3,11 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace openfranko {
 namespace src {
@@ -15,6 +17,9 @@ class VideoSystem {
 public:
   VideoSystem();
   ~VideoSystem();
+
+  VideoSystem(const VideoSystem &) = delete;
+  VideoSystem &operator=(const VideoSystem &) = delete;
 
   void createScreen(int screenId, int width, int height);
   void switchScreen(int screenId);
@@ -27,6 +32,11 @@ public:
   void clearImage(const std::string &name);
   void drawImage(const std::string &name, int x, int y,
                  SDL_RendererFlip flip = SDL_FLIP_NONE);
+
+  void loadIndexedImage(const std::string &name, const std::string &path);
+  std::vector<uint16_t> getImagePalette(const std::string &name) const;
+  void setImagePalette(const std::string &name,
+                       const std::vector<uint16_t> &palette);
 
 private:
   struct VirtualScreen {
@@ -41,7 +51,10 @@ private:
     int height = 0;
     int hotspotX = 0;
     int hotspotY = 0;
+    SDL_Surface *indexedSurface = nullptr;
   };
+
+  const Image &findIndexedImage(const std::string &name) const;
 
   Image loadImageFile(const std::string &path, bool applyColorKey);
 

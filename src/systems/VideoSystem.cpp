@@ -1,13 +1,20 @@
 #include "VideoSystem.h"
+#include <algorithm>
 #include <fstream>
 #include <stdexcept>
 
 namespace openfranko::src::systems {
 namespace {
 
-void throwError(const std::string &cause) {
+[[noreturn]] void throwError(const std::string &cause) {
   throw std::runtime_error("Video system error: " + cause);
 }
+
+uint8_t nibbleToChannel(int nibble) {
+  return static_cast<uint8_t>((nibble & 0xF) * 17);
+}
+
+int channelToNibble(uint8_t channel) { return (channel + 8) / 17; }
 
 constexpr auto WINDOW_NAME = "OpenFranko";
 constexpr auto WINDOW_WIDTH = 800;
@@ -72,6 +79,9 @@ VideoSystem::~VideoSystem() {
   for (auto &pair : imageStates) {
     if (pair.second.texture) {
       SDL_DestroyTexture(pair.second.texture);
+    }
+    if (pair.second.indexedSurface) {
+      SDL_FreeSurface(pair.second.indexedSurface);
     }
   }
 
@@ -212,6 +222,9 @@ void VideoSystem::clearImage(const std::string &name) {
   if (it->second.texture) {
     SDL_DestroyTexture(it->second.texture);
   }
+  if (it->second.indexedSurface) {
+    SDL_FreeSurface(it->second.indexedSurface);
+  }
   imageStates.erase(it);
 }
 
@@ -261,6 +274,83 @@ VideoSystem::Image VideoSystem::loadImageFile(const std::string &path,
   auto hotspot = parseImageHotspot(path);
 
   return Image{tex, width, height, hotspot.first, hotspot.second};
+}
+
+void VideoSystem::loadIndexedImage(const std::string &name,
+                                   const std::string &path) {
+  clearImage(name);
+
+  SDL_Surface *surface = SDL_LoadBMP(path.c_str());
+  if (!surface) {
+    throwError("Failed to load image: " + path);
+  }
+  if (surface->format->BitsPerPixel != 8 || !surface->format->palette) {
+    SDL_FreeSurface(surface);
+    throwError("Not an 8-bit indexed image: " + path);
+  }
+
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    SDL_FreeSurface(surface);
+    throwError("Failed to create texture for: " + path);
+  }
+
+  auto hotspot = parseImageHotspot(path);
+  imageStates.emplace(name, Image{texture, surface->w, surface->h,
+                                  hotspot.first, hotspot.second, surface});
+}
+
+std::vector<uint16_t>
+VideoSystem::getImagePalette(const std::string &name) const {
+  const SDL_Palette *palette =
+      findIndexedImage(name).indexedSurface->format->palette;
+
+  std::vector<uint16_t> colors;
+  colors.reserve(palette->ncolors);
+  for (int i = 0; i < palette->ncolors; ++i) {
+    const SDL_Color &color = palette->colors[i];
+    colors.push_back(static_cast<uint16_t>(channelToNibble(color.r) << 8 |
+                                           channelToNibble(color.g) << 4 |
+                                           channelToNibble(color.b)));
+  }
+  return colors;
+}
+
+void VideoSystem::setImagePalette(const std::string &name,
+                                  const std::vector<uint16_t> &palette) {
+  auto it = imageStates.find(name);
+  if (it == imageStates.end() || !it->second.indexedSurface) {
+    throwError("No indexed image named: " + name);
+  }
+  Image &image = it->second;
+  SDL_Palette *surfacePalette = image.indexedSurface->format->palette;
+
+  const int count =
+      std::min(static_cast<int>(palette.size()), surfacePalette->ncolors);
+  std::vector<SDL_Color> colors(count);
+  for (int i = 0; i < count; ++i) {
+    colors[i] = {nibbleToChannel(palette[i] >> 8),
+                 nibbleToChannel(palette[i] >> 4), nibbleToChannel(palette[i]),
+                 255};
+  }
+  SDL_SetPaletteColors(surfacePalette, colors.data(), 0, count);
+
+  SDL_Texture *texture =
+      SDL_CreateTextureFromSurface(renderer, image.indexedSurface);
+  if (!texture) {
+    throwError("Failed to recolour image: " + name);
+  }
+  SDL_DestroyTexture(image.texture);
+  image.texture = texture;
+}
+
+const VideoSystem::Image &
+VideoSystem::findIndexedImage(const std::string &name) const {
+  auto it = imageStates.find(name);
+  if (it == imageStates.end() || !it->second.indexedSurface) {
+    throwError("No indexed image named: " + name);
+  }
+  return it->second;
 }
 
 } // namespace openfranko::src::systems

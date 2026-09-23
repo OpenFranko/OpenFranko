@@ -6,10 +6,7 @@ namespace openfranko::src::engine {
 
 Engine::Engine()
     : currentState(std::make_unique<states::mirage::MirageState>(videoSystem)),
-      running(true) {
-  audioSystem.loadMusic("assets/0261.s3m");
-  audioSystem.playMusic();
-}
+      running(true) {}
 
 Engine::~Engine() {
   currentState.reset();

@@ -18,7 +18,7 @@ public:
   std::optional<EngineStateEnum> update() override;
 
 private:
-  systems::VideoSystem m_videoSystem;
+  systems::VideoSystem &m_videoSystem;
 };
 
 } // namespace worldSoftware
