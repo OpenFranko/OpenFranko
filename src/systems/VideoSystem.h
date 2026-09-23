@@ -38,6 +38,8 @@ public:
   std::vector<uint16_t> getImagePalette(const std::string &name) const;
   void setImagePalette(const std::string &name,
                        const std::vector<uint16_t> &palette);
+  void xorImageRect(const std::string &name, int x, int y, int width,
+                    int height, uint8_t mask);
 
 private:
   struct VirtualScreen {
@@ -56,6 +58,8 @@ private:
   };
 
   const Image &findIndexedImage(const std::string &name) const;
+  Image &findIndexedImage(const std::string &name);
+  void refreshTexture(Image &image, const std::string &name);
   void addIndexedImage(const std::string &name, const std::string &path,
                        bool colorZeroTransparent);
 

@@ -27,3 +27,10 @@ add_executable(${STORY_SEQUENCE_TEST_TARGET}
 )
 target_link_libraries(${STORY_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${STORY_SEQUENCE_TEST_TARGET} COMMAND ${STORY_SEQUENCE_TEST_TARGET})
+
+set(CODE_CARD_CHECK_TEST_TARGET codeCardCheckTest)
+add_executable(${CODE_CARD_CHECK_TEST_TARGET}
+    engine/effects/codeCardCheckTest.cpp
+)
+target_link_libraries(${CODE_CARD_CHECK_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${CODE_CARD_CHECK_TEST_TARGET} COMMAND ${CODE_CARD_CHECK_TEST_TARGET})

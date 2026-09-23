@@ -73,11 +73,6 @@ bool isJoystickTouched(
 
 void drawStory(systems::VideoSystem &videoSystem,
                const effects::StorySequence &story) {
-  if (story.isFinished()) {
-    videoSystem.fillScreen(0, 0, 0);
-    return;
-  }
-
   const effects::StorySequence::View &view = story.view();
   videoSystem.fillScreen(STORY_BACKGROUND_GREY, STORY_BACKGROUND_GREY,
                          STORY_BACKGROUND_GREY);
@@ -137,6 +132,9 @@ std::optional<EngineStateEnum> TitleAndStoryState::update() {
 
   m_story.advance(m_controllerSystem.isFireLatched(),
                   isJoystickTouched(m_controllerSystem.states));
+  if (m_story.isFinished()) {
+    return EngineStateEnum::ProtectionCheck;
+  }
   drawStory(m_videoSystem, m_story);
   return std::nullopt;
 }

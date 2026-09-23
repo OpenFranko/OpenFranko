@@ -10,7 +10,8 @@ enum class EngineStateEnum {
   Mirage,
   WorldSoftware,
   KneeAnimation,
-  TitleAndStory
+  TitleAndStory,
+  ProtectionCheck
 };
 
 }

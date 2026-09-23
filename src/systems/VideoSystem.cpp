@@ -304,11 +304,7 @@ VideoSystem::getImagePalette(const std::string &name) const {
 
 void VideoSystem::setImagePalette(const std::string &name,
                                   const std::vector<uint16_t> &palette) {
-  auto it = imageStates.find(name);
-  if (it == imageStates.end() || !it->second.indexedSurface) {
-    throwError("No indexed image named: " + name);
-  }
-  Image &image = it->second;
+  Image &image = findIndexedImage(name);
   SDL_Palette *surfacePalette = image.indexedSurface->format->palette;
 
   const int count =
@@ -321,13 +317,30 @@ void VideoSystem::setImagePalette(const std::string &name,
   }
   SDL_SetPaletteColors(surfacePalette, colors.data(), 0, count);
 
-  SDL_Texture *texture =
-      SDL_CreateTextureFromSurface(renderer, image.indexedSurface);
-  if (!texture) {
-    throwError("Failed to recolour image: " + name);
+  refreshTexture(image, name);
+}
+
+void VideoSystem::xorImageRect(const std::string &name, int x, int y, int width,
+                               int height, uint8_t mask) {
+  Image &image = findIndexedImage(name);
+  SDL_Surface *surface = image.indexedSurface;
+
+  const int left = std::max(x, 0);
+  const int top = std::max(y, 0);
+  const int right = std::min(x + width, surface->w);
+  const int bottom = std::min(y + height, surface->h);
+
+  SDL_LockSurface(surface);
+  for (int row = top; row < bottom; ++row) {
+    uint8_t *pixels =
+        static_cast<uint8_t *>(surface->pixels) + row * surface->pitch;
+    for (int column = left; column < right; ++column) {
+      pixels[column] ^= mask;
+    }
   }
-  SDL_DestroyTexture(image.texture);
-  image.texture = texture;
+  SDL_UnlockSurface(surface);
+
+  refreshTexture(image, name);
 }
 
 const VideoSystem::Image &
@@ -337,6 +350,24 @@ VideoSystem::findIndexedImage(const std::string &name) const {
     throwError("No indexed image named: " + name);
   }
   return it->second;
+}
+
+VideoSystem::Image &VideoSystem::findIndexedImage(const std::string &name) {
+  auto it = imageStates.find(name);
+  if (it == imageStates.end() || !it->second.indexedSurface) {
+    throwError("No indexed image named: " + name);
+  }
+  return it->second;
+}
+
+void VideoSystem::refreshTexture(Image &image, const std::string &name) {
+  SDL_Texture *texture =
+      SDL_CreateTextureFromSurface(renderer, image.indexedSurface);
+  if (!texture) {
+    throwError("Failed to update texture for: " + name);
+  }
+  SDL_DestroyTexture(image.texture);
+  image.texture = texture;
 }
 
 void VideoSystem::addIndexedImage(const std::string &name,
