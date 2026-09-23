@@ -20,7 +20,7 @@ inline constexpr std::string_view MENU_PALETTE = "0034";
 inline constexpr std::string_view MENU_35_PALETTE = "0035";
 inline constexpr std::string_view CEMETERY_PALETTE = "0036";
 inline constexpr std::string_view TITLE_PALETTE = "03B7";
-inline constexpr std::string_view HUD_SPRITES = "03BB";
+inline constexpr std::string_view CEMETERY_PICTURE = "03BB";
 
 inline constexpr std::array<std::string_view, 3> PAL24_FILES = {"03BE", "03BF",
                                                                 "03C0"};

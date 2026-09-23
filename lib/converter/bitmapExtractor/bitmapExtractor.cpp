@@ -223,7 +223,7 @@ std::vector<ExtractedBitmap> extract(const std::vector<uint8_t> &data,
   }
 
   if (magic == amosConsts::SPACK_SCREEN_HEADER &&
-      std::string_view(fileId) != gameData::fileIds::HUD_SPRITES) {
+      std::string_view(fileId) != gameData::fileIds::CEMETERY_PICTURE) {
     return extractSCCode(data, fileId);
   }
 
