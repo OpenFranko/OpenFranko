@@ -87,6 +87,9 @@ std::optional<EngineStateEnum> ProtectionCheckState::update() {
       }
     }
   }
+  if (m_check.isPassed()) {
+    return EngineStateEnum::Menu;
+  }
 
   const bool failed = m_check.isFinished() && !m_check.isPassed();
   m_videoSystem.drawImage(failed ? FAILURE : QUESTION, 0, 0);

@@ -34,3 +34,31 @@ add_executable(${CODE_CARD_CHECK_TEST_TARGET}
 )
 target_link_libraries(${CODE_CARD_CHECK_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${CODE_CARD_CHECK_TEST_TARGET} COMMAND ${CODE_CARD_CHECK_TEST_TARGET})
+
+set(AMAL_MOTION_TEST_TARGET amalMotionTest)
+add_executable(${AMAL_MOTION_TEST_TARGET}
+    engine/effects/amalMotionTest.cpp
+)
+target_link_libraries(${AMAL_MOTION_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${AMAL_MOTION_TEST_TARGET} COMMAND ${AMAL_MOTION_TEST_TARGET})
+
+set(CREDIT_SCROLL_TEST_TARGET creditScrollTest)
+add_executable(${CREDIT_SCROLL_TEST_TARGET}
+    engine/effects/creditScrollTest.cpp
+)
+target_link_libraries(${CREDIT_SCROLL_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${CREDIT_SCROLL_TEST_TARGET} COMMAND ${CREDIT_SCROLL_TEST_TARGET})
+
+set(MENU_SEQUENCE_TEST_TARGET menuSequenceTest)
+add_executable(${MENU_SEQUENCE_TEST_TARGET}
+    engine/effects/menuSequenceTest.cpp
+)
+target_link_libraries(${MENU_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${MENU_SEQUENCE_TEST_TARGET} COMMAND ${MENU_SEQUENCE_TEST_TARGET})
+
+set(ATTRACT_SEQUENCE_TEST_TARGET attractSequenceTest)
+add_executable(${ATTRACT_SEQUENCE_TEST_TARGET}
+    engine/effects/attractSequenceTest.cpp
+)
+target_link_libraries(${ATTRACT_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${ATTRACT_SEQUENCE_TEST_TARGET} COMMAND ${ATTRACT_SEQUENCE_TEST_TARGET})

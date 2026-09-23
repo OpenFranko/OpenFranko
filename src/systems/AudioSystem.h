@@ -21,6 +21,7 @@ public:
   void clearSFX(const std::string &name);
   void playMusic();
   void stopMusic();
+  void setMusicVolume(int volume);
   void playSFX(const std::string &name);
   void stopSFX();
 

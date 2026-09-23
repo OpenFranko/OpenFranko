@@ -11,7 +11,8 @@ enum class EngineStateEnum {
   WorldSoftware,
   KneeAnimation,
   TitleAndStory,
-  ProtectionCheck
+  ProtectionCheck,
+  Menu
 };
 
 }

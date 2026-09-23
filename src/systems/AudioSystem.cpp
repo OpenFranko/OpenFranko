@@ -3,6 +3,8 @@
 
 namespace openfranko::src::systems {
 namespace {
+
+constexpr int MAX_AMOS_VOLUME = 64;
 void throwError(const std::string &cause) {
   throw std::runtime_error("Audio system could not be initialised!: " + cause);
 }
@@ -61,6 +63,10 @@ void AudioSystem::clearSFX(const std::string &name) {
 void AudioSystem::playMusic() { Mix_PlayMusic(trackerModule, -1); }
 
 void AudioSystem::stopMusic() { Mix_HaltMusic(); }
+
+void AudioSystem::setMusicVolume(int volume) {
+  Mix_VolumeMusic(volume * MIX_MAX_VOLUME / MAX_AMOS_VOLUME);
+}
 
 void AudioSystem::playSFX(const std::string &name) {
   if (soundEffects.find(name) == soundEffects.end()) {
