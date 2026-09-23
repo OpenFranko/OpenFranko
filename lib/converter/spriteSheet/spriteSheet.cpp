@@ -133,12 +133,12 @@ std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
                                 static_cast<int>(palette.size()));
 }
 
-std::vector<std::vector<uint8_t>>
+std::vector<ConvertedSprite>
 convertToIndividual(const std::vector<uint8_t> &data,
                     const std::vector<uint16_t> &palette) {
   auto header = parseHeader(data);
 
-  std::vector<std::vector<uint8_t>> results;
+  std::vector<ConvertedSprite> results;
   results.reserve(header.count);
 
   for (uint16_t i = 0; i < header.count; i++) {
@@ -154,12 +154,12 @@ convertToIndividual(const std::vector<uint8_t> &data,
                                           img.pixels.data(), palette.data(),
                                           static_cast<int>(palette.size()));
         embedBmpHotspot(bmp, descriptor.hotspotX, descriptor.hotspotY);
-        results.push_back(std::move(bmp));
+        results.push_back({std::move(bmp), {}});
       } else {
-        results.emplace_back();
+        results.push_back({{}, "Sprite decoded to an empty image"});
       }
-    } catch (...) {
-      results.emplace_back();
+    } catch (const std::exception &e) {
+      results.push_back({{}, e.what()});
     }
   }
 

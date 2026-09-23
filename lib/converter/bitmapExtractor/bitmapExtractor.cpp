@@ -47,6 +47,14 @@ std::vector<uint16_t> readSPACKPalette(const std::vector<uint8_t> &data,
   return {std::begin(hdr.amigaPalette), std::end(hdr.amigaPalette)};
 }
 
+std::string skipReason(const DecodedImage &img) {
+  if (img.pixels.empty()) {
+    return "Bitmap decoded to an empty image";
+  }
+  return "Bitmap is only " + std::to_string(img.width) + "x" +
+         std::to_string(img.height) + " pixels";
+}
+
 std::vector<ExtractedBitmap> extractSCCode(const std::vector<uint8_t> &data,
                                            const std::string &fileId) {
   auto p = readSPACKPalette(data, 0);
@@ -56,13 +64,16 @@ std::vector<ExtractedBitmap> extractSCCode(const std::vector<uint8_t> &data,
   for (size_t i = 0; i < offsets.size(); i++) {
     auto img =
         decodeAmosBitmap(data, offsets[i], p.data(), static_cast<int>(p.size()));
+    std::string name = (i == 0) ? fileId : fileId + "_" + std::to_string(i);
     if (img.pixels.empty()) {
+      results.push_back({name, {}, skipReason(img)});
       continue;
     }
-    std::string name = (i == 0) ? fileId : fileId + "_" + std::to_string(i);
     results.push_back(
-        {name, bmpWriter::pixelsToBmp(img.width, img.height, img.pixels.data(),
-                                      p.data(), static_cast<int>(p.size()))});
+        {name,
+         bmpWriter::pixelsToBmp(img.width, img.height, img.pixels.data(),
+                                p.data(), static_cast<int>(p.size())),
+         {}});
   }
   return results;
 }
@@ -78,16 +89,18 @@ std::vector<ExtractedBitmap> extractTiles(const std::vector<uint8_t> &data,
   for (size_t i = 0; i < offsets.size(); i++) {
     auto img = decodeAmosBitmap(data, offsets[i], pal::LEVEL.data(),
                                 static_cast<int>(pal::LEVEL.size()));
-    if (img.pixels.empty()) {
-      continue;
-    }
     char buf[32];
     snprintf(buf, sizeof(buf), "%s_%03zu", fileId.c_str(), i);
+    if (img.pixels.empty()) {
+      results.push_back({std::string(buf), {}, skipReason(img)});
+      continue;
+    }
     results.push_back(
         {std::string(buf),
          bmpWriter::pixelsToBmp(img.width, img.height, img.pixels.data(),
                                 pal::LEVEL.data(),
-                                static_cast<int>(pal::LEVEL.size()))});
+                                static_cast<int>(pal::LEVEL.size())),
+         {}});
   }
   return results;
 }
@@ -102,13 +115,16 @@ extractMultiBMCode(const std::vector<uint8_t> &data,
   for (size_t i = 0; i < offsets.size(); i++) {
     auto img = decodeAmosBitmap(data, offsets[i], p.data(),
                                 static_cast<int>(p.size()));
+    std::string name = (i == 0) ? fileId : fileId + "_" + std::to_string(i);
     if (img.pixels.empty() || img.width < 2 || img.height < 2) {
+      results.push_back({name, {}, skipReason(img)});
       continue;
     }
-    std::string name = (i == 0) ? fileId : fileId + "_" + std::to_string(i);
     results.push_back(
-        {name, bmpWriter::pixelsToBmp(img.width, img.height, img.pixels.data(),
-                                      p.data(), static_cast<int>(p.size()))});
+        {name,
+         bmpWriter::pixelsToBmp(img.width, img.height, img.pixels.data(),
+                                p.data(), static_cast<int>(p.size())),
+         {}});
   }
   return results;
 }
@@ -133,18 +149,20 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data) {
         off + amosConsts::PACKED_BITMAP_HEADER_SIZE <= data.size()) {
       auto img = decodeAmosBitmap(data, off, curPal.data(),
                                   static_cast<int>(curPal.size()));
-      if (img.pixels.empty() || img.width < 2 || img.height < 2) {
-        continue;
-      }
       std::string name =
           (found == 0) ? std::string(gameData::fileIds::MULTI_PALETTE_BITMAP)
                        : std::string(gameData::fileIds::MULTI_PALETTE_BITMAP) +
                              "_" + std::to_string(found);
-      results.push_back(
-          {name, bmpWriter::pixelsToBmp(img.width, img.height,
-                                        img.pixels.data(), curPal.data(),
-                                        static_cast<int>(curPal.size()))});
       found++;
+      if (img.pixels.empty() || img.width < 2 || img.height < 2) {
+        results.push_back({name, {}, skipReason(img)});
+        continue;
+      }
+      results.push_back({name,
+                         bmpWriter::pixelsToBmp(
+                             img.width, img.height, img.pixels.data(),
+                             curPal.data(), static_cast<int>(curPal.size())),
+                         {}});
     }
   }
   return results;

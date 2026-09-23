@@ -41,18 +41,23 @@ int main(int argc, char **argv) {
     std::filesystem::create_directories(outDir);
 
     auto bitmaps = converter::bitmapExtractor::extract(dec, fileId);
+    size_t written = 0;
     for (const auto &bm : bitmaps) {
+      if (!bm.error.empty()) {
+        std::cerr << "Skipped " << bm.name << ": " << bm.error << std::endl;
+        continue;
+      }
       std::string path = outDir + "/" + bm.name + ".bmp";
       filesystem::writeFile::writeFile(path, bm.bmpData);
       std::cerr << "  -> " << path << " (" << bm.bmpData.size() << " bytes)"
                 << std::endl;
+      written++;
     }
 
-    if (bitmaps.empty())
+    if (written == 0)
       std::cerr << "No bitmaps extracted." << std::endl;
     else
-      std::cerr << "Wrote " << bitmaps.size() << " bitmaps to " << outDir
-                << std::endl;
+      std::cerr << "Wrote " << written << " bitmaps to " << outDir << std::endl;
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return 1;

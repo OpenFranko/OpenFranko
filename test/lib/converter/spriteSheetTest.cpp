@@ -28,6 +28,24 @@ buildBankHeader(uint16_t count, uint16_t maxW, uint16_t maxH,
   return buf;
 }
 
+static std::vector<uint8_t> buildMinimalPackedBitmap() {
+  const uint32_t maskBytesOffset = 25;
+  const uint32_t pointerBitsOffset = 26;
+  std::vector<uint8_t> buf;
+  pushBigEndian32(buf, 0x06071963);
+  pushBigEndian32(buf, 0);
+  pushBigEndian16(buf, 1);
+  pushBigEndian16(buf, 1);
+  pushBigEndian16(buf, 1);
+  pushBigEndian16(buf, 1);
+  pushBigEndian32(buf, maskBytesOffset);
+  pushBigEndian32(buf, pointerBitsOffset);
+  buf.push_back(0x42);
+  buf.push_back(0x00);
+  buf.push_back(0x00);
+  return buf;
+}
+
 SCENARIO("parseHeader reads sprite bank header and descriptors") {
   GIVEN("A header with 2 sprites") {
     std::vector<SpriteDescriptor> descs = {
@@ -149,6 +167,45 @@ SCENARIO("selectPalette returns the correct palette for known file IDs") {
       THEN("It returns LEVEL as default") {
         REQUIRE(p.size() == pal::LEVEL.size());
         REQUIRE(p[0] == pal::LEVEL[0]);
+      }
+    }
+  }
+}
+
+SCENARIO("convertToIndividual says why a sprite could not be converted") {
+  GIVEN("A bank with a valid sprite, one without a bitmap and one past the "
+        "end") {
+    std::vector<SpriteDescriptor> descs = {
+        {15, 1, 1, 0, 0},
+        {29, 1, 1, 0, 0},
+        {1000, 1, 1, 0, 0},
+    };
+    auto data = buildBankHeader(3, 8, 1, 16, 0, descs);
+    auto bitmap = buildMinimalPackedBitmap();
+    data.insert(data.end(), bitmap.begin(), bitmap.end());
+    const size_t noBitmapPos = 12 + 29 * 2;
+    data.resize(noBitmapPos + 24, 0);
+    std::vector<uint16_t> palette(pal::LEVEL.begin(), pal::LEVEL.end());
+
+    WHEN("convertToIndividual is called") {
+      auto sprites = convertToIndividual(data, palette);
+      REQUIRE(sprites.size() == 3);
+
+      THEN("The valid sprite is converted to a BMP") {
+        REQUIRE(sprites[0].error.empty());
+        REQUIRE(sprites[0].bmpData.size() > 2);
+        REQUIRE(sprites[0].bmpData[0] == 'B');
+        REQUIRE(sprites[0].bmpData[1] == 'M');
+      }
+
+      THEN("A sprite pointing at non-bitmap data says so") {
+        REQUIRE(sprites[1].bmpData.empty());
+        REQUIRE(sprites[1].error == "Invalid bitmap magic number");
+      }
+
+      THEN("A sprite pointing past the end says so") {
+        REQUIRE(sprites[2].bmpData.empty());
+        REQUIRE(sprites[2].error == "Data too small for bitmap header");
       }
     }
   }

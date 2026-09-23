@@ -60,7 +60,7 @@ set(BITMAP_EXTRACTOR_TEST_TARGET bitmapExtractorTest)
 add_executable(${BITMAP_EXTRACTOR_TEST_TARGET}
     converter/bitmapExtractorTest.cpp
 )
-target_link_libraries(${BITMAP_EXTRACTOR_TEST_TARGET} PRIVATE Catch2::Catch2WithMain bitmapExtractor)
+target_link_libraries(${BITMAP_EXTRACTOR_TEST_TARGET} PRIVATE Catch2::Catch2WithMain bitmapExtractor helpers)
 add_test(NAME ${BITMAP_EXTRACTOR_TEST_TARGET} COMMAND ${BITMAP_EXTRACTOR_TEST_TARGET})
 
 set(HELPERS_TEST_TARGET helpersTest)

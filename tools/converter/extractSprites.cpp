@@ -71,13 +71,16 @@ int main(int argc, char **argv) {
     auto sprites = converter::spriteSheet::convertToIndividual(dec, palette);
     int written = 0;
     for (int i = 0; i < static_cast<int>(sprites.size()); i++) {
-      if (sprites[i].empty())
+      if (sprites[i].bmpData.empty()) {
+        std::cerr << "Skipped sprite " << i << ": " << sprites[i].error
+                  << std::endl;
         continue;
+      }
       char buf[64];
       snprintf(buf, sizeof(buf), "%s/%s_%03d.bmp", outDir.c_str(),
                fileId.c_str(), i);
       std::string bmpPath(buf);
-      filesystem::writeFile::writeFile(bmpPath, sprites[i]);
+      filesystem::writeFile::writeFile(bmpPath, sprites[i].bmpData);
       written++;
     }
     std::cerr << "Wrote " << written << " sprites to " << outDir << std::endl;

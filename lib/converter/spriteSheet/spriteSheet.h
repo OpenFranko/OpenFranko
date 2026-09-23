@@ -28,13 +28,18 @@ struct SpriteBankHeader {
   std::vector<SpriteDescriptor> descriptors;
 };
 
+struct ConvertedSprite {
+  std::vector<uint8_t> bmpData;
+  std::string error;
+};
+
 SpriteBankHeader parseHeader(const std::vector<uint8_t> &data);
 
 std::vector<uint8_t>
 convertToSheet(const std::vector<uint8_t> &decompressedData,
                const std::vector<uint16_t> &palette, int columns = 5);
 
-std::vector<std::vector<uint8_t>>
+std::vector<ConvertedSprite>
 convertToIndividual(const std::vector<uint8_t> &decompressedData,
                     const std::vector<uint16_t> &palette);
 

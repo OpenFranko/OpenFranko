@@ -158,14 +158,14 @@ int extractFile(const std::string &inputPath, const std::string &outDir,
       std::vector<int> skipped;
       int idx = 0;
       for (auto &sprite : sprites) {
-        if (!sprite.empty()) {
+        if (!sprite.bmpData.empty()) {
           if (fileId == "0038" && idx >= 43 && idx <= 100) {
-            patch0038SunsetBitmap(sprite);
+            patch0038SunsetBitmap(sprite.bmpData);
           }
           char buf[32];
           snprintf(buf, sizeof(buf), "%s_%03d.bmp", fileId.c_str(), idx);
           std::string bmpName(buf);
-          outputs.push_back({bmpName, std::move(sprite)});
+          outputs.push_back({bmpName, std::move(sprite.bmpData)});
         } else {
           skipped.push_back(idx);
         }
@@ -173,11 +173,10 @@ int extractFile(const std::string &inputPath, const std::string &outDir,
       }
       if (!skipped.empty()) {
         std::cerr << "  skipped " << skipped.size() << " of " << sprites.size()
-                  << " sprites that could not be decoded:";
-        for (size_t i = 0; i < skipped.size(); i++) {
-          std::cerr << (i == 0 ? " " : ", ") << skipped[i];
+                  << " sprites that could not be decoded:" << std::endl;
+        for (int i : skipped) {
+          std::cerr << "    " << i << ": " << sprites[i].error << std::endl;
         }
-        std::cerr << std::endl;
       }
     } catch (const std::exception &e) {
       std::cerr << "  sprite error: " << e.what() << std::endl;
@@ -213,10 +212,24 @@ int extractFile(const std::string &inputPath, const std::string &outDir,
     }
     try {
       auto bitmaps = lib::converter::bitmapExtractor::extract(dec, fileId);
+      size_t skipped = 0;
       for (auto &bm : bitmaps) {
-        outputs.push_back({bm.name + ".bmp", std::move(bm.bmpData)});
+        if (bm.error.empty()) {
+          outputs.push_back({bm.name + ".bmp", std::move(bm.bmpData)});
+        } else {
+          skipped++;
+        }
       }
-      if (bitmaps.empty()) {
+      if (skipped > 0) {
+        std::cerr << "  skipped " << skipped << " of " << bitmaps.size()
+                  << " bitmaps:" << std::endl;
+        for (const auto &bm : bitmaps) {
+          if (!bm.error.empty()) {
+            std::cerr << "    " << bm.name << ": " << bm.error << std::endl;
+          }
+        }
+      }
+      if (skipped == bitmaps.size()) {
         std::cerr << "  (no bitmaps extracted)" << std::endl;
       }
     } catch (const std::exception &e) {
