@@ -25,5 +25,8 @@ target_link_libraries(extractSamples argumentParser readFile writeFile backwardL
 add_executable(extractMusic converter/extractMusic.cpp)
 target_link_libraries(extractMusic argumentParser readFile writeFile backwardLZ77 audioExtractor)
 
+add_executable(extractLevelScript converter/extractLevelScript.cpp)
+target_link_libraries(extractLevelScript argumentParser readFile writeFile backwardLZ77 levelScript gameData)
+
 add_executable(abk2s3m converter/abk2s3m.cpp)
 target_link_libraries(abk2s3m argumentParser readFile writeFile abkToS3m)
