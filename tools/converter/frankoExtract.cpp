@@ -24,6 +24,8 @@ int main(int argc, char **argv) {
               << std::endl;
     std::cerr << "  Icons   (0x0200) -> BMP (screens, tiles, bitmaps)"
               << std::endl;
+    std::cerr << "  Levels  (0x0200) -> JSON (level scripts 0385-0387)"
+              << std::endl;
     std::cerr << "  Samples (0x0300) -> WAV" << std::endl;
     std::cerr << "  Music   (0x0400) -> S3M (ScreamTracker 3)" << std::endl;
     std::cerr << "  Screen  (0x0201) -> BMP (raw SPACK)" << std::endl;

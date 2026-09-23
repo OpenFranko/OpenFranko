@@ -49,7 +49,7 @@ Executables can be located in the build directory
 
 # FrankoExtract
 
-it's a tool to extract graphics/sounds/music from original franko game data.
+it's a tool to extract graphics/sounds/music/levels from original franko game data.
 
 Only Version 1.0 is supported right now.
 
@@ -70,3 +70,4 @@ Data will be extracted as:
 - Graphics as bitmap files (.bmp)
 - Sounds as wave files (.wav)
 - Music as ScreamTracker3 modules (.s3m)
+- Level scripts (enemy waves) as JSON files (.json)

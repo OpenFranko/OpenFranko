@@ -5,17 +5,20 @@
 #include "../../lib/converter/bitmapExtractor/bitmapExtractor.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/gameData/gameData.h"
+#include "../../lib/converter/levelScript/levelScript.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
 #include "../../lib/helpers/helpers.h"
+#include <algorithm>
 #include <cstdio>
 #include <filesystem>
 #include <functional>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <string_view>
 #include <vector>
 
 namespace openfranko::tools::converter::frankoResourceExtractor {
@@ -43,6 +46,12 @@ std::string fileIdToHex(uint16_t id) {
   std::ostringstream ss;
   ss << std::uppercase << std::setfill('0') << std::setw(4) << std::hex << id;
   return ss.str();
+}
+
+bool isLevelFile(const std::string &fileId) {
+  const auto &levelFiles = lib::converter::gameData::fileIds::LEVEL_FILES;
+  return std::find(levelFiles.begin(), levelFiles.end(),
+                   std::string_view(fileId)) != levelFiles.end();
 }
 
 struct OutputFile {
@@ -172,6 +181,16 @@ int processFile(const std::string &inputPath, const std::string &outDir,
   }
 
   case lib::converter::gameData::resourceTypes::ICONS: {
+    if (isLevelFile(fileId)) {
+      try {
+        auto level = lib::converter::levelScript::parse(dec);
+        outputs.push_back({fileId + ".json",
+                           lib::converter::levelScript::toJson(level, fileId)});
+      } catch (const std::exception &e) {
+        std::cerr << "  level script error: " << e.what() << std::endl;
+      }
+      break;
+    }
     auto bitmaps = lib::converter::bitmapExtractor::extract(dec, fileId);
     for (auto &bm : bitmaps) {
       outputs.push_back({bm.name + ".bmp", std::move(bm.bmpData)});
