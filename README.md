@@ -71,3 +71,4 @@ Data will be extracted as:
 - Sounds as wave files (.wav)
 - Music as ScreamTracker3 modules (.s3m)
 - Level scripts (enemy waves) as JSON files (.json)
+- Copy protection code cards as a JSON file (0384_codecards.json)

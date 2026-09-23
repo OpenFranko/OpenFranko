@@ -3,6 +3,7 @@
 #include "../../lib/converter/amosCompact/amosCompact.h"
 #include "../../lib/converter/audioExtractor/audioExtractor.h"
 #include "../../lib/converter/bitmapExtractor/bitmapExtractor.h"
+#include "../../lib/converter/codeCards/codeCards.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/gameData/gameData.h"
 #include "../../lib/converter/levelScript/levelScript.h"
@@ -200,6 +201,17 @@ int extractFile(const std::string &inputPath, const std::string &outDir,
     } catch (const std::exception &e) {
       std::cerr << "  bitmap error: " << e.what() << std::endl;
       failed = true;
+    }
+    if (std::string_view(fileId) ==
+        lib::converter::gameData::fileIds::CODE_CARDS) {
+      try {
+        auto cards = lib::converter::codeCards::parse(dec);
+        outputs.push_back({fileId + "_codecards.json",
+                           lib::converter::codeCards::toJson(cards)});
+      } catch (const std::exception &e) {
+        std::cerr << "  code cards error: " << e.what() << std::endl;
+        failed = true;
+      }
     }
     break;
   }

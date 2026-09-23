@@ -97,3 +97,10 @@ add_executable(${LEVEL_SCRIPT_TEST_TARGET}
 )
 target_link_libraries(${LEVEL_SCRIPT_TEST_TARGET} PRIVATE Catch2::Catch2WithMain levelScript helpers)
 add_test(NAME ${LEVEL_SCRIPT_TEST_TARGET} COMMAND ${LEVEL_SCRIPT_TEST_TARGET})
+
+set(CODE_CARDS_TEST_TARGET codeCardsTest)
+add_executable(${CODE_CARDS_TEST_TARGET}
+    converter/codeCardsTest.cpp
+)
+target_link_libraries(${CODE_CARDS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain codeCards)
+add_test(NAME ${CODE_CARDS_TEST_TARGET} COMMAND ${CODE_CARDS_TEST_TARGET})

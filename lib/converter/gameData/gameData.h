@@ -13,6 +13,7 @@ namespace gameData {
 namespace fileIds {
 
 inline constexpr std::string_view MULTI_PALETTE_BITMAP = "0384";
+inline constexpr std::string_view CODE_CARDS = "0384";
 inline constexpr std::string_view SUNSET_PALETTE = "0038";
 inline constexpr std::string_view STORY_PALETTE = "0037";
 inline constexpr std::string_view MENU_PALETTE = "0034";
