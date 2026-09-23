@@ -1,5 +1,6 @@
 #include "levelScript.h"
 #include "../../helpers/helpers.h"
+#include <cstdio>
 #include <stdexcept>
 #include <string>
 
@@ -24,6 +25,23 @@ EnemySlot parseSlot(const std::vector<uint8_t> &data,
   slot.energy = data.at(off + 6);
   slot.aggression = data.at(off + 7);
   return slot;
+}
+
+std::string escapeJson(const std::string &text) {
+  std::string out;
+  for (const char c : text) {
+    if (c == '"' || c == '\\') {
+      out += '\\';
+      out += c;
+    } else if (static_cast<unsigned char>(c) < 0x20) {
+      char buf[7];
+      snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned char>(c));
+      out += buf;
+    } else {
+      out += c;
+    }
+  }
+  return out;
 }
 
 void appendSlot(std::string &out, const EnemySlot &slot) {
@@ -78,7 +96,7 @@ Level parse(const std::vector<uint8_t> &decompressedData) {
 std::vector<uint8_t> toJson(const Level &level, const std::string &fileId) {
   std::string out;
   out += "{\n";
-  out += "  \"fileId\": \"" + fileId + "\",\n";
+  out += "  \"fileId\": \"" + escapeJson(fileId) + "\",\n";
   out += "  \"lengthInColumns\": " + std::to_string(level.lengthInColumns) +
          ",\n";
   out += "  \"waveCount\": " + std::to_string(level.waves.size()) + ",\n";

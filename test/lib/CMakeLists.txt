@@ -90,3 +90,10 @@ add_executable(${ABK_TO_S3M_TEST_TARGET}
 )
 target_link_libraries(${ABK_TO_S3M_TEST_TARGET} PRIVATE Catch2::Catch2WithMain abkToS3m helpers)
 add_test(NAME ${ABK_TO_S3M_TEST_TARGET} COMMAND ${ABK_TO_S3M_TEST_TARGET})
+
+set(LEVEL_SCRIPT_TEST_TARGET levelScriptTest)
+add_executable(${LEVEL_SCRIPT_TEST_TARGET}
+    converter/levelScriptTest.cpp
+)
+target_link_libraries(${LEVEL_SCRIPT_TEST_TARGET} PRIVATE Catch2::Catch2WithMain levelScript helpers)
+add_test(NAME ${LEVEL_SCRIPT_TEST_TARGET} COMMAND ${LEVEL_SCRIPT_TEST_TARGET})
