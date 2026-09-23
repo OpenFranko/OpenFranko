@@ -20,3 +20,10 @@ add_executable(${FOTO_SEQUENCE_TEST_TARGET}
 )
 target_link_libraries(${FOTO_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${FOTO_SEQUENCE_TEST_TARGET} COMMAND ${FOTO_SEQUENCE_TEST_TARGET})
+
+set(STORY_SEQUENCE_TEST_TARGET storySequenceTest)
+add_executable(${STORY_SEQUENCE_TEST_TARGET}
+    engine/effects/storySequenceTest.cpp
+)
+target_link_libraries(${STORY_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${STORY_SEQUENCE_TEST_TARGET} COMMAND ${STORY_SEQUENCE_TEST_TARGET})

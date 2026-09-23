@@ -1,6 +1,7 @@
 #include "Engine.h"
 #include "states/kneeAnimation/KneeAnimationState.h"
 #include "states/mirage/MirageState.h"
+#include "states/titleAndStory/TitleAndStoryState.h"
 #include "states/worldSoftware/WorldSoftwareState.h"
 
 namespace openfranko::src::engine {
@@ -44,7 +45,11 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     break;
   case states::EngineStateEnum::KneeAnimation:
     currentState = std::make_unique<states::kneeAnimation::KneeAnimationState>(
-        videoSystem, audioSystem);
+        videoSystem, audioSystem, controllerSystem);
+    break;
+  case states::EngineStateEnum::TitleAndStory:
+    currentState = std::make_unique<states::titleAndStory::TitleAndStoryState>(
+        videoSystem, controllerSystem);
     break;
   }
 }

@@ -34,6 +34,7 @@ public:
                  SDL_RendererFlip flip = SDL_FLIP_NONE);
 
   void loadIndexedImage(const std::string &name, const std::string &path);
+  void loadMaskedImage(const std::string &name, const std::string &path);
   std::vector<uint16_t> getImagePalette(const std::string &name) const;
   void setImagePalette(const std::string &name,
                        const std::vector<uint16_t> &palette);
@@ -55,6 +56,8 @@ private:
   };
 
   const Image &findIndexedImage(const std::string &name) const;
+  void addIndexedImage(const std::string &name, const std::string &path,
+                       bool colorZeroTransparent);
 
   Image loadImageFile(const std::string &path, bool applyColorKey);
 

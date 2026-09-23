@@ -39,9 +39,11 @@ constexpr int CLOSE_FRAME = MUSIC_FRAME + TEMPO_WAIT + CLOSE_WAIT;
 
 } // namespace
 
-KneeAnimationState::KneeAnimationState(systems::VideoSystem &videoSystem,
-                                       systems::AudioSystem &audioSystem)
+KneeAnimationState::KneeAnimationState(
+    systems::VideoSystem &videoSystem, systems::AudioSystem &audioSystem,
+    systems::ControllerSystem &controllerSystem)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem) {
+  controllerSystem.clearFireLatch();
   m_videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, SCREEN_HEIGHT);
   m_videoSystem.switchScreen(SCREEN_ID);
   for (const Image &image : IMAGES) {
@@ -61,7 +63,7 @@ KneeAnimationState::~KneeAnimationState() {
 
 std::optional<EngineStateEnum> KneeAnimationState::update() {
   if (m_frame == CLOSE_FRAME) {
-    return std::nullopt;
+    return EngineStateEnum::TitleAndStory;
   }
 
   if (m_frame == SAMPLE_FRAME) {

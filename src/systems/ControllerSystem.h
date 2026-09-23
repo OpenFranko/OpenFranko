@@ -8,6 +8,8 @@ namespace systems {
 class ControllerSystem {
 public:
   void update();
+  void clearFireLatch();
+  bool isFireLatched() const;
 
   struct ControllerStates {
     bool up = false;
@@ -21,6 +23,8 @@ public:
 
 private:
   void clearStates();
+
+  bool fireLatched = false;
 };
 
 } // namespace systems

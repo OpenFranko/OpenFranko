@@ -2,6 +2,7 @@
 #define ENGINE_STATES_KNEEANIMATIONSTATE_H_
 
 #include "../../../systems/AudioSystem.h"
+#include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
 #include "../IEngineState.h"
 
@@ -14,7 +15,8 @@ namespace kneeAnimation {
 class KneeAnimationState : public IEngineState {
 public:
   KneeAnimationState(systems::VideoSystem &videoSystem,
-                     systems::AudioSystem &audioSystem);
+                     systems::AudioSystem &audioSystem,
+                     systems::ControllerSystem &controllerSystem);
   ~KneeAnimationState();
 
   std::optional<EngineStateEnum> update() override;

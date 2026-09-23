@@ -23,7 +23,16 @@ void ControllerSystem::update() {
   if (keys[SDL_SCANCODE_SPACE]) {
     states.button = true;
   }
+
+  if (states.button && !states.up && !states.down && !states.left &&
+      !states.right) {
+    fireLatched = true;
+  }
 }
+
+void ControllerSystem::clearFireLatch() { fireLatched = false; }
+
+bool ControllerSystem::isFireLatched() const { return fireLatched; }
 
 void ControllerSystem::clearStates() {
   states.left = false;

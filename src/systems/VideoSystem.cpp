@@ -278,26 +278,12 @@ VideoSystem::Image VideoSystem::loadImageFile(const std::string &path,
 
 void VideoSystem::loadIndexedImage(const std::string &name,
                                    const std::string &path) {
-  clearImage(name);
+  addIndexedImage(name, path, false);
+}
 
-  SDL_Surface *surface = SDL_LoadBMP(path.c_str());
-  if (!surface) {
-    throwError("Failed to load image: " + path);
-  }
-  if (surface->format->BitsPerPixel != 8 || !surface->format->palette) {
-    SDL_FreeSurface(surface);
-    throwError("Not an 8-bit indexed image: " + path);
-  }
-
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-  if (!texture) {
-    SDL_FreeSurface(surface);
-    throwError("Failed to create texture for: " + path);
-  }
-
-  auto hotspot = parseImageHotspot(path);
-  imageStates.emplace(name, Image{texture, surface->w, surface->h,
-                                  hotspot.first, hotspot.second, surface});
+void VideoSystem::loadMaskedImage(const std::string &name,
+                                  const std::string &path) {
+  addIndexedImage(name, path, true);
 }
 
 std::vector<uint16_t>
@@ -351,6 +337,34 @@ VideoSystem::findIndexedImage(const std::string &name) const {
     throwError("No indexed image named: " + name);
   }
   return it->second;
+}
+
+void VideoSystem::addIndexedImage(const std::string &name,
+                                  const std::string &path,
+                                  bool colorZeroTransparent) {
+  clearImage(name);
+
+  SDL_Surface *surface = SDL_LoadBMP(path.c_str());
+  if (!surface) {
+    throwError("Failed to load image: " + path);
+  }
+  if (surface->format->BitsPerPixel != 8 || !surface->format->palette) {
+    SDL_FreeSurface(surface);
+    throwError("Not an 8-bit indexed image: " + path);
+  }
+  if (colorZeroTransparent) {
+    SDL_SetColorKey(surface, SDL_TRUE, 0);
+  }
+
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    SDL_FreeSurface(surface);
+    throwError("Failed to create texture for: " + path);
+  }
+
+  auto hotspot = parseImageHotspot(path);
+  imageStates.emplace(name, Image{texture, surface->w, surface->h,
+                                  hotspot.first, hotspot.second, surface});
 }
 
 } // namespace openfranko::src::systems
