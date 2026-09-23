@@ -7,7 +7,8 @@ using namespace openfranko::lib::converter::bitmapExtractor;
 using openfranko::lib::helpers::pushBigEndian16;
 using openfranko::lib::helpers::pushBigEndian32;
 
-static std::vector<uint8_t> buildPackedBitmap(uint16_t height) {
+static std::vector<uint8_t> buildPackedBitmap(uint16_t height,
+                                              uint16_t planes = 1) {
   const uint32_t maskBytesOffset = 25;
   const uint32_t pointerBitsOffset = 26;
   std::vector<uint8_t> buf;
@@ -16,7 +17,7 @@ static std::vector<uint8_t> buildPackedBitmap(uint16_t height) {
   pushBigEndian16(buf, 1);
   pushBigEndian16(buf, 1);
   pushBigEndian16(buf, height);
-  pushBigEndian16(buf, 1);
+  pushBigEndian16(buf, planes);
   pushBigEndian32(buf, maskBytesOffset);
   pushBigEndian32(buf, pointerBitsOffset);
   buf.push_back(0x42);
@@ -144,6 +145,51 @@ SCENARIO("extract says why it skipped a bitmap") {
         REQUIRE(results[1].name == "0384_1");
         REQUIRE(results[1].error.empty());
         REQUIRE_FALSE(results[1].bmpData.empty());
+      }
+    }
+  }
+}
+
+SCENARIO("extract skips a bitmap that fails to decode and keeps the rest") {
+  GIVEN("A multi-bitmap file whose second bitmap has 7 bitplanes") {
+    auto data = buildPackedBitmap(2);
+    auto broken = buildPackedBitmap(2, 7);
+    data.insert(data.end(), broken.begin(), broken.end());
+
+    WHEN("extract is called") {
+      auto results = extract(data, "0388");
+      REQUIRE(results.size() == 2);
+
+      THEN("The first bitmap is still converted") {
+        REQUIRE(results[0].name == "0388");
+        REQUIRE(results[0].error.empty());
+        REQUIRE_FALSE(results[0].bmpData.empty());
+      }
+
+      THEN("The broken bitmap is skipped with the decoder's reason") {
+        REQUIRE(results[1].name == "0388_1");
+        REQUIRE(results[1].bmpData.empty());
+        REQUIRE(results[1].error == "Unsupported bitplane count: 7");
+      }
+    }
+  }
+
+  GIVEN("A tile file whose second tile has 7 bitplanes") {
+    auto data = buildPackedBitmap(2);
+    auto broken = buildPackedBitmap(2, 7);
+    data.insert(data.end(), broken.begin(), broken.end());
+
+    WHEN("extract is called") {
+      auto results = extract(data, "0137");
+      REQUIRE(results.size() == 2);
+
+      THEN("The first tile is converted and the broken one is skipped") {
+        REQUIRE(results[0].name == "0137_000");
+        REQUIRE(results[0].error.empty());
+        REQUIRE_FALSE(results[0].bmpData.empty());
+        REQUIRE(results[1].name == "0137_001");
+        REQUIRE(results[1].bmpData.empty());
+        REQUIRE(results[1].error == "Unsupported bitplane count: 7");
       }
     }
   }

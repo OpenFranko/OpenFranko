@@ -55,6 +55,24 @@ std::string skipReason(const DecodedImage &img) {
          std::to_string(img.height) + " pixels";
 }
 
+ExtractedBitmap convertBitmap(const std::vector<uint8_t> &data, size_t offset,
+                              const std::vector<uint16_t> &palette,
+                              const std::string &name, bool skipTiny) {
+  try {
+    auto img = decodeAmosBitmap(data, offset, palette.data(),
+                                static_cast<int>(palette.size()));
+    if (img.pixels.empty() || (skipTiny && (img.width < 2 || img.height < 2))) {
+      return {name, {}, skipReason(img)};
+    }
+    auto bmp = bmpWriter::pixelsToBmp(img.width, img.height, img.pixels.data(),
+                                      palette.data(),
+                                      static_cast<int>(palette.size()));
+    return {name, std::move(bmp), {}};
+  } catch (const std::exception &e) {
+    return {name, {}, e.what()};
+  }
+}
+
 std::vector<ExtractedBitmap> extractSCCode(const std::vector<uint8_t> &data,
                                            const std::string &fileId) {
   auto p = readSPACKPalette(data, 0);
@@ -62,18 +80,8 @@ std::vector<ExtractedBitmap> extractSCCode(const std::vector<uint8_t> &data,
 
   std::vector<ExtractedBitmap> results;
   for (size_t i = 0; i < offsets.size(); i++) {
-    auto img =
-        decodeAmosBitmap(data, offsets[i], p.data(), static_cast<int>(p.size()));
     std::string name = (i == 0) ? fileId : fileId + "_" + std::to_string(i);
-    if (img.pixels.empty()) {
-      results.push_back({name, {}, skipReason(img)});
-      continue;
-    }
-    results.push_back(
-        {name,
-         bmpWriter::pixelsToBmp(img.width, img.height, img.pixels.data(),
-                                p.data(), static_cast<int>(p.size())),
-         {}});
+    results.push_back(convertBitmap(data, offsets[i], p, name, false));
   }
   return results;
 }
@@ -85,22 +93,12 @@ std::vector<ExtractedBitmap> extractTiles(const std::vector<uint8_t> &data,
     throw std::runtime_error("No bitmap code offsets found");
   }
 
+  const std::vector<uint16_t> palette(pal::LEVEL.begin(), pal::LEVEL.end());
   std::vector<ExtractedBitmap> results;
   for (size_t i = 0; i < offsets.size(); i++) {
-    auto img = decodeAmosBitmap(data, offsets[i], pal::LEVEL.data(),
-                                static_cast<int>(pal::LEVEL.size()));
     char buf[32];
     snprintf(buf, sizeof(buf), "%s_%03zu", fileId.c_str(), i);
-    if (img.pixels.empty()) {
-      results.push_back({std::string(buf), {}, skipReason(img)});
-      continue;
-    }
-    results.push_back(
-        {std::string(buf),
-         bmpWriter::pixelsToBmp(img.width, img.height, img.pixels.data(),
-                                pal::LEVEL.data(),
-                                static_cast<int>(pal::LEVEL.size())),
-         {}});
+    results.push_back(convertBitmap(data, offsets[i], palette, buf, false));
   }
   return results;
 }
@@ -113,18 +111,8 @@ extractMultiBMCode(const std::vector<uint8_t> &data,
 
   std::vector<ExtractedBitmap> results;
   for (size_t i = 0; i < offsets.size(); i++) {
-    auto img = decodeAmosBitmap(data, offsets[i], p.data(),
-                                static_cast<int>(p.size()));
     std::string name = (i == 0) ? fileId : fileId + "_" + std::to_string(i);
-    if (img.pixels.empty() || img.width < 2 || img.height < 2) {
-      results.push_back({name, {}, skipReason(img)});
-      continue;
-    }
-    results.push_back(
-        {name,
-         bmpWriter::pixelsToBmp(img.width, img.height, img.pixels.data(),
-                                p.data(), static_cast<int>(p.size())),
-         {}});
+    results.push_back(convertBitmap(data, offsets[i], p, name, true));
   }
   return results;
 }
@@ -147,22 +135,12 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data) {
 
     if (magic == amosConsts::AMOS_BMCODE &&
         off + amosConsts::PACKED_BITMAP_HEADER_SIZE <= data.size()) {
-      auto img = decodeAmosBitmap(data, off, curPal.data(),
-                                  static_cast<int>(curPal.size()));
       std::string name =
           (found == 0) ? std::string(gameData::fileIds::MULTI_PALETTE_BITMAP)
                        : std::string(gameData::fileIds::MULTI_PALETTE_BITMAP) +
                              "_" + std::to_string(found);
       found++;
-      if (img.pixels.empty() || img.width < 2 || img.height < 2) {
-        results.push_back({name, {}, skipReason(img)});
-        continue;
-      }
-      results.push_back({name,
-                         bmpWriter::pixelsToBmp(
-                             img.width, img.height, img.pixels.data(),
-                             curPal.data(), static_cast<int>(curPal.size())),
-                         {}});
+      results.push_back(convertBitmap(data, off, curPal, name, true));
     }
   }
   return results;
