@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 #include <map>
+#include <optional>
 #include <string>
 
 namespace openfranko {
@@ -23,11 +24,17 @@ public:
   void stopMusic();
   void setMusicVolume(int volume);
   void playSFX(const std::string &name);
+  void playSFXSilencingMusic(const std::string &name);
   void stopSFX();
+  void update();
 
 private:
+  void applyMusicVolume();
+
   Mix_Music *trackerModule = nullptr;
   std::map<std::string, Mix_Chunk *> soundEffects;
+  int musicVolume;
+  std::optional<int> silencingChannel;
 };
 
 } // namespace systems

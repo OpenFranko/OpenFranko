@@ -73,6 +73,7 @@ void Engine::switchState(states::EngineStateEnum nextState) {
 
 void Engine::update() {
   controllerSystem.update();
+  audioSystem.update();
   updateState();
   videoSystem.sync();
 }

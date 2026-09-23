@@ -5,12 +5,14 @@ namespace openfranko::src::systems {
 namespace {
 
 constexpr int MAX_AMOS_VOLUME = 64;
+constexpr int DEFAULT_MUSIC_VOLUME = 56;
+
 void throwError(const std::string &cause) {
   throw std::runtime_error("Audio system could not be initialised!: " + cause);
 }
 } // namespace
 
-AudioSystem::AudioSystem() {
+AudioSystem::AudioSystem() : musicVolume(DEFAULT_MUSIC_VOLUME) {
   setenv("MODPLUG_RESAMPLING_MODE", "1", 1);
 
   if (SDL_Init(SDL_INIT_AUDIO) < 0) {
@@ -26,6 +28,8 @@ AudioSystem::AudioSystem() {
   if ((initted & flags) != flags) {
     throwError("Mix_Init");
   }
+
+  applyMusicVolume();
 }
 
 AudioSystem::~AudioSystem() {
@@ -60,12 +64,16 @@ void AudioSystem::clearSFX(const std::string &name) {
   soundEffects.erase(name);
 }
 
-void AudioSystem::playMusic() { Mix_PlayMusic(trackerModule, -1); }
+void AudioSystem::playMusic() {
+  Mix_PlayMusic(trackerModule, -1);
+  applyMusicVolume();
+}
 
 void AudioSystem::stopMusic() { Mix_HaltMusic(); }
 
 void AudioSystem::setMusicVolume(int volume) {
-  Mix_VolumeMusic(volume * MIX_MAX_VOLUME / MAX_AMOS_VOLUME);
+  musicVolume = volume;
+  applyMusicVolume();
 }
 
 void AudioSystem::playSFX(const std::string &name) {
@@ -78,6 +86,32 @@ void AudioSystem::playSFX(const std::string &name) {
   Mix_PlayChannel(-1, soundEffect, 0);
 }
 
+void AudioSystem::playSFXSilencingMusic(const std::string &name) {
+  auto it = soundEffects.find(name);
+  if (it == soundEffects.end()) {
+    return;
+  }
+
+  const int channel = Mix_PlayChannel(-1, it->second, 0);
+  if (channel < 0) {
+    return;
+  }
+  silencingChannel = channel;
+  applyMusicVolume();
+}
+
 void AudioSystem::stopSFX() { Mix_HaltChannel(-1); }
+
+void AudioSystem::update() {
+  if (silencingChannel && !Mix_Playing(*silencingChannel)) {
+    silencingChannel.reset();
+    applyMusicVolume();
+  }
+}
+
+void AudioSystem::applyMusicVolume() {
+  Mix_VolumeMusic(
+      silencingChannel ? 0 : musicVolume * MIX_MAX_VOLUME / MAX_AMOS_VOLUME);
+}
 
 } // namespace openfranko::src::systems

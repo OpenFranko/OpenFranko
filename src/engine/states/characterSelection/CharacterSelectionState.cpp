@@ -91,7 +91,7 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
   if (const auto sample = m_selection.sample()) {
     for (const Voice &voice : VOICES) {
       if (voice.sample == *sample) {
-        m_audioSystem.playSFX(voice.name);
+        m_audioSystem.playSFXSilencingMusic(voice.name);
       }
     }
   }
