@@ -259,7 +259,7 @@ SCENARIO("applySpritePaletteFixes makes the sunset bank's font white") {
     std::vector<ConvertedSprite> sprites(
         44, ConvertedSprite{std::vector<uint8_t>(1078, 0), {}});
     const std::vector<uint8_t> fixedEntries = {0xFF, 0xFF, 0xFF, 0x00,
-                                               0x77, 0x77, 0x77, 0x00};
+                                               0xAA, 0xAA, 0xAA, 0x00};
     auto entries1And2 = [](const ConvertedSprite &sprite) {
       return std::vector<uint8_t>(sprite.bmpData.begin() + 58,
                                   sprite.bmpData.begin() + 66);

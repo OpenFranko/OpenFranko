@@ -196,7 +196,7 @@ void applySpritePaletteFixes(const std::string &fileId,
        i <= SUNSET_FONT_LAST_SPRITE && i < static_cast<int>(sprites.size());
        i++) {
     setBmpPaletteEntry(sprites[i].bmpData, 1, 0xFF, 0xFF, 0xFF);
-    setBmpPaletteEntry(sprites[i].bmpData, 2, 0x77, 0x77, 0x77);
+    setBmpPaletteEntry(sprites[i].bmpData, 2, 0xAA, 0xAA, 0xAA);
   }
 }
 
