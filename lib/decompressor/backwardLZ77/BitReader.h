@@ -1,3 +1,6 @@
+#ifndef BACKWARDLZ77_BITREADER_H_
+#define BACKWARDLZ77_BITREADER_H_
+
 #include <cstdint>
 #include <vector>
 
@@ -30,3 +33,5 @@ private:
 } // namespace decompressor
 } // namespace lib
 } // namespace openfranko
+
+#endif // BACKWARDLZ77_BITREADER_H_

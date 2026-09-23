@@ -60,7 +60,7 @@ set(BITMAP_EXTRACTOR_TEST_TARGET bitmapExtractorTest)
 add_executable(${BITMAP_EXTRACTOR_TEST_TARGET}
     converter/bitmapExtractorTest.cpp
 )
-target_link_libraries(${BITMAP_EXTRACTOR_TEST_TARGET} PRIVATE Catch2::Catch2WithMain bitmapExtractor)
+target_link_libraries(${BITMAP_EXTRACTOR_TEST_TARGET} PRIVATE Catch2::Catch2WithMain bitmapExtractor helpers)
 add_test(NAME ${BITMAP_EXTRACTOR_TEST_TARGET} COMMAND ${BITMAP_EXTRACTOR_TEST_TARGET})
 
 set(HELPERS_TEST_TARGET helpersTest)
@@ -90,3 +90,17 @@ add_executable(${ABK_TO_S3M_TEST_TARGET}
 )
 target_link_libraries(${ABK_TO_S3M_TEST_TARGET} PRIVATE Catch2::Catch2WithMain abkToS3m helpers)
 add_test(NAME ${ABK_TO_S3M_TEST_TARGET} COMMAND ${ABK_TO_S3M_TEST_TARGET})
+
+set(LEVEL_SCRIPT_TEST_TARGET levelScriptTest)
+add_executable(${LEVEL_SCRIPT_TEST_TARGET}
+    converter/levelScriptTest.cpp
+)
+target_link_libraries(${LEVEL_SCRIPT_TEST_TARGET} PRIVATE Catch2::Catch2WithMain levelScript helpers)
+add_test(NAME ${LEVEL_SCRIPT_TEST_TARGET} COMMAND ${LEVEL_SCRIPT_TEST_TARGET})
+
+set(CODE_CARDS_TEST_TARGET codeCardsTest)
+add_executable(${CODE_CARDS_TEST_TARGET}
+    converter/codeCardsTest.cpp
+)
+target_link_libraries(${CODE_CARDS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain codeCards)
+add_test(NAME ${CODE_CARDS_TEST_TARGET} COMMAND ${CODE_CARDS_TEST_TARGET})

@@ -1,5 +1,5 @@
-#ifndef CONSTS_H_
-#define CONSTS_H_
+#ifndef AMOSCOMPACT_CONSTS_H_
+#define AMOSCOMPACT_CONSTS_H_
 
 #include <cstdint>
 #include <vector>
@@ -17,6 +17,9 @@ constexpr uint32_t AMOS_BMCODE = 0x06071963u;
 
 constexpr size_t MAX_SUPPORTED_BITPLANES = 6;
 
+constexpr size_t MAX_BITMAP_DIMENSION = 65535;
+constexpr size_t MAX_BITMAP_PIXELS = 64u * 1024u * 1024u;
+
 constexpr size_t SPACK_HEADER_SIZE = 90;
 
 constexpr size_t SPACK_PALETTE_SIZE = 32;
@@ -29,4 +32,4 @@ constexpr size_t PACKED_BITMAP_HEADER_SIZE = 24;
 } // namespace lib
 } // namespace openfranko
 
-#endif // CONSTS_H_
+#endif // AMOSCOMPACT_CONSTS_H_

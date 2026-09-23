@@ -12,26 +12,31 @@ int main(int argc, char **argv) {
 
   const auto inputOptional = parser.getCmdOption("-i");
 
-  if (inputOptional.has_value()) {
+  if (!inputOptional.has_value()) {
+    std::cerr << "Usage: " << argv[0] << " -i <input_file> -o <output_file>"
+              << std::endl;
+    return 1;
+  }
 
-    std::string inputFilePath = inputOptional.value();
+  std::string inputFilePath = inputOptional.value();
 
-    std::string outputFilePath = inputFilePath + ".dec";
+  std::string outputFilePath = inputFilePath + ".dec";
 
-    const auto outputOptional = parser.getCmdOption("-o");
+  const auto outputOptional = parser.getCmdOption("-o");
 
-    if (outputOptional.has_value()) {
-      outputFilePath = outputOptional.value();
-    }
+  if (outputOptional.has_value()) {
+    outputFilePath = outputOptional.value();
+  }
 
+  try {
     std::vector<uint8_t> compressedData =
         filesystem::readFile::readFile(inputFilePath);
     std::vector<uint8_t> decompressedData =
         decompressor::backwardLZ77::decompress(compressedData);
     filesystem::writeFile::writeFile(outputFilePath, decompressedData);
-  } else {
-    std::cerr << "Usage: " << argv[0] << " -i <input_file> -o <output_file>"
-              << std::endl;
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+    return 1;
   }
 
   return 0;

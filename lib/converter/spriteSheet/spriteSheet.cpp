@@ -3,6 +3,7 @@
 #include "../../helpers/helpers.h"
 #include "../shared/decodeImage.h"
 #include <stdexcept>
+#include <string_view>
 
 namespace openfranko::lib::converter::spriteSheet {
 
@@ -13,6 +14,22 @@ static constexpr size_t BANK_HEADER_SIZE = 12;
 static constexpr size_t DESCRIPTOR_SIZE = 10;
 static constexpr size_t BMP_HOTSPOT_X_OFFSET = 6;
 static constexpr size_t BMP_HOTSPOT_Y_OFFSET = 8;
+static constexpr size_t BMP_PALETTE_OFFSET = 54;
+
+static constexpr int SUNSET_FONT_FIRST_SPRITE = 43;
+static constexpr int SUNSET_FONT_LAST_SPRITE = 100;
+
+static void setBmpPaletteEntry(std::vector<uint8_t> &bmp, int index, uint8_t r,
+                               uint8_t g, uint8_t b) {
+  size_t offset = BMP_PALETTE_OFFSET + static_cast<size_t>(index) * 4;
+  if (offset + 4 > bmp.size()) {
+    return;
+  }
+  bmp[offset + 0] = b;
+  bmp[offset + 1] = g;
+  bmp[offset + 2] = r;
+  bmp[offset + 3] = 0;
+}
 
 void embedBmpHotspot(std::vector<uint8_t> &bmp, uint16_t x, uint16_t y) {
   if (bmp.size() < 10 || bmp[0] != 'B' || bmp[1] != 'M') {
@@ -61,13 +78,17 @@ SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
   return header;
 }
 
-std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
-                                    const std::vector<uint16_t> &palette,
-                                    int columns) {
+SpriteSheet convertToSheet(const std::vector<uint8_t> &data,
+                           const std::vector<uint16_t> &palette, int columns) {
+  if (columns <= 0) {
+    throw std::runtime_error("Column count must be positive");
+  }
+
   auto header = parseHeader(data);
 
   std::vector<DecodedImage> sprites;
   sprites.reserve(header.count);
+  std::vector<std::string> spriteErrors(header.count);
 
   uint16_t maxW = 0;
   uint16_t maxH = 0;
@@ -88,9 +109,12 @@ std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
           maxH = img.height;
         }
         okCount++;
+      } else {
+        spriteErrors[i] = "Sprite decoded to an empty image";
       }
       sprites.push_back(std::move(img));
-    } catch (...) {
+    } catch (const std::exception &e) {
+      spriteErrors[i] = e.what();
       sprites.push_back({});
     }
   }
@@ -125,16 +149,17 @@ std::vector<uint8_t> convertToSheet(const std::vector<uint8_t> &data,
     }
   }
 
-  return bmpWriter::pixelsToBmp(sheetW, sheetH, sheet.data(), palette.data(),
-                                static_cast<int>(palette.size()));
+  return {bmpWriter::pixelsToBmp(sheetW, sheetH, sheet.data(), palette.data(),
+                                 static_cast<int>(palette.size())),
+          std::move(spriteErrors)};
 }
 
-std::vector<std::vector<uint8_t>>
+std::vector<ConvertedSprite>
 convertToIndividual(const std::vector<uint8_t> &data,
                     const std::vector<uint16_t> &palette) {
   auto header = parseHeader(data);
 
-  std::vector<std::vector<uint8_t>> results;
+  std::vector<ConvertedSprite> results;
   results.reserve(header.count);
 
   for (uint16_t i = 0; i < header.count; i++) {
@@ -150,16 +175,29 @@ convertToIndividual(const std::vector<uint8_t> &data,
                                           img.pixels.data(), palette.data(),
                                           static_cast<int>(palette.size()));
         embedBmpHotspot(bmp, descriptor.hotspotX, descriptor.hotspotY);
-        results.push_back(std::move(bmp));
+        results.push_back({std::move(bmp), {}});
       } else {
-        results.emplace_back();
+        results.push_back({{}, "Sprite decoded to an empty image"});
       }
-    } catch (...) {
-      results.emplace_back();
+    } catch (const std::exception &e) {
+      results.push_back({{}, e.what()});
     }
   }
 
   return results;
+}
+
+void applySpritePaletteFixes(const std::string &fileId,
+                             std::vector<ConvertedSprite> &sprites) {
+  if (std::string_view(fileId) != gameData::fileIds::SUNSET_PALETTE) {
+    return;
+  }
+  for (int i = SUNSET_FONT_FIRST_SPRITE;
+       i <= SUNSET_FONT_LAST_SPRITE && i < static_cast<int>(sprites.size());
+       i++) {
+    setBmpPaletteEntry(sprites[i].bmpData, 1, 0xFF, 0xFF, 0xFF);
+    setBmpPaletteEntry(sprites[i].bmpData, 2, 0xAA, 0xAA, 0xAA);
+  }
 }
 
 std::vector<uint16_t> selectPalette(const std::string &fileId) {

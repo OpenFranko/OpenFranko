@@ -1,6 +1,6 @@
 #include "audioExtractor.h"
-#include "../gameData/gameData.h"
 #include "../../helpers/helpers.h"
+#include "../gameData/gameData.h"
 #include <cstring>
 
 namespace openfranko::lib::converter::audioExtractor {
@@ -80,8 +80,8 @@ bool appendSample(const std::vector<uint8_t> &data, size_t sampleOffset,
     return false;
   }
 
-  auto wav = pcmToWav(
-      reinterpret_cast<const int8_t *>(data.data() + pcmStart), length, freq);
+  auto wav = pcmToWav(reinterpret_cast<const int8_t *>(data.data() + pcmStart),
+                      length, freq);
   results.push_back({fileId + "_sam" + std::to_string(sampleNumber) + "_" +
                          std::to_string(freq) + "Hz.wav",
                      std::move(wav)});
@@ -132,7 +132,7 @@ extractEmbeddedSamBank(const std::vector<uint8_t> &data,
   }
 
   helpers::BigEndianReader reader(data);
-  uint32_t sbOff = reader.readUint32(8);
+  const size_t sbOff = reader.readUint32(8);
   if (sbOff == 0 || sbOff + 6 >= data.size()) {
     return results;
   }
@@ -149,8 +149,8 @@ extractEmbeddedSamBank(const std::vector<uint8_t> &data,
 
   uint32_t prev = 0;
   for (uint16_t i = 0; i < count; i++) {
-    uint32_t v = reader.readUint32(sbOff + 2 + i * 4);
-    if (v <= prev || v >= data.size()) {
+    const uint32_t v = reader.readUint32(sbOff + 2 + i * 4);
+    if (v <= prev || sbOff + v >= data.size()) {
       return results;
     }
     prev = v;

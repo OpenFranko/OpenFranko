@@ -1,3 +1,6 @@
+#ifndef BACKWARDLZ77_CONSTS_H_
+#define BACKWARDLZ77_CONSTS_H_
+
 #include <cstdint>
 #include <vector>
 
@@ -15,3 +18,5 @@ constexpr uint32_t BIT_SENTINEL = 0x80000000u;
 } // namespace decompressor
 } // namespace lib
 } // namespace openfranko
+
+#endif // BACKWARDLZ77_CONSTS_H_

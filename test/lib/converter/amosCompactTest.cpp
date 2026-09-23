@@ -439,14 +439,42 @@ SCENARIO("AMOS Compact decompression produces valid BMP output") {
         REQUIRE(c0.b == 0);
 
         auto c1 = bmpPalette(bmp, 1);
-        REQUIRE(c1.r == 17);
-        REQUIRE(c1.g == 17);
-        REQUIRE(c1.b == 17);
+        REQUIRE(c1.r == 255);
+        REQUIRE(c1.g == 255);
+        REQUIRE(c1.b == 255);
 
         auto c2 = bmpPalette(bmp, 2);
         REQUIRE(c2.r == 0);
         REQUIRE(c2.g == 0);
         REQUIRE(c2.b == 0);
+      }
+    }
+  }
+
+  GIVEN("A bare 5-bitplane bitmap (no SPACK header)") {
+    auto data = buildPackedBitmap(1, 1, 1, 5, {0x42}, {0x00}, {0x00});
+
+    WHEN("Decompressing") {
+      auto bmp = decompress(data);
+
+      THEN("BMP palette ramps from black to white in grey steps") {
+        auto first = bmpPalette(bmp, 0);
+        REQUIRE(first.r == 0);
+        REQUIRE(first.g == 0);
+        REQUIRE(first.b == 0);
+
+        auto last = bmpPalette(bmp, 31);
+        REQUIRE(last.r == 255);
+        REQUIRE(last.g == 255);
+        REQUIRE(last.b == 255);
+
+        for (int i = 1; i < 32; i++) {
+          auto prev = bmpPalette(bmp, i - 1);
+          auto c = bmpPalette(bmp, i);
+          REQUIRE(c.r == c.g);
+          REQUIRE(c.g == c.b);
+          REQUIRE(c.r >= prev.r);
+        }
       }
     }
   }

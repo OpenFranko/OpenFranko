@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
+#include <string>
 
 namespace openfranko::lib::converter::abkToS3m {
 
@@ -18,22 +19,22 @@ constexpr uint8_t AMOS_CMD_STOP_EFFECT = 0x84;
 constexpr uint8_t AMOS_CMD_SET_TEMPO = 0x88;
 constexpr uint8_t AMOS_CMD_SET_SAMPLE = 0x89;
 constexpr uint8_t AMOS_CMD_ARPEGGIO = 0x8A;
-constexpr uint8_t AMOS_CMD_PORTA_FINE = 0x8B;
-constexpr uint8_t AMOS_CMD_TREMOLO = 0x8C;
-constexpr uint8_t AMOS_CMD_VIBRATO = 0x8D;
-constexpr uint8_t AMOS_CMD_VIBRATO_VOLSLIDE = 0x8E;
-constexpr uint8_t AMOS_CMD_PORTA_VOLSLIDE = 0x8F;
-constexpr uint8_t AMOS_CMD_ADVANCE_ROW = 0x90;
-constexpr uint8_t AMOS_CMD_PORTAMENTO = 0x91;
+constexpr uint8_t AMOS_CMD_PORTAMENTO = 0x8B;
+constexpr uint8_t AMOS_CMD_VIBRATO = 0x8C;
+constexpr uint8_t AMOS_CMD_VOLUME_SLIDE = 0x8D;
+constexpr uint8_t AMOS_CMD_SLIDE_UP = 0x8E;
+constexpr uint8_t AMOS_CMD_SLIDE_DOWN = 0x8F;
+constexpr uint8_t AMOS_CMD_DELAY = 0x90;
+constexpr uint8_t AMOS_CMD_POSITION_JUMP = 0x91;
 
 constexpr uint8_t S3M_EFFECT_SPEED = 1;
-constexpr uint8_t S3M_EFFECT_PORTAMENTO = 2;
+constexpr uint8_t S3M_EFFECT_POSITION_JUMP = 2;
 constexpr uint8_t S3M_EFFECT_PATTERN_BREAK = 3;
-constexpr uint8_t S3M_EFFECT_VIBRATO = 4;
-constexpr uint8_t S3M_EFFECT_PORTA_VOLSLIDE = 5;
-constexpr uint8_t S3M_EFFECT_VIBRATO_VOLSLIDE = 6;
-constexpr uint8_t S3M_EFFECT_PORTA_FINE = 7;
-constexpr uint8_t S3M_EFFECT_TREMOLO = 8;
+constexpr uint8_t S3M_EFFECT_VOLUME_SLIDE = 4;
+constexpr uint8_t S3M_EFFECT_PORTA_DOWN = 5;
+constexpr uint8_t S3M_EFFECT_PORTA_UP = 6;
+constexpr uint8_t S3M_EFFECT_TONE_PORTA = 7;
+constexpr uint8_t S3M_EFFECT_VIBRATO = 8;
 constexpr uint8_t S3M_EFFECT_ARPEGGIO = 10;
 constexpr uint8_t S3M_EFFECT_TEMPO = 20;
 
@@ -42,6 +43,8 @@ constexpr uint8_t S3M_NOTE_OFF = 0xFE;
 constexpr uint8_t S3M_VOLUME_NONE = 0xFF;
 
 constexpr int NUM_CHANNELS = 4;
+constexpr size_t MAX_S3M_PATTERNS = 254;
+constexpr uint16_t FRANKO_MENU_TEMPO = 37;
 
 constexpr uint16_t PERIOD_TABLE[] = {
     1712, 1616, 1524, 1440, 1356, 1280, 1208, 1140, 1076, 1016, 960, 906,
@@ -145,7 +148,7 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
     return info;
   }
 
-  uint16_t songDataOff = read16(songOff + 4);
+  const uint32_t songDataOff = reader.readUint32(songOff + 2);
   size_t songBase = songOff + songDataOff;
   if (songBase + 28 > musicSize) {
     return info;
@@ -164,7 +167,7 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
     size_t pos = songBase + chOff[ch];
     while (pos + 2 <= musicSize) {
       uint16_t val = read16(pos);
-      if (val >= 0xFF00) {
+      if (val & 0x8000) {
         break;
       }
       info.orders[ch].push_back(val);
@@ -215,6 +218,10 @@ void decodeChannel(Pattern &pat, int ch, const uint8_t *music, size_t musicSize,
     return;
   }
 
+  if (track.offsets[tableIdx] == 0) {
+    return;
+  }
+
   auto readUint16Safe = [&](size_t offset) -> uint16_t {
     if (offset + 2 > musicSize) {
       return 0;
@@ -238,7 +245,7 @@ void decodeChannel(Pattern &pat, int ch, const uint8_t *music, size_t musicSize,
     uint8_t lo = cmd & 0xFF;
 
     switch (hi) {
-    case AMOS_CMD_ADVANCE_ROW: {
+    case AMOS_CMD_DELAY: {
       auto &ev = pat.channels[ch][row];
       if (noteSet) {
         ev.note = periodToS3mNote(notePeriod);
@@ -285,28 +292,28 @@ void decodeChannel(Pattern &pat, int ch, const uint8_t *music, size_t musicSize,
       pendingEffect = S3M_EFFECT_ARPEGGIO;
       pendingParam = lo;
       break;
-    case AMOS_CMD_PORTA_FINE:
-      pendingEffect = S3M_EFFECT_PORTA_FINE;
-      pendingParam = lo;
-      break;
-    case AMOS_CMD_TREMOLO:
-      pendingEffect = S3M_EFFECT_TREMOLO;
+    case AMOS_CMD_PORTAMENTO:
+      pendingEffect = S3M_EFFECT_TONE_PORTA;
       pendingParam = lo;
       break;
     case AMOS_CMD_VIBRATO:
       pendingEffect = S3M_EFFECT_VIBRATO;
       pendingParam = lo;
       break;
-    case AMOS_CMD_VIBRATO_VOLSLIDE:
-      pendingEffect = S3M_EFFECT_VIBRATO_VOLSLIDE;
+    case AMOS_CMD_VOLUME_SLIDE:
+      pendingEffect = S3M_EFFECT_VOLUME_SLIDE;
       pendingParam = lo;
       break;
-    case AMOS_CMD_PORTA_VOLSLIDE:
-      pendingEffect = S3M_EFFECT_PORTA_VOLSLIDE;
+    case AMOS_CMD_SLIDE_UP:
+      pendingEffect = S3M_EFFECT_PORTA_UP;
       pendingParam = lo;
       break;
-    case AMOS_CMD_PORTAMENTO:
-      pendingEffect = S3M_EFFECT_PORTAMENTO;
+    case AMOS_CMD_SLIDE_DOWN:
+      pendingEffect = S3M_EFFECT_PORTA_DOWN;
+      pendingParam = lo;
+      break;
+    case AMOS_CMD_POSITION_JUMP:
+      pendingEffect = S3M_EFFECT_POSITION_JUMP;
       pendingParam = lo;
       break;
     default:
@@ -417,23 +424,24 @@ std::vector<uint8_t> packPattern(const Pattern &pat) {
 struct SpeedTempo {
   uint8_t speed;
   uint8_t tempo;
+  bool hasTempo;
 };
 
 SpeedTempo amosTempoToS3m(uint8_t amosTempo) {
   if (amosTempo == 0) {
-    return {6, 134};
+    return {6, 134, false};
   }
   int speed = (100 + amosTempo / 2) / amosTempo;
   if (speed < 1)
     speed = 1;
   if (speed > 31)
     speed = 31;
-  int bpm = (122 * speed * amosTempo + 47) / 95;
+  int bpm = (5 * speed * amosTempo + 2) / 4;
   if (bpm < 32)
     bpm = 32;
   if (bpm > 255)
     bpm = 255;
-  return {static_cast<uint8_t>(speed), static_cast<uint8_t>(bpm)};
+  return {static_cast<uint8_t>(speed), static_cast<uint8_t>(bpm), true};
 }
 
 void fixSpeedEffects(Pattern &pat) {
@@ -445,7 +453,7 @@ void fixSpeedEffects(Pattern &pat) {
       }
       auto st = amosTempoToS3m(ev.effectParam);
       ev.effectParam = st.speed;
-      if (st.tempo != 134) {
+      if (st.hasTempo) {
         for (int ch2 = 0; ch2 < NUM_CHANNELS; ch2++) {
           if (ch2 != ch && pat.channels[ch2][row].effect == 0) {
             pat.channels[ch2][row].effect = S3M_EFFECT_TEMPO;
@@ -460,7 +468,7 @@ void fixSpeedEffects(Pattern &pat) {
 
 std::vector<Pattern> decodeAllPatterns(const uint8_t *music, size_t musicSize,
                                        const TrackInfo &track,
-                                       const SongInfo &song, bool isE1,
+                                       const SongInfo &song,
                                        std::vector<uint8_t> &orderList) {
   std::vector<Pattern> patterns;
 
@@ -476,15 +484,7 @@ std::vector<Pattern> decodeAllPatterns(const uint8_t *music, size_t musicSize,
     }
 
     auto decoded = decodePattern(music, musicSize, track, steps);
-    if (isE1) {
-      for (int row = 0; row < 64; row++)
-        for (int ch = 0; ch < NUM_CHANNELS; ch++)
-          if (decoded.pat.channels[ch][row].effect == S3M_EFFECT_SPEED)
-            decoded.pat.channels[ch][row].effect = 0,
-            decoded.pat.channels[ch][row].effectParam = 0;
-    } else {
-      fixSpeedEffects(decoded.pat);
-    }
+    fixSpeedEffects(decoded.pat);
     bool found = false;
     for (size_t pi = 0; pi < patterns.size(); pi++) {
       if (std::memcmp(&patterns[pi], &decoded.pat, sizeof(Pattern)) == 0) {
@@ -494,6 +494,11 @@ std::vector<Pattern> decodeAllPatterns(const uint8_t *music, size_t musicSize,
       }
     }
     if (!found) {
+      if (patterns.size() >= MAX_S3M_PATTERNS) {
+        throw std::runtime_error("Module has more than " +
+                                 std::to_string(MAX_S3M_PATTERNS) +
+                                 " distinct patterns");
+      }
       orderList.push_back(static_cast<uint8_t>(patterns.size()));
       patterns.push_back(decoded.pat);
     }
@@ -535,9 +540,9 @@ void writeS3mHeader(std::vector<uint8_t> &s3m, const SongInfo &song,
   s3m[0x35] = 0xFC;
 
   s3m[0x40] = 0x00;
-  s3m[0x41] = 0x01;
-  s3m[0x42] = 0x08;
-  s3m[0x43] = 0x09;
+  s3m[0x41] = 0x08;
+  s3m[0x42] = 0x09;
+  s3m[0x43] = 0x01;
   for (int i = 4; i < 32; i++) {
     s3m[0x40 + i] = 0xFF;
   }
@@ -597,7 +602,8 @@ void writeInstrument(std::vector<uint8_t> &s3m, size_t insStart,
 
 } // namespace
 
-std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData) {
+std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
+                             uint16_t initialAmosTempo) {
   if (abkData.size() < 24 || abkData[0] != 'A' || abkData[1] != 'm' ||
       abkData[2] != 'B' || abkData[3] != 'k') {
     throw std::runtime_error("not a valid AmBk file");
@@ -619,11 +625,8 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData) {
   auto song = parseSong(music, musicSize, songOff);
   auto track = parseTrackData(music, musicSize, trackOff);
 
-  bool isE1 = (std::strncmp(song.name, "e1", 2) == 0);
-
   std::vector<uint8_t> orderList;
-  auto patterns =
-      decodeAllPatterns(music, musicSize, track, song, isE1, orderList);
+  auto patterns = decodeAllPatterns(music, musicSize, track, song, orderList);
   if (patterns.empty()) {
     throw std::runtime_error("empty song");
   }
@@ -636,17 +639,16 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData) {
   uint16_t insNum = static_cast<uint16_t>(samples.size());
   uint16_t patNum = static_cast<uint16_t>(patterns.size());
 
-  uint8_t speed;
-  uint8_t tempo;
-  if (isE1) {
-    speed = 3;
-    tempo = 135;
-  } else {
-    auto initialST = amosTempoToS3m(
-        static_cast<uint8_t>(std::min<uint16_t>(song.speed, 255)));
-    speed = initialST.speed;
-    tempo = initialST.tempo;
+  uint16_t amosTempo = initialAmosTempo;
+  if (amosTempo == 0) {
+    amosTempo =
+        std::strncmp(song.name, "e1", 2) == 0 ? FRANKO_MENU_TEMPO : song.speed;
   }
+
+  const auto initialST =
+      amosTempoToS3m(static_cast<uint8_t>(std::min<uint16_t>(amosTempo, 255)));
+  const uint8_t speed = initialST.speed;
+  const uint8_t tempo = initialST.tempo;
 
   std::vector<uint8_t> s3m;
   writeS3mHeader(s3m, song, ordNum, insNum, patNum, speed, tempo);
@@ -664,9 +666,9 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData) {
 
   uint8_t panning[32] = {};
   panning[0] = 0x20 | 3;
-  panning[1] = 0x20 | 3;
+  panning[1] = 0x20 | 12;
   panning[2] = 0x20 | 12;
-  panning[3] = 0x20 | 12;
+  panning[3] = 0x20 | 3;
   s3m.insert(s3m.end(), panning, panning + 32);
 
   std::vector<size_t> insOffsets(insNum);
@@ -698,10 +700,10 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData) {
     s3m[insOffsets[i] + 0x0E] = static_cast<uint8_t>(paraPtr20);
     s3m[insOffsets[i] + 0x0F] = static_cast<uint8_t>(paraPtr20 >> 8);
 
-    uint32_t pcmOff = samples[i].pcmOffset;
-    uint32_t len = samples[i].length;
-    for (uint32_t j = 0; j < len; j++) {
-      if (sampleInfoOff + pcmOff + j < musicSize) {
+    const size_t pcmOff = samples[i].pcmOffset;
+    const size_t len = samples[i].length;
+    for (size_t j = 0; j < len; j++) {
+      if (static_cast<size_t>(sampleInfoOff) + pcmOff + j < musicSize) {
         uint8_t signedSample = music[sampleInfoOff + pcmOff + j];
         s3m.push_back(signedSample ^ 0x80);
       } else {

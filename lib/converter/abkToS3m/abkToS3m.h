@@ -10,7 +10,8 @@ namespace lib {
 namespace converter {
 namespace abkToS3m {
 
-std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData);
+std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
+                             uint16_t initialAmosTempo = 0);
 
 } // namespace abkToS3m
 } // namespace converter

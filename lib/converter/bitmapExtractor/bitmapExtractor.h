@@ -13,6 +13,7 @@ namespace bitmapExtractor {
 struct ExtractedBitmap {
   std::string name;
   std::vector<uint8_t> bmpData;
+  std::string error;
 };
 
 std::vector<ExtractedBitmap> extract(const std::vector<uint8_t> &data,

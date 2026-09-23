@@ -1,3 +1,6 @@
+#ifndef ARGUMENTPARSER_H_
+#define ARGUMENTPARSER_H_
+
 #include <algorithm>
 #include <optional>
 #include <string>
@@ -20,3 +23,5 @@ private:
 } // namespace argumentParser
 } // namespace lib
 } // namespace openfranko
+
+#endif // ARGUMENTPARSER_H_

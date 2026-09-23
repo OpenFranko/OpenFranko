@@ -3,6 +3,8 @@
 #include "../../helpers/helpers.h"
 #include "Consts.h"
 #include "detail/bitmapUnpack.h"
+#include <algorithm>
+#include <iterator>
 #include <stdexcept>
 
 namespace openfranko::lib::converter::amosCompact {
@@ -18,6 +20,18 @@ bool isPackedBitmap(const std::vector<uint8_t> &data) {
   return header == consts::AMOS_BMCODE;
 }
 
+std::vector<uint16_t> defaultPalette(uint16_t numberOfBitplanes) {
+  const int numberOfColors = std::min(
+      1 << numberOfBitplanes, static_cast<int>(consts::SPACK_PALETTE_SIZE));
+
+  std::vector<uint16_t> palette(consts::SPACK_PALETTE_SIZE, 0);
+  for (int i = 0; i < numberOfColors; i++) {
+    const auto level = static_cast<uint16_t>(i * 15 / (numberOfColors - 1));
+    palette[i] = static_cast<uint16_t>(level * 0x111);
+  }
+  return palette;
+}
+
 } // namespace
 
 std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
@@ -26,11 +40,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   }
 
   std::vector<uint8_t> data = compressedData;
-
-  std::vector<uint16_t> palette(32);
-  for (int i = 0; i < 32; i++) {
-    palette[i] = static_cast<uint16_t>((i * 0x111) & 0xFFF);
-  }
+  std::vector<uint16_t> palette;
 
   if (isSPACK(data)) {
     if (data.size() <
@@ -61,6 +71,10 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("Invalid bitmap dimensions");
   }
 
+  if (palette.empty()) {
+    palette = defaultPalette(bitmapHeader.numberOfBitplanes);
+  }
+
   auto unpackedBitmap = detail::bitmapUnpack(data, bitmapHeader, palette);
 
   if (unpackedBitmap.width == 0 || unpackedBitmap.height == 0) {
@@ -70,14 +84,22 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("Bitmap has no chunky pixel data");
   }
 
-  int numberOfColors = 1 << unpackedBitmap.numberOfBitplanes;
-  if (numberOfColors > 32) {
-    numberOfColors = 32;
+  const int numberOfColors = 1 << unpackedBitmap.numberOfBitplanes;
+
+  std::vector<uint16_t> outPalette(std::begin(unpackedBitmap.palette),
+                                   std::end(unpackedBitmap.palette));
+
+  if (numberOfColors > static_cast<int>(consts::SPACK_PALETTE_SIZE)) {
+    outPalette.resize(static_cast<size_t>(numberOfColors));
+    for (size_t i = consts::SPACK_PALETTE_SIZE; i < outPalette.size(); i++) {
+      const uint16_t base = outPalette[i - consts::SPACK_PALETTE_SIZE];
+      outPalette[i] = static_cast<uint16_t>((base >> 1) & 0x777);
+    }
   }
 
   return bmpWriter::pixelsToBmp(unpackedBitmap.width, unpackedBitmap.height,
                                 unpackedBitmap.chunkyPixels.data(),
-                                unpackedBitmap.palette, numberOfColors);
+                                outPalette.data(), numberOfColors);
 }
 
 } // namespace openfranko::lib::converter::amosCompact
