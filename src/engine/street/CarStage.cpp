@@ -23,7 +23,8 @@ constexpr int SCREEN_OPEN_VBLS = 1;
 constexpr int SCREEN_CLOSE_VBLS = 2;
 constexpr int GAME_OVER_WAIT = 200;
 constexpr int IGNITION_WAIT = 30;
-constexpr int BLIT_OVERRUN_VBLS = 1;
+constexpr int PAL_HERTZ = 50;
+constexpr int NTSC_HERTZ = 60;
 constexpr int FULL_ENERGY = 64;
 
 constexpr int PASSWORD_X = 124;
@@ -177,6 +178,8 @@ bool CarStage::isShowingPassword() const {
   return m_step == Step::Password || m_step == Step::PasswordText ||
          m_step == Step::Kliker;
 }
+
+int CarStage::passes() const { return m_passes; }
 
 bool CarStage::isDriving() const {
   return m_step == Step::DriveTop || m_step == Step::DriveIgnited ||
@@ -337,6 +340,7 @@ void CarStage::startDrive() {
 }
 
 CarStage::Flow CarStage::driveTop(const StreetInput &input) {
+  ++m_passes;
   if (m_distance > 0 && (input.joystick & JOY_FIRE)) {
     if (m_speed != 0) {
       addWrap(m_horn, 1, 0, HORN_CYCLE);
@@ -410,7 +414,18 @@ CarStage::Flow CarStage::driveInput(const StreetInput &input) {
     global(RU) = word(5 * m_speed);
     spawnPedestrians();
   }
-  return wait(BLIT_OVERRUN_VBLS, Step::DriveScenery);
+  const int frames = nextPassFrames();
+  if (frames > 1) {
+    return wait(frames - 1, Step::DriveScenery);
+  }
+  return driveScenery();
+}
+
+int CarStage::nextPassFrames() {
+  m_passTime += m_options.ntsc ? NTSC_HERTZ : PAL_HERTZ;
+  const int frames = m_passTime / PASSES_PER_SECOND;
+  m_passTime %= PASSES_PER_SECOND;
+  return frames;
 }
 
 void CarStage::hitKerb(int kerb) {

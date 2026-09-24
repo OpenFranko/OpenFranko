@@ -14,7 +14,9 @@ constexpr int RB = 1;
 constexpr int RC = 2;
 constexpr int RD = 3;
 constexpr int RM = 12;
+constexpr int RU = 20;
 constexpr int RZ = 25;
+constexpr int FRAME_LIMIT = 1000;
 
 constexpr int16_t JOY_UP = 1;
 constexpr int16_t JOY_DOWN = 2;
@@ -319,6 +321,50 @@ SCENARIO("Expressions follow AMAL's rules") {
       REQUIRE(machine.channelRegister(1, 0) == 1);
     }
   }
+
+  GIVEN("Negative constants after operators") {
+    Registers globals{};
+    Machine machine(globals);
+    machine.create(1, "LR9=-70;LR0=R9>-80;LR1=R9<-80;LR2=10--3;LR3=4*-$10;"
+                      "LR4=R9-80;");
+    machine.start(1);
+    machine.tick();
+
+    THEN("AniOpe reads the minus as the constant's sign, so R9>-80 compares "
+         "with -80") {
+      REQUIRE(machine.channelRegister(1, 0) == -1);
+      REQUIRE(machine.channelRegister(1, 1) == 0);
+      REQUIRE(machine.channelRegister(1, 2) == 13);
+      REQUIRE(machine.channelRegister(1, 3) == -64);
+      REQUIRE(machine.channelRegister(1, 4) == -150);
+    }
+  }
+}
+
+SCENARIO("A run-over walker slides off the left edge and ends") {
+  GIVEN("Walker type 9 squashed at x 103 while RU is 5") {
+    Registers globals{};
+    globals[RU] = 5;
+    Machine machine(globals);
+    Object walker{103, 150, 9};
+    machine.bind(1, &walker);
+    machine.create(1, actors::pedestrian(9));
+    machine.channelRegister(1, 4) = 1;
+    machine.start(1);
+
+    WHEN("It runs") {
+      int frames = 0;
+      while (machine.isRunning(1) && frames < FRAME_LIMIT) {
+        machine.tick();
+        ++frames;
+      }
+
+      THEN("IX>-80JC lets it go at the first x past -80") {
+        REQUIRE_FALSE(machine.isRunning(1));
+        REQUIRE(walker.x == -82);
+      }
+    }
+  }
 }
 
 SCENARIO("The scheduler's budget and loops") {
@@ -443,6 +489,15 @@ SCENARIO("The parser refuses what AMAL would not compile") {
     REQUIRE_THROWS_AS(parse("JB;"), std::invalid_argument);
     REQUIRE_THROWS_AS(parse("NR0;"), std::invalid_argument);
     REQUIRE_THROWS_AS(parse("Q;"), std::invalid_argument);
+  }
+
+  THEN("Operands and operators must alternate, and only a constant takes a "
+       "sign") {
+    REQUIRE_THROWS_AS(parse("LR0=;"), std::invalid_argument);
+    REQUIRE_THROWS_AS(parse("LR0=1+;"), std::invalid_argument);
+    REQUIRE_THROWS_AS(parse("LR0=1>+2;"), std::invalid_argument);
+    REQUIRE_THROWS_AS(parse("LR0=-R1;"), std::invalid_argument);
+    REQUIRE_THROWS_AS(parse("LR0=R1R2;"), std::invalid_argument);
   }
 
   THEN("Lower-case letters are ignored, so words read as instructions") {

@@ -162,7 +162,6 @@ int16_t Machine::evaluate(const Channel &channel,
                           const Expression &expression) const {
   int16_t accumulator = 0;
   char pending = 0;
-  bool first = true;
   for (const Term &term : expression) {
     if (term.kind == TermKind::Operator) {
       pending = term.op;
@@ -173,12 +172,6 @@ int16_t Machine::evaluate(const Channel &channel,
       value = m_joystick;
     } else if (term.kind == TermKind::Register) {
       value = read(channel, term.value);
-    }
-    if (first) {
-      accumulator = pending == '-' ? toWord(-value) : value;
-      first = false;
-      pending = 0;
-      continue;
     }
     switch (pending) {
     case '+':

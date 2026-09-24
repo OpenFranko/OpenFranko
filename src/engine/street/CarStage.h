@@ -37,6 +37,7 @@ public:
   static constexpr int PASSWORD_WAIT = 2000;
   static constexpr int DISTANCE = 5000;
   static constexpr int FILES = 3;
+  static constexpr int PASSES_PER_SECOND = 15;
 
   CarStage(StreetHost &host, GameSession &session,
            effects::GameOptions &options);
@@ -52,6 +53,7 @@ public:
   amal::Machine &machine();
   bool isShowingPassword() const;
   bool isDriving() const;
+  int passes() const;
   int distance() const;
   int speed() const;
   int carX() const;
@@ -100,6 +102,7 @@ private:
   void startDrive();
   Flow driveTop(const StreetInput &input);
   Flow driveInput(const StreetInput &input);
+  int nextPassFrames();
   void hitKerb(int kerb);
   void spawnPedestrians();
   Flow driveScenery();
@@ -158,6 +161,8 @@ private:
   int m_pavementBand = 0;
   int m_clock = 0;
   int m_engineBeat = 0;
+  int m_passes = 0;
+  int m_passTime = 0;
   std::array<bool, PEDESTRIANS + 1> m_hit{};
 };
 
