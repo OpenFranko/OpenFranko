@@ -129,3 +129,35 @@ SCENARIO("AttractSequence shows the hi-score table as HISHOW does") {
     }
   }
 }
+
+SCENARIO("AttractSequence tells when BASIC sleeps in a Wait") {
+  GIVEN("The title") {
+    AttractSequence attract(AttractSequence::Kind::Title, HISCORE_PALETTE);
+    bool waitedThroughout = true;
+    for (int frame = 0; frame < 10; ++frame) {
+      attract.advance(false);
+      waitedThroughout = waitedThroughout && attract.isWaiting();
+    }
+    attract.advance(false);
+
+    THEN("Its Wait 10 is a wait and the Timer loop is not") {
+      REQUIRE(waitedThroughout);
+      REQUIRE_FALSE(attract.isWaiting());
+    }
+  }
+
+  GIVEN("The hi-score table") {
+    AttractSequence attract(AttractSequence::Kind::Hiscores, HISCORE_PALETTE);
+    bool waitedThroughout = true;
+    for (int frame = 0; frame < 126; ++frame) {
+      attract.advance(false);
+      waitedThroughout = waitedThroughout && attract.isWaiting();
+    }
+    attract.advance(false);
+
+    THEN("HISHOW and the Wait 10 after it wait and the Timer loop does not") {
+      REQUIRE(waitedThroughout);
+      REQUIRE_FALSE(attract.isWaiting());
+    }
+  }
+}

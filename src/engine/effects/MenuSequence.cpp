@@ -79,8 +79,15 @@ MenuSequence::MenuSequence(GameOptions &options, AmigaPalette palette)
   m_shownBobs = m_bobs;
 }
 
+void MenuSequence::press(char key) { m_keyboard.press(key); }
+
+void MenuSequence::setMouseButton(bool down) { m_mouseButton = down; }
+
+void MenuSequence::sleep() { m_keyboard.sleep(); }
+
 void MenuSequence::advance(const Joystick &joystick) {
   m_shownBobs = m_bobs;
+  m_keysRead.clear();
   runScript(joystick);
   if (m_attractDue) {
     return;
@@ -108,6 +115,8 @@ MenuSequence::shownBobs() const {
 
 const AmigaPalette &MenuSequence::palette() const { return m_palette; }
 
+const std::string &MenuSequence::keysRead() const { return m_keysRead; }
+
 bool MenuSequence::isAttractDue() const { return m_attractDue; }
 
 bool MenuSequence::isFinished() const { return m_phase == Phase::Finished; }
@@ -115,10 +124,14 @@ bool MenuSequence::isFinished() const { return m_phase == Phase::Finished; }
 void MenuSequence::runScript(const Joystick &joystick) {
   if (m_resume != Resume::Nothing) {
     if (m_frame < m_resumeFrame) {
+      m_keyboard.sleep();
       return;
     }
     const Resume resume = std::exchange(m_resume, Resume::Nothing);
     m_timer = 0;
+    if (resume == Resume::Hand) {
+      finishPass();
+    }
     if (resume == Resume::Leaving) {
       m_phase = Phase::Leaving;
       m_phaseStart = m_frame;
@@ -136,6 +149,8 @@ void MenuSequence::runScript(const Joystick &joystick) {
       m_phase = Phase::Choosing;
       m_timer = 0;
       choose(joystick);
+    } else {
+      m_keyboard.sleep();
     }
     break;
   case Phase::Choosing:
@@ -170,7 +185,25 @@ void MenuSequence::choose(const Joystick &joystick) {
     activate();
   } else if (joystick.up || joystick.down || joystick.left || joystick.right) {
     moveHand(joystick);
+  } else {
+    readKeys();
   }
+}
+
+void MenuSequence::finishPass() {
+  if (const std::optional<char> key = m_keyboard.inkey()) {
+    m_keysRead += *key;
+    m_timer = 0;
+  }
+  if (m_mouseButton) {
+    m_keyboard.permit();
+  }
+}
+
+void MenuSequence::readKeys() {
+  do {
+    finishPass();
+  } while (!m_keyboard.isEmpty());
 }
 
 void MenuSequence::moveHand(const Joystick &joystick) {
@@ -183,7 +216,7 @@ void MenuSequence::moveHand(const Joystick &joystick) {
   const int step = (joystick.down ? 1 : 0) - (joystick.up ? 1 : 0);
   m_row = (m_row + step + ROWS) % ROWS;
   placeHand();
-  m_resume = Resume::Choosing;
+  m_resume = Resume::Hand;
   m_resumeFrame = m_frame + HAND_MOVE_WAIT;
 }
 

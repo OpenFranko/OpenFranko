@@ -56,6 +56,13 @@ add_executable(${MENU_SEQUENCE_TEST_TARGET}
 target_link_libraries(${MENU_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${MENU_SEQUENCE_TEST_TARGET} COMMAND ${MENU_SEQUENCE_TEST_TARGET})
 
+set(INKEY_BUFFER_TEST_TARGET inkeyBufferTest)
+add_executable(${INKEY_BUFFER_TEST_TARGET}
+    engine/effects/inkeyBufferTest.cpp
+)
+target_link_libraries(${INKEY_BUFFER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${INKEY_BUFFER_TEST_TARGET} COMMAND ${INKEY_BUFFER_TEST_TARGET})
+
 set(ATTRACT_SEQUENCE_TEST_TARGET attractSequenceTest)
 add_executable(${ATTRACT_SEQUENCE_TEST_TARGET}
     engine/effects/attractSequenceTest.cpp
@@ -195,3 +202,10 @@ add_executable(${DOUBLE_BUFFER_TEST_TARGET}
 )
 target_link_libraries(${DOUBLE_BUFFER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${DOUBLE_BUFFER_TEST_TARGET} COMMAND ${DOUBLE_BUFFER_TEST_TARGET})
+
+set(CHEAT_CODES_TEST_TARGET cheatCodesTest)
+add_executable(${CHEAT_CODES_TEST_TARGET}
+    engine/street/cheatCodesTest.cpp
+)
+target_link_libraries(${CHEAT_CODES_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${CHEAT_CODES_TEST_TARGET} COMMAND ${CHEAT_CODES_TEST_TARGET})

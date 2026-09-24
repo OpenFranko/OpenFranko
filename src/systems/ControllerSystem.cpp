@@ -4,11 +4,21 @@
 #include <utility>
 
 namespace openfranko::src::systems {
+namespace {
+
+constexpr unsigned char FIRST_PRINTABLE = ' ';
+constexpr unsigned char LAST_PRINTABLE = '~';
+
+} // namespace
 
 void ControllerSystem::update() {
   const uint8_t *keys = SDL_GetKeyboardState(nullptr);
 
   clearStates();
+  text.swap(receivedText);
+  receivedText.clear();
+  mouseButtonDown =
+      (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
 
   if (keys[SDL_SCANCODE_W] && !keys[SDL_SCANCODE_S]) {
     states.up = true;
@@ -36,9 +46,22 @@ void ControllerSystem::update() {
   updateFunctionKey(keys);
 }
 
+void ControllerSystem::receiveText(const char *typed) {
+  for (const char *character = typed; *character != '\0'; ++character) {
+    const auto code = static_cast<unsigned char>(*character);
+    if (code >= FIRST_PRINTABLE && code <= LAST_PRINTABLE) {
+      receivedText += *character;
+    }
+  }
+}
+
 void ControllerSystem::clearFireLatch() { fireLatched = false; }
 
 bool ControllerSystem::isFireLatched() const { return fireLatched; }
+
+bool ControllerSystem::isMouseButtonDown() const { return mouseButtonDown; }
+
+const std::string &ControllerSystem::typedText() const { return text; }
 
 std::optional<char> ControllerSystem::typedLetter() const { return letter; }
 

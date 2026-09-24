@@ -1,6 +1,8 @@
 #include "../../../../src/engine/effects/MenuSequence.h"
 #include <catch2/catch_all.hpp>
 
+#include <string>
+
 using namespace openfranko::src::engine::effects;
 
 namespace {
@@ -27,6 +29,32 @@ void run(MenuSequence &menu, int frames, const Joystick &joystick = NOTHING) {
 
 const MenuSequence::Bob &bob(const MenuSequence &menu, int number) {
   return menu.bobs()[number - 1];
+}
+
+std::string type(MenuSequence &menu, const std::string &keys) {
+  std::string read;
+  for (const char key : keys) {
+    menu.press(key);
+    menu.advance(NOTHING);
+    read += menu.keysRead();
+  }
+  return read;
+}
+
+std::string readDuring(MenuSequence &menu, int frames,
+                       const Joystick &joystick = NOTHING) {
+  std::string read;
+  for (int frame = 0; frame < frames; ++frame) {
+    menu.advance(joystick);
+    read += menu.keysRead();
+  }
+  return read;
+}
+
+void clickMouse(MenuSequence &menu) {
+  menu.setMouseButton(true);
+  menu.advance(NOTHING);
+  menu.setMouseButton(false);
 }
 
 } // namespace
@@ -283,6 +311,116 @@ SCENARIO(
       REQUIRE(menu.bobs()[3].x != before[3].x);
       REQUIRE(menu.shownBobs()[3].x == before[3].x);
       REQUIRE(menu.shownBobs()[6].x == before[6].x);
+    }
+  }
+}
+
+SCENARIO("MenuSequence reads typed keys only when the keyboard gets through") {
+  GIVEN("Keys typed while the icons fly in") {
+    GameOptions options;
+    MenuSequence menu(options, BACKDROP_PALETTE);
+    const std::string readWhileFlying = type(menu, "CENT");
+    const std::string readInOpening = readDuring(menu, OPENING_FRAMES - 4);
+    menu.advance(NOTHING);
+
+    THEN("The opening's Waits let them through for the first loop pass") {
+      REQUIRE(readWhileFlying.empty());
+      REQUIRE(readInOpening.empty());
+      REQUIRE(menu.keysRead() == "CENT");
+    }
+  }
+
+  GIVEN("Keys typed in the open menu under Forbid") {
+    GameOptions options;
+    MenuSequence menu(options, BACKDROP_PALETTE);
+    run(menu, OPENING_FRAMES + 1);
+    const std::string readWhileTyping = type(menu, "CENT");
+
+    THEN("Inkey$ gets none of them") { REQUIRE(readWhileTyping.empty()); }
+
+    WHEN("The left mouse button is pressed") {
+      clickMouse(menu);
+      const std::string readOnClick = menu.keysRead();
+      const std::string readLater = type(menu, "DRZE");
+
+      THEN("_ENABLE lets them through at once and later keys as they come") {
+        REQUIRE(readOnClick == "CENT");
+        REQUIRE(readLater == "DRZE");
+      }
+    }
+
+    WHEN("The hand is moved") {
+      menu.advance(RIGHT);
+      const std::string readDuringWait = readDuring(menu, 9);
+      menu.advance(NOTHING);
+
+      THEN("Its Wait 10 lets them through and they are read when it ends") {
+        REQUIRE(readDuringWait.empty());
+        REQUIRE(menu.keysRead() == "CENT");
+      }
+    }
+
+    WHEN("The joystick is still held when the hand's Wait 10 ends") {
+      menu.advance(RIGHT);
+      run(menu, 9, RIGHT);
+      menu.advance(RIGHT);
+
+      THEN("The rest of the pass reads one key before the hand moves again") {
+        REQUIRE(menu.keysRead() == "C");
+      }
+    }
+
+    WHEN("START is fired") {
+      menu.advance(FIRE);
+
+      THEN("The loop is over and they are never read") {
+        REQUIRE(readDuring(menu, 200).empty());
+      }
+    }
+  }
+
+  GIVEN("A menu whose attract screens are due") {
+    GameOptions options;
+    MenuSequence menu(options, BACKDROP_PALETTE);
+    run(menu, OPENING_FRAMES + 303);
+    REQUIRE(menu.isAttractDue());
+    menu.press('D');
+
+    WHEN("The key comes while an attract screen sits in a Wait") {
+      menu.sleep();
+      menu.resumeAfterAttract();
+      menu.advance(NOTHING);
+
+      THEN("The menu loop reads it when it comes back") {
+        REQUIRE(menu.keysRead() == "D");
+      }
+    }
+
+    WHEN("The key comes during the attract's Timer loop") {
+      menu.resumeAfterAttract();
+      menu.advance(NOTHING);
+
+      THEN("Forbid still holds it back") { REQUIRE(menu.keysRead().empty()); }
+    }
+  }
+}
+
+SCENARIO("A key read by the menu restarts the attract timer as Timer=0 does") {
+  GIVEN("An open menu with the keyboard let through") {
+    GameOptions options;
+    MenuSequence menu(options, BACKDROP_PALETTE);
+    run(menu, OPENING_FRAMES + 1);
+    clickMouse(menu);
+
+    WHEN("A key is typed every 200 frames") {
+      for (int i = 0; i < 5; ++i) {
+        run(menu, 200);
+        type(menu, "A");
+      }
+
+      THEN("The attract screens never come") {
+        REQUIRE_FALSE(menu.isAttractDue());
+      }
     }
   }
 }

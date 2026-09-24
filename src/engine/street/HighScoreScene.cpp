@@ -10,12 +10,7 @@
 namespace openfranko::src::engine::street {
 namespace {
 
-constexpr int RF = 5;
-constexpr int RG = 6;
 constexpr int RN = 13;
-constexpr int RO = 14;
-constexpr int FULL_ENERGY = 64;
-constexpr int STARTING_LIVES = 3;
 
 constexpr int MENU_TUNE = 0x261;
 constexpr int TITLE = 0x3BA;
@@ -188,15 +183,9 @@ void HighScoreScene::runBasic(char key) {
 
 void HighScoreScene::reset() {
   amal::Registers &registers = m_session.registers;
-  for (int i = 0; i <= 12; ++i) {
-    registers[i] = 0;
-  }
-  for (int i = 15; i <= 25; ++i) {
-    registers[i] = 0;
-  }
-  registers[RO] = -1;
-  registers[RF] = FULL_ENERGY;
-  registers[RG] = STARTING_LIVES;
+  const int16_t kills = registers[RN];
+  registers = GameSession::freshRegisters();
+  registers[RN] = kills;
   m_host.stopMusic();
   m_loading.queue([this] { m_host.loadMusic(MENU_TUNE); });
   m_afterLoading = Step::MenuMusic;
@@ -335,6 +324,7 @@ void HighScoreScene::restoreCell() {
 
 void HighScoreScene::commit() {
   m_session.highScores.setName(m_slot, m_name);
+  m_session.textBuffer = m_name;
   m_bobs.offAll();
   m_entering = false;
   if (m_save) {

@@ -29,6 +29,7 @@ public:
   std::optional<EngineStateEnum> update() override;
 
 private:
+  void advanceAttract(const effects::MenuSequence::Joystick &joystick);
   void startAttract();
   void drawMenu();
   void drawAttract();

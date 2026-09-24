@@ -5,12 +5,14 @@
 #include "AmigaPalette.h"
 #include "CreditScroll.h"
 #include "GameOptions.h"
+#include "InkeyBuffer.h"
 #include "PaletteFader.h"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 
 namespace openfranko {
 namespace src {
@@ -40,21 +42,27 @@ public:
 
   MenuSequence(GameOptions &options, AmigaPalette palette);
 
+  void press(char key);
+  void setMouseButton(bool down);
+  void sleep();
   void advance(const Joystick &joystick);
   void resumeAfterAttract();
 
   const std::array<Bob, BOBS> &bobs() const;
   const std::array<Bob, BOBS> &shownBobs() const;
   const AmigaPalette &palette() const;
+  const std::string &keysRead() const;
   bool isAttractDue() const;
   bool isFinished() const;
 
 private:
   enum class Phase { Opening, Choosing, Leaving, Finished };
-  enum class Resume { Nothing, Choosing, Leaving };
+  enum class Resume { Nothing, Hand, Choosing, Leaving };
 
   void runScript(const Joystick &joystick);
   void choose(const Joystick &joystick);
+  void finishPass();
+  void readKeys();
   void moveHand(const Joystick &joystick);
   void activate();
   void flyIcons(std::size_t row, bool in);
@@ -70,6 +78,8 @@ private:
   std::array<Bob, BOBS> m_shownBobs{};
   std::array<AmalMotion, BOBS> m_motions{};
   std::array<std::optional<CreditScroll>, 3> m_credits{};
+  InkeyBuffer m_keyboard;
+  std::string m_keysRead;
   Phase m_phase = Phase::Opening;
   Resume m_resume = Resume::Nothing;
   int m_frame = 0;
@@ -79,6 +89,7 @@ private:
   int m_column = 0;
   int m_row = 0;
   bool m_attractDue = false;
+  bool m_mouseButton = false;
 };
 
 } // namespace effects

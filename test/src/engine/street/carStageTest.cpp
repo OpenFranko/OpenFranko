@@ -227,6 +227,11 @@ SCENARIO("The next stage's password is printed in the system font on the "
       REQUIRE(drive.host.musicStops == 0);
       REQUIRE(drive.host.spriteSets.empty());
     }
+
+    THEN("The printed text is left in N$") {
+      drive.run(PASSWORD_FRAMES);
+      REQUIRE(drive.session.textBuffer == "KOD: CENT");
+    }
   }
 }
 

@@ -1,5 +1,7 @@
 #include "MenuState.h"
 
+#include "../../street/CheatCodes.h"
+
 #include <cstddef>
 #include <cstdio>
 #include <string>
@@ -121,9 +123,12 @@ MenuState::~MenuState() {
 std::optional<EngineStateEnum> MenuState::update() {
   const effects::MenuSequence::Joystick joystick =
       joystickFrom(m_controllerSystem.states);
+  for (const char key : m_controllerSystem.typedText()) {
+    m_menu.press(key);
+  }
 
   if (m_attract) {
-    m_attract->advance(isTouched(joystick));
+    advanceAttract(joystick);
     if (!m_attract->isFinished()) {
       drawAttract();
       return std::nullopt;
@@ -133,24 +138,37 @@ std::optional<EngineStateEnum> MenuState::update() {
   }
 
   const bool music = m_options.music;
+  m_menu.setMouseButton(m_controllerSystem.isMouseButtonDown());
   m_menu.advance(joystick);
+  for (const char key : m_menu.keysRead()) {
+    street::typeCheatKey(m_session.textBuffer, key);
+  }
   if (m_options.music != music) {
     m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
   }
   if (m_menu.isFinished()) {
     m_session.registers[RO] = 0;
+    street::applyCheatCodes(m_session);
     return EngineStateEnum::CharacterSelection;
   }
 
   if (m_menu.isAttractDue()) {
     startAttract();
-    m_attract->advance(isTouched(joystick));
+    advanceAttract(joystick);
     drawAttract();
     return std::nullopt;
   }
 
   drawMenu();
   return std::nullopt;
+}
+
+void MenuState::advanceAttract(
+    const effects::MenuSequence::Joystick &joystick) {
+  m_attract->advance(isTouched(joystick));
+  if (m_attract->isWaiting()) {
+    m_menu.sleep();
+  }
 }
 
 void MenuState::startAttract() {

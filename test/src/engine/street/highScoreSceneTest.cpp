@@ -377,6 +377,10 @@ SCENARIO("The name is typed over the row the score went into") {
         REQUIRE_FALSE(board.scene.isEntering());
       }
 
+      THEN("N$ keeps the name, which the menu's cheat entry then extends") {
+        REQUIRE(board.session.textBuffer == "N O            ");
+      }
+
       THEN("Wait 300, Fade 2 and Wait 30 lead to a black Cls 0") {
         const int frames = board.runUntil(
             [&] {

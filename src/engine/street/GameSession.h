@@ -8,6 +8,7 @@
 #include "IndexedSurface.h"
 
 #include <optional>
+#include <string>
 
 namespace openfranko {
 namespace src {
@@ -42,9 +43,13 @@ struct DriveCarryOver {
 struct GameSession {
   static constexpr int FIRST_EXTRA_LIFE = 35;
 
-  amal::Registers registers{};
+  static amal::Registers freshRegisters();
+
+  amal::Registers registers = freshRegisters();
   int extraLifeKills = FIRST_EXTRA_LIFE;
   bool brutality = false;
+  bool shortLevels = false;
+  std::string textBuffer = HighScoreTable::FILE_NAME;
   int stageReached = 0;
   bool fromBonusDrive = false;
   DriveCarryOver lastDrive;

@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <string>
 
 namespace openfranko {
 namespace src {
@@ -14,10 +15,13 @@ enum class FunctionKey { F1, F2, F3, F4, Escape };
 class ControllerSystem {
 public:
   void update();
+  void receiveText(const char *typed);
   void clearFireLatch();
   bool isFireLatched() const;
+  bool isMouseButtonDown() const;
   std::optional<char> typedLetter() const;
   std::optional<char> typedKey() const;
+  const std::string &typedText() const;
   std::optional<FunctionKey> functionKey() const;
   int16_t joystick() const;
 
@@ -38,6 +42,9 @@ private:
   void updateFunctionKey(const uint8_t *keys);
 
   bool fireLatched = false;
+  bool mouseButtonDown = false;
+  std::string receivedText;
+  std::string text;
   std::array<bool, 26> lettersDown{};
   std::optional<char> letter;
   std::array<bool, 4> editingKeysDown{};

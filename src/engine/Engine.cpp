@@ -24,6 +24,7 @@ namespace openfranko::src::engine {
 Engine::Engine()
     : currentState(std::make_unique<states::mirage::MirageState>(videoSystem)),
       running(true) {
+  SDL_StartTextInput();
   session.highScores =
       street::readHighScoreFile(street::HighScoreTable::FILE_NAME)
           .value_or(street::HighScoreTable());
@@ -38,6 +39,8 @@ bool Engine::isRunning() {
   while (SDL_PollEvent(&event)) {
     if (event.type == SDL_QUIT)
       running = false;
+    if (event.type == SDL_TEXTINPUT)
+      controllerSystem.receiveText(event.text.text);
   }
   return running;
 }

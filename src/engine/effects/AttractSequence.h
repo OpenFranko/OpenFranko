@@ -22,6 +22,7 @@ public:
   bool isShowing() const;
   const AmigaPalette &palette() const;
   int rowsShown() const;
+  bool isWaiting() const;
   bool isFinished() const;
 
 private:
@@ -33,6 +34,7 @@ private:
   int m_frame = 0;
   int m_rows = 0;
   bool m_showing = false;
+  bool m_waiting = false;
   bool m_finished = false;
 };
 

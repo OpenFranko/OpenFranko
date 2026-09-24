@@ -257,8 +257,9 @@ void CarStage::clearScreen() {
 void CarStage::password() {
   m_screenOffsetX = 0;
   m_waited = 0;
+  m_session.textBuffer = passwordFor(stage());
   autoback(
-      [text = passwordFor(stage())](IndexedSurface &surface) {
+      [text = m_session.textBuffer](IndexedSurface &surface) {
         drawSystemText(surface, PASSWORD_X, PASSWORD_BASELINE, text,
                        PASSWORD_INK, PASSWORD_PAPER);
       },

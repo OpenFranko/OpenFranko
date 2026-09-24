@@ -160,7 +160,10 @@ struct Street {
   effects::GameOptions options;
   std::unique_ptr<StreetStage> stage;
 
-  explicit Street(LevelScript script) { host.script = std::move(script); }
+  explicit Street(LevelScript script) {
+    host.script = std::move(script);
+    session.registers[RO] = 0;
+  }
 
   StreetStage &start() {
     stage = std::make_unique<StreetStage>(host, session, options);
@@ -488,6 +491,23 @@ SCENARIO("A Paste Bob stalls the referee for three VBLs") {
   }
 }
 
+SCENARIO("A new game keeps the registers state 05 and the menu left") {
+  GIVEN("Nine lives from the DOMAN code and 27 kills from the last run") {
+    Street street(emptyStreet(600));
+    street.global(RG) = 9;
+    street.global(RN) = 27;
+    street.start();
+    street.open();
+
+    THEN("State 09 only clears the kills before stage init counts on") {
+      REQUIRE(street.global(RG) == 9);
+      REQUIRE(street.global(RF) == 64);
+      REQUIRE(street.global(RN) == 0);
+      REQUIRE(street.global(RO) == 1);
+    }
+  }
+}
+
 SCENARIO("Stage init counts on from the RO the menu or continue left") {
   GIVEN("RO left at 1 by a continue after dying on stage 2") {
     Street street(emptyStreet(600));
@@ -669,6 +689,28 @@ SCENARIO("The level ends one column before its length") {
         exit.block.put(restored);
         REQUIRE(restored.pixel(x, 150) != 1);
         REQUIRE(restored.pixel(x - 17, 150) == exit.screen.pixel(x - 17, 150));
+      }
+    }
+  }
+}
+
+SCENARIO("The SKIP code cuts every street to 32 columns as state 10 does") {
+  GIVEN("A 600 column street with short levels on") {
+    Street street(emptyStreet(600));
+    street.session.shortLevels = true;
+    StreetStage &stage = street.start();
+    street.run(OPENING_FRAMES + 1);
+
+    WHEN("It is walked to its end") {
+      const int ended = street.runUntil(
+          [&] {
+            return stage.outcome() == StreetStage::Outcome::LevelFinished;
+          },
+          1000, JOY_RIGHT);
+
+      THEN("It stops at column 31") {
+        REQUIRE(ended > 0);
+        REQUIRE(stage.columnsWalked() == 31);
       }
     }
   }

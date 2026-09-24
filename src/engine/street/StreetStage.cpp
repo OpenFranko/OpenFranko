@@ -44,8 +44,8 @@ constexpr int COLUMNS_PER_CHUNK = 63;
 constexpr int AUTOBACK_VBLS = 3;
 constexpr int GAME_OVER_WAIT = 200;
 constexpr int FULL_ENERGY = 64;
-constexpr int STARTING_LIVES = 3;
 constexpr int EXTRA_LIFE_STEP = 40;
+constexpr int SHORT_LEVEL_LENGTH = 32;
 constexpr int STREET_MUSIC_VOLUME = 30;
 constexpr int OPENING_SHOUT = 12;
 constexpr int ALL_VOICES = 15;
@@ -192,14 +192,6 @@ void StreetStage::playRouted(int request, int voices) {
 }
 
 void StreetStage::newGame() {
-  for (int i = 0; i <= 12; ++i) {
-    global(i) = 0;
-  }
-  for (int i = 15; i <= 25; ++i) {
-    global(i) = 0;
-  }
-  global(RF) = FULL_ENERGY;
-  global(RG) = STARTING_LIVES;
   global(RQ) = m_options.character == effects::Character::Alex ? 1 : 0;
   m_resident.fill(0);
   m_needed.fill(0);
@@ -252,7 +244,12 @@ StreetStage::Flow StreetStage::stageMusic() {
     m_images.load(11, m_host.loadSpriteSet(255 - 5 * global(RQ), 2));
   });
   m_loading.queue([this] { m_opening = m_host.loadPicture(stage() + 903); });
-  m_loading.queue([this] { m_script = m_host.loadLevelScript(stage() + 900); });
+  m_loading.queue([this] {
+    m_script = m_host.loadLevelScript(stage() + 900);
+    if (m_session.shortLevels) {
+      m_script.length = SHORT_LEVEL_LENGTH;
+    }
+  });
   return load(Step::StageScreen);
 }
 
