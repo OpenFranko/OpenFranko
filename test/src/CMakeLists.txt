@@ -216,3 +216,10 @@ add_executable(${STAGE_FRAME_TEST_TARGET}
 )
 target_link_libraries(${STAGE_FRAME_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${STAGE_FRAME_TEST_TARGET} COMMAND ${STAGE_FRAME_TEST_TARGET})
+
+set(AMIGA_DISPLAY_TEST_TARGET amigaDisplayTest)
+add_executable(${AMIGA_DISPLAY_TEST_TARGET}
+    engine/effects/amigaDisplayTest.cpp
+)
+target_link_libraries(${AMIGA_DISPLAY_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${AMIGA_DISPLAY_TEST_TARGET} COMMAND ${AMIGA_DISPLAY_TEST_TARGET})

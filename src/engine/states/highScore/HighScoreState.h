@@ -4,6 +4,7 @@
 #include "../../../systems/AudioSystem.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
+#include "../../effects/AmigaDisplay.h"
 #include "../../effects/GameOptions.h"
 #include "../../street/GameSession.h"
 #include "../../street/HighScoreScene.h"
@@ -36,6 +37,7 @@ private:
   systems::ControllerSystem &m_controllerSystem;
   level1::EngineStreetHost m_host;
   street::HighScoreScene m_scene;
+  effects::VisibleRows m_rows;
   std::vector<uint32_t> m_frame;
 };
 

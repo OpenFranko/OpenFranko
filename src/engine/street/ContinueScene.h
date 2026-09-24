@@ -22,6 +22,7 @@ public:
 
   static constexpr int WIDTH = 320;
   static constexpr int HEIGHT = 256;
+  static constexpr int DISPLAY_LINE = 50;
   static constexpr int HAND = 10;
 
   ContinueScene(StreetHost &host, GameSession &session);

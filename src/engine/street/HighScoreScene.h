@@ -27,6 +27,7 @@ public:
 
   static constexpr int WIDTH = 320;
   static constexpr int HEIGHT = 256;
+  static constexpr int DISPLAY_LINE = 50;
   static constexpr int FILES = 4;
   static constexpr char BACKSPACE = '\b';
   static constexpr char RETURN = '\r';

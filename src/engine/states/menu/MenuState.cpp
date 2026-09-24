@@ -3,7 +3,6 @@
 #include "../../effects/AmigaDisplay.h"
 #include "../../street/CheatCodes.h"
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdio>
 #include <string>
@@ -27,7 +26,6 @@ constexpr int ATTRACT_SCREEN_ID = 1;
 constexpr int ATTRACT_SCREEN_WIDTH = 320;
 constexpr int ATTRACT_SCREEN_HEIGHT = 256;
 constexpr int ATTRACT_DISPLAY_Y = 40;
-constexpr int ATTRACT_NTSC_RAISE = 27;
 constexpr std::size_t ATTRACT_COLORS = 32;
 
 constexpr int FIRST_MENU_IMAGE = 42;
@@ -47,22 +45,11 @@ constexpr int ROW_PITCH = 20;
 
 constexpr int RO = 14;
 
-struct VisibleRows {
-  int first;
-  int count;
-};
-
-VisibleRows visibleRows(int displayY, int height, bool ntscDisplay) {
-  const int first = std::max(0, effects::FIRST_VISIBLE_LINE - displayY);
-  const int last =
-      std::min(height - 1, effects::lastVisibleLine(ntscDisplay) - displayY);
-  return {first, std::max(0, last - first + 1)};
-}
-
 void createMenuScreen(systems::VideoSystem &videoSystem, bool ntscDisplay) {
   videoSystem.createScreen(
       MENU_SCREEN_ID, MENU_SCREEN_WIDTH,
-      visibleRows(MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay).count);
+      effects::visibleRows(MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay)
+          .count);
 }
 
 std::string spritePath(const char *resource, int index) {
@@ -87,9 +74,10 @@ effects::AmigaPalette loadPicture(systems::VideoSystem &videoSystem,
   return palette;
 }
 
-effects::AmigaPalette openMenuScreen(systems::VideoSystem &videoSystem) {
-  videoSystem.setNtsc(false);
-  createMenuScreen(videoSystem, false);
+effects::AmigaPalette openMenuScreen(systems::VideoSystem &videoSystem,
+                                     bool ntscDisplay) {
+  videoSystem.setNtsc(ntscDisplay);
+  createMenuScreen(videoSystem, ntscDisplay);
   videoSystem.switchScreen(MENU_SCREEN_ID);
   return loadPicture(videoSystem, BACKDROP, BACKDROP_PATH, MENU_COLORS);
 }
@@ -113,7 +101,8 @@ MenuState::MenuState(systems::VideoSystem &videoSystem,
                      street::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_options(options),
-      m_session(session), m_menu(options, openMenuScreen(videoSystem)) {
+      m_session(session),
+      m_menu(options, openMenuScreen(videoSystem, options.ntsc)) {
   for (int image = FIRST_MENU_IMAGE; image <= LAST_MENU_IMAGE; ++image) {
     m_videoSystem.loadMaskedImage(menuBobName(image),
                                   spritePath("0034", image - FIRST_MENU_IMAGE));
@@ -208,9 +197,9 @@ void MenuState::switchStandard() {
 }
 
 void MenuState::startAttract() {
-  const VisibleRows rows =
-      visibleRows(ATTRACT_DISPLAY_Y - (m_options.ntsc ? ATTRACT_NTSC_RAISE : 0),
-                  ATTRACT_SCREEN_HEIGHT, m_videoSystem.isNtsc());
+  const effects::VisibleRows rows = effects::visibleRows(
+      effects::pictureLine(ATTRACT_DISPLAY_Y, m_options.ntsc),
+      ATTRACT_SCREEN_HEIGHT, m_videoSystem.isNtsc());
   m_attractTop = rows.first;
   m_videoSystem.createScreen(ATTRACT_SCREEN_ID, ATTRACT_SCREEN_WIDTH,
                              rows.count);

@@ -1,6 +1,8 @@
 #ifndef ENGINE_EFFECTS_AMIGADISPLAY_H_
 #define ENGINE_EFFECTS_AMIGADISPLAY_H_
 
+#include <algorithm>
+
 namespace openfranko {
 namespace src {
 namespace engine {
@@ -12,6 +14,23 @@ constexpr int LAST_NTSC_LINE = 261;
 
 constexpr int lastVisibleLine(bool ntsc) {
   return ntsc ? LAST_NTSC_LINE : LAST_PAL_LINE;
+}
+
+constexpr int NTSC_PICTURE_RAISE = 27;
+
+constexpr int pictureLine(int palLine, bool ntsc) {
+  return palLine - (ntsc ? NTSC_PICTURE_RAISE : 0);
+}
+
+struct VisibleRows {
+  int first;
+  int count;
+};
+
+constexpr VisibleRows visibleRows(int displayY, int height, bool ntsc) {
+  const int first = std::max(0, FIRST_VISIBLE_LINE - displayY);
+  const int last = std::min(height - 1, lastVisibleLine(ntsc) - displayY);
+  return {first, std::max(0, last - first + 1)};
 }
 
 constexpr int CONVERTED_MENU_TEMPO = 37;

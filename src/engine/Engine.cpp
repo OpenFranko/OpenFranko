@@ -145,7 +145,7 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     break;
   case states::EngineStateEnum::Continue:
     currentState = std::make_unique<states::continueSelect::ContinueState>(
-        videoSystem, audioSystem, controllerSystem, session);
+        videoSystem, audioSystem, controllerSystem, options, session);
     break;
   }
 }
