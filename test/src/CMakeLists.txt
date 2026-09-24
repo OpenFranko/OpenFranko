@@ -132,3 +132,10 @@ add_executable(${BOSS_STAGE_TEST_TARGET}
 )
 target_link_libraries(${BOSS_STAGE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${BOSS_STAGE_TEST_TARGET} COMMAND ${BOSS_STAGE_TEST_TARGET})
+
+set(LOADING_MOCK_TEST_TARGET loadingMockTest)
+add_executable(${LOADING_MOCK_TEST_TARGET}
+    engine/street/loadingMockTest.cpp
+)
+target_link_libraries(${LOADING_MOCK_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${LOADING_MOCK_TEST_TARGET} COMMAND ${LOADING_MOCK_TEST_TARGET})

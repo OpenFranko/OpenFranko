@@ -24,6 +24,7 @@ public:
   StatusPanel(Picture loadingStrip, Picture artwork);
 
   void showLoading();
+  void showWaiting();
   void score(const Stats &stats);
   void drawKills(int kills);
   void loseEnergy(int energy);

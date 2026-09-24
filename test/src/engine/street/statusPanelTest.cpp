@@ -42,10 +42,23 @@ StatusPanel::Stats stats(int energy, int stage, int kills, int lives) {
 
 } // namespace
 
-SCENARIO("CZEKAJ shows the loading strip with its word") {
+SCENARIO("LADUJ shows the loading strip as it is") {
   GIVEN("A panel") {
     StatusPanel panel(loadingStrip(), artwork());
     panel.showLoading();
+
+    THEN("The strip fills all 48 rows with its own word left in place") {
+      REQUIRE(panel.surface().pixel(0, 47) == STRIP_BOTTOM);
+      REQUIRE(panel.surface().pixel(101, 10) == 50 + 101 % 7);
+      REQUIRE(panel.surface().pixel(200, 17) == 50 + 200 % 7);
+    }
+  }
+}
+
+SCENARIO("CZEKAJ shows the loading strip with the wait word") {
+  GIVEN("A panel") {
+    StatusPanel panel(loadingStrip(), artwork());
+    panel.showWaiting();
 
     THEN("The strip fills all 48 rows and the word is copied to (101, 10)") {
       REQUIRE(panel.surface().pixel(0, 47) == STRIP_BOTTOM);
@@ -58,7 +71,7 @@ SCENARIO("CZEKAJ shows the loading strip with its word") {
 SCENARIO("SCORE redraws the panel from its own glyph atlas") {
   GIVEN("A panel that has shown the loading strip") {
     StatusPanel panel(loadingStrip(), artwork());
-    panel.showLoading();
+    panel.showWaiting();
     const IndexedSurface &surface = panel.surface();
 
     WHEN("Stage 1 is drawn with 60 energy, 7 kills and 3 lives") {

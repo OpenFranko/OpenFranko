@@ -107,7 +107,7 @@ void BossStage::advance(const StreetInput &input) {
 }
 
 void BossStage::compose(std::vector<uint32_t> &frame) const {
-  composeFrame(frame, m_display, m_palette, m_screenDisplay, m_screenOffsetX,
+  composeFrame(frame, &m_display, m_palette, m_screenDisplay, m_screenOffsetX,
                m_panel.get(), m_panelPalette);
 }
 
@@ -118,6 +118,8 @@ const BobLayer &BossStage::bobs() const { return m_bobs; }
 const IndexedSurface &BossStage::screen() const { return m_screen; }
 
 const IndexedSurface &BossStage::display() const { return m_display; }
+
+const StatusPanel *BossStage::panel() const { return m_panel.get(); }
 
 amal::Machine &BossStage::machine() { return m_machine; }
 
@@ -186,11 +188,12 @@ void BossStage::playRequest(int request) {
                     PRIORITY_VOICE);
 }
 
-void BossStage::init() {
+BossStage::Flow BossStage::init() {
   if (!m_session.streetExit) {
     throw std::logic_error("BossStage needs the screen the street left");
   }
   m_screen = m_session.streetExit->screen;
+  m_block.emplace(m_session.streetExit->block);
   m_playerX = m_session.streetExit->playerX;
   m_energyShown = m_session.streetExit->energyShown;
   m_killsShown = m_session.streetExit->killsShown;
@@ -201,27 +204,47 @@ void BossStage::init() {
       m_host.loadPanelPicture(StreetStage::LOADING_STRIP),
       m_host.loadPanelPicture(StreetStage::PANEL_ARTWORK));
 
-  m_host.playMusic(stage() + 603);
-  m_host.setMusicVolume(m_options.music ? MUSIC_VOLUME : 0);
-  m_columns = m_host.loadScenery(stage() * 10 + 310);
+  m_host.stopMusic();
   m_images.clear();
-  m_images.load(1, m_host.loadSpriteSet(0, 0));
-  const int player = 254 - 5 * global(RQ);
-  m_images.load(11, m_host.loadSpriteSet(player, PLAYER_SAMPLE_BANK));
-  m_images.load(38, m_host.loadSpriteSet(player - stage(), 0));
-  m_images.load(43, m_host.loadSpriteSet(201 - stage(), BOSS_SAMPLE_BANK));
-  m_columnsWalked = 0;
-  m_panel->score(stats());
-  restoreBlock();
+  m_loading.queue([this] { m_host.loadMusic(stage() + 603); });
+  return load(Step::BossMusic);
 }
 
-void BossStage::restoreBlock() {
+BossStage::Flow BossStage::bossMusic() {
+  m_host.playMusic();
+  m_host.setMusicVolume(m_options.music ? MUSIC_VOLUME : 0);
+  m_loading.queue(
+      [this] { m_columns = m_host.loadScenery(stage() * 10 + 310); });
+  m_loading.queue([this] { m_images.load(1, m_host.loadSpriteSet(0, 0)); });
+  const int player = 254 - 5 * global(RQ);
+  m_loading.queue([this, player] {
+    m_images.load(11, m_host.loadSpriteSet(player, PLAYER_SAMPLE_BANK));
+  });
+  m_loading.queue([this, player] {
+    m_images.load(38, m_host.loadSpriteSet(player - stage(), 0));
+  });
+  m_loading.queue([this] {
+    m_images.load(43, m_host.loadSpriteSet(201 - stage(), BOSS_SAMPLE_BANK));
+  });
+  return load(Step::BossLoaded);
+}
+
+void BossStage::bossLoaded() {
+  m_columnsWalked = 0;
+  m_panel->score(stats());
   m_bobs.set(PLAYER, m_playerX, (global(RB) / 4) * 4, IDLE_IMAGE + m_facing);
-  stall();
+  m_block->put(m_screen);
+  m_block.reset();
+}
+
+BossStage::Flow BossStage::load(Step next) {
+  m_afterLoading = next;
+  m_step = Step::Loading;
+  return Flow::Continue;
 }
 
 void BossStage::setUp() {
-  m_panel->showLoading();
+  m_panel->showWaiting();
   m_scrollPhase = 1;
   for (int channel = PLAYER_WALK_CHANNEL; channel <= PLAYER_CLAMP_CHANNEL;
        ++channel) {
@@ -706,18 +729,22 @@ void BossStage::runBasic(const StreetInput &input) {
   while (flow == Flow::Continue && m_frame >= m_resumeFrame) {
     switch (m_step) {
     case Step::Init:
-      init();
-      m_step = Step::InitRestored;
-      flow = Flow::Yield;
+      flow = init();
       break;
-    case Step::InitRestored:
-      restoreBlock();
-      m_step = Step::InitReady;
-      flow = Flow::Yield;
+    case Step::BossMusic:
+      flow = bossMusic();
       break;
-    case Step::InitReady:
+    case Step::BossLoaded:
+      bossLoaded();
       setUp();
       m_step = Step::Approach;
+      break;
+    case Step::Loading:
+      if (m_loading.advance(*m_panel)) {
+        m_step = m_afterLoading;
+      } else {
+        flow = Flow::Yield;
+      }
       break;
     case Step::Approach:
       flow = approachTop(input);

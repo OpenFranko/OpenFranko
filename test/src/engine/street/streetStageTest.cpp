@@ -28,6 +28,10 @@ constexpr int16_t JOY_FIRE = 16;
 constexpr int FRANKO = 0xFF;
 constexpr int ALEX = 0xFA;
 constexpr uint8_t OPENING_COLOR = 4;
+constexpr uint8_t STRIP_COLOR = 7;
+constexpr uint8_t WAIT_WORD_COLOR = 5;
+constexpr int OPENING_FILES = 5;
+constexpr int OPENING_FRAMES = 1 + OPENING_FILES * LoadingMock::FILE_FRAMES + 3;
 
 Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
   return Picture{
@@ -64,6 +68,8 @@ public:
   std::vector<std::pair<int, int>> spriteSets;
   std::vector<int> scenery;
   std::vector<int> music;
+  int musicStarts = 0;
+  int musicStops = 0;
   std::vector<int> volumes;
   std::vector<Sample> samples;
   int randomCalls = 0;
@@ -108,10 +114,20 @@ public:
   LevelScript loadLevelScript(int) override { return script; }
 
   Picture loadPanelPicture(int part) override {
-    return part == 0 ? box(304, 48, 0, 0, 7) : box(304, 40, 0, 0, 1);
+    if (part != 0) {
+      return box(304, 40, 0, 0, 1);
+    }
+    Picture strip = box(304, 48, 0, 0, STRIP_COLOR);
+    std::fill(strip.pixels.begin() + 32 * 304, strip.pixels.end(),
+              WAIT_WORD_COLOR);
+    return strip;
   }
 
-  void playMusic(int resource) override { music.push_back(resource); }
+  void loadMusic(int resource) override { music.push_back(resource); }
+
+  void playMusic() override { ++musicStarts; }
+
+  void stopMusic() override { ++musicStops; }
 
   void setMusicVolume(int volume) override { volumes.push_back(volume); }
 
@@ -143,6 +159,12 @@ struct Street {
   StreetStage &start() {
     stage = std::make_unique<StreetStage>(host, session, options);
     return *stage;
+  }
+
+  void open() { run(OPENING_FRAMES); }
+
+  uint8_t panelPixel(int x, int y) const {
+    return stage->panel()->surface().pixel(x, y);
   }
 
   void run(int frames, int16_t joystick = 0, SystemKey key = SystemKey::None) {
@@ -186,7 +208,7 @@ SCENARIO("A new game opens the street as states 09 and 10 do") {
   GIVEN("Franko chosen with the music on") {
     Street street(emptyStreet(600));
     StreetStage &stage = street.start();
-    street.run(1);
+    street.open();
 
     THEN("The run starts with full energy, three lives and stage 1") {
       REQUIRE(street.global(RF) == 64);
@@ -198,6 +220,7 @@ SCENARIO("A new game opens the street as states 09 and 10 do") {
 
     THEN("Music 601 plays at Mvolume 30, then the shout on all four voices") {
       REQUIRE(street.host.music == std::vector<int>{601});
+      REQUIRE(street.host.musicStarts == 1);
       REQUIRE(street.host.volumes.front() == 30);
       REQUIRE(street.host.played(2, 12, 15));
     }
@@ -222,6 +245,24 @@ SCENARIO("A new game opens the street as states 09 and 10 do") {
       REQUIRE(street.host.scenery == std::vector<int>{311});
       REQUIRE(street.global(RI) == -1);
     }
+
+    WHEN("The first chunk is loading") {
+      street.run(1);
+
+      THEN("Amal Freeze holds the actors while the strip shows") {
+        REQUIRE(stage.machine().isFrozen(1));
+        REQUIRE(street.panelPixel(101, 10) == STRIP_COLOR);
+      }
+
+      AND_WHEN("Its file is in") {
+        street.run(LoadingMock::FILE_FRAMES);
+
+        THEN("SCORE redraws the panel and the actors run again") {
+          REQUIRE_FALSE(stage.machine().isFrozen(1));
+          REQUIRE(street.panelPixel(0, 0) == 1);
+        }
+      }
+    }
   }
 
   GIVEN("Alex chosen with the music off") {
@@ -229,7 +270,7 @@ SCENARIO("A new game opens the street as states 09 and 10 do") {
     street.options.character = effects::Character::Alex;
     street.options.music = false;
     street.start();
-    street.run(1);
+    street.open();
 
     THEN("His street set is loaded and Mvolume is 0") {
       REQUIRE(street.host.spriteSets[1] == std::make_pair(ALEX, 2));
@@ -243,7 +284,7 @@ SCENARIO("Walking right scrolls the street as state 12 does") {
   GIVEN("A street with no waves") {
     Street street(emptyStreet(600));
     StreetStage &stage = street.start();
-    street.run(2);
+    street.run(OPENING_FRAMES + 1);
 
     WHEN("Right is held until the scroll has settled") {
       const int reached = street.runUntil(
@@ -302,7 +343,7 @@ SCENARIO("A wave spawns at its trigger column") {
   GIVEN("A bald enemy from set 1 due at column 2") {
     Street street(oneEnemyAt(2, enemy(1, 300, 172, 20, 100)));
     StreetStage &stage = street.start();
-    street.run(2);
+    street.run(OPENING_FRAMES + 1);
     const int spawned = street.runUntil(
         [&] { return stage.wavesSpawned() == 1; }, 400, JOY_RIGHT);
 
@@ -337,7 +378,7 @@ SCENARIO("The referee resolves a punch and a kill") {
   GIVEN("A weak enemy walking in from the right") {
     Street street(oneEnemyAt(1, enemy(1, 300, 172, 0, 100)));
     StreetStage &stage = street.start();
-    street.run(2);
+    street.run(OPENING_FRAMES + 1);
     street.runUntil([&] { return stage.wavesSpawned() == 1; }, 400, JOY_RIGHT);
 
     WHEN("The player punches once the enemy is in reach") {
@@ -370,7 +411,7 @@ SCENARIO("Sound requests are routed to the sprite sets' banks") {
   GIVEN("A fight in progress") {
     Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
     StreetStage &stage = street.start();
-    street.run(2);
+    street.run(OPENING_FRAMES + 1);
     street.runUntil([&] { return stage.wavesSpawned() == 1; }, 400, JOY_RIGHT);
 
     WHEN("RW and RE are both set") {
@@ -409,7 +450,7 @@ SCENARIO("A Paste Bob stalls the referee for three VBLs") {
   GIVEN("A fight whose enemy dice are rolled each pass") {
     Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
     StreetStage &stage = street.start();
-    street.run(2);
+    street.run(OPENING_FRAMES + 1);
     street.runUntil([&] { return stage.wavesSpawned() == 1; }, 400, JOY_RIGHT);
 
     WHEN("The player's blood reaches its splat image") {
@@ -438,7 +479,7 @@ SCENARIO("The run ends as state 11 and SYS decide") {
   GIVEN("A fight in progress") {
     Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
     StreetStage &stage = street.start();
-    street.run(2);
+    street.run(OPENING_FRAMES + 1);
     street.runUntil([&] { return stage.wavesSpawned() == 1; }, 400, JOY_RIGHT);
 
     WHEN("Escape is pressed") {
@@ -482,7 +523,7 @@ SCENARIO("The run ends as state 11 and SYS decide") {
   GIVEN("A street being walked") {
     Street street(emptyStreet(600));
     StreetStage &stage = street.start();
-    street.run(2);
+    street.run(OPENING_FRAMES + 1 + LoadingMock::FILE_FRAMES);
 
     THEN("Escape quits at once") {
       street.run(1, 0, SystemKey::Escape);
@@ -510,7 +551,7 @@ SCENARIO("The level ends one column before its length") {
   GIVEN("A 13 column street") {
     Street street(emptyStreet(13));
     StreetStage &stage = street.start();
-    street.run(2);
+    street.run(OPENING_FRAMES + 1);
 
     WHEN("It is walked to its end") {
       const int ended = street.runUntil(
@@ -532,7 +573,7 @@ SCENARIO("The level ends one column before its length") {
         REQUIRE(stage.screen().pixels() == screen);
       }
 
-      THEN("The boss stage gets the screen as it was before the stamp") {
+      THEN("The boss stage gets the stamped screen and the block under it") {
         REQUIRE(street.session.streetExit.has_value());
         const StreetExit &exit = *street.session.streetExit;
         const int x = exit.playerX;
@@ -540,19 +581,22 @@ SCENARIO("The level ends one column before its length") {
         REQUIRE(x <= 164);
         REQUIRE(exit.energyShown == 64);
         REQUIRE(exit.killsShown == 0);
-        REQUIRE(exit.screen.pixel(x, 150) != 1);
-        REQUIRE(stage.screen().pixel(x, 150) == 1);
-        REQUIRE(exit.screen.pixel(0, 0) == stage.screen().pixel(0, 0));
+        REQUIRE(exit.screen.pixels() == stage.screen().pixels());
+        REQUIRE(exit.screen.pixel(x, 150) == 1);
+        IndexedSurface restored = exit.screen;
+        exit.block.put(restored);
+        REQUIRE(restored.pixel(x, 150) != 1);
+        REQUIRE(restored.pixel(x - 17, 150) == exit.screen.pixel(x - 17, 150));
       }
     }
   }
 }
 
 SCENARIO("The composed frame shows the play screen over the panel") {
-  GIVEN("The street's first frame") {
+  GIVEN("The street's first playable frame") {
     Street street(emptyStreet(600));
     StreetStage &stage = street.start();
-    street.run(1);
+    street.open();
     std::vector<uint32_t> frame;
     stage.compose(frame);
 
@@ -561,6 +605,110 @@ SCENARIO("The composed frame shows the play screen over the panel") {
       REQUIRE(frame[0] == 0xFF008833u);
       REQUIRE(frame[222 * 304] == 0xFF555555u);
       REQUIRE(frame[223 * 304] == 0xFF000000u);
+    }
+  }
+
+  GIVEN("The first frame of a new game") {
+    Street street(emptyStreet(600));
+    StreetStage &stage = street.start();
+    street.run(1);
+    std::vector<uint32_t> frame;
+    stage.compose(frame);
+
+    THEN("Screen 0 is still hidden, so only the border and the strip show") {
+      REQUIRE(frame[0] == 0xFF555555u);
+      REQUIRE(frame[221 * 304 + 303] == 0xFF555555u);
+      REQUIRE(frame[(223 + 10) * 304 + 101] == 0xFFDDDDDDu);
+    }
+  }
+}
+
+SCENARIO("A stage's files load one by one as LADUJ and CZEKAJ show them") {
+  GIVEN("A new game") {
+    Street street(emptyStreet(600));
+    StreetStage &stage = street.start();
+    street.run(1);
+
+    THEN("ERA has stopped the music and the tune's file is being read") {
+      REQUIRE(street.host.musicStops == 1);
+      REQUIRE(street.host.music == std::vector<int>{601});
+      REQUIRE(street.host.musicStarts == 0);
+      REQUIRE(street.host.spriteSets.empty());
+      REQUIRE_FALSE(stage.isScreenShown());
+      REQUIRE(street.panelPixel(101, 10) == STRIP_COLOR);
+    }
+
+    WHEN("The file has been read") {
+      street.run(LoadingMock::READ_FRAMES);
+
+      THEN("CZEKAJ puts the wait word over the strip while it unpacks") {
+        REQUIRE(street.panelPixel(101, 10) == WAIT_WORD_COLOR);
+        REQUIRE(street.panelPixel(100, 10) == STRIP_COLOR);
+        REQUIRE(street.host.musicStarts == 0);
+      }
+    }
+
+    WHEN("The tune has loaded") {
+      street.run(LoadingMock::FILE_FRAMES);
+
+      THEN("MUZON starts it and the blood's file is read next") {
+        REQUIRE(street.host.musicStarts == 1);
+        REQUIRE(street.host.volumes.front() == 30);
+        REQUIRE(street.host.spriteSets ==
+                std::vector<std::pair<int, int>>{{0, 0}});
+        REQUIRE(street.panelPixel(101, 10) == STRIP_COLOR);
+      }
+    }
+
+    WHEN("All five files are in") {
+      street.run(OPENING_FILES * LoadingMock::FILE_FRAMES);
+
+      THEN("The unpack of the opening screen stalls three VBLs before it "
+           "shows") {
+        REQUIRE_FALSE(stage.isScreenShown());
+        street.run(2);
+        REQUIRE_FALSE(stage.isScreenShown());
+        street.run(1);
+        REQUIRE(stage.isScreenShown());
+        REQUIRE(stage.isFighting());
+      }
+    }
+  }
+}
+
+SCENARIO("A wave's missing sprite set loads with the player stamped down") {
+  GIVEN("A bald enemy from set 1 due at column 2") {
+    Street street(oneEnemyAt(2, enemy(1, 300, 172, 20, 100)));
+    StreetStage &stage = street.start();
+    street.run(OPENING_FRAMES + 1);
+
+    WHEN("The wave's column is reached") {
+      const int stopped = street.runUntil(
+          [&] { return !stage.bobs().isActive(1); }, 400, JOY_RIGHT);
+      const int x = stage.bobs().x(1);
+      const int y = stage.bobs().y(1);
+      street.run(6);
+
+      THEN("Scroll 3 and Paste Bob have run and the set's file is loading") {
+        REQUIRE(stopped > 0);
+        REQUIRE(stage.screen().pixel(x, y - 2) == 1);
+        REQUIRE(street.host.spriteSets.back() == std::make_pair(1, 4));
+        REQUIRE(street.panelPixel(101, 10) == STRIP_COLOR);
+        REQUIRE(stage.wavesSpawned() == 0);
+        REQUIRE_FALSE(stage.machine().exists(1));
+      }
+
+      AND_WHEN("The file is in") {
+        const int fighting = street.runUntil([&] { return stage.isFighting(); },
+                                             LoadingMock::FILE_FRAMES + 1);
+
+        THEN("Put Block takes the stamp back and the fight starts") {
+          REQUIRE(fighting == LoadingMock::FILE_FRAMES);
+          REQUIRE(stage.screen().pixel(x, y - 2) != 1);
+          REQUIRE(stage.bobs().isActive(1));
+          REQUIRE(stage.wavesSpawned() == 1);
+        }
+      }
     }
   }
 }

@@ -52,6 +52,9 @@ constexpr int ALL_VOICES = 15;
 constexpr int PRIORITY_VOICE = 1;
 constexpr int BACKGROUND_VOICE = 8;
 constexpr int THROWN = 30000;
+constexpr int STREET_Y = 172;
+constexpr int PLAYER_BLOCK_WIDTH = 48;
+constexpr int PLAYER_BLOCK_HEIGHT = 78;
 
 int16_t word(int value) { return static_cast<int16_t>(value); }
 
@@ -92,8 +95,8 @@ void StreetStage::advance(const StreetInput &input) {
 }
 
 void StreetStage::compose(std::vector<uint32_t> &frame) const {
-  composeFrame(frame, m_display, m_palette, m_screenDisplay, m_screenOffsetX,
-               m_panel.get(), m_panelPalette);
+  composeFrame(frame, m_screenShown ? &m_display : nullptr, m_palette,
+               m_screenDisplay, m_screenOffsetX, m_panel.get(), m_panelPalette);
 }
 
 StreetStage::Outcome StreetStage::outcome() const { return m_outcome; }
@@ -104,11 +107,15 @@ const IndexedSurface &StreetStage::screen() const { return m_screen; }
 
 const IndexedSurface &StreetStage::display() const { return m_display; }
 
+const StatusPanel *StreetStage::panel() const { return m_panel.get(); }
+
 amal::Machine &StreetStage::machine() { return m_machine; }
 
 int StreetStage::columnsWalked() const { return m_columnsWalked; }
 
 int StreetStage::wavesSpawned() const { return m_wavesSpawned; }
+
+bool StreetStage::isScreenShown() const { return m_screenShown; }
 
 bool StreetStage::isFighting() const {
   return m_step == Step::Referee || m_step == Step::RefereeCorpseStamped ||
@@ -171,6 +178,7 @@ void StreetStage::newGame() {
 void StreetStage::gameInit() {
   m_palette = levelPalette(m_options.mono);
   m_panelPalette = panelPalette();
+  m_screenShown = false;
   m_screen.fill(0);
   m_panel =
       std::make_unique<StatusPanel>(m_host.loadPanelPicture(LOADING_STRIP),
@@ -178,8 +186,9 @@ void StreetStage::gameInit() {
   global(RN) = 0;
 }
 
-void StreetStage::stageInit() {
+StreetStage::Flow StreetStage::stageInit() {
   m_pendingKey = SystemKey::None;
+  m_host.stopMusic();
   m_images.clear();
   global(RO) = word(global(RO) + 1);
   m_energyShown = FULL_ENERGY;
@@ -189,35 +198,74 @@ void StreetStage::stageInit() {
   m_scrollPhase = 0;
   m_playerX = 80 - 144 * amosBool(stage() == 2);
   global(RA) = word(m_playerX);
-  const int y = 172;
-  global(RB) = word(y);
+  global(RB) = word(STREET_Y);
   m_facing = -32768 * amosBool(stage() == 2);
   global(RC) = word(m_facing);
   m_columnInChunk = COLUMNS_PER_CHUNK;
   m_chunk = 1;
   m_screenOffsetX = stage() == 2 ? 16 : 0;
+  m_loading.queue([this] { m_host.loadMusic(stage() + 600); });
+  return load(Step::StageMusic);
+}
 
-  m_host.playMusic(stage() + 600);
+StreetStage::Flow StreetStage::stageMusic() {
+  m_host.playMusic();
   m_host.setMusicVolume(m_options.music ? STREET_MUSIC_VOLUME : 0);
-  m_images.load(1, m_host.loadSpriteSet(0, 0));
-  m_images.load(11, m_host.loadSpriteSet(255 - 5 * global(RQ), 2));
-  const Picture opening = m_host.loadPicture(stage() + 903);
-  m_script = m_host.loadLevelScript(stage() + 900);
+  m_loading.queue([this] { m_images.load(1, m_host.loadSpriteSet(0, 0)); });
+  m_loading.queue([this] {
+    m_images.load(11, m_host.loadSpriteSet(255 - 5 * global(RQ), 2));
+  });
+  m_loading.queue([this] { m_opening = m_host.loadPicture(stage() + 903); });
+  m_loading.queue([this] { m_script = m_host.loadLevelScript(stage() + 900); });
+  return load(Step::StageScreen);
+}
 
-  m_screen.unpack(opening, 0, 0);
-  m_bobs.set(PLAYER, m_playerX, (y / 4) * 4, IDLE_IMAGE + m_facing);
-  m_panel->showLoading();
+StreetStage::Flow StreetStage::stageScreen() {
+  m_screen.unpack(m_opening, 0, 0);
+  m_step = Step::StageShown;
+  stall();
+  return Flow::Yield;
+}
+
+void StreetStage::stageShown() {
+  m_bobs.set(PLAYER, m_playerX, (STREET_Y / 4) * 4, IDLE_IMAGE + m_facing);
+  m_opening = Picture{};
+  m_panel->showWaiting();
+  m_screenShown = true;
 
   for (int i = 0; i <= 2; ++i) {
     m_machine.bind(4 + i * 2, &m_bobs.object(2 + i));
     m_machine.bind(5 + i * 2, &m_bobs.object(2 + i));
   }
   for (int bob = 2; bob <= 4; ++bob) {
-    m_bobs.set(bob, 460, 172, 44);
+    m_bobs.set(bob, 460, STREET_Y, 44);
   }
   for (int channel = 4; channel <= 9; ++channel) {
     m_machine.create(channel, amal::actors::idle());
   }
+}
+
+StreetStage::Flow StreetStage::load(Step next) {
+  m_afterLoading = next;
+  m_step = Step::Loading;
+  return Flow::Continue;
+}
+
+bool StreetStage::grabPlayer() {
+  const int left = m_playerX - 16;
+  const int top = global(RB) - 77;
+  m_block.emplace(m_screen, left, top, PLAYER_BLOCK_WIDTH, PLAYER_BLOCK_HEIGHT);
+  return BobLayer::paste(m_screen, m_images, left, top, IDLE_IMAGE + m_facing);
+}
+
+StreetStage::Flow StreetStage::stopForLoading(Step next) {
+  m_machine.destroyAll();
+  m_playerX = xBob(PLAYER);
+  global(RB) = word((global(RB) / 4) * 4);
+  m_bobs.offAll();
+  m_step = next;
+  stall();
+  return Flow::Yield;
 }
 
 void StreetStage::streetSetup() {
@@ -581,19 +629,33 @@ StreetStage::Flow StreetStage::advanceTop(const StreetInput &input) {
       m_script.waves[static_cast<std::size_t>(m_nextWave)].trigger ==
           m_columnsWalked;
   if (waveDue && m_scrollPhase == 1) {
-    spawnWave();
-    streetSetup();
-    m_step = Step::Referee;
-    return Flow::Continue;
+    return stopForLoading(Step::SpawnFlushed);
   }
   if (global(RE) != 0) {
     m_host.playSample(2, global(RE), PRIORITY_VOICE);
     global(RE) = 0;
   }
   if (m_columnInChunk == COLUMNS_PER_CHUNK) {
-    loadChunk();
+    m_machine.freezeAll();
+    m_bobs.setPosition(PLAYER, xBob(PLAYER), (global(RB) / 4) * 4);
+    m_bobs.setImage(PLAYER, IDLE_IMAGE + m_facing);
+    m_loading.queue([this] {
+      m_columns = m_host.loadScenery(300 + stage() * 10 + m_chunk);
+    });
+    return load(Step::AdvanceChunkLoaded);
   }
+  return advanceWalk(input);
+}
 
+StreetStage::Flow StreetStage::advanceChunkLoaded(const StreetInput &input) {
+  m_panel->score(stats());
+  ++m_chunk;
+  m_columnInChunk = 0;
+  m_machine.startAll();
+  return advanceWalk(input);
+}
+
+StreetStage::Flow StreetStage::advanceWalk(const StreetInput &input) {
   const int joystick = input.joystick;
   bool walking = false;
   int bias = 0;
@@ -651,22 +713,9 @@ StreetStage::Flow StreetStage::advanceTail() {
   return endOfPass();
 }
 
-StreetStage::Flow StreetStage::advanceLeave() {
-  m_machine.destroyAll();
-  m_playerX = xBob(PLAYER);
-  global(RB) = word((global(RB) / 4) * 4);
-  m_bobs.offAll();
-  m_step = Step::AdvanceLeaveFlushed;
-  stall();
-  return Flow::Yield;
-}
-
 StreetStage::Flow StreetStage::advanceLeaveFlushed() {
-  m_session.streetExit.emplace(
-      StreetExit{m_screen, m_playerX, m_energyShown, m_killsShown});
   m_step = Step::AdvanceLeavePasted;
-  if (BobLayer::paste(m_screen, m_images, m_playerX - 16, global(RB) - 77,
-                      IDLE_IMAGE + m_facing)) {
+  if (grabPlayer()) {
     stall();
     return Flow::Yield;
   }
@@ -674,30 +723,25 @@ StreetStage::Flow StreetStage::advanceLeaveFlushed() {
 }
 
 StreetStage::Flow StreetStage::advanceLeavePasted() {
+  m_session.streetExit.emplace(
+      StreetExit{m_screen, *m_block, m_playerX, m_energyShown, m_killsShown});
+  m_block.reset();
   m_outcome = Outcome::LevelFinished;
   m_step = Step::Finished;
   return Flow::Yield;
 }
 
-void StreetStage::loadChunk() {
-  m_machine.freezeAll();
-  m_bobs.setPosition(PLAYER, xBob(PLAYER), (global(RB) / 4) * 4);
-  m_bobs.setImage(PLAYER, IDLE_IMAGE + m_facing);
-  m_columns = m_host.loadScenery(300 + stage() * 10 + m_chunk);
-  m_panel->showLoading();
-  m_panel->score(stats());
-  ++m_chunk;
-  m_columnInChunk = 0;
-  m_machine.startAll();
+StreetStage::Flow StreetStage::spawnFlushed() {
+  m_step = Step::SpawnPasted;
+  if (grabPlayer()) {
+    stall();
+    return Flow::Yield;
+  }
+  return Flow::Continue;
 }
 
-void StreetStage::spawnWave() {
-  m_machine.destroyAll();
-  m_playerX = xBob(PLAYER);
-  global(RB) = word((global(RB) / 4) * 4);
-  m_bobs.offAll();
-  m_panel->showLoading();
-
+StreetStage::Flow StreetStage::spawnPasted() {
+  m_panel->showWaiting();
   const Wave &wave = m_script.waves[static_cast<std::size_t>(m_nextWave)];
   global(RI) = 3;
 
@@ -710,17 +754,17 @@ void StreetStage::spawnWave() {
   }
   int slot = 0;
   for (const EnemySlot &enemy : wave.slots) {
-    bool load = false;
+    bool missing = false;
     for (int i = 1; i <= 3; ++i) {
       if (enemy.spriteSet != m_resident[static_cast<std::size_t>(i)] &&
           enemy.spriteSet != EnemySlot::EMPTY) {
-        load = true;
+        missing = true;
       } else {
-        load = false;
+        missing = false;
         break;
       }
     }
-    if (load) {
+    if (missing) {
       int base = 0;
       if (m_needed[3] == 0) {
         slot = 3;
@@ -734,13 +778,20 @@ void StreetStage::spawnWave() {
         slot = 1;
         base = 44;
       }
-      m_images.load(base, m_host.loadSpriteSet(enemy.spriteSet, 4 + slot - 1));
-      m_panel->showLoading();
+      const int spriteSet = enemy.spriteSet;
+      const int bank = 4 + slot - 1;
+      m_loading.queue([this, base, spriteSet, bank] {
+        m_images.load(base, m_host.loadSpriteSet(spriteSet, bank));
+      });
       m_resident[static_cast<std::size_t>(slot)] = enemy.spriteSet;
       m_needed[static_cast<std::size_t>(slot)] = -1;
     }
   }
+  return load(Step::SpawnLoaded);
+}
 
+void StreetStage::spawnLoaded() {
+  const Wave &wave = m_script.waves[static_cast<std::size_t>(m_nextWave)];
   for (int j = 2; j <= 4; ++j) {
     const EnemySlot &enemy = wave.slots[static_cast<std::size_t>(j - 2)];
     m_machine.bind(j * 2, &m_bobs.object(j));
@@ -765,6 +816,8 @@ void StreetStage::spawnWave() {
   ++m_nextWave;
   ++m_wavesSpawned;
   m_bobs.set(PLAYER, m_playerX, (global(RB) / 4) * 4, IDLE_IMAGE + m_facing);
+  m_block->put(m_screen);
+  m_block.reset();
 }
 
 void StreetStage::scrollStep() {
@@ -813,9 +866,25 @@ void StreetStage::runBasic(const StreetInput &input) {
     case Step::NewGame:
       newGame();
       gameInit();
-      stageInit();
+      flow = stageInit();
+      break;
+    case Step::StageMusic:
+      flow = stageMusic();
+      break;
+    case Step::StageScreen:
+      flow = stageScreen();
+      break;
+    case Step::StageShown:
+      stageShown();
       streetSetup();
       m_step = Step::Referee;
+      break;
+    case Step::Loading:
+      if (m_loading.advance(*m_panel)) {
+        m_step = m_afterLoading;
+      } else {
+        flow = Flow::Yield;
+      }
       break;
     case Step::Referee:
       flow = refereeTop();
@@ -832,14 +901,28 @@ void StreetStage::runBasic(const StreetInput &input) {
     case Step::Advance:
       flow = advanceTop(input);
       break;
+    case Step::AdvanceChunkLoaded:
+      flow = advanceChunkLoaded(input);
+      break;
     case Step::AdvanceScroll:
       flow = advanceScroll();
       break;
     case Step::AdvanceWalked:
       flow = advanceWalked();
       break;
+    case Step::SpawnFlushed:
+      flow = spawnFlushed();
+      break;
+    case Step::SpawnPasted:
+      flow = spawnPasted();
+      break;
+    case Step::SpawnLoaded:
+      spawnLoaded();
+      streetSetup();
+      m_step = Step::Referee;
+      break;
     case Step::AdvanceLeave:
-      flow = advanceLeave();
+      flow = stopForLoading(Step::AdvanceLeaveFlushed);
       break;
     case Step::AdvanceLeaveFlushed:
       flow = advanceLeaveFlushed();

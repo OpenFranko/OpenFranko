@@ -30,7 +30,7 @@ const effects::AmigaPalette &levelPalette(bool mono) {
 
 const effects::AmigaPalette &panelPalette() { return PANEL_PALETTE; }
 
-void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface &display,
+void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,
                   const StatusPanel *panel,
@@ -52,13 +52,13 @@ void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface &display,
       continue;
     }
     const int screenRow = beam - screenDisplay.y;
-    if (screenRow < 0 || screenRow >= display.height()) {
+    if (!display || screenRow < 0 || screenRow >= display->height()) {
       continue;
     }
     for (int x = 0; x < FRAME_WIDTH; ++x) {
       const int column = x + offsetX;
-      if (column < display.width()) {
-        line[x] = toArgb(palette[display.pixel(column, screenRow)]);
+      if (column < display->width()) {
+        line[x] = toArgb(palette[display->pixel(column, screenRow)]);
       }
     }
   }

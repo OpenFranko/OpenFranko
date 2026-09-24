@@ -24,8 +24,10 @@ StatusPanel::StatusPanel(Picture loadingStrip, Picture artwork)
     : m_loadingStrip(std::move(loadingStrip)), m_artwork(std::move(artwork)),
       m_surface(WIDTH, HEIGHT) {}
 
-void StatusPanel::showLoading() {
-  m_surface.unpack(m_loadingStrip, 0, 0);
+void StatusPanel::showLoading() { m_surface.unpack(m_loadingStrip, 0, 0); }
+
+void StatusPanel::showWaiting() {
+  showLoading();
   m_surface.copy(m_surface, 203, GLYPH_TOP, 303, 47, 101, 10);
 }
 

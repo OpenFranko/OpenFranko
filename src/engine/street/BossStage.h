@@ -7,12 +7,14 @@
 #include "Bobs.h"
 #include "GameSession.h"
 #include "IndexedSurface.h"
+#include "LoadingMock.h"
 #include "StageFrame.h"
 #include "StatusPanel.h"
 #include "StreetStage.h"
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace openfranko {
@@ -39,6 +41,7 @@ public:
   const BobLayer &bobs() const;
   const IndexedSurface &screen() const;
   const IndexedSurface &display() const;
+  const StatusPanel *panel() const;
   amal::Machine &machine();
   int columnsWalked() const;
   bool isApproaching() const;
@@ -49,8 +52,9 @@ public:
 private:
   enum class Step {
     Init,
-    InitRestored,
-    InitReady,
+    BossMusic,
+    BossLoaded,
+    Loading,
     Approach,
     ApproachUnpacked,
     ApproachScrolled,
@@ -83,8 +87,10 @@ private:
   Flow endOfPass() const;
   void playRequest(int request);
 
-  void init();
-  void restoreBlock();
+  Flow init();
+  Flow bossMusic();
+  void bossLoaded();
+  Flow load(Step next);
   void setUp();
   Flow approachTop(const StreetInput &input);
   Flow approachScroll();
@@ -121,8 +127,11 @@ private:
   effects::AmigaPalette m_palette;
   effects::AmigaPalette m_panelPalette;
   std::vector<Picture> m_columns;
+  LoadingMock m_loading;
+  std::optional<ScreenBlock> m_block;
 
   Step m_step = Step::Init;
+  Step m_afterLoading = Step::Finished;
   Outcome m_outcome = Outcome::Playing;
   long m_frame = 0;
   long m_resumeFrame = 0;

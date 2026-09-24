@@ -13,6 +13,7 @@ namespace street {
 
 struct StreetExit {
   IndexedSurface screen;
+  ScreenBlock block;
   int playerX = 0;
   int energyShown = 0;
   int killsShown = 0;

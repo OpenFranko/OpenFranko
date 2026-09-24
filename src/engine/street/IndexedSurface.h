@@ -44,6 +44,19 @@ private:
   std::vector<uint8_t> m_pixels;
 };
 
+class ScreenBlock {
+public:
+  ScreenBlock(const IndexedSurface &source, int x, int y, int width,
+              int height);
+
+  void put(IndexedSurface &target) const;
+
+private:
+  IndexedSurface m_pixels;
+  int m_x;
+  int m_y;
+};
+
 } // namespace street
 } // namespace engine
 } // namespace src

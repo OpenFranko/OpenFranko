@@ -22,7 +22,7 @@ constexpr int DISPLAY_TOP = 47;
 const effects::AmigaPalette &levelPalette(bool mono);
 const effects::AmigaPalette &panelPalette();
 
-void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface &display,
+void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,
                   const StatusPanel *panel,

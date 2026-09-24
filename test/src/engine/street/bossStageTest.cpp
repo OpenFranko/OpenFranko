@@ -35,8 +35,13 @@ constexpr int FRANKO_EXTRA_PHASES = 0xFD;
 constexpr int STAGE_1_BOSS = 0xC8;
 constexpr int EXIT_X = 164;
 constexpr uint8_t STREET_COLOR = 6;
+constexpr uint8_t STAMP_COLOR = 3;
 constexpr uint8_t PLAYER_COLOR = 1;
 constexpr uint8_t BOSS_COLOR = 2;
+constexpr uint8_t STRIP_COLOR = 7;
+constexpr uint8_t WAIT_WORD_COLOR = 5;
+constexpr int BOSS_FILES = 6;
+constexpr int READY_FRAMES = 1 + BOSS_FILES * LoadingMock::FILE_FRAMES;
 
 Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
   return Picture{
@@ -61,6 +66,8 @@ public:
   std::vector<std::pair<int, int>> spriteSets;
   std::vector<int> scenery;
   std::vector<int> music;
+  int musicStarts = 0;
+  int musicStops = 0;
   std::vector<int> volumes;
   std::vector<Sample> samples;
   std::vector<bool> loops;
@@ -106,10 +113,20 @@ public:
   LevelScript loadLevelScript(int) override { return LevelScript{}; }
 
   Picture loadPanelPicture(int part) override {
-    return part == 0 ? box(304, 48, 0, 0, 7) : box(304, 40, 0, 0, 1);
+    if (part != 0) {
+      return box(304, 40, 0, 0, 1);
+    }
+    Picture strip = box(304, 48, 0, 0, STRIP_COLOR);
+    std::fill(strip.pixels.begin() + 32 * 304, strip.pixels.end(),
+              WAIT_WORD_COLOR);
+    return strip;
   }
 
-  void playMusic(int resource) override { music.push_back(resource); }
+  void loadMusic(int resource) override { music.push_back(resource); }
+
+  void playMusic() override { ++musicStarts; }
+
+  void stopMusic() override { ++musicStops; }
 
   void setMusicVolume(int volume) override { volumes.push_back(volume); }
 
@@ -140,7 +157,9 @@ struct Duel {
     session.registers[RB] = 172;
     IndexedSurface screen(320, 222);
     screen.fill(STREET_COLOR);
-    session.streetExit.emplace(StreetExit{screen, EXIT_X, 64, 0});
+    const ScreenBlock block(screen, EXIT_X - 16, 172 - 77, 48, 78);
+    screen.clear(STAMP_COLOR, EXIT_X - 16, 172 - 77, EXIT_X + 16, 172 + 2);
+    session.streetExit.emplace(StreetExit{screen, block, EXIT_X, 64, 0});
   }
 
   BossStage &start() {
@@ -165,6 +184,10 @@ struct Duel {
     return -1;
   }
 
+  uint8_t panelPixel(int x, int y) const {
+    return stage->panel()->surface().pixel(x, y);
+  }
+
   int reachDialogue() {
     return runUntil([this] { return stage->isTalking(); }, 1000, JOY_RIGHT);
   }
@@ -185,27 +208,52 @@ SCENARIO("The boss stage reloads the cast over the street's last screen") {
     BossStage &stage = duel.start();
     duel.run(1);
 
-    THEN("Music 604, the 19 approach columns and the boss sets are loaded") {
+    THEN("ERA stops the street's tune and the boss tune's file is read") {
+      REQUIRE(duel.host.musicStops == 1);
       REQUIRE(duel.host.music == std::vector<int>{604});
-      REQUIRE(duel.host.volumes.front() == 30);
-      REQUIRE(duel.host.scenery == std::vector<int>{320});
-      REQUIRE(duel.host.spriteSets ==
-              std::vector<std::pair<int, int>>{{0, 0},
-                                               {FRANKO_BOSS_SET, 2},
-                                               {FRANKO_EXTRA_PHASES, 0},
-                                               {STAGE_1_BOSS, 4}});
-    }
-
-    THEN("The street's screen comes back with the player where he stopped") {
-      REQUIRE(stage.screen().pixel(0, 0) == STREET_COLOR);
-      REQUIRE(stage.bobs().x(1) == EXIT_X);
-      REQUIRE(stage.bobs().y(1) == 172);
-      REQUIRE(stage.bobs().image(1) == 17);
+      REQUIRE(duel.host.musicStarts == 0);
+      REQUIRE(duel.panelPixel(101, 10) == STRIP_COLOR);
       REQUIRE_FALSE(duel.session.streetExit.has_value());
     }
 
-    WHEN("The two Put Blocks have stalled BASIC for three VBLs each") {
-      duel.run(7);
+    THEN("The street's last screen stays up with the player stamped in it") {
+      REQUIRE(stage.screen().pixel(0, 0) == STREET_COLOR);
+      REQUIRE(stage.screen().pixel(EXIT_X, 150) == STAMP_COLOR);
+      REQUIRE_FALSE(stage.bobs().isActive(1));
+    }
+
+    WHEN("The tune's file has been read and unpacked") {
+      duel.run(LoadingMock::READ_FRAMES);
+      const uint8_t unpacking = duel.panelPixel(101, 10);
+      duel.run(LoadingMock::UNPACK_FRAMES);
+
+      THEN("CZEKAJ showed the wait word, then MUZON started the tune") {
+        REQUIRE(unpacking == WAIT_WORD_COLOR);
+        REQUIRE(duel.host.musicStarts == 1);
+        REQUIRE(duel.host.volumes.front() == 30);
+        REQUIRE(duel.host.scenery == std::vector<int>{320});
+      }
+    }
+
+    WHEN("All six files are in") {
+      const int ready =
+          duel.runUntil([&] { return stage.isApproaching(); }, 1000) + 1;
+
+      THEN("They were the approach columns, the blood and the three sets") {
+        REQUIRE(ready == READY_FRAMES);
+        REQUIRE(duel.host.spriteSets ==
+                std::vector<std::pair<int, int>>{{0, 0},
+                                                 {FRANKO_BOSS_SET, 2},
+                                                 {FRANKO_EXTRA_PHASES, 0},
+                                                 {STAGE_1_BOSS, 4}});
+      }
+
+      THEN("Put Block takes the stamp back and the player is a bob again") {
+        REQUIRE(stage.screen().pixel(EXIT_X, 150) == STREET_COLOR);
+        REQUIRE(stage.bobs().x(1) == EXIT_X);
+        REQUIRE(stage.bobs().y(1) == 172);
+        REQUIRE(stage.bobs().image(1) == 17);
+      }
 
       THEN("Every actor of the duel runs on its channel") {
         for (int channel : {0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 15}) {
@@ -216,12 +264,16 @@ SCENARIO("The boss stage reloads the cast over the street's last screen") {
         REQUIRE(duel.global(RI) == 1);
       }
 
-      THEN("The boss waits off-screen and the spectator is hidden") {
-        REQUIRE(stage.bobs().x(2) == 470);
-        REQUIRE(stage.bobs().y(2) == 108);
-        REQUIRE(stage.bobs().image(2) == 78);
-        REQUIRE(stage.bobs().x(3) == 176);
-        REQUIRE(stage.bobs().image(3) == 10);
+      AND_WHEN("The actors have had their first frame") {
+        duel.run(1);
+
+        THEN("The boss waits off-screen and the spectator is hidden") {
+          REQUIRE(stage.bobs().x(2) == 470);
+          REQUIRE(stage.bobs().y(2) == 108);
+          REQUIRE(stage.bobs().image(2) == 78);
+          REQUIRE(stage.bobs().x(3) == 176);
+          REQUIRE(stage.bobs().image(3) == 10);
+        }
       }
     }
   }
@@ -241,7 +293,7 @@ SCENARIO("Walking to the boss scrolls nineteen columns as state 14 does") {
   GIVEN("The approach") {
     Duel duel;
     BossStage &stage = duel.start();
-    duel.run(8);
+    duel.run(READY_FRAMES + 1);
 
     WHEN("Right is held until the conversation starts") {
       std::vector<int> columnFrames;
@@ -303,7 +355,7 @@ SCENARIO("The conversation waits for the fire button as state 15 does") {
   GIVEN("The conversation has started") {
     Duel duel;
     BossStage &stage = duel.start();
-    duel.run(8);
+    duel.run(READY_FRAMES + 1);
     duel.reachDialogue();
 
     WHEN("Nothing is pressed") {
@@ -341,7 +393,7 @@ SCENARIO("The boss referee resolves hits and sounds as state 16 does") {
   GIVEN("The fight with dice that never pick a boss attack") {
     Duel duel;
     BossStage &stage = duel.start();
-    duel.run(8);
+    duel.run(READY_FRAMES + 1);
     duel.reachFight();
 
     WHEN("The boss has walked up to the player") {
@@ -409,7 +461,7 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
   GIVEN("The fight without the brutality cheat") {
     Duel duel;
     BossStage &stage = duel.start();
-    duel.run(8);
+    duel.run(READY_FRAMES + 1);
     duel.reachFight();
     const int x = stage.bobs().x(1);
 
@@ -456,7 +508,7 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
     Duel duel;
     duel.session.brutality = true;
     BossStage &stage = duel.start();
-    duel.run(8);
+    duel.run(READY_FRAMES + 1);
     duel.reachFight();
 
     WHEN("The boss dies") {

@@ -102,10 +102,13 @@ street::Picture EngineStreetHost::loadPanelPicture(int part) {
       systems::loadIndexedBitmap(m_directory + "/" + name + "/" + file));
 }
 
-void EngineStreetHost::playMusic(int resource) {
+void EngineStreetHost::loadMusic(int resource) {
   m_audioSystem.loadMusic(resourcePath(resource) + ".s3m");
-  m_audioSystem.playMusic();
 }
+
+void EngineStreetHost::playMusic() { m_audioSystem.playMusic(); }
+
+void EngineStreetHost::stopMusic() { m_audioSystem.stopMusic(); }
 
 void EngineStreetHost::setMusicVolume(int volume) {
   m_audioSystem.setMusicVolume(volume);

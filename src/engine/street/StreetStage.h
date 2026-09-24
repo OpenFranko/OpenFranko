@@ -8,12 +8,14 @@
 #include "GameSession.h"
 #include "IndexedSurface.h"
 #include "LevelScript.h"
+#include "LoadingMock.h"
 #include "StageFrame.h"
 #include "StatusPanel.h"
 
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace openfranko {
@@ -30,7 +32,9 @@ public:
   virtual std::vector<Picture> loadScenery(int resource) = 0;
   virtual LevelScript loadLevelScript(int resource) = 0;
   virtual Picture loadPanelPicture(int part) = 0;
-  virtual void playMusic(int resource) = 0;
+  virtual void loadMusic(int resource) = 0;
+  virtual void playMusic() = 0;
+  virtual void stopMusic() = 0;
   virtual void setMusicVolume(int volume) = 0;
   virtual void playSample(int bank, int sample, int voices) = 0;
   virtual void setSampleLoop(bool loop) = 0;
@@ -63,21 +67,31 @@ public:
   const BobLayer &bobs() const;
   const IndexedSurface &screen() const;
   const IndexedSurface &display() const;
+  const StatusPanel *panel() const;
   amal::Machine &machine();
   int columnsWalked() const;
   int wavesSpawned() const;
   bool isFighting() const;
+  bool isScreenShown() const;
 
 private:
   enum class Step {
     NewGame,
+    StageMusic,
+    StageScreen,
+    StageShown,
+    Loading,
     Referee,
     RefereeCorpseStamped,
     RefereeBloodStamped,
     AdvanceWait,
     Advance,
+    AdvanceChunkLoaded,
     AdvanceScroll,
     AdvanceWalked,
+    SpawnFlushed,
+    SpawnPasted,
+    SpawnLoaded,
     AdvanceLeave,
     AdvanceLeaveFlushed,
     AdvanceLeavePasted,
@@ -102,7 +116,13 @@ private:
 
   void newGame();
   void gameInit();
-  void stageInit();
+  Flow stageInit();
+  Flow stageMusic();
+  Flow stageScreen();
+  void stageShown();
+  Flow load(Step next);
+  bool grabPlayer();
+  Flow stopForLoading(Step next);
   void streetSetup();
   Flow refereeTop();
   Flow refereeEnemies();
@@ -114,14 +134,16 @@ private:
   Flow advanceWait();
   void advanceSetup();
   Flow advanceTop(const StreetInput &input);
+  Flow advanceChunkLoaded(const StreetInput &input);
+  Flow advanceWalk(const StreetInput &input);
   Flow advanceScroll();
   Flow advanceWalked();
   Flow advanceTail();
-  Flow advanceLeave();
   Flow advanceLeaveFlushed();
   Flow advanceLeavePasted();
-  void loadChunk();
-  void spawnWave();
+  Flow spawnFlushed();
+  Flow spawnPasted();
+  void spawnLoaded();
   void scrollStep();
   void gameOver();
   void sys();
@@ -142,8 +164,12 @@ private:
   effects::AmigaPalette m_panelPalette;
   LevelScript m_script;
   std::vector<Picture> m_columns;
+  Picture m_opening;
+  LoadingMock m_loading;
+  std::optional<ScreenBlock> m_block;
 
   Step m_step = Step::NewGame;
+  Step m_afterLoading = Step::Finished;
   Outcome m_outcome = Outcome::Playing;
   long m_frame = 0;
   long m_resumeFrame = 0;
@@ -162,6 +188,7 @@ private:
   int m_playerX = 0;
   int m_facing = 0;
   int m_screenOffsetX = 0;
+  bool m_screenShown = false;
   bool m_escape = false;
   std::array<int, 4> m_energy{};
   std::array<int, 4> m_aggression{};

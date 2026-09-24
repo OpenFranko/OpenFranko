@@ -132,4 +132,14 @@ void IndexedSurface::draw(const Picture &picture, int left, int top, bool flipX,
   }
 }
 
+ScreenBlock::ScreenBlock(const IndexedSurface &source, int x, int y, int width,
+                         int height)
+    : m_pixels(width, height), m_x(x), m_y(y) {
+  m_pixels.copy(source, x, y, x + width, y + height, 0, 0);
+}
+
+void ScreenBlock::put(IndexedSurface &target) const {
+  target.copy(m_pixels, 0, 0, m_pixels.width(), m_pixels.height(), m_x, m_y);
+}
+
 } // namespace openfranko::src::engine::street

@@ -27,7 +27,9 @@ public:
   std::vector<street::Picture> loadScenery(int resource) override;
   street::LevelScript loadLevelScript(int resource) override;
   street::Picture loadPanelPicture(int part) override;
-  void playMusic(int resource) override;
+  void loadMusic(int resource) override;
+  void playMusic() override;
+  void stopMusic() override;
   void setMusicVolume(int volume) override;
   void playSample(int bank, int sample, int voices) override;
   void setSampleLoop(bool loop) override;
