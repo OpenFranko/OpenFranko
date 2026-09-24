@@ -166,7 +166,6 @@ void StreetStage::newGame() {
   for (int i = 15; i <= 25; ++i) {
     global(i) = 0;
   }
-  global(RO) = 0;
   global(RF) = FULL_ENERGY;
   global(RG) = STARTING_LIVES;
   global(RQ) = m_options.character == effects::Character::Alex ? 1 : 0;
@@ -826,6 +825,7 @@ void StreetStage::scrollStep() {
 }
 
 void StreetStage::gameOver() {
+  m_session.stageReached = global(RO);
   global(RO) = -1;
   if (m_escape) {
     global(RN) = 0;

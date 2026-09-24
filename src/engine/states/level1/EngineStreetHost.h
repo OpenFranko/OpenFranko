@@ -24,6 +24,7 @@ public:
   std::vector<street::Picture> loadSpriteSet(int resource,
                                              int sampleBank) override;
   street::Picture loadPicture(int resource) override;
+  effects::AmigaPalette loadPalette(int resource) override;
   std::vector<street::Picture> loadScenery(int resource) override;
   street::LevelScript loadLevelScript(int resource) override;
   street::Picture loadPanelPicture(int part) override;

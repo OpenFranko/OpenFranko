@@ -32,6 +32,7 @@ void ControllerSystem::update() {
   }
 
   updateTypedLetter(keys);
+  updateTypedKey(keys);
   updateFunctionKey(keys);
 }
 
@@ -51,6 +52,25 @@ void ControllerSystem::updateTypedLetter(const uint8_t *keys) {
       letter = static_cast<char>('A' + i);
     }
     lettersDown[i] = down;
+  }
+}
+
+std::optional<char> ControllerSystem::typedKey() const { return key; }
+
+void ControllerSystem::updateTypedKey(const uint8_t *keys) {
+  constexpr std::array<std::pair<SDL_Scancode, char>, 4> KEYS = {{
+      {SDL_SCANCODE_SPACE, ' '},
+      {SDL_SCANCODE_BACKSPACE, '\b'},
+      {SDL_SCANCODE_RETURN, '\r'},
+      {SDL_SCANCODE_KP_ENTER, '\r'},
+  }};
+  key = letter;
+  for (std::size_t i = 0; i < KEYS.size(); ++i) {
+    const bool down = keys[KEYS[i].first];
+    if (down && !editingKeysDown[i] && !key) {
+      key = KEYS[i].second;
+    }
+    editingKeysDown[i] = down;
   }
 }
 

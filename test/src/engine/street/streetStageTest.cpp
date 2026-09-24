@@ -102,6 +102,8 @@ public:
     return box(320, 222, 0, 0, OPENING_COLOR);
   }
 
+  effects::AmigaPalette loadPalette(int) override { return {}; }
+
   std::vector<Picture> loadScenery(int resource) override {
     scenery.push_back(resource);
     std::vector<Picture> columns;
@@ -475,6 +477,20 @@ SCENARIO("A Paste Bob stalls the referee for three VBLs") {
   }
 }
 
+SCENARIO("Stage init counts on from the RO the menu or continue left") {
+  GIVEN("RO left at 1 by a continue after dying on stage 2") {
+    Street street(emptyStreet(600));
+    street.global(RO) = 1;
+    street.start();
+    street.open();
+
+    THEN("The run opens stage 2 with its music") {
+      REQUIRE(street.global(RO) == 2);
+      REQUIRE(street.host.music == std::vector<int>{602});
+    }
+  }
+}
+
 SCENARIO("The run ends as state 11 and SYS decide") {
   GIVEN("A fight in progress") {
     Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
@@ -504,6 +520,11 @@ SCENARIO("The run ends as state 11 and SYS decide") {
         REQUIRE(stage.outcome() == StreetStage::Outcome::Playing);
         street.run(1);
         REQUIRE(stage.outcome() == StreetStage::Outcome::GameOver);
+      }
+
+      THEN("ETAP keeps the stage for the continue screen before RO goes") {
+        REQUIRE(street.session.stageReached == 1);
+        REQUIRE(street.global(RO) == -1);
       }
     }
 

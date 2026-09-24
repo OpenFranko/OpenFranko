@@ -16,6 +16,8 @@ uint16_t readUint16LittleEndian(const char *bytes) {
 
 } // namespace
 
+int channelToNibble(uint8_t channel) { return (channel + 8) / 17; }
+
 std::pair<int, int> readBitmapHotspot(const std::string &path) {
   auto hotspotValues = std::make_pair(0, 0);
 
@@ -59,6 +61,13 @@ IndexedBitmap loadIndexedBitmap(const std::string &path) {
                   static_cast<std::ptrdiff_t>(y) * surface->w);
   }
   SDL_UnlockSurface(surface);
+  const SDL_Palette *palette = surface->format->palette;
+  for (int i = 0; palette && i < palette->ncolors; ++i) {
+    const SDL_Color &color = palette->colors[i];
+    bitmap.palette.push_back(static_cast<uint16_t>(
+        channelToNibble(color.r) << 8 | channelToNibble(color.g) << 4 |
+        channelToNibble(color.b)));
+  }
   SDL_FreeSurface(surface);
 
   const auto hotspot = readBitmapHotspot(path);

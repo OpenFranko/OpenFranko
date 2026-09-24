@@ -15,8 +15,7 @@ Level1BossState::Level1BossState(systems::VideoSystem &videoSystem,
                                  systems::ControllerSystem &controllerSystem,
                                  effects::GameOptions &options,
                                  street::GameSession &session)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_controllerSystem(controllerSystem), m_options(options),
+    : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem), m_stage(m_host, session, options) {
   m_videoSystem.createScreen(SCREEN, street::FRAME_WIDTH, street::FRAME_HEIGHT);
   m_videoSystem.switchScreen(SCREEN);
@@ -35,8 +34,7 @@ std::optional<EngineStateEnum> Level1BossState::update() {
   case street::BossStage::Outcome::GameOver:
     return EngineStateEnum::GameOver;
   case street::BossStage::Outcome::Quit:
-    restartMenuMusic(m_audioSystem, m_options);
-    return EngineStateEnum::Menu;
+    return EngineStateEnum::HighScore;
   case street::BossStage::Outcome::Playing:
   case street::BossStage::Outcome::BossDefeated:
     break;

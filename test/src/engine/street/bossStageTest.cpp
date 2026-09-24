@@ -101,6 +101,8 @@ public:
 
   Picture loadPicture(int) override { return box(320, 222, 0, 0, 0); }
 
+  effects::AmigaPalette loadPalette(int) override { return {}; }
+
   std::vector<Picture> loadScenery(int resource) override {
     scenery.push_back(resource);
     std::vector<Picture> columns;
@@ -452,6 +454,10 @@ SCENARIO("The boss referee resolves hits and sounds as state 16 does") {
         REQUIRE(stage.outcome() == BossStage::Outcome::GameOver);
         REQUIRE(ended == 200);
         REQUIRE(duel.global(RO) == -1);
+      }
+
+      THEN("ETAP remembers the boss's stage") {
+        REQUIRE(duel.session.stageReached == 1);
       }
     }
   }

@@ -44,6 +44,7 @@ std::string finishingPose();
 std::string finishingBlood();
 std::string finishingPoseBack();
 std::string walkOff();
+std::string pointingHand();
 
 } // namespace actors
 } // namespace amal

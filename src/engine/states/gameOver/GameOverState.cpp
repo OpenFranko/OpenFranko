@@ -1,7 +1,5 @@
 #include "GameOverState.h"
 
-#include "../level1/StreetControls.h"
-
 namespace openfranko::src::engine::states::gameOver {
 namespace {
 
@@ -12,10 +10,8 @@ constexpr auto FRAME = "gameOverFrame";
 
 GameOverState::GameOverState(systems::VideoSystem &videoSystem,
                              systems::AudioSystem &audioSystem,
-                             systems::ControllerSystem &controllerSystem,
-                             effects::GameOptions &options)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_controllerSystem(controllerSystem), m_options(options),
+                             systems::ControllerSystem &controllerSystem)
+    : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem), m_scene(m_host) {
   m_videoSystem.createScreen(SCREEN, street::GameOverScene::WIDTH,
                              street::GameOverScene::HEIGHT);
@@ -31,8 +27,7 @@ std::optional<EngineStateEnum> GameOverState::update() {
                                  street::GameOverScene::HEIGHT, m_frame);
   m_videoSystem.drawImage(FRAME, 0, 0);
   if (m_scene.isFinished()) {
-    level1::restartMenuMusic(m_audioSystem, m_options);
-    return EngineStateEnum::Menu;
+    return EngineStateEnum::HighScore;
   }
   return std::nullopt;
 }

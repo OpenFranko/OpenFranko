@@ -14,8 +14,6 @@ uint8_t nibbleToChannel(int nibble) {
   return static_cast<uint8_t>((nibble & 0xF) * 17);
 }
 
-int channelToNibble(uint8_t channel) { return (channel + 8) / 17; }
-
 constexpr auto WINDOW_NAME = "OpenFranko";
 constexpr auto WINDOW_WIDTH = 800;
 constexpr auto WINDOW_HEIGHT = 600;

@@ -79,6 +79,10 @@ street::Picture EngineStreetHost::loadPicture(int resource) {
   return toPicture(systems::loadIndexedBitmap(resourcePath(resource) + ".bmp"));
 }
 
+effects::AmigaPalette EngineStreetHost::loadPalette(int resource) {
+  return systems::loadIndexedBitmap(resourcePath(resource) + ".bmp").palette;
+}
+
 std::vector<street::Picture> EngineStreetHost::loadScenery(int resource) {
   return loadFrames(resource);
 }

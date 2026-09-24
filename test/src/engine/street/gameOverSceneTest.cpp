@@ -63,6 +63,8 @@ public:
     return graveyard();
   }
 
+  effects::AmigaPalette loadPalette(int) override { return {}; }
+
   std::vector<Picture> loadScenery(int) override { return {}; }
 
   LevelScript loadLevelScript(int) override { return LevelScript{}; }

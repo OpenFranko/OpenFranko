@@ -1,6 +1,8 @@
 #include "Engine.h"
 #include "states/characterSelection/CharacterSelectionState.h"
+#include "states/continueSelect/ContinueState.h"
 #include "states/gameOver/GameOverState.h"
+#include "states/highScore/HighScoreState.h"
 #include "states/kneeAnimation/KneeAnimationState.h"
 #include "states/level1/Level1BossState.h"
 #include "states/level1/Level1State.h"
@@ -14,7 +16,11 @@ namespace openfranko::src::engine {
 
 Engine::Engine()
     : currentState(std::make_unique<states::mirage::MirageState>(videoSystem)),
-      running(true) {}
+      running(true) {
+  session.highScores =
+      street::readHighScoreFile(street::HighScoreTable::FILE_NAME)
+          .value_or(street::HighScoreTable());
+}
 
 Engine::~Engine() {
   currentState.reset();
@@ -64,7 +70,7 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     break;
   case states::EngineStateEnum::Menu:
     currentState = std::make_unique<states::menu::MenuState>(
-        videoSystem, audioSystem, controllerSystem, options);
+        videoSystem, audioSystem, controllerSystem, options, session);
     break;
   case states::EngineStateEnum::CharacterSelection:
     currentState =
@@ -81,7 +87,15 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     break;
   case states::EngineStateEnum::GameOver:
     currentState = std::make_unique<states::gameOver::GameOverState>(
-        videoSystem, audioSystem, controllerSystem, options);
+        videoSystem, audioSystem, controllerSystem);
+    break;
+  case states::EngineStateEnum::HighScore:
+    currentState = std::make_unique<states::highScore::HighScoreState>(
+        videoSystem, audioSystem, controllerSystem, options, session);
+    break;
+  case states::EngineStateEnum::Continue:
+    currentState = std::make_unique<states::continueSelect::ContinueState>(
+        videoSystem, audioSystem, controllerSystem, session);
     break;
   }
 }

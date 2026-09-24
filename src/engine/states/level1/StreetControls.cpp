@@ -1,12 +1,6 @@
 #include "StreetControls.h"
 
 namespace openfranko::src::engine::states::level1 {
-namespace {
-
-constexpr auto MENU_MUSIC_PATH = "assets/0261.s3m";
-constexpr int MENU_MUSIC_VOLUME = 63;
-
-} // namespace
 
 street::StreetInput
 readStreetInput(const systems::ControllerSystem &controller) {
@@ -29,14 +23,6 @@ readStreetInput(const systems::ControllerSystem &controller) {
     }
   }
   return input;
-}
-
-void restartMenuMusic(systems::AudioSystem &audio,
-                      const effects::GameOptions &options) {
-  audio.stopSFX();
-  audio.loadMusic(MENU_MUSIC_PATH);
-  audio.playMusic();
-  audio.setMusicVolume(options.music ? MENU_MUSIC_VOLUME : 0);
 }
 
 } // namespace openfranko::src::engine::states::level1

@@ -691,6 +691,7 @@ void BossStage::scrollStep() {
 }
 
 void BossStage::gameOver() {
+  m_session.stageReached = global(RO);
   global(RO) = -1;
   if (m_escape) {
     global(RN) = 0;

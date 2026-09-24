@@ -33,9 +33,7 @@ public:
 
 private:
   systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
   systems::ControllerSystem &m_controllerSystem;
-  effects::GameOptions &m_options;
   EngineStreetHost m_host;
   street::StreetStage m_stage;
   std::vector<uint32_t> m_frame;

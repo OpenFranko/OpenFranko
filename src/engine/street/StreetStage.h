@@ -29,6 +29,7 @@ public:
 
   virtual std::vector<Picture> loadSpriteSet(int resource, int sampleBank) = 0;
   virtual Picture loadPicture(int resource) = 0;
+  virtual effects::AmigaPalette loadPalette(int resource) = 0;
   virtual std::vector<Picture> loadScenery(int resource) = 0;
   virtual LevelScript loadLevelScript(int resource) = 0;
   virtual Picture loadPanelPicture(int part) = 0;

@@ -153,3 +153,24 @@ add_executable(${GAME_OVER_SCENE_TEST_TARGET}
 )
 target_link_libraries(${GAME_OVER_SCENE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${GAME_OVER_SCENE_TEST_TARGET} COMMAND ${GAME_OVER_SCENE_TEST_TARGET})
+
+set(HIGH_SCORE_TABLE_TEST_TARGET highScoreTableTest)
+add_executable(${HIGH_SCORE_TABLE_TEST_TARGET}
+    engine/street/highScoreTableTest.cpp
+)
+target_link_libraries(${HIGH_SCORE_TABLE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${HIGH_SCORE_TABLE_TEST_TARGET} COMMAND ${HIGH_SCORE_TABLE_TEST_TARGET})
+
+set(HIGH_SCORE_SCENE_TEST_TARGET highScoreSceneTest)
+add_executable(${HIGH_SCORE_SCENE_TEST_TARGET}
+    engine/street/highScoreSceneTest.cpp
+)
+target_link_libraries(${HIGH_SCORE_SCENE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${HIGH_SCORE_SCENE_TEST_TARGET} COMMAND ${HIGH_SCORE_SCENE_TEST_TARGET})
+
+set(CONTINUE_SCENE_TEST_TARGET continueSceneTest)
+add_executable(${CONTINUE_SCENE_TEST_TARGET}
+    engine/street/continueSceneTest.cpp
+)
+target_link_libraries(${CONTINUE_SCENE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${CONTINUE_SCENE_TEST_TARGET} COMMAND ${CONTINUE_SCENE_TEST_TARGET})

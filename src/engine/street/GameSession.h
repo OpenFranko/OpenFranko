@@ -2,6 +2,7 @@
 #define ENGINE_STREET_GAMESESSION_H_
 
 #include "../amal/Machine.h"
+#include "HighScoreTable.h"
 #include "IndexedSurface.h"
 
 #include <optional>
@@ -25,6 +26,8 @@ struct GameSession {
   amal::Registers registers{};
   int extraLifeKills = FIRST_EXTRA_LIFE;
   bool brutality = false;
+  int stageReached = 0;
+  HighScoreTable highScores;
   std::optional<StreetExit> streetExit;
 };
 

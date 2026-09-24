@@ -206,3 +206,11 @@ SCENARIO("The spectator, the speech bubbles and the finishing moves") {
                                  "RC,5)(16+RC,5);MRT,0,RU;");
   }
 }
+
+SCENARIO("RACZKA's pointing hand waits on R1 and waggles four times") {
+  THEN("The program is the source's, and it parses") {
+    REQUIRE(actors::pointingHand() ==
+            "A:P;IR1=0JA;FR0=0T3;M4,0,2;M-4,0,2;NR0;LR1=0;JA;");
+    REQUIRE_NOTHROW(parse(actors::pointingHand()));
+  }
+}
