@@ -280,6 +280,12 @@ void CarStage::startDrive() {
   m_bush2 = BUSH_SPACING;
   m_trackBand = 10;
   m_pavementBand = 5;
+  const DriveCarryOver &left = m_session.lastDrive;
+  m_ignition = left.ignition;
+  m_roadBand = left.roadBand;
+  m_fenceBand = left.fenceBand;
+  m_clock = left.clock;
+  m_engineBeat = left.engineBeat;
   m_manualBobs = true;
   m_bobs.set(CAR, m_x, m_y, 1);
   for (int bob = FIRST_PEDESTRIAN; bob < FIRST_PEDESTRIAN + PEDESTRIANS;
@@ -447,6 +453,8 @@ CarStage::Flow CarStage::driveBottom() {
   }
   if ((m_distance == 0 && !m_machine.isRunning(CAR_CHANNEL)) ||
       global(RG) < 0 || m_escape) {
+    m_session.lastDrive = {m_ignition, m_roadBand, m_fenceBand, m_clock,
+                           m_engineBeat};
     m_manualBobs = false;
     return wait(SCREEN_CLOSE_VBLS, Step::StripClosed);
   }
@@ -579,6 +587,7 @@ void CarStage::runBasic(const StreetInput &input) {
       flow = leave();
       break;
     case Step::Cleared:
+      m_session.fromBonusDrive = true;
       m_outcome = Outcome::DriveFinished;
       m_step = Step::Finished;
       flow = Flow::Yield;

@@ -66,6 +66,10 @@ private:
     FinishStamped,
     FinishPosedBack,
     FinishWalkedOff,
+    LiftWalkedToBoss,
+    LiftRaised,
+    LiftThrown,
+    LiftDone,
     Cleared,
     GameOverWait,
     Finished
@@ -107,6 +111,8 @@ private:
   Flow finishBlood();
   Flow finishStamp();
   Flow finishWalkOff();
+  Flow liftStart();
+  Flow liftBoss();
   Flow finishCleanUp();
   void scrollStep();
   void gameOver();
