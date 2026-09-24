@@ -6,6 +6,11 @@ namespace {
 
 constexpr int MAX_AMOS_VOLUME = 64;
 constexpr int DEFAULT_MUSIC_VOLUME = 56;
+constexpr int VOICES = 4;
+constexpr int ALL_VOICES = 0xF;
+constexpr uint8_t FULL_PAN = 255;
+
+bool isLeftVoice(int voice) { return voice == 0 || voice == 3; }
 
 void throwError(const std::string &cause) {
   throw std::runtime_error("Audio system could not be initialised!: " + cause);
@@ -29,6 +34,8 @@ AudioSystem::AudioSystem() : musicVolume(DEFAULT_MUSIC_VOLUME) {
     throwError("Mix_Init");
   }
 
+  Mix_ReserveChannels(VOICES);
+
   applyMusicVolume();
 }
 
@@ -42,12 +49,17 @@ AudioSystem::~AudioSystem() {
 }
 
 void AudioSystem::loadMusic(const std::string &path) {
+  clearMusic();
   trackerModule = Mix_LoadMUS(path.c_str());
 }
 
-void AudioSystem::clearMusic() { Mix_FreeMusic(trackerModule); }
+void AudioSystem::clearMusic() {
+  Mix_FreeMusic(trackerModule);
+  trackerModule = nullptr;
+}
 
 void AudioSystem::loadSFX(const std::string &name, const std::string &path) {
+  clearSFX(name);
   auto soundEffect = Mix_LoadWAV(path.c_str());
   if (soundEffect) {
     soundEffects.emplace(name, soundEffect);
@@ -60,6 +72,10 @@ void AudioSystem::clearSFX(const std::string &name) {
   }
 
   auto &sfx = soundEffects.at(name);
+  if (sfx == silencingSample) {
+    silencingSample = nullptr;
+    applyMusicVolume();
+  }
   Mix_FreeChunk(sfx);
   soundEffects.erase(name);
 }
@@ -100,6 +116,26 @@ void AudioSystem::playSFXSilencingMusic(const std::string &name) {
   applyMusicVolume();
 }
 
+void AudioSystem::playSample(const std::string &name, int voiceMask) {
+  auto it = soundEffects.find(name);
+  if (it == soundEffects.end()) {
+    return;
+  }
+
+  for (int voice = 0; voice < VOICES; ++voice) {
+    if (voiceMask & (1 << voice)) {
+      Mix_HaltChannel(voice);
+      Mix_SetPanning(voice, isLeftVoice(voice) ? FULL_PAN : 0,
+                     isLeftVoice(voice) ? 0 : FULL_PAN);
+      Mix_PlayChannel(voice, it->second, 0);
+    }
+  }
+  if ((voiceMask & ALL_VOICES) == ALL_VOICES) {
+    silencingSample = it->second;
+    applyMusicVolume();
+  }
+}
+
 void AudioSystem::stopSFX() { Mix_HaltChannel(-1); }
 
 void AudioSystem::update() {
@@ -107,11 +143,25 @@ void AudioSystem::update() {
     silencingChannel.reset();
     applyMusicVolume();
   }
+  if (silencingSample && !isVoicePlaying(silencingSample)) {
+    silencingSample = nullptr;
+    applyMusicVolume();
+  }
 }
 
 void AudioSystem::applyMusicVolume() {
-  Mix_VolumeMusic(
-      silencingChannel ? 0 : musicVolume * MIX_MAX_VOLUME / MAX_AMOS_VOLUME);
+  const bool silenced = silencingChannel || silencingSample;
+  Mix_VolumeMusic(silenced ? 0
+                           : musicVolume * MIX_MAX_VOLUME / MAX_AMOS_VOLUME);
+}
+
+bool AudioSystem::isVoicePlaying(const Mix_Chunk *chunk) const {
+  for (int voice = 0; voice < VOICES; ++voice) {
+    if (Mix_Playing(voice) && Mix_GetChunk(voice) == chunk) {
+      return true;
+    }
+  }
+  return false;
 }
 
 } // namespace openfranko::src::systems

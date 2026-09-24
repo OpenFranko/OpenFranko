@@ -82,8 +82,7 @@ CharacterSelectionState::~CharacterSelectionState() {
 
 std::optional<EngineStateEnum> CharacterSelectionState::update() {
   if (m_selection.isFinished()) {
-    m_videoSystem.fillScreen(0, 0, 0);
-    return std::nullopt;
+    return EngineStateEnum::Level1;
   }
 
   m_selection.advance(joystickFrom(m_controllerSystem.states));
@@ -104,7 +103,7 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
 
   if (m_selection.isFinished()) {
     m_videoSystem.fillScreen(0, 0, 0);
-    return std::nullopt;
+    return EngineStateEnum::Level1;
   }
   draw();
   return std::nullopt;

@@ -76,3 +76,52 @@ add_executable(${CHARACTER_SELECTION_TEST_TARGET}
 )
 target_link_libraries(${CHARACTER_SELECTION_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${CHARACTER_SELECTION_TEST_TARGET} COMMAND ${CHARACTER_SELECTION_TEST_TARGET})
+
+set(AMAL_MACHINE_TEST_TARGET amalMachineTest)
+add_executable(${AMAL_MACHINE_TEST_TARGET}
+    engine/amal/amalMachineTest.cpp
+)
+target_link_libraries(${AMAL_MACHINE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Amal)
+add_test(NAME ${AMAL_MACHINE_TEST_TARGET} COMMAND ${AMAL_MACHINE_TEST_TARGET})
+
+set(AMAL_ACTORS_TEST_TARGET amalActorsTest)
+add_executable(${AMAL_ACTORS_TEST_TARGET}
+    engine/amal/amalActorsTest.cpp
+)
+target_link_libraries(${AMAL_ACTORS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Amal)
+add_test(NAME ${AMAL_ACTORS_TEST_TARGET} COMMAND ${AMAL_ACTORS_TEST_TARGET})
+
+set(INDEXED_SURFACE_TEST_TARGET indexedSurfaceTest)
+add_executable(${INDEXED_SURFACE_TEST_TARGET}
+    engine/street/indexedSurfaceTest.cpp
+)
+target_link_libraries(${INDEXED_SURFACE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${INDEXED_SURFACE_TEST_TARGET} COMMAND ${INDEXED_SURFACE_TEST_TARGET})
+
+set(BOBS_TEST_TARGET bobsTest)
+add_executable(${BOBS_TEST_TARGET}
+    engine/street/bobsTest.cpp
+)
+target_link_libraries(${BOBS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${BOBS_TEST_TARGET} COMMAND ${BOBS_TEST_TARGET})
+
+set(STATUS_PANEL_TEST_TARGET statusPanelTest)
+add_executable(${STATUS_PANEL_TEST_TARGET}
+    engine/street/statusPanelTest.cpp
+)
+target_link_libraries(${STATUS_PANEL_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${STATUS_PANEL_TEST_TARGET} COMMAND ${STATUS_PANEL_TEST_TARGET})
+
+set(STREET_LEVEL_SCRIPT_TEST_TARGET streetLevelScriptTest)
+add_executable(${STREET_LEVEL_SCRIPT_TEST_TARGET}
+    engine/street/streetLevelScriptTest.cpp
+)
+target_link_libraries(${STREET_LEVEL_SCRIPT_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${STREET_LEVEL_SCRIPT_TEST_TARGET} COMMAND ${STREET_LEVEL_SCRIPT_TEST_TARGET})
+
+set(STREET_STAGE_TEST_TARGET streetStageTest)
+add_executable(${STREET_STAGE_TEST_TARGET}
+    engine/street/streetStageTest.cpp
+)
+target_link_libraries(${STREET_STAGE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${STREET_STAGE_TEST_TARGET} COMMAND ${STREET_STAGE_TEST_TARGET})

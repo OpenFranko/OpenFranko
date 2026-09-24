@@ -95,7 +95,7 @@ SCENARIO("CharacterSelection plays the confirmation as TWARZ does") {
     }
 
     WHEN("The face blinks") {
-      run(selection, 48);
+      run(selection, 49);
       const int hiddenStill = selection.face().image;
       selection.advance(NOTHING);
       const int shown = selection.face().image;
@@ -103,7 +103,7 @@ SCENARIO("CharacterSelection plays the confirmation as TWARZ does") {
       const int hiddenAgain = selection.face().image;
       run(selection, 10);
 
-      THEN("It shows 9 frames after the start, then every 10 frames") {
+      THEN("It shows 10 frames after the start, then every 10 frames") {
         REQUIRE(hiddenStill == 0);
         REQUIRE(shown == 2);
         REQUIRE(hiddenAgain == 0);
@@ -141,6 +141,8 @@ SCENARIO("CharacterSelection plays the confirmation as TWARZ does") {
         REQUIRE(selection.sample() == 2);
         REQUIRE(selection.face().x == 189);
         run(selection, 9);
+        REQUIRE(selection.face().image == 0);
+        run(selection, 1);
         REQUIRE(selection.face().image == 3);
       }
     }

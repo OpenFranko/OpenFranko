@@ -1,6 +1,6 @@
 #include "VideoSystem.h"
+#include "Bitmap.h"
 #include <algorithm>
-#include <fstream>
 #include <stdexcept>
 
 namespace openfranko::src::systems {
@@ -19,32 +19,6 @@ int channelToNibble(uint8_t channel) { return (channel + 8) / 17; }
 constexpr auto WINDOW_NAME = "OpenFranko";
 constexpr auto WINDOW_WIDTH = 800;
 constexpr auto WINDOW_HEIGHT = 600;
-
-uint16_t readUint16LittleEndian(const char *bytes) {
-  return static_cast<uint16_t>(
-      static_cast<uint8_t>(bytes[0]) |
-      (static_cast<uint16_t>(static_cast<uint8_t>(bytes[1])) << 8));
-}
-
-std::pair<int, int> parseImageHotspot(const std::string &path) {
-  auto hotspotValues = std::make_pair(0, 0);
-
-  std::ifstream file(path, std::ios::binary);
-  if (!file) {
-    return hotspotValues;
-  }
-
-  char header[10]{};
-  file.read(header, sizeof(header));
-  if (file.gcount() != sizeof(header) || header[0] != 'B' || header[1] != 'M') {
-    return hotspotValues;
-  }
-
-  hotspotValues.first = readUint16LittleEndian(header + 6);
-  hotspotValues.second = readUint16LittleEndian(header + 8);
-
-  return hotspotValues;
-}
 
 } // namespace
 
@@ -271,7 +245,7 @@ VideoSystem::Image VideoSystem::loadImageFile(const std::string &path,
 
   SDL_FreeSurface(tempSurface);
 
-  auto hotspot = parseImageHotspot(path);
+  auto hotspot = readBitmapHotspot(path);
 
   return Image{tex, width, height, hotspot.first, hotspot.second};
 }
@@ -318,6 +292,28 @@ void VideoSystem::setImagePalette(const std::string &name,
   SDL_SetPaletteColors(surfacePalette, colors.data(), 0, count);
 
   refreshTexture(image, name);
+}
+
+void VideoSystem::updateFrameImage(const std::string &name, int width,
+                                   int height,
+                                   const std::vector<uint32_t> &argb) {
+  auto it = imageStates.find(name);
+  if (it == imageStates.end() || it->second.width != width ||
+      it->second.height != height || it->second.indexedSurface) {
+    clearImage(name);
+    SDL_Texture *texture =
+        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                          SDL_TEXTUREACCESS_STREAMING, width, height);
+    if (!texture) {
+      throwError("Failed to create frame texture for: " + name);
+    }
+    it = imageStates.emplace(name, Image{texture, width, height, 0, 0}).first;
+  }
+  if (argb.size() != static_cast<std::size_t>(width * height)) {
+    throwError("Frame of the wrong size for: " + name);
+  }
+  SDL_UpdateTexture(it->second.texture, nullptr, argb.data(),
+                    width * static_cast<int>(sizeof(uint32_t)));
 }
 
 void VideoSystem::xorImageRect(const std::string &name, int x, int y, int width,
@@ -393,7 +389,7 @@ void VideoSystem::addIndexedImage(const std::string &name,
     throwError("Failed to create texture for: " + path);
   }
 
-  auto hotspot = parseImageHotspot(path);
+  auto hotspot = readBitmapHotspot(path);
   imageStates.emplace(name, Image{texture, surface->w, surface->h,
                                   hotspot.first, hotspot.second, surface});
 }

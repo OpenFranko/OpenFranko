@@ -1,4 +1,4 @@
-add_library(VideoSystem VideoSystem.cpp VideoSystem.h)
+add_library(VideoSystem VideoSystem.cpp VideoSystem.h Bitmap.cpp Bitmap.h)
 target_link_libraries(VideoSystem PRIVATE SDL2::SDL2 SDL2_image::SDL2_image)
 
 add_library(AudioSystem AudioSystem.cpp AudioSystem.h)

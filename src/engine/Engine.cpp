@@ -1,6 +1,7 @@
 #include "Engine.h"
 #include "states/characterSelection/CharacterSelectionState.h"
 #include "states/kneeAnimation/KneeAnimationState.h"
+#include "states/level1/Level1State.h"
 #include "states/menu/MenuState.h"
 #include "states/mirage/MirageState.h"
 #include "states/protectionCheck/ProtectionCheckState.h"
@@ -67,6 +68,10 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     currentState =
         std::make_unique<states::characterSelection::CharacterSelectionState>(
             videoSystem, audioSystem, controllerSystem, options);
+    break;
+  case states::EngineStateEnum::Level1:
+    currentState = std::make_unique<states::level1::Level1State>(
+        videoSystem, audioSystem, controllerSystem, options, session);
     break;
   }
 }

@@ -13,7 +13,8 @@ enum class EngineStateEnum {
   TitleAndStory,
   ProtectionCheck,
   Menu,
-  CharacterSelection
+  CharacterSelection,
+  Level1
 };
 
 }

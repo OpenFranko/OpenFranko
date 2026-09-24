@@ -1,6 +1,7 @@
 #include "ControllerSystem.h"
 #include <SDL2/SDL.h>
 #include <cstddef>
+#include <utility>
 
 namespace openfranko::src::systems {
 
@@ -31,6 +32,7 @@ void ControllerSystem::update() {
   }
 
   updateTypedLetter(keys);
+  updateFunctionKey(keys);
 }
 
 void ControllerSystem::clearFireLatch() { fireLatched = false; }
@@ -49,6 +51,34 @@ void ControllerSystem::updateTypedLetter(const uint8_t *keys) {
       letter = static_cast<char>('A' + i);
     }
     lettersDown[i] = down;
+  }
+}
+
+std::optional<FunctionKey> ControllerSystem::functionKey() const {
+  return pressedFunctionKey;
+}
+
+int16_t ControllerSystem::joystick() const {
+  return static_cast<int16_t>((states.up ? 1 : 0) | (states.down ? 2 : 0) |
+                              (states.left ? 4 : 0) | (states.right ? 8 : 0) |
+                              (states.button ? 16 : 0));
+}
+
+void ControllerSystem::updateFunctionKey(const uint8_t *keys) {
+  constexpr std::array<std::pair<SDL_Scancode, FunctionKey>, 5> KEYS = {{
+      {SDL_SCANCODE_F1, FunctionKey::F1},
+      {SDL_SCANCODE_F2, FunctionKey::F2},
+      {SDL_SCANCODE_F3, FunctionKey::F3},
+      {SDL_SCANCODE_F4, FunctionKey::F4},
+      {SDL_SCANCODE_ESCAPE, FunctionKey::Escape},
+  }};
+  pressedFunctionKey.reset();
+  for (std::size_t i = 0; i < KEYS.size(); ++i) {
+    const bool down = keys[KEYS[i].first];
+    if (down && !functionKeysDown[i] && !pressedFunctionKey) {
+      pressedFunctionKey = KEYS[i].second;
+    }
+    functionKeysDown[i] = down;
   }
 }
 
