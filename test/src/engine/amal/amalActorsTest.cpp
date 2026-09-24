@@ -207,6 +207,19 @@ SCENARIO("The spectator, the speech bubbles and the finishing moves") {
   }
 }
 
+SCENARIO("KONBOSS on stage 2 throws the boss overhead") {
+  THEN("The boss's and the player's scripts are the source's, and parse") {
+    REQUIRE(actors::bossThrown() ==
+            "M0,0,100;LA=78+RR;M0,0,50;LA=79+RR;M0,0,20;LA=80+RR;M0,0,30;LA=77+"
+            "RR;");
+    REQUIRE(actors::victoryLift() ==
+            "LA=38+RR;M0,0,50;LA=39+RR;M0,0,50;LA=86+RR+RT;M0,0,50;LA=87+RR+"
+            "RT;M0,0,50;LA=38+RR;");
+    REQUIRE_NOTHROW(parse(actors::bossThrown()));
+    REQUIRE_NOTHROW(parse(actors::victoryLift()));
+  }
+}
+
 SCENARIO("The bonus drive builds each pedestrian from its first image") {
   THEN("A type starting at image 9 squashes through images $C and $D") {
     REQUIRE(actors::pedestrian(9) ==

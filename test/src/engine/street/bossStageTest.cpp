@@ -21,12 +21,15 @@ constexpr int RG = 6;
 constexpr int RI = 8;
 constexpr int RN = 13;
 constexpr int RO = 14;
+constexpr int RQ = 16;
+constexpr int RR = 17;
 constexpr int RS = 18;
 constexpr int RT = 19;
 constexpr int RU = 20;
 constexpr int RW = 22;
 constexpr int RX = 23;
 
+constexpr int16_t JOY_LEFT = 4;
 constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
 
@@ -192,12 +195,12 @@ struct Duel {
     return stage->panel()->surface().pixel(x, y);
   }
 
-  int reachDialogue() {
-    return runUntil([this] { return stage->isTalking(); }, 1000, JOY_RIGHT);
+  int reachDialogue(int16_t walk = JOY_RIGHT) {
+    return runUntil([this] { return stage->isTalking(); }, 1000, walk);
   }
 
-  int reachFight() {
-    reachDialogue();
+  int reachFight(int16_t walk = JOY_RIGHT) {
+    reachDialogue(walk);
     return runUntil([this] { return stage->isFighting(); }, 1000, JOY_FIRE);
   }
 
@@ -542,6 +545,70 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
           REQUIRE(duel.host.loops == std::vector<bool>{true, false});
           REQUIRE(duel.host.played(4, 9, 1));
           REQUIRE(duel.host.played(2, 4, 1));
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("On stage 2 KONBOSS lifts the boss overhead before the walk-off") {
+  GIVEN("Alex fighting the second boss") {
+    Duel duel;
+    duel.global(RO) = 2;
+    duel.global(RQ) = 1;
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 1);
+    duel.reachFight(JOY_LEFT);
+    REQUIRE(stage.isFighting());
+
+    WHEN("The boss dies") {
+      duel.global(RI) = 0;
+      duel.run(1);
+      const int dx = stage.bobs().x(2) - stage.bobs().x(1);
+      const int dy = stage.bobs().y(2) - stage.bobs().y(1);
+
+      THEN("The player walks the whole gap to the boss, half its length in "
+           "frames") {
+        REQUIRE(stage.isFinishing());
+        REQUIRE(duel.global(RU) == dx);
+        REQUIRE(duel.global(RT) == dy);
+        REQUIRE(duel.global(RS) == (std::abs(dx) + std::abs(dy)) / 2);
+        REQUIRE(stage.machine().exists(1));
+        REQUIRE_FALSE(stage.machine().exists(4));
+      }
+
+      AND_WHEN("Wait RS is over") {
+        duel.run(duel.global(RS));
+        const uint16_t facing = static_cast<uint16_t>(duel.global(RR));
+
+        THEN("He stands on the boss, and both get the throw scripts") {
+          REQUIRE(stage.bobs().x(1) == stage.bobs().x(2));
+          REQUIRE(stage.bobs().y(1) == stage.bobs().y(2));
+          REQUIRE(static_cast<uint16_t>(stage.bobs().image(1)) ==
+                  static_cast<uint16_t>(17 + facing));
+          REQUIRE(duel.global(RT) == 2);
+          REQUIRE(stage.machine().isRunning(4));
+          REQUIRE(stage.machine().isRunning(1));
+        }
+
+        THEN("Sample 9 of the boss after 150 frames, 8 of the player 60 "
+             "later, and the walk-off 50 after that") {
+          duel.run(149);
+          REQUIRE_FALSE(duel.host.played(4, 9, 1));
+          duel.run(1);
+          REQUIRE(duel.host.played(4, 9, 1));
+          duel.run(59);
+          REQUIRE_FALSE(duel.host.played(2, 8, 1));
+          duel.run(1);
+          REQUIRE(duel.host.played(2, 8, 1));
+          REQUIRE_FALSE(duel.host.played(2, 4, 1));
+          duel.run(50);
+          REQUIRE(duel.host.played(2, 4, 1));
+          REQUIRE(duel.global(RT) == -340);
+          REQUIRE(static_cast<uint16_t>(stage.bobs().image(2)) ==
+                  static_cast<uint16_t>(77 + facing));
+          REQUIRE(static_cast<uint16_t>(stage.bobs().image(1)) ==
+                  static_cast<uint16_t>(38 + facing));
         }
       }
     }

@@ -20,6 +20,14 @@ struct StreetExit {
   int killsShown = 0;
 };
 
+struct DriveCarryOver {
+  int ignition = 0;
+  int roadBand = 0;
+  int fenceBand = 0;
+  int clock = 0;
+  int engineBeat = 0;
+};
+
 struct GameSession {
   static constexpr int FIRST_EXTRA_LIFE = 35;
 
@@ -27,6 +35,8 @@ struct GameSession {
   int extraLifeKills = FIRST_EXTRA_LIFE;
   bool brutality = false;
   int stageReached = 0;
+  bool fromBonusDrive = false;
+  DriveCarryOver lastDrive;
   HighScoreTable highScores;
   std::optional<StreetExit> streetExit;
 };

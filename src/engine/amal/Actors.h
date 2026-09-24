@@ -44,6 +44,8 @@ std::string finishingPose();
 std::string finishingBlood();
 std::string finishingPoseBack();
 std::string walkOff();
+std::string bossThrown();
+std::string victoryLift();
 std::string pointingHand();
 std::string pedestrian(int image);
 std::string carDriveOff();

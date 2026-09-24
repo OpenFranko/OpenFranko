@@ -489,6 +489,7 @@ SCENARIO("When the distance runs out the car drives off and the stage ends") {
           [&] { return stage.outcome() != CarStage::Outcome::Playing; }, 1000);
       REQUIRE(frames == 406);
       REQUIRE(stage.outcome() == CarStage::Outcome::DriveFinished);
+      REQUIRE(drive.session.fromBonusDrive);
       REQUIRE_FALSE(stage.bobs().isActive(CarStage::CAR));
       REQUIRE(stage.screen().pixel(100, 100) == 0);
       REQUIRE(drive.global(RO) == 1);
@@ -508,6 +509,7 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
 
       THEN("The score is thrown away and the game quits") {
         REQUIRE(stage.outcome() == CarStage::Outcome::Quit);
+        REQUIRE_FALSE(drive.session.fromBonusDrive);
         REQUIRE(drive.global(RN) == 0);
         REQUIRE(drive.global(RO) == -1);
         REQUIRE(drive.session.stageReached == 1);
@@ -525,6 +527,69 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
         drive.run(1);
         REQUIRE(stage.outcome() == CarStage::Outcome::GameOver);
       }
+    }
+  }
+}
+
+SCENARIO("The stage-2 drive has its own password, walkers and road") {
+  GIVEN("The boss of stage 2 just beaten") {
+    Drive drive;
+    drive.global(RO) = 2;
+    CarStage &stage = drive.start();
+    drive.run(PASSWORD_FRAMES);
+
+    THEN("KOD: DRZE is printed, its Z starting at x 180") {
+      REQUIRE(stage.screen().pixel(180, 105) == 9);
+      REQUIRE(stage.screen().pixel(183, 108) == 9);
+      REQUIRE(stage.screen().pixel(180, 108) == 0);
+    }
+
+    THEN("Walker set 148 and road 908 are loaded") {
+      drive.run(1, JOY_FIRE);
+      drive.run(LOADED_FRAME - SKIP_FRAME);
+      REQUIRE(drive.host.spriteSets ==
+              std::vector<std::pair<int, int>>{{150, 2}, {148, 0}});
+      REQUIRE(drive.host.pictures == std::vector<int>{908});
+    }
+  }
+}
+
+SCENARIO("The second drive inherits what the first left in ZAP, L, M, B, T") {
+  GIVEN("A first drive that ended with the engine running") {
+    Drive drive;
+    drive.global(RO) = 2;
+    drive.session.lastDrive = {5, 30, 20, 3, 1};
+    drive.toTheWheel();
+    CarStage &stage = *drive.stage;
+
+    THEN("The engine is already on and the road and fence bands are 30 and "
+         "20 px along") {
+      REQUIRE(stage.isEngineOn());
+      REQUIRE(drive.markerIn(150) == MARKER_COLUMN - 30);
+      REQUIRE(drive.markerIn(50) == MARKER_COLUMN - 20);
+    }
+
+    THEN("Right accelerates at once, without turning the key") {
+      drive.run(3, JOY_RIGHT);
+      REQUIRE(stage.speed() == 1);
+      REQUIRE_FALSE(drive.host.played(2, 4, 1));
+    }
+  }
+
+  GIVEN("A drive left with Esc while moving") {
+    Drive drive;
+    drive.toTheWheel();
+    drive.ignite();
+    drive.accelerateTo(1);
+    drive.run(1, 0, SystemKey::Escape);
+    const int fence = MARKER_COLUMN - drive.markerIn(50);
+    const int road = MARKER_COLUMN - drive.markerIn(150);
+    drive.run(1);
+
+    THEN("Its ignition and band offsets are kept for the next drive") {
+      REQUIRE(drive.session.lastDrive.ignition == 1);
+      REQUIRE(drive.session.lastDrive.fenceBand == fence);
+      REQUIRE(drive.session.lastDrive.roadBand == road);
     }
   }
 }

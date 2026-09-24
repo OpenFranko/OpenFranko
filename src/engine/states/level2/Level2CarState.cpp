@@ -1,16 +1,16 @@
-#include "Level1CarState.h"
+#include "Level2CarState.h"
 
-#include "StreetControls.h"
+#include "../level1/StreetControls.h"
 
-namespace openfranko::src::engine::states::level1 {
+namespace openfranko::src::engine::states::level2 {
 namespace {
 
 constexpr int SCREEN = 0;
-constexpr auto FRAME = "level1CarFrame";
+constexpr auto FRAME = "level2CarFrame";
 
 } // namespace
 
-Level1CarState::Level1CarState(systems::VideoSystem &videoSystem,
+Level2CarState::Level2CarState(systems::VideoSystem &videoSystem,
                                systems::AudioSystem &audioSystem,
                                systems::ControllerSystem &controllerSystem,
                                effects::GameOptions &options,
@@ -21,10 +21,10 @@ Level1CarState::Level1CarState(systems::VideoSystem &videoSystem,
   m_videoSystem.switchScreen(SCREEN);
 }
 
-Level1CarState::~Level1CarState() { m_videoSystem.clearImage(FRAME); }
+Level2CarState::~Level2CarState() { m_videoSystem.clearImage(FRAME); }
 
-std::optional<EngineStateEnum> Level1CarState::update() {
-  m_stage.advance(readStreetInput(m_controllerSystem));
+std::optional<EngineStateEnum> Level2CarState::update() {
+  m_stage.advance(level1::readStreetInput(m_controllerSystem));
   m_stage.compose(m_frame);
   m_videoSystem.updateFrameImage(FRAME, street::FRAME_WIDTH,
                                  street::FRAME_HEIGHT, m_frame);
@@ -35,14 +35,13 @@ std::optional<EngineStateEnum> Level1CarState::update() {
     return EngineStateEnum::GameOver;
   case street::CarStage::Outcome::Quit:
     return EngineStateEnum::HighScore;
-  case street::CarStage::Outcome::DriveFinished:
-    return EngineStateEnum::Level2;
   case street::CarStage::Outcome::Playing:
+  case street::CarStage::Outcome::DriveFinished:
     break;
   }
   return std::nullopt;
 }
 
-const street::CarStage &Level1CarState::stage() const { return m_stage; }
+const street::CarStage &Level2CarState::stage() const { return m_stage; }
 
-} // namespace openfranko::src::engine::states::level1
+} // namespace openfranko::src::engine::states::level2

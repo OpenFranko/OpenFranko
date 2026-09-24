@@ -413,6 +413,16 @@ std::string walkOff() {
   return "A0,(11+RC,5)(12+RC,5)(13+RC,5)(14+RC,5)(15+RC,5)(16+RC,5);MRT,0,RU;";
 }
 
+std::string bossThrown() {
+  return "M0,0,100;LA=78+RR;M0,0,50;LA=79+RR;M0,0,20;LA=80+RR;M0,0,30;LA=77+"
+         "RR;";
+}
+
+std::string victoryLift() {
+  return "LA=38+RR;M0,0,50;LA=39+RR;M0,0,50;LA=86+RR+RT;M0,0,50;LA=87+RR+RT;"
+         "M0,0,50;LA=38+RR;";
+}
+
 std::string pointingHand() {
   return "A:P;IR1=0JA;FR0=0T3;M4,0,2;M-4,0,2;NR0;LR1=0;JA;";
 }

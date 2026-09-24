@@ -7,6 +7,9 @@
 #include "states/level1/Level1BossState.h"
 #include "states/level1/Level1CarState.h"
 #include "states/level1/Level1State.h"
+#include "states/level2/Level2BossState.h"
+#include "states/level2/Level2CarState.h"
+#include "states/level2/Level2State.h"
 #include "states/menu/MenuState.h"
 #include "states/mirage/MirageState.h"
 #include "states/protectionCheck/ProtectionCheckState.h"
@@ -76,7 +79,7 @@ void Engine::switchState(states::EngineStateEnum nextState) {
   case states::EngineStateEnum::CharacterSelection:
     currentState =
         std::make_unique<states::characterSelection::CharacterSelectionState>(
-            videoSystem, audioSystem, controllerSystem, options);
+            videoSystem, audioSystem, controllerSystem, options, session);
     break;
   case states::EngineStateEnum::Level1:
     currentState = std::make_unique<states::level1::Level1State>(
@@ -88,6 +91,18 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     break;
   case states::EngineStateEnum::Level1Car:
     currentState = std::make_unique<states::level1::Level1CarState>(
+        videoSystem, audioSystem, controllerSystem, options, session);
+    break;
+  case states::EngineStateEnum::Level2:
+    currentState = std::make_unique<states::level2::Level2State>(
+        videoSystem, audioSystem, controllerSystem, options, session);
+    break;
+  case states::EngineStateEnum::Level2Boss:
+    currentState = std::make_unique<states::level2::Level2BossState>(
+        videoSystem, audioSystem, controllerSystem, options, session);
+    break;
+  case states::EngineStateEnum::Level2Car:
+    currentState = std::make_unique<states::level2::Level2CarState>(
         videoSystem, audioSystem, controllerSystem, options, session);
     break;
   case states::EngineStateEnum::GameOver:
