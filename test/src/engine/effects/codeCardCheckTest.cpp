@@ -1,4 +1,5 @@
 #include "../../../../src/engine/effects/CodeCardCheck.h"
+#include <array>
 #include <catch2/catch_all.hpp>
 #include <cstdint>
 #include <stdexcept>
@@ -103,6 +104,50 @@ SCENARIO("CodeCardCheck asks one cell of each card, as CHECK[1] does") {
     THEN("The check refuses it") {
       REQUIRE_THROWS_AS(CodeCardCheck(makeCards(), {CARD_1_CELL, {10, 0}}),
                         std::invalid_argument);
+    }
+  }
+}
+
+SCENARIO("The stage 3 check gives card 1 three tries, as CHECK[2] does") {
+  GIVEN("Card 1 holds H at (2,5) and D everywhere else") {
+    const std::array<CodeCardCheck::Cell, CodeCardCheck::STAGE_TRIES> tries = {
+        {{2, 5}, {9, 0}, {0, 0}}};
+    CodeCardCheck check = CodeCardCheck::stageCheck(makeCards(), tries);
+
+    WHEN("The first answer is right") {
+      check.answer('H');
+
+      THEN("It is passed at once") {
+        REQUIRE(check.isFinished());
+        REQUIRE(check.isPassed());
+      }
+    }
+
+    WHEN("The first answer is wrong") {
+      check.answer('A');
+
+      THEN("A new cell of card 1 is asked, not card 2") {
+        REQUIRE_FALSE(check.isFinished());
+        REQUIRE(check.cell().x == 9);
+        REQUIRE(check.cell().y == 0);
+      }
+
+      AND_WHEN("Card 1's letter at (9,0) is given, not card 2's") {
+        check.answer('D');
+
+        THEN("It is passed on the second try") { REQUIRE(check.isPassed()); }
+      }
+    }
+
+    WHEN("All three answers are wrong") {
+      check.answer('A');
+      check.answer('K');
+      check.answer('B');
+
+      THEN("It is failed") {
+        REQUIRE(check.isFinished());
+        REQUIRE_FALSE(check.isPassed());
+      }
     }
   }
 }

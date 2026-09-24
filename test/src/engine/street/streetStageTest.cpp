@@ -523,6 +523,26 @@ SCENARIO("After the bonus drive STAGE INIT carries the run into stage 2") {
   }
 }
 
+SCENARIO("After the second drive STAGE INIT opens stage 3 facing right") {
+  GIVEN("Stage 2 cleared and the code card answered") {
+    Street street(emptyStreet(600));
+    street.session.fromBonusDrive = true;
+    street.global(RO) = 2;
+    street.global(RN) = 61;
+    StreetStage &stage = street.start();
+    street.open();
+
+    THEN("Stage 3's music plays, the kills stay and Franko starts at X 80 "
+         "facing right") {
+      REQUIRE(street.global(RO) == 3);
+      REQUIRE(street.global(RN) == 61);
+      REQUIRE(street.host.music == std::vector<int>{603});
+      REQUIRE(stage.bobs().x(1) == 80);
+      REQUIRE((static_cast<uint16_t>(stage.bobs().image(1)) & 0x8000) == 0);
+    }
+  }
+}
+
 SCENARIO("The run ends as state 11 and SYS decide") {
   GIVEN("A fight in progress") {
     Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));

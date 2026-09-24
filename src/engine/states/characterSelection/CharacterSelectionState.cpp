@@ -41,6 +41,7 @@ constexpr int HIDDEN_IMAGE = 0;
 
 constexpr int RO = 14;
 constexpr int SECOND_STAGE = 2;
+constexpr int THIRD_STAGE = 3;
 
 std::string spriteName(int image) {
   return "characterSprite" + std::to_string(image);
@@ -115,8 +116,14 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
 }
 
 EngineStateEnum CharacterSelectionState::firstStreet() const {
-  return m_session.registers[RO] + 1 == SECOND_STAGE ? EngineStateEnum::Level2
-                                                     : EngineStateEnum::Level1;
+  switch (m_session.registers[RO] + 1) {
+  case SECOND_STAGE:
+    return EngineStateEnum::Level2;
+  case THIRD_STAGE:
+    return EngineStateEnum::StageProtectionCheck;
+  default:
+    return EngineStateEnum::Level1;
+  }
 }
 
 void CharacterSelectionState::draw() {

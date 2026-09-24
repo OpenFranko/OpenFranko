@@ -1,5 +1,7 @@
 #include "ProtectionCheckState.h"
 
+#include "../../street/LoadingMock.h"
+
 #include <array>
 #include <cstdint>
 #include <fstream>
@@ -14,6 +16,8 @@ namespace {
 
 using Cells =
     std::array<effects::CodeCardCheck::Cell, effects::CodeCardCheck::CARDS>;
+using Tries = std::array<effects::CodeCardCheck::Cell,
+                         effects::CodeCardCheck::STAGE_TRIES>;
 
 constexpr auto QUESTION = "codeCardQuestion";
 constexpr auto QUESTION_PATH = "assets/03C1.bmp";
@@ -27,6 +31,9 @@ constexpr int QUESTION_SCREEN_HEIGHT = 200;
 constexpr int FAILURE_SCREEN_ID = 0;
 constexpr int FAILURE_SCREEN_WIDTH = 320;
 constexpr int FAILURE_SCREEN_HEIGHT = 256;
+
+constexpr int STAGE_CHECK_FILES = 2;
+constexpr uint8_t HIDDEN_SCREENS_GREY = 0x55;
 
 constexpr int CELL_PITCH = 15;
 constexpr int BOX_OFFSET = 11;
@@ -42,13 +49,13 @@ std::vector<uint8_t> loadCards() {
           std::istreambuf_iterator<char>()};
 }
 
-Cells randomCells() {
+template <typename CellArray> CellArray randomCells() {
   std::random_device seed;
   std::mt19937 random(seed());
   std::uniform_int_distribution<int> coordinate(
       0, effects::CodeCardCheck::CARD_SIZE - 1);
 
-  Cells cells{};
+  CellArray cells{};
   for (effects::CodeCardCheck::Cell &cell : cells) {
     cell.x = coordinate(random);
     cell.y = coordinate(random);
@@ -56,14 +63,25 @@ Cells randomCells() {
   return cells;
 }
 
+effects::CodeCardCheck makeCheck(ProtectionCheckState::Check check) {
+  if (check == ProtectionCheckState::Check::Stage3) {
+    return effects::CodeCardCheck::stageCheck(loadCards(),
+                                              randomCells<Tries>());
+  }
+  return effects::CodeCardCheck(loadCards(), randomCells<Cells>());
+}
+
 } // namespace
 
 ProtectionCheckState::ProtectionCheckState(
     systems::VideoSystem &videoSystem, systems::AudioSystem &audioSystem,
-    systems::ControllerSystem &controllerSystem)
+    systems::ControllerSystem &controllerSystem, Check check)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_controllerSystem(controllerSystem),
-      m_check(loadCards(), randomCells()) {
+      m_controllerSystem(controllerSystem), m_kind(check),
+      m_check(makeCheck(check)),
+      m_loadingFrames(check == Check::Stage3
+                          ? STAGE_CHECK_FILES * street::LoadingMock::FILE_FRAMES
+                          : 0) {
   m_videoSystem.createScreen(QUESTION_SCREEN_ID, QUESTION_SCREEN_WIDTH,
                              QUESTION_SCREEN_HEIGHT);
   m_videoSystem.switchScreen(QUESTION_SCREEN_ID);
@@ -77,6 +95,12 @@ ProtectionCheckState::~ProtectionCheckState() {
 }
 
 std::optional<EngineStateEnum> ProtectionCheckState::update() {
+  if (m_loadingFrames > 0) {
+    --m_loadingFrames;
+    m_videoSystem.fillScreen(HIDDEN_SCREENS_GREY, HIDDEN_SCREENS_GREY,
+                             HIDDEN_SCREENS_GREY);
+    return std::nullopt;
+  }
   if (!m_check.isFinished()) {
     if (const auto letter = m_controllerSystem.typedLetter()) {
       m_check.answer(*letter);
@@ -88,12 +112,17 @@ std::optional<EngineStateEnum> ProtectionCheckState::update() {
     }
   }
   if (m_check.isPassed()) {
-    return EngineStateEnum::Menu;
+    return m_kind == Check::Stage3 ? EngineStateEnum::Level3
+                                   : EngineStateEnum::Menu;
   }
 
   const bool failed = m_check.isFinished() && !m_check.isPassed();
   m_videoSystem.drawImage(failed ? FAILURE : QUESTION, 0, 0);
   return std::nullopt;
+}
+
+const effects::CodeCardCheck &ProtectionCheckState::check() const {
+  return m_check;
 }
 
 void ProtectionCheckState::showQuestion() {

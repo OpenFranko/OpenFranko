@@ -15,12 +15,17 @@ namespace protectionCheck {
 
 class ProtectionCheckState : public IEngineState {
 public:
+  enum class Check { Title, Stage3 };
+
   ProtectionCheckState(systems::VideoSystem &videoSystem,
                        systems::AudioSystem &audioSystem,
-                       systems::ControllerSystem &controllerSystem);
+                       systems::ControllerSystem &controllerSystem,
+                       Check check = Check::Title);
   ~ProtectionCheckState();
 
   std::optional<EngineStateEnum> update() override;
+
+  const effects::CodeCardCheck &check() const;
 
 private:
   void showQuestion();
@@ -29,7 +34,9 @@ private:
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
   systems::ControllerSystem &m_controllerSystem;
+  Check m_kind;
   effects::CodeCardCheck m_check;
+  int m_loadingFrames;
 };
 
 } // namespace protectionCheck
