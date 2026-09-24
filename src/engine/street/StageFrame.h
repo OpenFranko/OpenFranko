@@ -19,6 +19,7 @@ constexpr int FRAME_HEIGHT = 255;
 constexpr int DISPLAY_X = 128;
 constexpr int DISPLAY_TOP = 47;
 
+uint32_t toArgb(effects::AmigaColor color);
 const effects::AmigaPalette &levelPalette(bool mono);
 const effects::AmigaPalette &panelPalette();
 

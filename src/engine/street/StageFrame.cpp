@@ -15,14 +15,14 @@ const effects::AmigaPalette GREY_PALETTE = {
 const effects::AmigaPalette PANEL_PALETTE = {0x555, 0x000, 0xF10, 0x666,
                                              0x888, 0x999, 0xAAA, 0xDDD};
 
+} // namespace
+
 uint32_t toArgb(effects::AmigaColor color) {
   const uint32_t r = ((color >> 8) & 0xF) * 17;
   const uint32_t g = ((color >> 4) & 0xF) * 17;
   const uint32_t b = (color & 0xF) * 17;
   return 0xFF000000u | r << 16 | g << 8 | b;
 }
-
-} // namespace
 
 const effects::AmigaPalette &levelPalette(bool mono) {
   return mono ? GREY_PALETTE : LEVEL_PALETTE;

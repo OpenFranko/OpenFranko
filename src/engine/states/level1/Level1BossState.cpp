@@ -33,6 +33,7 @@ std::optional<EngineStateEnum> Level1BossState::update() {
 
   switch (m_stage.outcome()) {
   case street::BossStage::Outcome::GameOver:
+    return EngineStateEnum::GameOver;
   case street::BossStage::Outcome::Quit:
     restartMenuMusic(m_audioSystem, m_options);
     return EngineStateEnum::Menu;

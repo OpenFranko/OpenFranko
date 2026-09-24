@@ -139,3 +139,17 @@ add_executable(${LOADING_MOCK_TEST_TARGET}
 )
 target_link_libraries(${LOADING_MOCK_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${LOADING_MOCK_TEST_TARGET} COMMAND ${LOADING_MOCK_TEST_TARGET})
+
+set(RAINBOW_TEST_TARGET rainbowTest)
+add_executable(${RAINBOW_TEST_TARGET}
+    engine/effects/rainbowTest.cpp
+)
+target_link_libraries(${RAINBOW_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${RAINBOW_TEST_TARGET} COMMAND ${RAINBOW_TEST_TARGET})
+
+set(GAME_OVER_SCENE_TEST_TARGET gameOverSceneTest)
+add_executable(${GAME_OVER_SCENE_TEST_TARGET}
+    engine/street/gameOverSceneTest.cpp
+)
+target_link_libraries(${GAME_OVER_SCENE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${GAME_OVER_SCENE_TEST_TARGET} COMMAND ${GAME_OVER_SCENE_TEST_TARGET})

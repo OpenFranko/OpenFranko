@@ -18,7 +18,7 @@ public:
   static constexpr int FILE_FRAMES = READ_FRAMES + UNPACK_FRAMES;
 
   void queue(std::function<void()> load);
-  bool advance(StatusPanel &panel);
+  bool advance(StatusPanel *panel);
 
 private:
   enum class Phase { Idle, Reading, Unpacking };

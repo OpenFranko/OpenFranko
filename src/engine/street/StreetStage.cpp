@@ -880,7 +880,7 @@ void StreetStage::runBasic(const StreetInput &input) {
       m_step = Step::Referee;
       break;
     case Step::Loading:
-      if (m_loading.advance(*m_panel)) {
+      if (m_loading.advance(m_panel.get())) {
         m_step = m_afterLoading;
       } else {
         flow = Flow::Yield;

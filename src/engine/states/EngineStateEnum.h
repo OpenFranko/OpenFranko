@@ -15,7 +15,8 @@ enum class EngineStateEnum {
   Menu,
   CharacterSelection,
   Level1,
-  Level1Boss
+  Level1Boss,
+  GameOver
 };
 
 }

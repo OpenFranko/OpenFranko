@@ -8,12 +8,14 @@ void LoadingMock::queue(std::function<void()> load) {
   m_files.push_back(std::move(load));
 }
 
-bool LoadingMock::advance(StatusPanel &panel) {
+bool LoadingMock::advance(StatusPanel *panel) {
   if (m_phase != Phase::Idle && --m_countdown > 0) {
     return false;
   }
   if (m_phase == Phase::Reading) {
-    panel.showWaiting();
+    if (panel) {
+      panel->showWaiting();
+    }
     m_phase = Phase::Unpacking;
     m_countdown = UNPACK_FRAMES;
     return false;
@@ -25,7 +27,9 @@ bool LoadingMock::advance(StatusPanel &panel) {
   std::function<void()> load = std::move(m_files.front());
   m_files.pop_front();
   load();
-  panel.showLoading();
+  if (panel) {
+    panel->showLoading();
+  }
   m_phase = Phase::Reading;
   m_countdown = READ_FRAMES;
   return false;

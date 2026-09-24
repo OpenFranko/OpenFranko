@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include "states/characterSelection/CharacterSelectionState.h"
+#include "states/gameOver/GameOverState.h"
 #include "states/kneeAnimation/KneeAnimationState.h"
 #include "states/level1/Level1BossState.h"
 #include "states/level1/Level1State.h"
@@ -77,6 +78,10 @@ void Engine::switchState(states::EngineStateEnum nextState) {
   case states::EngineStateEnum::Level1Boss:
     currentState = std::make_unique<states::level1::Level1BossState>(
         videoSystem, audioSystem, controllerSystem, options, session);
+    break;
+  case states::EngineStateEnum::GameOver:
+    currentState = std::make_unique<states::gameOver::GameOverState>(
+        videoSystem, audioSystem, controllerSystem, options);
     break;
   }
 }
