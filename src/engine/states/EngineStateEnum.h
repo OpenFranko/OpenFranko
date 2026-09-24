@@ -14,7 +14,8 @@ enum class EngineStateEnum {
   ProtectionCheck,
   Menu,
   CharacterSelection,
-  Level1
+  Level1,
+  Level1Boss
 };
 
 }

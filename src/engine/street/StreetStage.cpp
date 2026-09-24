@@ -53,26 +53,6 @@ constexpr int PRIORITY_VOICE = 1;
 constexpr int BACKGROUND_VOICE = 8;
 constexpr int THROWN = 30000;
 
-constexpr int DISPLAY_TOP = 47;
-constexpr int PANEL_DISPLAY_Y = 270;
-constexpr effects::AmigaColor BORDER = 0x555;
-
-const effects::AmigaPalette LEVEL_PALETTE = {
-    0x555, 0xAAA, 0x666, 0xFAA, 0x083, 0x902, 0xB95, 0x760,
-    0x063, 0x000, 0x520, 0x17A, 0x09E, 0x4DF, 0x777, 0xDDD};
-const effects::AmigaPalette GREY_PALETTE = {
-    0x555, 0xCCC, 0x888, 0xEEE, 0x444, 0x111, 0xBBB, 0x777,
-    0x333, 0x000, 0x222, 0x666, 0x999, 0xDDD, 0xAAA, 0xFFF};
-const effects::AmigaPalette PANEL_PALETTE = {0x555, 0x000, 0xF10, 0x666,
-                                             0x888, 0x999, 0xAAA, 0xDDD};
-
-uint32_t toArgb(effects::AmigaColor color) {
-  const uint32_t r = ((color >> 8) & 0xF) * 17;
-  const uint32_t g = ((color >> 4) & 0xF) * 17;
-  const uint32_t b = (color & 0xF) * 17;
-  return 0xFF000000u | r << 16 | g << 8 | b;
-}
-
 int16_t word(int value) { return static_cast<int16_t>(value); }
 
 int sampleBank(int request) {
@@ -94,8 +74,8 @@ StreetStage::StreetStage(StreetHost &host, GameSession &session,
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_display(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_screenDisplay{128, DISPLAY_TOP, 0}, m_palette(LEVEL_PALETTE),
-      m_panelPalette(PANEL_PALETTE) {}
+      m_screenDisplay{DISPLAY_X, DISPLAY_TOP, 0},
+      m_palette(levelPalette(false)), m_panelPalette(panelPalette()) {}
 
 void StreetStage::advance(const StreetInput &input) {
   if (m_step == Step::Finished) {
@@ -112,33 +92,8 @@ void StreetStage::advance(const StreetInput &input) {
 }
 
 void StreetStage::compose(std::vector<uint32_t> &frame) const {
-  frame.assign(static_cast<std::size_t>(FRAME_WIDTH * FRAME_HEIGHT),
-               toArgb(BORDER));
-  if (!m_panel) {
-    return;
-  }
-  const IndexedSurface &panel = m_panel->surface();
-  for (int row = 0; row < FRAME_HEIGHT; ++row) {
-    uint32_t *line = frame.data() + row * FRAME_WIDTH;
-    const int beam = DISPLAY_TOP + row;
-    const int panelRow = beam - PANEL_DISPLAY_Y;
-    if (panelRow >= 0 && panelRow < StatusPanel::VISIBLE_HEIGHT) {
-      for (int x = 0; x < FRAME_WIDTH; ++x) {
-        line[x] = toArgb(m_panelPalette[panel.pixel(x, panelRow)]);
-      }
-      continue;
-    }
-    const int screenRow = beam - m_screenDisplay.y;
-    if (screenRow < 0 || screenRow >= SCREEN_HEIGHT) {
-      continue;
-    }
-    for (int x = 0; x < FRAME_WIDTH; ++x) {
-      const int column = x + m_screenOffsetX;
-      if (column < SCREEN_WIDTH) {
-        line[x] = toArgb(m_palette[m_display.pixel(column, screenRow)]);
-      }
-    }
-  }
+  composeFrame(frame, m_display, m_palette, m_screenDisplay, m_screenOffsetX,
+               m_panel.get(), m_panelPalette);
 }
 
 StreetStage::Outcome StreetStage::outcome() const { return m_outcome; }
@@ -214,8 +169,8 @@ void StreetStage::newGame() {
 }
 
 void StreetStage::gameInit() {
-  m_palette = m_options.mono ? GREY_PALETTE : LEVEL_PALETTE;
-  m_panelPalette = PANEL_PALETTE;
+  m_palette = levelPalette(m_options.mono);
+  m_panelPalette = panelPalette();
   m_screen.fill(0);
   m_panel =
       std::make_unique<StatusPanel>(m_host.loadPanelPicture(LOADING_STRIP),
@@ -701,8 +656,24 @@ StreetStage::Flow StreetStage::advanceLeave() {
   m_playerX = xBob(PLAYER);
   global(RB) = word((global(RB) / 4) * 4);
   m_bobs.offAll();
-  BobLayer::paste(m_screen, m_images, m_playerX - 16, global(RB) - 77,
-                  IDLE_IMAGE + m_facing);
+  m_step = Step::AdvanceLeaveFlushed;
+  stall();
+  return Flow::Yield;
+}
+
+StreetStage::Flow StreetStage::advanceLeaveFlushed() {
+  m_session.streetExit.emplace(
+      StreetExit{m_screen, m_playerX, m_energyShown, m_killsShown});
+  m_step = Step::AdvanceLeavePasted;
+  if (BobLayer::paste(m_screen, m_images, m_playerX - 16, global(RB) - 77,
+                      IDLE_IMAGE + m_facing)) {
+    stall();
+    return Flow::Yield;
+  }
+  return Flow::Continue;
+}
+
+StreetStage::Flow StreetStage::advanceLeavePasted() {
   m_outcome = Outcome::LevelFinished;
   m_step = Step::Finished;
   return Flow::Yield;
@@ -869,6 +840,12 @@ void StreetStage::runBasic(const StreetInput &input) {
       break;
     case Step::AdvanceLeave:
       flow = advanceLeave();
+      break;
+    case Step::AdvanceLeaveFlushed:
+      flow = advanceLeaveFlushed();
+      break;
+    case Step::AdvanceLeavePasted:
+      flow = advanceLeavePasted();
       break;
     case Step::GameOverWait:
       m_outcome = Outcome::GameOver;

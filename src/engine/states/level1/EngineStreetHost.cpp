@@ -58,6 +58,7 @@ EngineStreetHost::EngineStreetHost(systems::AudioSystem &audioSystem,
       m_random(std::random_device{}()) {}
 
 EngineStreetHost::~EngineStreetHost() {
+  m_audioSystem.setSampleLooping(false);
   for (const auto &entry : m_samples) {
     for (int sample : entry.second) {
       m_audioSystem.clearSFX(sampleName(entry.first, sample));
@@ -112,6 +113,10 @@ void EngineStreetHost::setMusicVolume(int volume) {
 
 void EngineStreetHost::playSample(int bank, int sample, int voices) {
   m_audioSystem.playSample(sampleName(bank, sample), voices);
+}
+
+void EngineStreetHost::setSampleLoop(bool loop) {
+  m_audioSystem.setSampleLooping(loop);
 }
 
 int EngineStreetHost::random(int limit) {

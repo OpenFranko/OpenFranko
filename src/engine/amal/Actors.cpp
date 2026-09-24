@@ -217,4 +217,200 @@ std::string indicatorArrow(int facing) {
   return "A0,(1+" + hex(facing) + ",10)(10,10);";
 }
 
+PlayerPrograms bossPlayer(int stage) {
+  const int mirrored = amosBool(stage == 2);
+  PlayerPrograms programs;
+
+  std::string a =
+      "LR0=0;A:P;P;P;LRB=Y;LR9=J1;IR9=16JH;IR9=18JO;IRC=0JJ;IR9=20JN;IR9=17JP;"
+      "IR9=26JR;JU;J:IR9=24JN;IR9=17JQ;IR9=22JR;";
+  a += "U:IR9&8JB;IR9&4JC;IR9&2JD;IR9&1JE;LA=17+RC;JA;B:IX>" +
+       hex(288 - 16 * mirrored) + "JA;LX=X+6-R1;LRC=0;JL;C:IX<" +
+       hex(32 - 16 * mirrored) +
+       "JA;LX=X-6+R1;LRC=$8000;JL;D:IY>215JM;LY=Y+4;JF;E:IY<R2JM;LY=Y-4;JF;";
+  a += "H:LRD=1;LA=RC+19;LRE=1;M0,0,7;LA=16+RC;M0,0,7;LA=29+RC;LRE=2;M0,0,7;"
+       "LRD=0;LA=16+RC;M0,0,7;JK;N:LA=18+RC;M0,0,10;LA=23+RC;LRE=1;LRD=6;M0,0,"
+       "10;LRD=0;LA=11+RC;M0,0,15;JK;";
+  a += "O:LRE=2;LA=21+RC;M0,0,5;LRD=2;LA=25+RC;M0,0,5;LA=22+RC;M0,0,10;LRD=0;"
+       "LA=17+RC;M0,0,10;JK;P:LA=$8014;M-8,-12,4;LRE=3;LA=$801E;LRD=4;M-8,-12,"
+       "4;M-64,0,16;M-16,24,8;LRD=0;LA=$8018;M0,0,15;JK;Q:LA=20;M8,-12,4;LRE="
+       "3;LA=30;";
+  a += "LRD=4;M8,-12,4;M64,0,16;M16,24,8;LRD=0;LA=24;M0,0,15;JK;R:LA=20+RC;M0,"
+       "-8,4;LRD=5;LA=30+RC;M0,-8,5;LRE=3;LA=$801E+RC;M0,-8,5;LA=30+RC;M0,0,5;"
+       "LA=$801E+RC;M0,8,5;LA=20+RC;M0,16,4;LRD=0;LA=24+RC;M0,0,20;JK;M:IR9&"
+       "8JF;IR9&4JF;JA;";
+  a += "L:IR9&2JD;IR9&1JE;F:LR0=R0+1;IR0>11JG;LA=R0/2+RC+11;JA;G:LR0=0;LA=R0+"
+       "RC+11;JA;K:LA=11+RC;LRD=0;JA;";
+  programs.locomotion = a;
+
+  a = "A:P;LRA=X;IR1=1JM;IR1=2JN;IR1=3JJ;IR1=4JK;IR1=5JO;IR5=1JC;IR4=1JB;JA;B:"
+      "LR4=3;LA=27+RC;M0,0,10;LA=28+RC;M0,0,10;LA=27+RC;M0,0,10;LA=28+RC;M0,0,"
+      "10;LA=27+RC;M0,0,10;LA=28+RC;M0,0,10;LR4=9;JA;C:LA=23+RC;M0,0,10;LR9=0;"
+      "T:LR0=J1;IR0=18JG;IR0=17JH;";
+  a += "IRC=0JE;IR0=8JI;JU;E:IR0=4JI;U:P;LR9=R9+1;IR9<29JT;JD;G:LRV=2;LA=23+RC;"
+       "M0,0,10;LA=28+RC;M0,0,10;LA=23+RC;M0,0,10;LA=28+RC;M0,0,10;LA=23+RC;M0,"
+       "0,10;LA=28+RC;M0,0,10;LA=16+RC;M0,0,10;JL;H:LRV=3;LA=26+RC;M0,0,10;LA="
+       "27+RC;M0,0,10;LA=26+RC;";
+  a += "M0,0,10;LA=27+RC;M0,0,10;LA=26+RC;M0,0,10;LA=27+RC;M0,0,10;LA=16+RC;M0,"
+       "0,10;JL;I:LRV=4;LA=24+RC;M0,0,10;LA=31+RC;M0,0,10;LA=24+RC;M0,0,10;LA="
+       "31+RC;M0,0,10;LA=24+RC;M0,0,10;LA=31+RC;M0,0,10;LA=16+RC;M0,0,10;JL;L:"
+       "LRV=0;LR5=0;LRK=0;LR7=0;";
+  a += "LRD=0;LR1=9;JA;D:LA=18+RC;M0,0,15;JL;P:IRF<1JQ;JL;Q:LA=34+RC;M0,0,10;"
+       "LA=41+RC;LRM=1;LRW=8;M0,0,10;LRF=64;LRG=RG-1;IRG<0JR;M0,0,80;LRW=4;M0,"
+       "0,20;LA=40+RC;M0,0,10;JL;R:LA=42+RC;LRW=5;LRM=1;M0,0,10;LRG=-2;S:JS;M:"
+       "LRD=9;LRZ=60;LA=33+RC;";
+  a += "MR2,-16,12;LRW=6;LA=34+RC;MR2,16,12;LA=41+RC;LRM=1;LRW=8;M0,0,50;LA=40+"
+       "RC;LRF=RF-2;M0,0,20;LA=17+RC;M0,0,15;JP;N:LRD=9;LRZ=60;LA=33+RC;M0,0,"
+       "10;LA=32+RC;LRW=7;M0,0,10;LRF=RF-3;LA=33+RC;M0,0,20;LA=17+RC;M0,0,15;"
+       "JP;";
+  a += "J:LRD=9;LA=33+RC;M0,0,20;LRW=7;LA=32+RC;LRZ=70;M0,0,10;LA=33+RC;M0,0,"
+       "20;LRW=7;LA=32+RC;LRZ=70;M0,0,10;LA=33+RC;M0,0,20;LRW=7;LA=32+RC;LRZ="
+       "70;M0,0,10;LRF=RF-8;JV;K:LRD=9;LA=33+RC;M0,0,20;LRW=6;LA=35+RC;LRZ=50;"
+       "M0,0,10;";
+  a += "LA=36+RC;M0,0,20;LRW=6;LA=35+RC;LRZ=50;M0,0,10;LA=36+RC;M0,0,20;LRW=6;"
+       "LA=35+RC;LRZ=50;M0,0,10;LRF=RF-6;JV;O:LRD=9;LA=33+RC;M0,0,20;LA=35+RC;"
+       "M0,0,20;LA=37+RC;LRW=9;LRM=1;LRZ=40;M0,0,150;LA=40+RC;M0,0,15;LRF=RF-"
+       "10;JP;";
+  a += "V:LA=34+RC;M0,0,10;LA=41+RC;LRW=8;LRM=1;M0,0,50;LA=40+RC;M0,0,15;JP;";
+  programs.damage = a;
+
+  if (stage == 2) {
+    programs.clamp = "A:IX<R0JB;IX>288JC;JA;B:LX=R0;JA;C:LX=288;JA;";
+  } else {
+    programs.clamp = "A:IX<32JB;IX>R0JC;JA;B:LX=32;JA;C:LX=R0;JA;";
+  }
+  return programs;
+}
+
+EnemyPrograms boss(int stage) {
+  EnemyPrograms programs;
+
+  std::string a;
+  if (stage == 1) {
+    a = "LX=470;LY=108;LA=78;X:P;IRX=2JY;IRX=0JX;LX=X-8;LRX=0;JX;Y:M0,0,100;LA="
+        "79;M0,0,10;LA=80;M0,0,10;LRX=3;LA=74+$8000;LRW=15;M0,0,20;";
+  }
+  if (stage == 2) {
+    a = "LX=-144;LY=124;A10,(81,15)(82,15)(83,15)(84,15)(85,15);X:P;IRX=2JY;"
+        "IRX=0JX;LX=X+8;LRX=0;JX;Y:LA=85;M0,0,100;LRX=3;A1,(74,1);LRW=15;M0,0,"
+        "20;";
+  }
+  if (stage == 3) {
+    a = "LX=512;LY=200;A0,(78,15)(79,15);X:P;IRX=2JY;IRX=0JX;LX=X-8;LRU=1;LRX="
+        "0;JX;Y:A1,(74,1);";
+  }
+  a += "A:P;IR9=3JR;IR9=4JS;IR9=5JU;IR9=1JP;IR9=2JQ;IR1=1JI;IR1=2JV;IR1=3JH;IR1"
+       "=4JW;IX<RAJK;IX>RAJL;M:P;P;P;IX+32<RAJB;IX-32>RAJC;O:IY>RBJD;IY<RBJE;"
+       "IR4|R5JF;LA=47+R2;IR9=0JA;IRD<>0JA;P;JA;B:LR4=8;JO;C:LR4=-8;JO;D:LR5=-"
+       "4;JF;E:LR5=4;JF;";
+  a += "F:LR7=0;LX=X+R4;LY=Y+R5;LR4=0;LR5=0;LR0=R0+1;IR0>7JG;LA=R0/2+43+R2;JA;"
+       "G:LR0=0;LA=43+R0+R2;JA;K:IR2=0JM;LR2=0;LA=43+R0+R2;JM;L:IR2=$8000JM;"
+       "LR2=$8000;LA=43+R0+R2;JM;P:LR8=1;LA=48+R2;M0,0,10;LA=50+R2;M0,0,10;LA="
+       "48+R2;M0,0,10;JT;";
+  a += "Q:LR8=2;LA=49+R2;M0,0,10;LA=57+R2;M0,0,15;LA=49+R2;M0,0,20;JT;R:LR8=3;"
+       "LA=52+R2;M0,0,20;LA=51+R2;M0,0,10;LA=52+R2;M0,0,20;LA=51+R2;M0,0,10;"
+       "LA=52+R2;M0,0,20;LA=51+R2;M0,0,10;JT;";
+  a += "S:LR8=4;LA=52+R2;M0,0,20;LA=54+R2;M0,0,10;LA=53+R2;M0,0,20;LA=54+R2;M0,"
+       "0,10;LA=53+R2;M0,0,20;LA=54+R2;M0,0,10;LA=53+R2;M0,0,10;JT;";
+  a += "U:LR8=5;LA=52+R2;M0,0,20;A1,(53+R2,10)(55+R2,10)(56+R2,1);M0,-48,12;M0,"
+       "48,12;M0,0,20;LA=53+R2;M0,0,10;LA=74+R2;LRE=15;M0,0,20;JT;T:LR7=0;LRJ="
+       "0;LA=43+R2;LR8=0;LR9=0;P;JA;";
+  a += "W:A2,(43+R2,13)(44+R2,13)(45+R2,13)(46+R2,13);MR6,16,16;MR6*4,0,72;MR6,"
+       "-16,16;LR1=0;JT;I:LA=" +
+       hex(56 - 5 * amosBool(stage == 2)) +
+       "+R2;M0,0,60;LR1=0;JT;V:LA=72+R2;M0,0,10;LRW=14;LA=73+R2;M0,0,20;LA=72+"
+       "R2;M0,0,10;LR1=0;JT;";
+  a += "H:LA=70+R2;M0,0,10;LRW=13;LA=71+R2;M0,0,20;LA=70+R2;M0,0,10;LR1=0;JT;";
+  programs.walk = a;
+
+  const std::string b = ";LRT=$8000-R1;LRX=X;LRY=Y;";
+
+  a = "A:P;IR0=0JA;LR5=1;IR0=1JB;IR0=2JC;IR0=4JE;IR0=5JE;IR0=6JF;P;JA;B:LR7=R7-"
+      "4;LA=66+R1;LRW=11;M0,0,7;LA=67+R1;LRU=80" +
+      b + "M0,0,7;LRW=11;LA=66+R1;M0,0,7;JT;";
+  a += "C:LR7=R7-1;LA=68+R1;LRW=9;MR3,0,4;LA=69+R1;M0,0,10;LA=76+R1;LRW=8;LRM="
+       "1;M0,0,40;LA=75+R1;M0,0,40;JT;E:LR7=R7-20;LRU=90" +
+       b + "LRW=12;A1,(58+R1,10)(59+R1,15)(76+R1,7);MR3,-64,18;MR3,64,18;JQ;";
+  a += "F:LA=60+R1;M0,0,5;LA=63+R1;M0,0,4;LR9=0;O:IRV=2JH;IRV=3JJ;IRV=4JK;P;LR9"
+       "=R9+1;IR9<29JO;JI;H:LR7=R7-10;FR9=0T2;LA=61+R1;M0,0,10;LA=62+R1;LRW=10;"
+       "LRU=60" +
+       b + "M0,0,10;NR9;LA=69+R1;MR3,-16,8;MR3,16,8;JY;";
+  a += "J:LR7=R7-12;FR9=0T2;LA=58+R1;M0,0,10;LA=60+R1;LRW=11;M0,0,10;LRU=80" +
+       b +
+       "NR9;LRY=Y;LA=68+R1;M0,0,10;LA=69+R1;M0,0,10;JY;K:LR7=R7-14;LX=X+R6;"
+       "FR9=0T2;LA=64+R1;M0,0,10;LA=65+R1;LRW=12;LRU=60" +
+       b + "M0,0,10;NR9;LA=64+R1;M0,0,10;LRY=Y;JY;";
+  a += "I:M0,0,2;LRW=15;LA=57+R1;M0,0,10;JT;T:IR7<1JS;LR0=0;LR2=2;LR5=0;LA=46+"
+       "R1;JA;Q:IR7<1JU;LRW=8;LRM=1;M0,0,100;LA=75+R1;M0,0,20;JT;S:IR1=0JV;LR9"
+       "=16;JN;V:LR9=-16;N:A1,(58+R1,5)(68+R1,10)(69+R1,5);MR9,-16,10;LRW=8;"
+       "MR9,16,10;JU;";
+  a += "Y:LRW=8;LA=76+R1;JQ;U:LRW=16;LA=77+R1;M0,0,150;LRN=RN+1;LRI=RI-1;LR8=1;"
+       "X:";
+  programs.damage = a;
+  return programs;
+}
+
+std::string spectator(int stage) {
+  if (stage == 1) {
+    return "LX=176;LY=108;LA=10;A:P;IRX=3JB;JA;B:LA=81;M0,0,10;LA=82;M0,0,10;P;"
+           "JB;";
+  }
+  if (stage == 3) {
+    return "LX=470;LY=48;A0,(86,45)(87,45);X:P;IRX=2JY;IRU=0JX;LRU=0;LX=X-8;JX;"
+           "Y:M0,0,10;";
+  }
+  return "";
+}
+
+DialoguePrograms dialogue(int stage) {
+  DialoguePrograms programs;
+  if (stage == 1) {
+    programs.player =
+        "A:P;IRT=2JB;JA;B:LY=RB;LX=RA;LA=92;M0,0,50;C:P;IJ1<>16JC;LRT=3;D:P;"
+        "IRT<>4JD;LA=94;M0,0,50;E:P;IJ1<>16JE;LRT=99;LA=10;";
+    programs.boss =
+        "A:P;IRT=0JA;LA=91;LY=40;LX=176;M0,0,50;B:P;IJ1<>16JB;LRT=2;D:P;IRT<>"
+        "3JD;LA=93;M0,0,50;E:P;IJ1<>16JE;LRT=4;F:P;IRT<>99JF;LA=10;";
+  }
+  if (stage == 2) {
+    programs.player =
+        "A:P;IRT=2JB;JA;B:LY=RB;LX=RA;LA=91;M0,0,50;C:P;IJ1<>16JC;LRT=3;D:P;"
+        "IRT<>4JD;LA=93;M0,0,50;E:P;IJ1<>16JE;LRT=5;F:P;IRT<>6JF;LA=95;M0,0,"
+        "50;G:P;IJ1<>16JG;LRT=99;LA=10";
+    programs.boss =
+        "A:P;IRT=0JA;LY=64;LX=150;LA=90;M0,0,50;B:P;IJ1<>16JB;LRT=2;D:P;IRT<>"
+        "3JD;LA=92;M0,0,50;E:P;IJ1<>16JE;LRT=4;F:P;IRT<>5JF;LA=94;M0,0,50;G:P;"
+        "IJ1<>16JG;LRT=6;H:P;IRT<>99JH;LA=10";
+  }
+  if (stage == 3) {
+    programs.player =
+        "A:P;IRT=0JA;LY=RB;LX=RA;LA=88;M0,0,50;B:P;IJ1<>16JB;LRT=2;D:P;IRT<>"
+        "3JD;LA=90;M0,0,50;E:P;IJ1<>16JE;LRT=4;F:P;IRT<>5JF;LA=92;M0,0,50;G:P;"
+        "IJ1<>16JG;LRT=99;LA=10";
+    programs.boss =
+        "A:P;IRT=2JB;JA;B:LY=100;LX=200;LA=89;M0,0,50;C:P;IJ1<>16JC;LRT=3;D:P;"
+        "IRT<>4JD;LA=91;M0,0,50;E:P;IJ1<>16JE;LRT=5;G:P;IJ1<>16JG;H:P;IRT<>"
+        "99JH;LRT=99;LA=10";
+  }
+  return programs;
+}
+
+std::string walkToBoss() {
+  return "A0,($800B+RR,5)($800C+RR,5)($800D+RR,5)($800E+RR,5)($800F+RR,5)($801"
+         "0+RR,5);MRU,RT,RS;";
+}
+
+std::string finishingPose() { return "A5,(38+RR,10)(39+RR,10);M0,0,1;"; }
+
+std::string finishingBlood() {
+  return "A1,(83+RR,5)(84+RR,5)(85+RR,5);M0,0,20;A50,(86+RR,5)(87+RR,5)(88+RR,"
+         "5)(89+RR,5);";
+}
+
+std::string finishingPoseBack() { return "A5,(39+RR,10)(38+RR,10);"; }
+
+std::string walkOff() {
+  return "A0,(11+RC,5)(12+RC,5)(13+RC,5)(14+RC,5)(15+RC,5)(16+RC,5);MRT,0,RU;";
+}
+
 } // namespace openfranko::src::engine::amal::actors

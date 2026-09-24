@@ -125,3 +125,10 @@ add_executable(${STREET_STAGE_TEST_TARGET}
 )
 target_link_libraries(${STREET_STAGE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${STREET_STAGE_TEST_TARGET} COMMAND ${STREET_STAGE_TEST_TARGET})
+
+set(BOSS_STAGE_TEST_TARGET bossStageTest)
+add_executable(${BOSS_STAGE_TEST_TARGET}
+    engine/street/bossStageTest.cpp
+)
+target_link_libraries(${BOSS_STAGE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${BOSS_STAGE_TEST_TARGET} COMMAND ${BOSS_STAGE_TEST_TARGET})

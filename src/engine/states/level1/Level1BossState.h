@@ -1,12 +1,12 @@
-#ifndef ENGINE_STATES_LEVEL1STATE_H_
-#define ENGINE_STATES_LEVEL1STATE_H_
+#ifndef ENGINE_STATES_LEVEL1BOSSSTATE_H_
+#define ENGINE_STATES_LEVEL1BOSSSTATE_H_
 
 #include "../../../systems/AudioSystem.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
 #include "../../effects/GameOptions.h"
+#include "../../street/BossStage.h"
 #include "../../street/GameSession.h"
-#include "../../street/StreetStage.h"
 #include "../IEngineState.h"
 #include "EngineStreetHost.h"
 
@@ -19,17 +19,17 @@ namespace engine {
 namespace states {
 namespace level1 {
 
-class Level1State : public IEngineState {
+class Level1BossState : public IEngineState {
 public:
-  Level1State(systems::VideoSystem &videoSystem,
-              systems::AudioSystem &audioSystem,
-              systems::ControllerSystem &controllerSystem,
-              effects::GameOptions &options, street::GameSession &session);
-  ~Level1State();
+  Level1BossState(systems::VideoSystem &videoSystem,
+                  systems::AudioSystem &audioSystem,
+                  systems::ControllerSystem &controllerSystem,
+                  effects::GameOptions &options, street::GameSession &session);
+  ~Level1BossState();
 
   std::optional<EngineStateEnum> update() override;
 
-  const street::StreetStage &stage() const;
+  const street::BossStage &stage() const;
 
 private:
   systems::VideoSystem &m_videoSystem;
@@ -37,7 +37,7 @@ private:
   systems::ControllerSystem &m_controllerSystem;
   effects::GameOptions &m_options;
   EngineStreetHost m_host;
-  street::StreetStage m_stage;
+  street::BossStage m_stage;
   std::vector<uint32_t> m_frame;
 };
 
@@ -47,4 +47,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_LEVEL1STATE_H_
+#endif // ENGINE_STATES_LEVEL1BOSSSTATE_H_

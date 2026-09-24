@@ -119,6 +119,8 @@ public:
     samples.push_back({bank, sample, voices});
   }
 
+  void setSampleLoop(bool) override {}
+
   int random(int limit) override {
     ++randomCalls;
     return randomValue(limit);
@@ -528,6 +530,19 @@ SCENARIO("The level ends one column before its length") {
         const auto screen = stage.screen().pixels();
         street.run(20, JOY_RIGHT);
         REQUIRE(stage.screen().pixels() == screen);
+      }
+
+      THEN("The boss stage gets the screen as it was before the stamp") {
+        REQUIRE(street.session.streetExit.has_value());
+        const StreetExit &exit = *street.session.streetExit;
+        const int x = exit.playerX;
+        REQUIRE(x > 152);
+        REQUIRE(x <= 164);
+        REQUIRE(exit.energyShown == 64);
+        REQUIRE(exit.killsShown == 0);
+        REQUIRE(exit.screen.pixel(x, 150) != 1);
+        REQUIRE(stage.screen().pixel(x, 150) == 1);
+        REQUIRE(exit.screen.pixel(0, 0) == stage.screen().pixel(0, 0));
       }
     }
   }

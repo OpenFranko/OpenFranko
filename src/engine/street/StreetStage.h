@@ -8,6 +8,7 @@
 #include "GameSession.h"
 #include "IndexedSurface.h"
 #include "LevelScript.h"
+#include "StageFrame.h"
 #include "StatusPanel.h"
 
 #include <array>
@@ -32,6 +33,7 @@ public:
   virtual void playMusic(int resource) = 0;
   virtual void setMusicVolume(int volume) = 0;
   virtual void playSample(int bank, int sample, int voices) = 0;
+  virtual void setSampleLoop(bool loop) = 0;
   virtual int random(int limit) = 0;
 };
 
@@ -48,8 +50,6 @@ public:
 
   static constexpr int SCREEN_WIDTH = 320;
   static constexpr int SCREEN_HEIGHT = 222;
-  static constexpr int FRAME_WIDTH = 304;
-  static constexpr int FRAME_HEIGHT = 255;
   static constexpr int LOADING_STRIP = 0;
   static constexpr int PANEL_ARTWORK = 1;
 
@@ -79,6 +79,8 @@ private:
     AdvanceScroll,
     AdvanceWalked,
     AdvanceLeave,
+    AdvanceLeaveFlushed,
+    AdvanceLeavePasted,
     GameOverWait,
     Finished
   };
@@ -116,6 +118,8 @@ private:
   Flow advanceWalked();
   Flow advanceTail();
   Flow advanceLeave();
+  Flow advanceLeaveFlushed();
+  Flow advanceLeavePasted();
   void loadChunk();
   void spawnWave();
   void scrollStep();

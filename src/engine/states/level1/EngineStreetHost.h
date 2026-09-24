@@ -30,6 +30,7 @@ public:
   void playMusic(int resource) override;
   void setMusicVolume(int volume) override;
   void playSample(int bank, int sample, int voices) override;
+  void setSampleLoop(bool loop) override;
   int random(int limit) override;
 
   static std::string sampleName(int bank, int sample);
