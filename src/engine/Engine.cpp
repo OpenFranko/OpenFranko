@@ -7,6 +7,7 @@
 #include "states/level1/Level1BossState.h"
 #include "states/level1/Level1CarState.h"
 #include "states/level1/Level1State.h"
+#include "states/level2/Level2BossState.h"
 #include "states/level2/Level2State.h"
 #include "states/menu/MenuState.h"
 #include "states/mirage/MirageState.h"
@@ -93,6 +94,10 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     break;
   case states::EngineStateEnum::Level2:
     currentState = std::make_unique<states::level2::Level2State>(
+        videoSystem, audioSystem, controllerSystem, options, session);
+    break;
+  case states::EngineStateEnum::Level2Boss:
+    currentState = std::make_unique<states::level2::Level2BossState>(
         videoSystem, audioSystem, controllerSystem, options, session);
     break;
   case states::EngineStateEnum::GameOver:

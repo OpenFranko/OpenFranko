@@ -77,6 +77,11 @@ constexpr int SPECIAL_RANGE = 40;
 constexpr int WALK_OFF_DISTANCE = 340;
 constexpr int FINISHING_STAMPS = 100;
 constexpr int POSE_WAIT = 50;
+constexpr int LIFT_WAIT = 150;
+constexpr int THROW_WAIT = 60;
+constexpr int SHOUT_WAIT = 50;
+constexpr int BOSS_THROWN_SAMPLE = 9;
+constexpr int VICTORY_SAMPLE = 8;
 
 int16_t word(int value) { return static_cast<int16_t>(value); }
 
@@ -139,7 +144,9 @@ bool BossStage::isFighting() const {
 bool BossStage::isFinishing() const {
   return m_step == Step::FinishWalkedToBoss || m_step == Step::FinishPosed ||
          m_step == Step::FinishStamped || m_step == Step::FinishPosedBack ||
-         m_step == Step::FinishWalkedOff || m_step == Step::Cleared;
+         m_step == Step::FinishWalkedOff || m_step == Step::LiftWalkedToBoss ||
+         m_step == Step::LiftRaised || m_step == Step::LiftThrown ||
+         m_step == Step::LiftDone || m_step == Step::Cleared;
 }
 
 int16_t &BossStage::global(int index) {
@@ -609,7 +616,28 @@ BossStage::Flow BossStage::finishStart() {
     m_machine.startAll();
     return waitFrames(global(RS), Step::FinishWalkedToBoss);
   }
+  if (stage() == 2) {
+    return liftStart();
+  }
   return finishWalkOff();
+}
+
+BossStage::Flow BossStage::liftStart() {
+  global(RU) = word(xBob(BOSS) - xBob(PLAYER));
+  global(RS) = word((std::abs(global(RU)) + std::abs(global(RT))) / 2);
+  m_machine.create(PLAYER_WALK_CHANNEL, amal::actors::walkToBoss());
+  m_machine.startAll();
+  return waitFrames(global(RS), Step::LiftWalkedToBoss);
+}
+
+BossStage::Flow BossStage::liftBoss() {
+  m_machine.destroy(PLAYER_WALK_CHANNEL);
+  global(RT) = word(global(RQ) * 2);
+  m_bobs.set(PLAYER, xBob(BOSS), yBob(BOSS), word(IDLE_IMAGE + global(RR)));
+  m_machine.create(BOSS_WALK_CHANNEL, amal::actors::bossThrown());
+  m_machine.create(PLAYER_WALK_CHANNEL, amal::actors::victoryLift());
+  m_machine.startAll();
+  return waitFrames(LIFT_WAIT, Step::LiftRaised);
 }
 
 BossStage::Flow BossStage::finishPose() {
@@ -780,6 +808,20 @@ void BossStage::runBasic(const StreetInput &input) {
       break;
     case Step::FinishWalkedOff:
       flow = finishCleanUp();
+      break;
+    case Step::LiftWalkedToBoss:
+      flow = liftBoss();
+      break;
+    case Step::LiftRaised:
+      m_host.playSample(BOSS_SAMPLE_BANK, BOSS_THROWN_SAMPLE, PRIORITY_VOICE);
+      flow = waitFrames(THROW_WAIT, Step::LiftThrown);
+      break;
+    case Step::LiftThrown:
+      m_host.playSample(PLAYER_SAMPLE_BANK, VICTORY_SAMPLE, PRIORITY_VOICE);
+      flow = waitFrames(SHOUT_WAIT, Step::LiftDone);
+      break;
+    case Step::LiftDone:
+      flow = finishWalkOff();
       break;
     case Step::Cleared:
       m_outcome = Outcome::BossDefeated;
