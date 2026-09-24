@@ -96,6 +96,8 @@ public:
 
   void playSample(int, int, int) override {}
 
+  void playSampleAt(int, int, int, int) override {}
+
   void setSampleLoop(bool) override {}
 
   int random(int) override { return 0; }

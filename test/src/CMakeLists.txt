@@ -174,3 +174,10 @@ add_executable(${CONTINUE_SCENE_TEST_TARGET}
 )
 target_link_libraries(${CONTINUE_SCENE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${CONTINUE_SCENE_TEST_TARGET} COMMAND ${CONTINUE_SCENE_TEST_TARGET})
+
+set(CAR_STAGE_TEST_TARGET carStageTest)
+add_executable(${CAR_STAGE_TEST_TARGET}
+    engine/street/carStageTest.cpp
+)
+target_link_libraries(${CAR_STAGE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${CAR_STAGE_TEST_TARGET} COMMAND ${CAR_STAGE_TEST_TARGET})

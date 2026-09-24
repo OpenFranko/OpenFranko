@@ -45,6 +45,8 @@ std::string finishingBlood();
 std::string finishingPoseBack();
 std::string walkOff();
 std::string pointingHand();
+std::string pedestrian(int image);
+std::string carDriveOff();
 
 } // namespace actors
 } // namespace amal
