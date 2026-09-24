@@ -27,6 +27,7 @@ constexpr int SKIP_FRAME = PASSWORD_FRAMES + 1;
 constexpr int LOADED_FRAME =
     SKIP_FRAME + CarStage::FILES * LoadingMock::FILE_FRAMES;
 constexpr int DRIVE_FRAME = LOADED_FRAME + 4;
+constexpr int PASS_FRAMES = 2;
 
 constexpr uint8_t CAR_INK = 3;
 constexpr uint8_t BUSH_INK = 4;
@@ -175,7 +176,7 @@ struct Drive {
   }
 
   void ignite() {
-    run(1, JOY_FIRE);
+    run(PASS_FRAMES, JOY_FIRE);
     run(29);
   }
 
@@ -285,16 +286,17 @@ SCENARIO("The road opens after the screen juggle and the drive begins") {
     }
 
     THEN("The bands start 10, 5, 0 and 0 px along, as the main program left "
-         "I, J, L and M") {
-      drive.run(4);
+         "I, J, L and M, once the first pass's blits land a frame later") {
+      drive.run(4 + 1);
       REQUIRE(drive.markerIn(94) == MARKER_COLUMN - 10);
       REQUIRE(drive.markerIn(210) == MARKER_COLUMN - 5);
       REQUIRE(drive.markerIn(50) == MARKER_COLUMN);
       REQUIRE(drive.markerIn(150) == MARKER_COLUMN);
     }
 
-    THEN("The car waits at 96,168, the walkers are parked, the bushes set") {
-      drive.run(4);
+    THEN("The car waits at 96,168, the walkers are parked, the bushes set, "
+         "on screen once the first pass is done") {
+      drive.run(4 + PASS_FRAMES);
       const BobLayer &bobs = stage.bobs();
       REQUIRE(bobs.x(CarStage::CAR) == 96);
       REQUIRE(bobs.y(CarStage::CAR) == 168);
@@ -322,8 +324,8 @@ SCENARIO("Fire at a standstill starts the engine, then right accelerates") {
       REQUIRE(stage.carX() == 96);
     }
 
-    WHEN("Fire is pressed") {
-      drive.run(1, JOY_FIRE);
+    WHEN("Fire is held for a pass") {
+      drive.run(PASS_FRAMES, JOY_FIRE);
 
       THEN("The ignition sample plays and Wait 30 freezes the loop") {
         REQUIRE(drive.host.played(2, 4, 1));
@@ -336,13 +338,14 @@ SCENARIO("Fire at a standstill starts the engine, then right accelerates") {
 
       AND_WHEN("Right is held") {
         drive.run(29);
-        drive.run(4, JOY_RIGHT);
+        drive.run(2 * PASS_FRAMES + 1, JOY_RIGHT);
 
-        THEN("The speed rises one step every fourth pass") {
+        THEN("The speed rises one step every fourth pass, a pass every two "
+             "frames") {
           REQUIRE(stage.speed() == 1);
-          drive.run(44, JOY_RIGHT);
+          drive.run(44 * PASS_FRAMES, JOY_RIGHT);
           REQUIRE(stage.speed() == 12);
-          drive.run(40, JOY_RIGHT);
+          drive.run(40 * PASS_FRAMES, JOY_RIGHT);
           REQUIRE(stage.speed() == 12);
           REQUIRE(stage.carX() == 120);
         }
@@ -371,9 +374,9 @@ SCENARIO("Fire at a standstill starts the engine, then right accelerates") {
 
         THEN("The engine note is replayed every second pass, pitched by "
              "speed") {
-          drive.run(48, JOY_RIGHT);
+          drive.run(48 * PASS_FRAMES, JOY_RIGHT);
           drive.host.pitched.clear();
-          drive.run(4, JOY_RIGHT);
+          drive.run(4 * PASS_FRAMES, JOY_RIGHT);
           REQUIRE(drive.host.pitched.size() == 2);
           REQUIRE(drive.host.pitched.front() ==
                   std::make_tuple(2, 5, 8, 5000 + 12 * 200));
@@ -394,7 +397,7 @@ SCENARIO("The four bands scroll at two, four, three and one times the speed") {
     const int fence = drive.markerIn(50);
     const int road = drive.markerIn(150);
 
-    WHEN("One more pass runs at that speed") {
+    WHEN("That pass's blits land a frame later") {
       drive.run(1, JOY_RIGHT);
 
       THEN("Each band has moved by its own multiple") {
@@ -423,7 +426,7 @@ SCENARIO("Steering into the kerb bounces the car back and costs 8 energy") {
     CarStage &stage = *drive.stage;
 
     WHEN("Up is held with right") {
-      drive.runUntil([&] { return stage.carY() == 124; }, 20,
+      drive.runUntil([&] { return stage.carY() == 124; }, 20 * PASS_FRAMES,
                      JOY_UP | JOY_RIGHT);
 
       THEN("Y stops at 124, the car rolls back and the kerb sample plays") {
@@ -441,7 +444,7 @@ SCENARIO("Walkers appear off the right edge with their own AMAL") {
     drive.toTheWheel();
     CarStage &stage = *drive.stage;
     drive.host.rolls = {4, 2, 50, 10, 0, 0};
-    drive.run(1);
+    drive.run(PASS_FRAMES);
 
     THEN("Bob 5 takes image 19 at Rnd(200)+340, 93+Rnd(20)*4") {
       REQUIRE(stage.bobs().x(5) == 390);
@@ -456,6 +459,7 @@ SCENARIO("Walkers appear off the right edge with their own AMAL") {
       drive.run(1);
       REQUIRE(stage.bobs().x(5) == 390);
       REQUIRE(stage.bobs().image(5) == 20);
+      drive.run(1);
       REQUIRE(stage.bobs().x(6) == 340);
       REQUIRE(stage.bobs().y(6) == 93);
       REQUIRE(stage.bobs().image(6) == 9);
@@ -475,7 +479,7 @@ SCENARIO("Running a walker down quarters the speed and moves the energy") {
 
     WHEN("An old man is spawned in the car's lane") {
       drive.host.rolls = {4, 3, 50, 11, 0, 0};
-      drive.run(2, JOY_RIGHT);
+      drive.run(2 * PASS_FRAMES, JOY_RIGHT);
 
       THEN("He is hit once: speed 8/4, both samples, R4 set, 14 energy lost") {
         REQUIRE(stage.speed() == 2);
@@ -483,14 +487,14 @@ SCENARIO("Running a walker down quarters the speed and moves the energy") {
         REQUIRE(drive.host.played(2, 1, 1));
         REQUIRE(stage.machine().channelRegister(1, 4) == 1);
         REQUIRE(drive.global(RF) == 26);
-        drive.run(1, JOY_RIGHT);
+        drive.run(PASS_FRAMES, JOY_RIGHT);
         REQUIRE(drive.global(RF) == 26);
       }
     }
 
     WHEN("A punk is spawned in the car's lane") {
       drive.host.rolls = {4, 0, 50, 11, 0, 0};
-      drive.run(2, JOY_RIGHT);
+      drive.run(2 * PASS_FRAMES, JOY_RIGHT);
 
       THEN("Running him down gives 14 energy") {
         REQUIRE(drive.global(RF) == 54);
@@ -505,7 +509,7 @@ SCENARIO("When the distance runs out the car drives off and the stage ends") {
     drive.toTheWheel();
     drive.ignite();
     CarStage &stage = *drive.stage;
-    drive.runUntil([&] { return stage.distance() == 0; }, 1000, JOY_RIGHT);
+    drive.runUntil([&] { return stage.distance() == 0; }, 2000, JOY_RIGHT);
 
     THEN("Channel 4 takes the car 800 px right over 400 frames") {
       REQUIRE(stage.machine().isRunning(CarStage::CAR_CHANNEL));
@@ -514,10 +518,11 @@ SCENARIO("When the distance runs out the car drives off and the stage ends") {
       REQUIRE(stage.bobs().x(CarStage::CAR) == from + 800);
     }
 
-    THEN("Screen Close 5 and Cls 0 follow the move, then the next stage") {
+    THEN("The next pass to end after the move runs Screen Close 5 and Cls 0, "
+         "then the next stage") {
       const int frames = drive.runUntil(
           [&] { return stage.outcome() != CarStage::Outcome::Playing; }, 1000);
-      REQUIRE(frames == 406);
+      REQUIRE(frames == 407);
       REQUIRE(stage.outcome() == CarStage::Outcome::DriveFinished);
       REQUIRE(drive.session.fromBonusDrive);
       REQUIRE_FALSE(stage.bobs().isActive(CarStage::CAR));
@@ -535,7 +540,7 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
 
     WHEN("Esc is pressed") {
       drive.run(1, 0, SystemKey::Escape);
-      drive.run(3);
+      drive.run(3 + PASS_FRAMES);
 
       THEN("The score is thrown away and the game quits") {
         REQUIRE(stage.outcome() == CarStage::Outcome::Quit);
@@ -548,7 +553,7 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
 
     WHEN("The lives run out") {
       drive.global(RG) = -1;
-      drive.run(3);
+      drive.run(2 + PASS_FRAMES);
 
       THEN("Game over follows Wait 200") {
         REQUIRE(stage.outcome() == CarStage::Outcome::Playing);
@@ -629,13 +634,14 @@ SCENARIO("The second drive inherits what the first left in ZAP, L, M, B, T") {
 
     THEN("The engine is already on and the road and fence bands are 30 and "
          "20 px along") {
+      drive.run(1);
       REQUIRE(stage.isEngineOn());
       REQUIRE(drive.markerIn(150) == MARKER_COLUMN - 30);
       REQUIRE(drive.markerIn(50) == MARKER_COLUMN - 20);
     }
 
     THEN("Right accelerates at once, without turning the key") {
-      drive.run(3, JOY_RIGHT);
+      drive.run(3 * PASS_FRAMES, JOY_RIGHT);
       REQUIRE(stage.speed() == 1);
       REQUIRE_FALSE(drive.host.played(2, 4, 1));
     }
@@ -646,7 +652,7 @@ SCENARIO("The second drive inherits what the first left in ZAP, L, M, B, T") {
     drive.toTheWheel();
     drive.ignite();
     drive.accelerateTo(1);
-    drive.run(1, 0, SystemKey::Escape);
+    drive.run(PASS_FRAMES + 1, 0, SystemKey::Escape);
     const int fence = MARKER_COLUMN - drive.markerIn(50);
     const int road = MARKER_COLUMN - drive.markerIn(150);
     drive.run(1);

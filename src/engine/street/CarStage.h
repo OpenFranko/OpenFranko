@@ -71,6 +71,7 @@ private:
     RoadClosed,
     DriveTop,
     DriveIgnited,
+    DriveScenery,
     DriveBottom,
     StripClosed,
     Cleared,

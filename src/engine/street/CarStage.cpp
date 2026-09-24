@@ -23,6 +23,7 @@ constexpr int SCREEN_OPEN_VBLS = 1;
 constexpr int SCREEN_CLOSE_VBLS = 2;
 constexpr int GAME_OVER_WAIT = 200;
 constexpr int IGNITION_WAIT = 30;
+constexpr int BLIT_OVERRUN_VBLS = 1;
 constexpr int FULL_ENERGY = 64;
 
 constexpr int PASSWORD_X = 124;
@@ -179,7 +180,7 @@ bool CarStage::isShowingPassword() const {
 
 bool CarStage::isDriving() const {
   return m_step == Step::DriveTop || m_step == Step::DriveIgnited ||
-         m_step == Step::DriveBottom;
+         m_step == Step::DriveScenery || m_step == Step::DriveBottom;
 }
 
 int CarStage::distance() const { return m_distance; }
@@ -409,7 +410,7 @@ CarStage::Flow CarStage::driveInput(const StreetInput &input) {
     global(RU) = word(5 * m_speed);
     spawnPedestrians();
   }
-  return driveScenery();
+  return wait(BLIT_OVERRUN_VBLS, Step::DriveScenery);
 }
 
 void CarStage::hitKerb(int kerb) {
@@ -624,6 +625,9 @@ void CarStage::runBasic(const StreetInput &input) {
       break;
     case Step::DriveIgnited:
       flow = driveInput(input);
+      break;
+    case Step::DriveScenery:
+      flow = driveScenery();
       break;
     case Step::DriveBottom:
       flow = driveBottom();
