@@ -47,10 +47,11 @@ ctest --output-on-failure
 
 Executables can be located in the build directory
 
-With tests enabled, `test/manual/startAtLevel1Car` is also built. It starts
-the game at the stage-1 bonus drive, as if the first boss had just been
-beaten, so the car scene can be tried without playing up to it. Like the game,
-run it from the directory that holds `assets`.
+With tests enabled, two launchers are also built in `test/manual`, so late
+scenes can be tried without playing up to them. `startAtLevel1Car` starts the
+game at the stage-1 bonus drive, as if the first boss had just been beaten.
+`startAtEnding` starts it at the ending, as if the third boss had just been
+beaten. Like the game, run them from the directory that holds `assets`.
 
 # FrankoExtract
 

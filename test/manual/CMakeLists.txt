@@ -1,2 +1,4 @@
 add_executable(startAtLevel1Car startAtLevel1Car.cpp)
 target_link_libraries(startAtLevel1Car Engine)
+add_executable(startAtEnding startAtEnding.cpp)
+target_link_libraries(startAtEnding Engine Street VideoSystem)
