@@ -493,6 +493,36 @@ SCENARIO("Stage init counts on from the RO the menu or continue left") {
   }
 }
 
+SCENARIO("After the bonus drive STAGE INIT carries the run into stage 2") {
+  GIVEN("Stage 1 cleared as Alex with 27 kills, 40 energy and 2 lives") {
+    Street street(emptyStreet(600));
+    street.session.fromBonusDrive = true;
+    street.global(RO) = 1;
+    street.global(RN) = 27;
+    street.global(RF) = 40;
+    street.global(RG) = 2;
+    street.global(RQ) = 1;
+    StreetStage &stage = street.start();
+    street.open();
+
+    THEN("State 09 is skipped: nothing is reset and the kills stay") {
+      REQUIRE(street.global(RO) == 2);
+      REQUIRE(street.global(RN) == 27);
+      REQUIRE(street.global(RF) == 40);
+      REQUIRE(street.global(RG) == 2);
+      REQUIRE(street.global(RQ) == 1);
+      REQUIRE_FALSE(street.session.fromBonusDrive);
+    }
+
+    THEN("Stage 2's music plays and Alex loads, facing left at X 224") {
+      REQUIRE(street.host.music == std::vector<int>{602});
+      REQUIRE(street.host.spriteSets[1] == std::make_pair(ALEX, 2));
+      REQUIRE(stage.bobs().x(1) == 224);
+      REQUIRE((static_cast<uint16_t>(stage.bobs().image(1)) & 0x8000) != 0);
+    }
+  }
+}
+
 SCENARIO("The run ends as state 11 and SYS decide") {
   GIVEN("A fight in progress") {
     Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));

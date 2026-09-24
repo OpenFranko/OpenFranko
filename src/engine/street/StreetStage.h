@@ -79,7 +79,7 @@ public:
 
 private:
   enum class Step {
-    NewGame,
+    Start,
     StageMusic,
     StageScreen,
     StageShown,
@@ -119,6 +119,7 @@ private:
 
   void newGame();
   void gameInit();
+  void openScreens(bool shown);
   Flow stageInit();
   Flow stageMusic();
   Flow stageScreen();
@@ -171,7 +172,7 @@ private:
   LoadingMock m_loading;
   std::optional<ScreenBlock> m_block;
 
-  Step m_step = Step::NewGame;
+  Step m_step = Step::Start;
   Step m_afterLoading = Step::Finished;
   Outcome m_outcome = Outcome::Playing;
   long m_frame = 0;

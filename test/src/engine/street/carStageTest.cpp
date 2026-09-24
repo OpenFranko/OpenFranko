@@ -489,6 +489,7 @@ SCENARIO("When the distance runs out the car drives off and the stage ends") {
           [&] { return stage.outcome() != CarStage::Outcome::Playing; }, 1000);
       REQUIRE(frames == 406);
       REQUIRE(stage.outcome() == CarStage::Outcome::DriveFinished);
+      REQUIRE(drive.session.fromBonusDrive);
       REQUIRE_FALSE(stage.bobs().isActive(CarStage::CAR));
       REQUIRE(stage.screen().pixel(100, 100) == 0);
       REQUIRE(drive.global(RO) == 1);
@@ -508,6 +509,7 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
 
       THEN("The score is thrown away and the game quits") {
         REQUIRE(stage.outcome() == CarStage::Outcome::Quit);
+        REQUIRE_FALSE(drive.session.fromBonusDrive);
         REQUIRE(drive.global(RN) == 0);
         REQUIRE(drive.global(RO) == -1);
         REQUIRE(drive.session.stageReached == 1);

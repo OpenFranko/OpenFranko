@@ -175,14 +175,18 @@ void StreetStage::newGame() {
 }
 
 void StreetStage::gameInit() {
+  openScreens(false);
+  global(RN) = 0;
+}
+
+void StreetStage::openScreens(bool shown) {
   m_palette = levelPalette(m_options.mono);
   m_panelPalette = panelPalette();
-  m_screenShown = false;
+  m_screenShown = shown;
   m_screen.fill(0);
   m_panel =
       std::make_unique<StatusPanel>(m_host.loadPanelPicture(LOADING_STRIP),
                                     m_host.loadPanelPicture(PANEL_ARTWORK));
-  global(RN) = 0;
 }
 
 StreetStage::Flow StreetStage::stageInit() {
@@ -863,9 +867,14 @@ void StreetStage::runBasic(const StreetInput &input) {
   Flow flow = Flow::Continue;
   while (flow == Flow::Continue && m_frame >= m_resumeFrame) {
     switch (m_step) {
-    case Step::NewGame:
-      newGame();
-      gameInit();
+    case Step::Start:
+      if (m_session.fromBonusDrive) {
+        m_session.fromBonusDrive = false;
+        openScreens(true);
+      } else {
+        newGame();
+        gameInit();
+      }
       flow = stageInit();
       break;
     case Step::StageMusic:

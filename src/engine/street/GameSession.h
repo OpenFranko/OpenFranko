@@ -27,6 +27,7 @@ struct GameSession {
   int extraLifeKills = FIRST_EXTRA_LIFE;
   bool brutality = false;
   int stageReached = 0;
+  bool fromBonusDrive = false;
   HighScoreTable highScores;
   std::optional<StreetExit> streetExit;
 };

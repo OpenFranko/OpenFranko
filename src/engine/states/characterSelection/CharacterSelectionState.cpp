@@ -39,6 +39,9 @@ constexpr std::array<Voice, 2> VOICES = {{
 
 constexpr int HIDDEN_IMAGE = 0;
 
+constexpr int RO = 14;
+constexpr int SECOND_STAGE = 2;
+
 std::string spriteName(int image) {
   return "characterSprite" + std::to_string(image);
 }
@@ -52,9 +55,11 @@ joystickFrom(const systems::ControllerSystem::ControllerStates &states) {
 
 CharacterSelectionState::CharacterSelectionState(
     systems::VideoSystem &videoSystem, systems::AudioSystem &audioSystem,
-    systems::ControllerSystem &controllerSystem, effects::GameOptions &options)
+    systems::ControllerSystem &controllerSystem, effects::GameOptions &options,
+    street::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_controllerSystem(controllerSystem), m_selection(options) {
+      m_controllerSystem(controllerSystem), m_session(session),
+      m_selection(options) {
   m_videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, SCREEN_HEIGHT);
   m_videoSystem.switchScreen(SCREEN_ID);
   m_videoSystem.loadIndexedImage(PICTURE, PICTURE_PATH);
@@ -82,7 +87,7 @@ CharacterSelectionState::~CharacterSelectionState() {
 
 std::optional<EngineStateEnum> CharacterSelectionState::update() {
   if (m_selection.isFinished()) {
-    return EngineStateEnum::Level1;
+    return firstStreet();
   }
 
   m_selection.advance(joystickFrom(m_controllerSystem.states));
@@ -103,10 +108,15 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
 
   if (m_selection.isFinished()) {
     m_videoSystem.fillScreen(0, 0, 0);
-    return EngineStateEnum::Level1;
+    return firstStreet();
   }
   draw();
   return std::nullopt;
+}
+
+EngineStateEnum CharacterSelectionState::firstStreet() const {
+  return m_session.registers[RO] + 1 == SECOND_STAGE ? EngineStateEnum::Level2
+                                                     : EngineStateEnum::Level1;
 }
 
 void CharacterSelectionState::draw() {

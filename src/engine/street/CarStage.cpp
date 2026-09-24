@@ -579,6 +579,7 @@ void CarStage::runBasic(const StreetInput &input) {
       flow = leave();
       break;
     case Step::Cleared:
+      m_session.fromBonusDrive = true;
       m_outcome = Outcome::DriveFinished;
       m_step = Step::Finished;
       flow = Flow::Yield;

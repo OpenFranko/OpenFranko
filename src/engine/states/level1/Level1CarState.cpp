@@ -35,8 +35,9 @@ std::optional<EngineStateEnum> Level1CarState::update() {
     return EngineStateEnum::GameOver;
   case street::CarStage::Outcome::Quit:
     return EngineStateEnum::HighScore;
-  case street::CarStage::Outcome::Playing:
   case street::CarStage::Outcome::DriveFinished:
+    return EngineStateEnum::Level2;
+  case street::CarStage::Outcome::Playing:
     break;
   }
   return std::nullopt;
