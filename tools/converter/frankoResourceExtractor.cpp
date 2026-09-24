@@ -213,6 +213,13 @@ int extractFile(const std::string &inputPath, const std::string &outDir,
         failed = true;
       }
     }
+    namespace cards = lib::converter::gameData::protectionCards;
+    if (fileId == cards::FILE_ID && dec.size() >= cards::OFFSET + cards::SIZE) {
+      outputs.push_back(
+          {fileId + "_cards.bin",
+           std::vector<uint8_t>(dec.begin() + cards::OFFSET,
+                                dec.begin() + cards::OFFSET + cards::SIZE)});
+    }
     break;
   }
 

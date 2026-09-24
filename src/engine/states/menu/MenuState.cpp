@@ -1,0 +1,255 @@
+#include "MenuState.h"
+
+#include <array>
+#include <cstddef>
+#include <cstdio>
+#include <string>
+
+namespace openfranko::src::engine::states::menu {
+namespace {
+
+constexpr auto BACKDROP = "menuBackdrop";
+constexpr auto BACKDROP_PATH = "assets/03B8.bmp";
+constexpr auto TITLE = "menuTitle";
+constexpr auto TITLE_PATH = "assets/03BA.bmp";
+constexpr auto HISCORES = "menuHiscores";
+constexpr auto HISCORES_PATH = "assets/03B9.bmp";
+
+constexpr int MENU_SCREEN_ID = 0;
+constexpr int MENU_SCREEN_WIDTH = 368;
+constexpr int MENU_SCREEN_HEIGHT = 290;
+constexpr std::size_t MENU_COLORS = 16;
+constexpr int ATTRACT_SCREEN_ID = 1;
+constexpr int ATTRACT_SCREEN_WIDTH = 320;
+constexpr int ATTRACT_SCREEN_HEIGHT = 256;
+constexpr std::size_t ATTRACT_COLORS = 32;
+
+constexpr int FIRST_MENU_IMAGE = 42;
+constexpr int LAST_MENU_IMAGE = 69;
+constexpr int LETTER_IMAGES = 41;
+constexpr int LETTER_A_IMAGE = 14;
+constexpr int DIGIT_IMAGE_OFFSET = 44;
+
+constexpr int MUSIC_ON_VOLUME = 63;
+
+constexpr int NAME_X = 56;
+constexpr int SCORE_RIGHT = 272;
+constexpr int CHARACTER_PITCH = 10;
+constexpr int SCORE_CHARACTERS = 4;
+constexpr int FIRST_ROW_Y = 32;
+constexpr int ROW_PITCH = 20;
+
+struct Hiscore {
+  const char *name;
+  int score;
+};
+
+constexpr std::array<Hiscore, effects::AttractSequence::HISCORE_ROWS>
+    DEFAULT_HISCORES = {{{"WORLD SOFTWARE", 0},
+                         {"WORLD SOFTWARE", 0},
+                         {"WORLD SOFTWARE", 0},
+                         {"WORLD SOFTWARE", 0},
+                         {"WORLD SOFTWARE", 0},
+                         {"WORLD SOFTWARE", 0},
+                         {"WORLD SOFTWARE", 0},
+                         {"WORLD SOFTWARE", 0},
+                         {"WORLD SOFTWARE", 0},
+                         {"WORLD SOFTWARE", 0}}};
+
+std::string spritePath(const char *resource, int index) {
+  char path[64];
+  std::snprintf(path, sizeof(path), "assets/%s/%s_%03d.bmp", resource, resource,
+                index);
+  return path;
+}
+
+std::string menuBobName(int image) { return "menuBob" + std::to_string(image); }
+
+std::string letterName(int image) {
+  return "hiscoreLetter" + std::to_string(image);
+}
+
+effects::AmigaPalette loadPicture(systems::VideoSystem &videoSystem,
+                                  const char *name, const char *path,
+                                  std::size_t colors) {
+  videoSystem.loadIndexedImage(name, path);
+  auto palette = videoSystem.getImagePalette(name);
+  palette.resize(colors);
+  return palette;
+}
+
+effects::AmigaPalette openMenuScreen(systems::VideoSystem &videoSystem) {
+  videoSystem.createScreen(MENU_SCREEN_ID, MENU_SCREEN_WIDTH,
+                           MENU_SCREEN_HEIGHT);
+  videoSystem.switchScreen(MENU_SCREEN_ID);
+  return loadPicture(videoSystem, BACKDROP, BACKDROP_PATH, MENU_COLORS);
+}
+
+effects::MenuSequence::Joystick
+joystickFrom(const systems::ControllerSystem::ControllerStates &states) {
+  return {states.up, states.down, states.left, states.right, states.button};
+}
+
+bool isTouched(const effects::MenuSequence::Joystick &joystick) {
+  return joystick.up || joystick.down || joystick.left || joystick.right ||
+         joystick.fire;
+}
+
+} // namespace
+
+MenuState::MenuState(systems::VideoSystem &videoSystem,
+                     systems::AudioSystem &audioSystem,
+                     systems::ControllerSystem &controllerSystem,
+                     effects::GameOptions &options)
+    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
+      m_controllerSystem(controllerSystem), m_options(options),
+      m_menu(options, openMenuScreen(videoSystem)) {
+  for (int image = FIRST_MENU_IMAGE; image <= LAST_MENU_IMAGE; ++image) {
+    m_videoSystem.loadMaskedImage(menuBobName(image),
+                                  spritePath("0034", image - FIRST_MENU_IMAGE));
+  }
+  for (int image = 1; image <= LETTER_IMAGES; ++image) {
+    m_videoSystem.loadMaskedImage(letterName(image),
+                                  spritePath("0035", image - 1));
+  }
+  m_titlePalette =
+      loadPicture(m_videoSystem, TITLE, TITLE_PATH, ATTRACT_COLORS);
+  m_hiscorePalette =
+      loadPicture(m_videoSystem, HISCORES, HISCORES_PATH, ATTRACT_COLORS);
+  m_videoSystem.createScreen(ATTRACT_SCREEN_ID, ATTRACT_SCREEN_WIDTH,
+                             ATTRACT_SCREEN_HEIGHT);
+}
+
+MenuState::~MenuState() {
+  m_videoSystem.clearImage(BACKDROP);
+  m_videoSystem.clearImage(TITLE);
+  m_videoSystem.clearImage(HISCORES);
+  for (int image = FIRST_MENU_IMAGE; image <= LAST_MENU_IMAGE; ++image) {
+    m_videoSystem.clearImage(menuBobName(image));
+  }
+  for (int image = 1; image <= LETTER_IMAGES; ++image) {
+    m_videoSystem.clearImage(letterName(image));
+  }
+  m_videoSystem.fillScreen(0, 0, 0);
+}
+
+std::optional<EngineStateEnum> MenuState::update() {
+  const effects::MenuSequence::Joystick joystick =
+      joystickFrom(m_controllerSystem.states);
+
+  if (m_attract) {
+    m_attract->advance(isTouched(joystick));
+    if (!m_attract->isFinished()) {
+      drawAttract();
+      return std::nullopt;
+    }
+    m_attract.reset();
+    m_menu.resumeAfterAttract();
+  }
+
+  const bool music = m_options.music;
+  m_menu.advance(joystick);
+  if (m_options.music != music) {
+    m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
+  }
+  if (m_menu.isFinished()) {
+    return EngineStateEnum::CharacterSelection;
+  }
+
+  if (m_menu.isAttractDue()) {
+    startAttract();
+    m_attract->advance(isTouched(joystick));
+    drawAttract();
+    return std::nullopt;
+  }
+
+  drawMenu();
+  return std::nullopt;
+}
+
+void MenuState::startAttract() {
+  const effects::AttractSequence::Kind kind = m_nextAttract;
+  const bool title = kind == effects::AttractSequence::Kind::Title;
+  m_nextAttract = title ? effects::AttractSequence::Kind::Hiscores
+                        : effects::AttractSequence::Kind::Title;
+  m_attract.emplace(kind, title ? m_titlePalette : m_hiscorePalette);
+  m_attractPaletteShown.clear();
+}
+
+void MenuState::drawMenu() {
+  m_videoSystem.switchScreen(MENU_SCREEN_ID);
+  if (m_menu.isFinished()) {
+    m_videoSystem.fillScreen(0, 0, 0);
+    return;
+  }
+
+  if (m_menu.palette() != m_menuPaletteShown) {
+    m_menuPaletteShown = m_menu.palette();
+    m_videoSystem.setImagePalette(BACKDROP, m_menuPaletteShown);
+    for (int image = FIRST_MENU_IMAGE; image <= LAST_MENU_IMAGE; ++image) {
+      m_videoSystem.setImagePalette(menuBobName(image), m_menuPaletteShown);
+    }
+  }
+
+  m_videoSystem.drawImage(BACKDROP, 0, 0);
+  for (const effects::MenuSequence::Bob &bob : m_menu.bobs()) {
+    if (bob.shown) {
+      m_videoSystem.drawImage(menuBobName(bob.image), bob.x, bob.y,
+                              bob.flipped ? SDL_FLIP_HORIZONTAL
+                                          : SDL_FLIP_NONE);
+    }
+  }
+}
+
+void MenuState::drawAttract() {
+  if (!m_attract->isShowing()) {
+    drawMenu();
+    return;
+  }
+
+  m_videoSystem.switchScreen(ATTRACT_SCREEN_ID);
+  if (m_attract->kind() == effects::AttractSequence::Kind::Title) {
+    m_videoSystem.drawImage(TITLE, 0, 0);
+    return;
+  }
+
+  if (m_attract->palette() != m_attractPaletteShown) {
+    m_attractPaletteShown = m_attract->palette();
+    m_videoSystem.setImagePalette(HISCORES, m_attractPaletteShown);
+    for (int image = 1; image <= LETTER_IMAGES; ++image) {
+      m_videoSystem.setImagePalette(letterName(image), m_attractPaletteShown);
+    }
+  }
+
+  m_videoSystem.drawImage(HISCORES, 0, 0);
+  for (int drawn = 0; drawn < m_attract->rowsShown(); ++drawn) {
+    drawHiscoreRow(effects::AttractSequence::HISCORE_ROWS - 1 - drawn);
+  }
+}
+
+void MenuState::drawHiscoreRow(int row) {
+  const Hiscore &hiscore = DEFAULT_HISCORES[row];
+  const int y = FIRST_ROW_Y + row * ROW_PITCH;
+
+  const std::string name = hiscore.name;
+  for (std::size_t i = 0; i < name.size(); ++i) {
+    if (name[i] >= 'A' && name[i] <= 'Z') {
+      m_videoSystem.drawImage(letterName(name[i] - 'A' + LETTER_A_IMAGE),
+                              NAME_X + static_cast<int>(i) * CHARACTER_PITCH,
+                              y);
+    }
+  }
+
+  const std::string score = " " + std::to_string(hiscore.score) + "   ";
+  const int scoreX =
+      SCORE_RIGHT - CHARACTER_PITCH * static_cast<int>(score.size());
+  for (int i = 1; i <= SCORE_CHARACTERS; ++i) {
+    const char character = score[i - 1];
+    if (character > ' ') {
+      m_videoSystem.drawImage(letterName(character - DIGIT_IMAGE_OFFSET),
+                              scoreX + i * CHARACTER_PITCH, y);
+    }
+  }
+}
+
+} // namespace openfranko::src::engine::states::menu

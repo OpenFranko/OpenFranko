@@ -1,8 +1,8 @@
 #ifndef ENGINE_STATES_MIRAGESTATE_H_
 #define ENGINE_STATES_MIRAGESTATE_H_
 
-#include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
+#include "../../effects/FotoSequence.h"
 #include "../IEngineState.h"
 
 namespace openfranko {
@@ -13,15 +13,14 @@ namespace mirage {
 
 class MirageState : public IEngineState {
 public:
-  MirageState(systems::VideoSystem &videoSystem,
-              systems::ControllerSystem &controllerSystem);
+  explicit MirageState(systems::VideoSystem &videoSystem);
   ~MirageState();
 
   std::optional<EngineStateEnum> update() override;
 
 private:
   systems::VideoSystem &m_videoSystem;
-  systems::ControllerSystem &m_controllerSystem;
+  effects::FotoSequence m_sequence;
 };
 
 } // namespace mirage

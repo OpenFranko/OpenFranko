@@ -2,6 +2,7 @@
 #define GAMEDATA_H_
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string_view>
 
@@ -80,6 +81,14 @@ namespace audio {
 inline constexpr uint16_t DEFAULT_SAMPLE_RATE = 8287;
 
 } // namespace audio
+
+namespace protectionCards {
+
+inline constexpr std::string_view FILE_ID = "0384";
+inline constexpr std::size_t OFFSET = 10;
+inline constexpr std::size_t SIZE = 200;
+
+} // namespace protectionCards
 
 } // namespace gameData
 } // namespace converter

@@ -4,6 +4,7 @@
 #include "../systems/AudioSystem.h"
 #include "../systems/ControllerSystem.h"
 #include "../systems/VideoSystem.h"
+#include "effects/GameOptions.h"
 #include "states/IEngineState.h"
 
 #include <memory>
@@ -30,6 +31,7 @@ private:
   systems::VideoSystem videoSystem;
   systems::AudioSystem audioSystem;
   systems::ControllerSystem controllerSystem;
+  effects::GameOptions options;
 
   std::unique_ptr<states::IEngineState> currentState;
   bool running;
