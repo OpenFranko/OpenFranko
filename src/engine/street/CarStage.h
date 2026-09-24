@@ -5,6 +5,7 @@
 #include "../effects/AmigaPalette.h"
 #include "../effects/GameOptions.h"
 #include "Bobs.h"
+#include "DoubleBuffer.h"
 #include "GameSession.h"
 #include "IndexedSurface.h"
 #include "LoadingMock.h"
@@ -82,6 +83,10 @@ private:
   int stage() const;
   StatusPanel::Stats stats() const;
   Flow wait(int frames, Step next);
+  Flow hold(int frames, Step next);
+  Flow autoback(DoubleBuffer::Op op, Step next);
+  bool holdsAtStart() const;
+  bool holdsAtEnd() const;
   void play(int voices, int sample);
   void loseEnergy(int amount);
   void gainEnergy(int amount);
@@ -102,9 +107,7 @@ private:
   Flow leave();
   void gameOver();
   void sys();
-  void bobDraw();
   void runBasic(const StreetInput &input);
-  void redraw();
 
   StreetHost &m_host;
   GameSession &m_session;
@@ -112,7 +115,7 @@ private:
   ImageBank m_images;
   BobLayer m_bobs;
   IndexedSurface m_screen;
-  IndexedSurface m_display;
+  DoubleBuffer m_buffer;
   IndexedSurface m_road;
   IndexedSurface m_strip;
   Picture m_backdrop;
@@ -127,9 +130,10 @@ private:
   Outcome m_outcome = Outcome::Playing;
   long m_frame = 0;
   long m_resumeFrame = 0;
+  long m_holdStart = -1;
+  long m_holdUntil = -1;
   SystemKey m_pendingKey = SystemKey::None;
   bool m_escape = false;
-  bool m_manualBobs = false;
   int m_screenOffsetX = 0;
   int m_waited = 0;
 

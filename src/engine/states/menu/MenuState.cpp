@@ -178,7 +178,7 @@ void MenuState::drawMenu() {
   }
 
   m_videoSystem.drawImage(BACKDROP, 0, 0);
-  for (const effects::MenuSequence::Bob &bob : m_menu.bobs()) {
+  for (const effects::MenuSequence::Bob &bob : m_menu.shownBobs()) {
     if (bob.shown) {
       m_videoSystem.drawImage(menuBobName(bob.image), bob.x, bob.y,
                               bob.flipped ? SDL_FLIP_HORIZONTAL

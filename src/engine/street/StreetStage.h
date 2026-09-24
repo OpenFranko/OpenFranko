@@ -5,6 +5,8 @@
 #include "../effects/AmigaPalette.h"
 #include "../effects/GameOptions.h"
 #include "Bobs.h"
+#include "DoubleBuffer.h"
+#include "EndingCredits.h"
 #include "GameSession.h"
 #include "IndexedSurface.h"
 #include "LevelScript.h"
@@ -32,6 +34,7 @@ public:
   virtual effects::AmigaPalette loadPalette(int resource) = 0;
   virtual std::vector<Picture> loadScenery(int resource) = 0;
   virtual LevelScript loadLevelScript(int resource) = 0;
+  virtual EndingCredits loadEndingCredits() = 0;
   virtual Picture loadPanelPicture(int part) = 0;
   virtual void loadMusic(int resource) = 0;
   virtual void playMusic() = 0;
@@ -114,6 +117,9 @@ private:
   int stage() const;
   StatusPanel::Stats stats() const;
   void stall();
+  void autoback(DoubleBuffer::Op op);
+  bool pasteStalled(int x, int y, int image);
+  void putBlock();
   Flow endOfPass() const;
   void playRouted(int request, int voices);
 
@@ -152,7 +158,6 @@ private:
   void gameOver();
   void sys();
   void runBasic(const StreetInput &input);
-  void redraw();
 
   StreetHost &m_host;
   GameSession &m_session;
@@ -161,7 +166,7 @@ private:
   ImageBank m_images;
   BobLayer m_bobs;
   IndexedSurface m_screen;
-  IndexedSurface m_display;
+  DoubleBuffer m_buffer;
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
   effects::AmigaPalette m_palette;

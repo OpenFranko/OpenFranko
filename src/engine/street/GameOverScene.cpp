@@ -37,6 +37,8 @@ constexpr int RAINBOW_LINES = 240;
 constexpr int PAN_STEP_PIXELS = 5;
 constexpr int PAN_STEP_FRAMES = 4;
 constexpr int CLICK_FRAMES = 400;
+constexpr int UNPACK_VBLS = 1;
+constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr int FADE_SPEED = 5;
 constexpr int HOLD_FRAMES = 100;
 
@@ -54,20 +56,27 @@ effects::AmigaPalette graveyardPalette() {
 
 GameOverScene::GameOverScene(StreetHost &host)
     : m_host(host), m_screen(PICTURE_WIDTH, PICTURE_HEIGHT),
-      m_display(PICTURE_WIDTH, PICTURE_HEIGHT), m_palette(graveyardPalette()),
-      m_border(STAGE_BORDER) {}
+      m_palette(graveyardPalette()), m_border(STAGE_BORDER) {}
 
 void GameOverScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
     return;
   }
+  ++m_frame;
+  if (m_buffer) {
+    m_buffer->vbl();
+  }
+  m_shownOffset = m_offset;
   if (m_animating) {
     m_bobs.setImage(HAND, m_hand.advance(m_bobs.image(HAND)));
   }
   m_fader.tick(m_palette);
+  if (m_buffer && !holdsAtStart()) {
+    m_buffer->test(m_bobs, m_images);
+  }
 
   Flow flow = Flow::Continue;
-  while (flow == Flow::Continue) {
+  while (flow == Flow::Continue && m_frame >= m_resumeFrame) {
     switch (m_step) {
     case Step::Close:
       close();
@@ -81,6 +90,16 @@ void GameOverScene::advance(int16_t joystick) {
       }
       break;
     case Step::Open:
+      unpack();
+      flow = wait(UNPACK_VBLS, Step::Unpacked);
+      break;
+    case Step::Unpacked:
+      m_buffer.emplace(m_screen);
+      m_shown = true;
+      m_shownFrom = m_frame + 1;
+      flow = wait(DOUBLE_BUFFER_VBLS, Step::Opened);
+      break;
+    case Step::Opened:
       open();
       m_count = 0;
       m_step = Step::Pan;
@@ -102,14 +121,17 @@ void GameOverScene::advance(int16_t joystick) {
       break;
     }
   }
-  redraw();
+  if (m_buffer && !holdsAtEnd()) {
+    m_buffer->test(m_bobs, m_images);
+  }
 }
 
 void GameOverScene::compose(std::vector<uint32_t> &frame) const {
   frame.assign(static_cast<std::size_t>(WIDTH * HEIGHT), toArgb(m_border));
-  if (!m_shown) {
+  if (!m_shown || !m_buffer || m_frame < m_shownFrom) {
     return;
   }
+  const IndexedSurface &display = m_buffer->shown();
   const int top = std::max(RAINBOW_Y, FIRST_RAINBOW_LINE);
   const int size = static_cast<int>(m_rainbow.size());
   for (int row = 0; row < HEIGHT; ++row) {
@@ -121,13 +143,13 @@ void GameOverScene::compose(std::vector<uint32_t> &frame) const {
     }
     uint32_t *out = frame.data() + row * WIDTH;
     for (int x = 0; x < WIDTH; ++x) {
-      int column = m_offset + x;
+      int column = m_shownOffset + x;
       int y = row;
       if (column >= PICTURE_WIDTH) {
         column -= PICTURE_WIDTH;
         ++y;
       }
-      const uint8_t pixel = y < PICTURE_HEIGHT ? m_display.pixel(column, y) : 0;
+      const uint8_t pixel = y < PICTURE_HEIGHT ? display.pixel(column, y) : 0;
       out[x] = toArgb(pixel == 0 ? background
                                  : m_palette[static_cast<std::size_t>(pixel)]);
     }
@@ -159,11 +181,30 @@ void GameOverScene::close() {
   m_loading.queue([this] { m_host.loadMusic(GAME_OVER_TUNE); });
 }
 
-void GameOverScene::open() {
+GameOverScene::Flow GameOverScene::wait(int frames, Step next) {
+  m_holdStart = m_frame;
+  m_holdUntil = m_frame + frames;
+  m_resumeFrame = m_frame + frames;
+  m_step = next;
+  return Flow::Yield;
+}
+
+bool GameOverScene::holdsAtStart() const {
+  return m_holdStart < m_frame && m_frame <= m_holdUntil;
+}
+
+bool GameOverScene::holdsAtEnd() const {
+  return m_holdStart <= m_frame && m_frame < m_holdUntil;
+}
+
+void GameOverScene::unpack() {
   m_host.setMusicVolume(FULL_VOLUME);
   m_host.playMusic();
   m_screen.unpack(m_picture, 0, 0);
   m_picture = Picture{};
+}
+
+void GameOverScene::open() {
   m_palette = graveyardPalette();
   m_rainbow = effects::rainbowTable(RAINBOW_ENTRIES, "(8,-1,15)(16,1,15)", "",
                                     "(8,1,15)(16,-1,15)");
@@ -173,7 +214,6 @@ void GameOverScene::open() {
   m_hand = effects::AmalAnim(HAND_FRAMES, 0);
   m_animating = true;
   m_border = BLACK;
-  m_shown = true;
 }
 
 GameOverScene::Flow GameOverScene::pan() {
@@ -228,14 +268,6 @@ void GameOverScene::finish() {
   m_bobs.offAll();
   m_shown = false;
   m_step = Step::Finished;
-}
-
-void GameOverScene::redraw() {
-  if (!m_shown) {
-    return;
-  }
-  m_display = m_screen;
-  m_bobs.draw(m_display, m_images);
 }
 
 } // namespace openfranko::src::engine::street

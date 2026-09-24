@@ -128,8 +128,7 @@ BossStage::BossStage(StreetHost &host, GameSession &session,
                      effects::GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_display(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_screenDisplay{DISPLAY_X, DISPLAY_TOP, 0},
+      m_buffer(m_screen), m_screenDisplay{DISPLAY_X, DISPLAY_TOP, 0},
       m_palette(levelPalette(options.mono)), m_panelPalette(panelPalette()) {}
 
 void BossStage::advance(const StreetInput &input) {
@@ -140,15 +139,23 @@ void BossStage::advance(const StreetInput &input) {
   if (input.key != SystemKey::None) {
     m_pendingKey = input.key;
   }
+  m_buffer.vbl();
   m_machine.setJoystick(input.joystick);
   m_machine.tick();
+  if (m_buffer.isAutobacking()) {
+    m_buffer.autobackStep(m_bobs, m_images);
+  } else {
+    m_buffer.test(m_bobs, m_images);
+  }
   runBasic(input);
-  redraw();
+  if (!m_buffer.isAutobacking()) {
+    m_buffer.test(m_bobs, m_images);
+  }
 }
 
 void BossStage::compose(std::vector<uint32_t> &frame) const {
-  composeFrame(frame, &m_display, m_palette, m_screenDisplay, m_screenOffsetX,
-               m_panel.get(), m_panelPalette);
+  composeFrame(frame, &m_buffer.shown(), m_palette, m_screenDisplay,
+               m_screenOffsetX, m_panel.get(), m_panelPalette);
 }
 
 BossStage::Outcome BossStage::outcome() const { return m_outcome; }
@@ -157,7 +164,7 @@ const BobLayer &BossStage::bobs() const { return m_bobs; }
 
 const IndexedSurface &BossStage::screen() const { return m_screen; }
 
-const IndexedSurface &BossStage::display() const { return m_display; }
+const IndexedSurface &BossStage::display() const { return m_buffer.shown(); }
 
 const StatusPanel *BossStage::panel() const { return m_panel.get(); }
 
@@ -225,6 +232,23 @@ StatusPanel::Stats BossStage::stats() const {
 
 void BossStage::stall() { m_resumeFrame = m_frame + AUTOBACK_VBLS; }
 
+void BossStage::autoback(DoubleBuffer::Op op) {
+  op(m_screen);
+  m_buffer.autoback(std::move(op));
+  stall();
+}
+
+bool BossStage::pasteStalled(int x, int y, int image) {
+  if (!BobLayer::paste(m_screen, m_images, x, y, image)) {
+    return false;
+  }
+  m_buffer.autoback([this, x, y, image](IndexedSurface &surface) {
+    BobLayer::paste(surface, m_images, x, y, image);
+  });
+  stall();
+  return true;
+}
+
 BossStage::Flow BossStage::waitFrames(int frames, Step next) {
   m_step = next;
   if (frames <= 0) {
@@ -249,6 +273,8 @@ BossStage::Flow BossStage::init() {
     throw std::logic_error("BossStage needs the screen the street left");
   }
   m_screen = m_session.streetExit->screen;
+  m_buffer = m_session.streetExit->buffer ? *m_session.streetExit->buffer
+                                          : DoubleBuffer(m_screen);
   m_block.emplace(m_session.streetExit->block);
   m_playerX = m_session.streetExit->playerX;
   m_energyShown = m_session.streetExit->energyShown;
@@ -290,6 +316,10 @@ void BossStage::bossLoaded() {
   m_panel->score(stats());
   m_bobs.set(PLAYER, m_playerX, (global(RB) / 4) * 4, IDLE_IMAGE + m_facing);
   m_block->put(m_screen);
+  m_block->put(m_buffer.logic());
+  m_buffer.swap();
+  m_block->put(m_buffer.logic());
+  m_buffer.swap();
   m_block.reset();
 }
 
@@ -376,11 +406,12 @@ BossStage::Flow BossStage::approachTop(const StreetInput &input) {
   reg(PLAYER_WALK_CHANNEL, 1) = word(bias);
   m_scrollPhase = m_scrollPhase + 1 > 1 ? 0 : m_scrollPhase + 1;
   if (m_scrollPhase == 0) {
-    m_screen.unpack(m_columns.at(static_cast<std::size_t>(m_columnsWalked)),
-                    stage() == 2 ? 0 : 304, 0);
+    autoback([column = m_columns.at(static_cast<std::size_t>(m_columnsWalked)),
+              x = stage() == 2 ? 0 : 304](IndexedSurface &surface) {
+      surface.unpack(column, x, 0);
+    });
     ++m_columnsWalked;
     m_step = Step::ApproachUnpacked;
-    stall();
     return Flow::Yield;
   }
   return approachScroll();
@@ -388,9 +419,8 @@ BossStage::Flow BossStage::approachTop(const StreetInput &input) {
 
 BossStage::Flow BossStage::approachScroll() {
   global(RX) = 1;
-  scrollStep();
   m_step = Step::ApproachScrolled;
-  stall();
+  scrollStep();
   return Flow::Yield;
 }
 
@@ -448,12 +478,8 @@ void BossStage::beginTalk() {
 BossStage::Flow BossStage::beatChild() {
   m_bobs.setImage(BOSS, CHILD_STANDS);
   m_step = Step::ChildPasted;
-  if (BobLayer::paste(m_screen, m_images, CHILD_BODY_X, CHILD_BODY_Y,
-                      CHILD_BODY)) {
-    stall();
-    return Flow::Yield;
-  }
-  return Flow::Continue;
+  return pasteStalled(CHILD_BODY_X, CHILD_BODY_Y, CHILD_BODY) ? Flow::Yield
+                                                              : Flow::Continue;
 }
 
 BossStage::Flow BossStage::childRaised() {
@@ -635,10 +661,8 @@ BossStage::Flow BossStage::fightBlood() {
     const int down = m_host.random(4);
     const int up = m_host.random(4);
     const int image = m_host.random(7) + 2;
-    if (BobLayer::paste(m_screen, m_images, xBob(i) + right - left,
-                        yBob(i) + down - up, image)) {
+    if (pasteStalled(xBob(i) + right - left, yBob(i) + down - up, image)) {
       m_step = Step::FightBloodStamped;
-      stall();
       return Flow::Yield;
     }
   }
@@ -740,12 +764,8 @@ BossStage::Flow BossStage::railingWaitFire() {
 
 BossStage::Flow BossStage::pasteRailing(int image, Step next) {
   m_step = next;
-  if (BobLayer::paste(m_screen, m_images, RAILING_TILE_X, RAILING_TILE_Y,
-                      image)) {
-    stall();
-    return Flow::Yield;
-  }
-  return Flow::Continue;
+  return pasteStalled(RAILING_TILE_X, RAILING_TILE_Y, image) ? Flow::Yield
+                                                             : Flow::Continue;
 }
 
 BossStage::Flow BossStage::liftStart() {
@@ -797,9 +817,8 @@ BossStage::Flow BossStage::finishStamp() {
     const int x = xBob(PLAYER_BUBBLE) - 32 - 40 * amosBool(global(RR) == 0) -
                   left + right;
     const int y = yBob(PLAYER) - 4 - up + down;
-    if (BobLayer::paste(m_screen, m_images, x, y, word(90 - global(RR)))) {
+    if (pasteStalled(x, y, word(90 - global(RR)))) {
       m_step = Step::FinishStamped;
-      stall();
       return Flow::Yield;
     }
   }
@@ -826,22 +845,26 @@ BossStage::Flow BossStage::finishCleanUp() {
     gameOver();
     return Flow::Continue;
   }
+  m_machine.destroyAll();
+  m_bobs.offAll();
   if (stage() == 3) {
+    m_buffer.autoback([](IndexedSurface &surface) { surface.fill(0); });
+    m_session.bossExit.emplace(BossExit{m_buffer, m_palette, m_screenDisplay.y,
+                                        m_screenOffsetX, m_panel->surface()});
     m_outcome = Outcome::BossDefeated;
     m_step = Step::Finished;
     return Flow::Yield;
   }
-  m_machine.destroyAll();
-  m_bobs.offAll();
-  m_screen.fill(0);
   m_step = Step::Cleared;
-  stall();
+  autoback([](IndexedSurface &surface) { surface.fill(0); });
   return Flow::Yield;
 }
 
 void BossStage::scrollStep() {
   const int dx = stage() == 2 ? 8 : -8;
-  m_screen.copy(m_screen, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, dx, 0);
+  autoback([dx](IndexedSurface &surface) {
+    surface.copy(surface, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, dx, 0);
+  });
 }
 
 void BossStage::gameOver() {
@@ -1035,11 +1058,6 @@ void BossStage::runBasic(const StreetInput &input) {
       break;
     }
   }
-}
-
-void BossStage::redraw() {
-  m_display = m_screen;
-  m_bobs.draw(m_display, m_images);
 }
 
 } // namespace openfranko::src::engine::street

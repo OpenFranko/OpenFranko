@@ -16,6 +16,10 @@ constexpr int OBJECTS = 0x36;
 constexpr int GRAVEYARD = 0x3BB;
 constexpr int TUNE = 0x262;
 constexpr int OPEN_FRAME = 1 + GameOverScene::FILES * LoadingMock::FILE_FRAMES;
+constexpr int OPENED_FRAME = OPEN_FRAME + 1 + 3;
+constexpr uint32_t GREY = 0xFF555555u;
+constexpr uint32_t BLACK = 0xFF000000u;
+constexpr uint32_t RED = 0xFFFF0000u;
 constexpr int PAN_FRAMES = 545;
 constexpr int16_t JOY_FIRE = 16;
 constexpr uint8_t SILHOUETTE = 1;
@@ -68,6 +72,8 @@ public:
   std::vector<Picture> loadScenery(int) override { return {}; }
 
   LevelScript loadLevelScript(int) override { return LevelScript{}; }
+
+  EndingCredits loadEndingCredits() override { return {}; }
 
   Picture loadPanelPicture(int) override { return box(304, 48, 0, 0, 7); }
 
@@ -147,13 +153,33 @@ SCENARIO("Game over loads its three files while the screens are closed") {
     Graveyard graveyard;
     graveyard.run(OPEN_FRAME);
 
-    THEN("The tune plays at Mvolume 63 and the graveyard opens at offset 0") {
+    THEN("Music 1 starts, then Unpack 9 To 0 waits a VBL before linking the "
+         "screen") {
       REQUIRE(graveyard.host.musicStarts == 1);
       REQUIRE(graveyard.host.volumes == std::vector<int>{63});
+      REQUIRE_FALSE(graveyard.scene.isShown());
+      graveyard.run(1);
       REQUIRE(graveyard.scene.isShown());
+      REQUIRE(graveyard.pixel(300, 100) == GREY);
+    }
+
+    THEN("The screen shows at the next copper rebuild, black in its own "
+         "palette, through Double Buffer's three VBLs") {
+      graveyard.run(2);
+      REQUIRE(graveyard.pixel(300, 100) == BLACK);
+      REQUIRE(graveyard.pixel(0, 0) == BLACK);
+      graveyard.run(1);
+      REQUIRE(graveyard.pixel(300, 100) == BLACK);
+      REQUIRE_FALSE(graveyard.scene.isPanning());
+      graveyard.run(1);
       REQUIRE(graveyard.scene.isPanning());
       REQUIRE(graveyard.scene.offset() == 0);
     }
+  }
+
+  GIVEN("The frame the pan begins") {
+    Graveyard graveyard;
+    graveyard.run(OPENED_FRAME);
 
     THEN("Colour 2 is red, colour 9 dark grey and the rest black") {
       const auto &palette = graveyard.scene.palette();
@@ -178,9 +204,15 @@ SCENARIO("Game over loads its three files while the screens are closed") {
       REQUIRE(graveyard.scene.bobs().x(1) == 104);
       REQUIRE(graveyard.scene.bobs().y(1) == 80);
       REQUIRE(graveyard.scene.bobs().image(1) == 6);
-      REQUIRE(graveyard.pixel(104, 80) == 0xFFFF0000u);
       REQUIRE(graveyard.scene.bobs().x(2) == 820);
       REQUIRE(graveyard.scene.bobs().y(2) == 209);
+    }
+
+    THEN("BACK[0]'s test draws the bobs into the hidden buffer, shown a VBL "
+         "later") {
+      REQUIRE(graveyard.pixel(104, 80) != RED);
+      graveyard.run(1);
+      REQUIRE(graveyard.pixel(104, 80) == RED);
     }
   }
 }
@@ -188,7 +220,28 @@ SCENARIO("Game over loads its three files while the screens are closed") {
 SCENARIO("The picture pans 5 px every 4 frames under the pinned title") {
   GIVEN("The open graveyard") {
     Graveyard graveyard;
-    graveyard.run(OPEN_FRAME);
+    graveyard.run(OPENED_FRAME);
+
+    WHEN("It pans for forty frames") {
+      std::vector<int> offsets;
+      for (int frame = 0; frame < 40; ++frame) {
+        graveyard.run(1);
+        offsets.push_back(graveyard.scene.offset());
+      }
+      int left = -1;
+      for (int x = 0; x < GameOverScene::WIDTH; ++x) {
+        if (graveyard.pixel(x, 80) == RED) {
+          left = x;
+          break;
+        }
+      }
+
+      THEN("The title trails its pin by the last step: the offset reaches "
+           "the copper a VBL after Screen Offset, the bob two VBLs after Bob") {
+        REQUIRE(offsets[38] - offsets[37] > 0);
+        REQUIRE(left == 104 - (offsets[38] - offsets[37]));
+      }
+    }
 
     WHEN("Three hundred frames have passed") {
       graveyard.run(300);
@@ -215,11 +268,13 @@ SCENARIO("The picture pans 5 px every 4 frames under the pinned title") {
       }
     }
 
-    WHEN("The pan reaches 680") {
+    WHEN("The pan reaches 680 and the copper has taken it") {
       graveyard.run(PAN_FRAMES - 1);
+      const int offset = graveyard.scene.offset();
+      graveyard.run(1);
 
       THEN("The last 40 columns show the start of the next row") {
-        REQUIRE(graveyard.scene.offset() == GameOverScene::PAN_END);
+        REQUIRE(offset == GameOverScene::PAN_END);
         REQUIRE(graveyard.pixel(367, 0) == 0xFF000000u);
         REQUIRE(graveyard.pixel(367, 1) != 0xFF000000u);
         REQUIRE(graveyard.pixel(327, 0) != 0xFF000000u);
@@ -231,7 +286,7 @@ SCENARIO("The picture pans 5 px every 4 frames under the pinned title") {
 SCENARIO("KLIKER, Fade 5 and SCICH close the scene") {
   GIVEN("The pan has ended") {
     Graveyard graveyard;
-    graveyard.run(OPEN_FRAME + PAN_FRAMES - 1);
+    graveyard.run(OPENED_FRAME + PAN_FRAMES - 1);
     REQUIRE(graveyard.scene.isPanning());
 
     WHEN("Nobody touches the joystick") {

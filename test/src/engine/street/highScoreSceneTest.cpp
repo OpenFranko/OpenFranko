@@ -84,6 +84,8 @@ public:
 
   LevelScript loadLevelScript(int) override { return LevelScript{}; }
 
+  EndingCredits loadEndingCredits() override { return {}; }
+
   Picture loadPanelPicture(int) override { return box(304, 48, 7); }
 
   void loadMusic(int resource) override { music.push_back(resource); }

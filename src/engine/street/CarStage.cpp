@@ -120,11 +120,10 @@ std::string passwordFor(int stage) {
 CarStage::CarStage(StreetHost &host, GameSession &session,
                    effects::GameOptions &options)
     : m_host(host), m_session(session), m_machine(session.registers),
-      m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_display(SCREEN_WIDTH, SCREEN_HEIGHT), m_road(0, 0), m_strip(0, 0),
-      m_panel(std::make_unique<StatusPanel>(
-          host.loadPanelPicture(StreetStage::LOADING_STRIP),
-          host.loadPanelPicture(StreetStage::PANEL_ARTWORK))),
+      m_screen(SCREEN_WIDTH, SCREEN_HEIGHT), m_buffer(m_screen), m_road(0, 0),
+      m_strip(0, 0), m_panel(std::make_unique<StatusPanel>(
+                         host.loadPanelPicture(StreetStage::LOADING_STRIP),
+                         host.loadPanelPicture(StreetStage::PANEL_ARTWORK))),
       m_screenDisplay{DISPLAY_X, DISPLAY_TOP, 0},
       m_palette(levelPalette(options.mono)), m_panelPalette(panelPalette()),
       m_screenOffsetX(stage() == 2 ? 16 : 0) {
@@ -139,14 +138,22 @@ void CarStage::advance(const StreetInput &input) {
   if (input.key != SystemKey::None) {
     m_pendingKey = input.key;
   }
+  m_buffer.vbl();
   m_machine.tick();
+  if (m_buffer.isAutobacking()) {
+    m_buffer.autobackStep(m_bobs, m_images);
+  } else if (!holdsAtStart()) {
+    m_buffer.test(m_bobs, m_images);
+  }
   runBasic(input);
-  redraw();
+  if (!m_buffer.isAutobacking() && !holdsAtEnd()) {
+    m_buffer.test(m_bobs, m_images);
+  }
 }
 
 void CarStage::compose(std::vector<uint32_t> &frame) const {
-  composeFrame(frame, &m_display, m_palette, m_screenDisplay, m_screenOffsetX,
-               m_panel.get(), m_panelPalette);
+  composeFrame(frame, &m_buffer.shown(), m_palette, m_screenDisplay,
+               m_screenOffsetX, m_panel.get(), m_panelPalette);
 }
 
 CarStage::Outcome CarStage::outcome() const { return m_outcome; }
@@ -155,7 +162,7 @@ const BobLayer &CarStage::bobs() const { return m_bobs; }
 
 const IndexedSurface &CarStage::screen() const { return m_screen; }
 
-const IndexedSurface &CarStage::display() const { return m_display; }
+const IndexedSurface &CarStage::display() const { return m_buffer.shown(); }
 
 const StatusPanel *CarStage::panel() const { return m_panel.get(); }
 
@@ -196,6 +203,26 @@ CarStage::Flow CarStage::wait(int frames, Step next) {
   return Flow::Yield;
 }
 
+CarStage::Flow CarStage::hold(int frames, Step next) {
+  m_holdStart = m_frame;
+  m_holdUntil = m_frame + frames;
+  return wait(frames, next);
+}
+
+CarStage::Flow CarStage::autoback(DoubleBuffer::Op op, Step next) {
+  op(m_screen);
+  m_buffer.autoback(std::move(op));
+  return wait(AUTOBACK_VBLS, next);
+}
+
+bool CarStage::holdsAtStart() const {
+  return m_holdStart < m_frame && m_frame <= m_holdUntil;
+}
+
+bool CarStage::holdsAtEnd() const {
+  return m_holdStart <= m_frame && m_frame < m_holdUntil;
+}
+
 void CarStage::play(int voices, int sample) {
   m_host.playSample(CAR_SAMPLE_BANK, sample, voices);
 }
@@ -222,13 +249,20 @@ void CarStage::gainEnergy(int amount) {
   }
 }
 
-void CarStage::clearScreen() { m_screen.fill(0); }
+void CarStage::clearScreen() {
+  autoback([](IndexedSurface &surface) { surface.fill(0); },
+           Step::PasswordText);
+}
 
 void CarStage::password() {
   m_screenOffsetX = 0;
-  drawSystemText(m_screen, PASSWORD_X, PASSWORD_BASELINE, passwordFor(stage()),
-                 PASSWORD_INK, PASSWORD_PAPER);
   m_waited = 0;
+  autoback(
+      [text = passwordFor(stage())](IndexedSurface &surface) {
+        drawSystemText(surface, PASSWORD_X, PASSWORD_BASELINE, text,
+                       PASSWORD_INK, PASSWORD_PAPER);
+      },
+      Step::Kliker);
 }
 
 void CarStage::era() {
@@ -263,6 +297,7 @@ void CarStage::openStrip() {
 
 void CarStage::startDrive() {
   m_screen.copy(m_strip, 0, 0, VISIBLE_WIDTH, SCREEN_HEIGHT, 0, 0);
+  m_buffer.logic().copy(m_strip, 0, 0, VISIBLE_WIDTH, SCREEN_HEIGHT, 0, 0);
   for (int channel = 1; channel <= PEDESTRIANS; ++channel) {
     m_machine.bind(channel, &m_bobs.object(FIRST_PEDESTRIAN + channel - 1));
   }
@@ -286,12 +321,13 @@ void CarStage::startDrive() {
   m_fenceBand = left.fenceBand;
   m_clock = left.clock;
   m_engineBeat = left.engineBeat;
-  m_manualBobs = true;
+  m_buffer.setUpdates(false);
   m_bobs.set(CAR, m_x, m_y, 1);
   for (int bob = FIRST_PEDESTRIAN; bob < FIRST_PEDESTRIAN + PEDESTRIANS;
        ++bob) {
     m_bobs.set(bob, PARKED_X, 0, PARKED_IMAGE);
   }
+  m_buffer.swap();
 }
 
 CarStage::Flow CarStage::driveTop(const StreetInput &input) {
@@ -400,13 +436,16 @@ CarStage::Flow CarStage::driveScenery() {
   addWrap(m_pavementBand, m_speed * 4, 0, BAND_END);
   addWrap(m_roadBand, m_speed * 3, 0, BAND_END);
   addWrap(m_fenceBand, m_speed, 0, BAND_END);
-  m_screen.copy(m_strip, m_trackBand, 93, VISIBLE_WIDTH + m_trackBand, 115, 0,
-                93);
-  m_screen.copy(m_strip, m_pavementBand, 202, VISIBLE_WIDTH + m_pavementBand,
-                222, 0, 202);
-  m_screen.copy(m_strip, m_fenceBand, 0, VISIBLE_WIDTH + m_fenceBand, 94, 0, 0);
-  m_screen.copy(m_strip, m_roadBand, 95, VISIBLE_WIDTH + m_roadBand, 201, 0,
-                95);
+  for (IndexedSurface *target : {&m_screen, &m_buffer.logic()}) {
+    target->copy(m_strip, m_trackBand, 93, VISIBLE_WIDTH + m_trackBand, 115, 0,
+                 93);
+    target->copy(m_strip, m_pavementBand, 202, VISIBLE_WIDTH + m_pavementBand,
+                 222, 0, 202);
+    target->copy(m_strip, m_fenceBand, 0, VISIBLE_WIDTH + m_fenceBand, 94, 0,
+                 0);
+    target->copy(m_strip, m_roadBand, 95, VISIBLE_WIDTH + m_roadBand, 201, 0,
+                 95);
+  }
   if (m_x != START_X || m_speed != 0) {
     addWrap(m_clock, 1, 1, CLOCK_CYCLE);
   }
@@ -423,11 +462,13 @@ CarStage::Flow CarStage::driveScenery() {
   addWrap(m_bush2, -m_speed * 8, BUSH_LEFT, BUSH_RIGHT);
   m_bobs.set(BUSH_A, m_bush1, BUSH_Y, BUSH_A_IMAGE);
   m_bobs.set(BUSH_B, m_bush2, BUSH_Y, BUSH_B_IMAGE);
-  bobDraw();
+  m_buffer.drawBobs(m_bobs, m_images);
+  m_buffer.swap();
   return wait(1, Step::DriveBottom);
 }
 
 CarStage::Flow CarStage::driveBottom() {
+  m_buffer.clearBobs();
   runOver();
   if (m_x != START_X || m_speed != 0) {
     addWrap(m_engineBeat, 1, 0, 1);
@@ -455,8 +496,8 @@ CarStage::Flow CarStage::driveBottom() {
       global(RG) < 0 || m_escape) {
     m_session.lastDrive = {m_ignition, m_roadBand, m_fenceBand, m_clock,
                            m_engineBeat};
-    m_manualBobs = false;
-    return wait(SCREEN_CLOSE_VBLS, Step::StripClosed);
+    m_buffer.setUpdates(true);
+    return hold(SCREEN_CLOSE_VBLS, Step::StripClosed);
   }
   sys();
   m_step = Step::DriveTop;
@@ -493,10 +534,11 @@ CarStage::Flow CarStage::leave() {
     gameOver();
     return Flow::Yield;
   }
+  m_buffer.test(m_bobs, m_images);
   m_machine.destroyAll();
   m_bobs.offAll();
-  clearScreen();
-  return wait(AUTOBACK_VBLS, Step::Cleared);
+  return autoback([](IndexedSurface &surface) { surface.fill(0); },
+                  Step::Cleared);
 }
 
 void CarStage::gameOver() {
@@ -522,22 +564,17 @@ void CarStage::sys() {
   }
 }
 
-void CarStage::bobDraw() {
-  m_display = m_screen;
-  m_bobs.draw(m_display, m_images);
-}
-
 void CarStage::runBasic(const StreetInput &input) {
   Flow flow = Flow::Continue;
   while (flow == Flow::Continue && m_frame >= m_resumeFrame) {
     switch (m_step) {
     case Step::Password:
       clearScreen();
-      flow = wait(AUTOBACK_VBLS, Step::PasswordText);
+      flow = Flow::Yield;
       break;
     case Step::PasswordText:
       password();
-      flow = wait(AUTOBACK_VBLS, Step::Kliker);
+      flow = Flow::Yield;
       break;
     case Step::Kliker:
       ++m_waited;
@@ -560,15 +597,15 @@ void CarStage::runBasic(const StreetInput &input) {
     case Step::Loaded:
       m_panel->score(stats());
       m_road = IndexedSurface(ROAD_WIDTH, SCREEN_HEIGHT);
-      flow = wait(SCREEN_OPEN_VBLS, Step::RoadOpened);
+      flow = hold(SCREEN_OPEN_VBLS, Step::RoadOpened);
       break;
     case Step::RoadOpened:
       openRoad();
-      flow = wait(SCREEN_OPEN_VBLS, Step::StripOpened);
+      flow = hold(SCREEN_OPEN_VBLS, Step::StripOpened);
       break;
     case Step::StripOpened:
       openStrip();
-      flow = wait(SCREEN_CLOSE_VBLS, Step::RoadClosed);
+      flow = hold(SCREEN_CLOSE_VBLS, Step::RoadClosed);
       break;
     case Step::RoadClosed:
       startDrive();
@@ -602,14 +639,6 @@ void CarStage::runBasic(const StreetInput &input) {
       break;
     }
   }
-}
-
-void CarStage::redraw() {
-  if (m_manualBobs) {
-    return;
-  }
-  m_display = m_screen;
-  m_bobs.draw(m_display, m_images);
 }
 
 } // namespace openfranko::src::engine::street

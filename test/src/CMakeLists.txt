@@ -181,3 +181,17 @@ add_executable(${CAR_STAGE_TEST_TARGET}
 )
 target_link_libraries(${CAR_STAGE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${CAR_STAGE_TEST_TARGET} COMMAND ${CAR_STAGE_TEST_TARGET})
+
+set(ENDING_SCENE_TEST_TARGET endingSceneTest)
+add_executable(${ENDING_SCENE_TEST_TARGET}
+    engine/street/endingSceneTest.cpp
+)
+target_link_libraries(${ENDING_SCENE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${ENDING_SCENE_TEST_TARGET} COMMAND ${ENDING_SCENE_TEST_TARGET})
+
+set(DOUBLE_BUFFER_TEST_TARGET doubleBufferTest)
+add_executable(${DOUBLE_BUFFER_TEST_TARGET}
+    engine/street/doubleBufferTest.cpp
+)
+target_link_libraries(${DOUBLE_BUFFER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${DOUBLE_BUFFER_TEST_TARGET} COMMAND ${DOUBLE_BUFFER_TEST_TARGET})

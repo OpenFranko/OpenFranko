@@ -15,6 +15,7 @@ namespace openfranko::src::engine::states::level1 {
 namespace {
 
 constexpr int PANEL_RESOURCE = 0x384;
+constexpr auto CREDITS_FILE = "credits.json";
 
 std::string hexName(int resource) {
   char name[8];
@@ -96,6 +97,17 @@ street::LevelScript EngineStreetHost::loadLevelScript(int resource) {
   std::stringstream text;
   text << file.rdbuf();
   return street::LevelScript::fromJson(text.str());
+}
+
+street::EndingCredits EngineStreetHost::loadEndingCredits() {
+  const std::string path = m_directory + "/" + CREDITS_FILE;
+  std::ifstream file(path);
+  if (!file) {
+    throw std::runtime_error("Failed to open ending credits: " + path);
+  }
+  std::stringstream text;
+  text << file.rdbuf();
+  return street::EndingCredits::fromJson(text.str());
 }
 
 street::Picture EngineStreetHost::loadPanelPicture(int part) {

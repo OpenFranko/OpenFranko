@@ -2,6 +2,8 @@
 #define ENGINE_STREET_GAMESESSION_H_
 
 #include "../amal/Machine.h"
+#include "../effects/AmigaPalette.h"
+#include "DoubleBuffer.h"
 #include "HighScoreTable.h"
 #include "IndexedSurface.h"
 
@@ -18,6 +20,15 @@ struct StreetExit {
   int playerX = 0;
   int energyShown = 0;
   int killsShown = 0;
+  std::optional<DoubleBuffer> buffer;
+};
+
+struct BossExit {
+  DoubleBuffer buffer;
+  effects::AmigaPalette palette;
+  int displayY = 0;
+  int offsetX = 0;
+  IndexedSurface panel;
 };
 
 struct DriveCarryOver {
@@ -39,6 +50,7 @@ struct GameSession {
   DriveCarryOver lastDrive;
   HighScoreTable highScores;
   std::optional<StreetExit> streetExit;
+  std::optional<BossExit> bossExit;
 };
 
 } // namespace street

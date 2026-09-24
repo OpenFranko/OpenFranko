@@ -104,3 +104,10 @@ add_executable(${CODE_CARDS_TEST_TARGET}
 )
 target_link_libraries(${CODE_CARDS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain codeCards)
 add_test(NAME ${CODE_CARDS_TEST_TARGET} COMMAND ${CODE_CARDS_TEST_TARGET})
+
+set(ENDING_CREDITS_TEST_TARGET endingCreditsTest)
+add_executable(${ENDING_CREDITS_TEST_TARGET}
+    converter/endingCreditsTest.cpp
+)
+target_link_libraries(${ENDING_CREDITS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain endingCredits helpers)
+add_test(NAME ${ENDING_CREDITS_TEST_TARGET} COMMAND ${ENDING_CREDITS_TEST_TARGET})

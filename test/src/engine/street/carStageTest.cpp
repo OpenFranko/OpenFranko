@@ -88,6 +88,8 @@ public:
 
   LevelScript loadLevelScript(int) override { return LevelScript{}; }
 
+  EndingCredits loadEndingCredits() override { return {}; }
+
   Picture loadPanelPicture(int part) override {
     return box(304, part == 0 ? 48 : 40, 0, 0, 1);
   }
@@ -337,6 +339,28 @@ SCENARIO("Fire at a standstill starts the engine, then right accelerates") {
           drive.run(40, JOY_RIGHT);
           REQUIRE(stage.speed() == 12);
           REQUIRE(stage.carX() == 120);
+        }
+
+        THEN("Each pass reaches the screen one VBL after its Screen Swap") {
+          const int before = stage.bobs().x(CarStage::CAR);
+          int frames = 0;
+          while (stage.bobs().x(CarStage::CAR) == before && frames < 20) {
+            drive.run(1, JOY_RIGHT);
+            ++frames;
+          }
+          const int moved = stage.bobs().x(CarStage::CAR);
+          const auto carLeft = [&stage] {
+            for (int x = 0; x < CarStage::SCREEN_WIDTH; ++x) {
+              if (stage.display().pixel(x, 150) == CAR_INK) {
+                return x;
+              }
+            }
+            return -1;
+          };
+          REQUIRE(moved != before);
+          REQUIRE(carLeft() == before - 72);
+          drive.run(1, JOY_RIGHT);
+          REQUIRE(carLeft() == moved - 72);
         }
 
         THEN("The engine note is replayed every second pass, pitched by "

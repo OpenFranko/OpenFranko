@@ -269,3 +269,20 @@ SCENARIO("MenuSequence asks for the attract screens when left alone") {
     }
   }
 }
+
+SCENARIO(
+    "The double-buffered menu screen shows each frame's bobs a VBL later") {
+  GIVEN("The first icons flying in") {
+    GameOptions options;
+    MenuSequence menu(options, BACKDROP_PALETTE);
+    run(menu, 5);
+    const auto before = menu.bobs();
+    run(menu, 1);
+
+    THEN("The screen shows where they were a frame ago") {
+      REQUIRE(menu.bobs()[3].x != before[3].x);
+      REQUIRE(menu.shownBobs()[3].x == before[3].x);
+      REQUIRE(menu.shownBobs()[6].x == before[6].x);
+    }
+  }
+}

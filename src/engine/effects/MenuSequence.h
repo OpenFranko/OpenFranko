@@ -44,6 +44,7 @@ public:
   void resumeAfterAttract();
 
   const std::array<Bob, BOBS> &bobs() const;
+  const std::array<Bob, BOBS> &shownBobs() const;
   const AmigaPalette &palette() const;
   bool isAttractDue() const;
   bool isFinished() const;
@@ -66,6 +67,7 @@ private:
   AmigaPalette m_palette;
   PaletteFader m_fader;
   std::array<Bob, BOBS> m_bobs{};
+  std::array<Bob, BOBS> m_shownBobs{};
   std::array<AmalMotion, BOBS> m_motions{};
   std::array<std::optional<CreditScroll>, 3> m_credits{};
   Phase m_phase = Phase::Opening;

@@ -4,6 +4,7 @@
 #include "../../lib/converter/audioExtractor/audioExtractor.h"
 #include "../../lib/converter/bitmapExtractor/bitmapExtractor.h"
 #include "../../lib/converter/codeCards/codeCards.h"
+#include "../../lib/converter/endingCredits/endingCredits.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/gameData/gameData.h"
 #include "../../lib/converter/levelScript/levelScript.h"
@@ -266,6 +267,23 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
 int processFile(const std::string &inputPath, const std::string &outDir) {
   try {
     return extractFile(inputPath, outDir);
+  } catch (const std::exception &e) {
+    std::cerr << inputPath << ": " << e.what() << std::endl;
+    return 1;
+  }
+}
+
+int processExecutable(const std::string &inputPath, const std::string &outDir) {
+  try {
+    const auto pages = lib::converter::endingCredits::extract(
+        lib::filesystem::readFile::readFile(inputPath));
+    const std::string outputPath =
+        (std::filesystem::path(outDir) / "credits.json").string();
+    lib::filesystem::writeFile::writeFile(
+        outputPath, lib::converter::endingCredits::toJson(pages));
+    std::cerr << inputPath << ": ending credits, " << pages.size()
+              << " pages -> " << outputPath << std::endl;
+    return 0;
   } catch (const std::exception &e) {
     std::cerr << inputPath << ": " << e.what() << std::endl;
     return 1;

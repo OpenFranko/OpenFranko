@@ -115,6 +115,8 @@ public:
 
   LevelScript loadLevelScript(int) override { return script; }
 
+  EndingCredits loadEndingCredits() override { return {}; }
+
   Picture loadPanelPicture(int part) override {
     if (part != 0) {
       return box(304, 40, 0, 0, 1);
@@ -240,6 +242,13 @@ SCENARIO("A new game opens the street as states 09 and 10 do") {
       REQUIRE(stage.bobs().y(1) == 172);
       REQUIRE(stage.bobs().image(1) == 17);
       REQUIRE(stage.screen().pixel(0, 0) == OPENING_COLOR);
+    }
+
+    THEN("The double buffer shows the opening at once and the player a VBL "
+         "later") {
+      REQUIRE(stage.display().pixel(0, 0) == OPENING_COLOR);
+      REQUIRE(stage.display().pixel(80, 150) == OPENING_COLOR);
+      street.run(1);
       REQUIRE(stage.display().pixel(80, 150) == 1);
     }
 

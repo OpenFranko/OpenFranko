@@ -1,4 +1,5 @@
 #include "../../../../src/engine/street/BossStage.h"
+#include "../../../../src/engine/street/StageFrame.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <cstdlib>
@@ -125,6 +126,8 @@ public:
 
   LevelScript loadLevelScript(int) override { return LevelScript{}; }
 
+  EndingCredits loadEndingCredits() override { return {}; }
+
   Picture loadPanelPicture(int part) override {
     if (part != 0) {
       return box(304, 40, 0, 0, 1);
@@ -174,7 +177,8 @@ struct Duel {
     screen.fill(STREET_COLOR);
     const ScreenBlock block(screen, EXIT_X - 16, 172 - 77, 48, 78);
     screen.clear(STAMP_COLOR, EXIT_X - 16, 172 - 77, EXIT_X + 16, 172 + 2);
-    session.streetExit.emplace(StreetExit{screen, block, EXIT_X, 64, 0});
+    session.streetExit.emplace(
+        StreetExit{screen, block, EXIT_X, 64, 0, std::nullopt});
   }
 
   BossStage &start() {
@@ -517,6 +521,7 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
 
           THEN("The stage ends where the bonus drive begins") {
             REQUIRE(stage.outcome() == BossStage::Outcome::BossDefeated);
+            REQUIRE_FALSE(duel.session.bossExit.has_value());
           }
         }
       }
@@ -878,7 +883,8 @@ SCENARIO("On stage 3 KONBOSS sends the boss over the railing") {
                 REQUIRE(duel.global(RT) == 340);
               }
 
-              THEN("The walk-off ends the stage without _OFF or Cls") {
+              THEN("The walk-off ends the stage; CONGRA's _OFF runs in the "
+                   "same frame and its Cls goes to the hand-over") {
                 const int ended = duel.runUntil(
                     [&] {
                       return stage.outcome() != BossStage::Outcome::Playing;
@@ -889,7 +895,28 @@ SCENARIO("On stage 3 KONBOSS sends the boss over the railing") {
                 REQUIRE(stage.outcome() == BossStage::Outcome::BossDefeated);
                 REQUIRE(stage.bobs().x(1) == playerX + 340);
                 REQUIRE(stage.screen().pixel(184, 60) == 85);
-                REQUIRE(stage.bobs().isActive(1));
+                REQUIRE_FALSE(stage.bobs().isActive(1));
+                REQUIRE_FALSE(stage.machine().exists(1));
+              }
+
+              THEN("CONGRA gets the last frame as shown, bobs and panel "
+                   "included") {
+                duel.runUntil(
+                    [&] {
+                      return stage.outcome() != BossStage::Outcome::Playing;
+                    },
+                    2000);
+                REQUIRE(duel.session.bossExit.has_value());
+                BossExit exit = *duel.session.bossExit;
+                REQUIRE(exit.buffer.isAutobacking());
+                exit.buffer.vbl();
+                REQUIRE(exit.buffer.shown().pixels() !=
+                        stage.screen().pixels());
+                REQUIRE(exit.palette == levelPalette(false));
+                REQUIRE(exit.displayY == 47);
+                REQUIRE(exit.offsetX == 0);
+                REQUIRE(exit.panel.pixels() ==
+                        stage.panel()->surface().pixels());
               }
             }
           }

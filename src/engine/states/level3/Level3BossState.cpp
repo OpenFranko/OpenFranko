@@ -35,8 +35,9 @@ std::optional<EngineStateEnum> Level3BossState::update() {
     return EngineStateEnum::GameOver;
   case street::BossStage::Outcome::Quit:
     return EngineStateEnum::HighScore;
-  case street::BossStage::Outcome::Playing:
   case street::BossStage::Outcome::BossDefeated:
+    return EngineStateEnum::Ending;
+  case street::BossStage::Outcome::Playing:
     break;
   }
   return std::nullopt;

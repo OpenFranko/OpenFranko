@@ -5,6 +5,7 @@
 #include "../effects/AmigaPalette.h"
 #include "../effects/GameOptions.h"
 #include "Bobs.h"
+#include "DoubleBuffer.h"
 #include "GameSession.h"
 #include "IndexedSurface.h"
 #include "LoadingMock.h"
@@ -106,6 +107,8 @@ private:
   int stage() const;
   StatusPanel::Stats stats() const;
   void stall();
+  void autoback(DoubleBuffer::Op op);
+  bool pasteStalled(int x, int y, int image);
   Flow waitFrames(int frames, Step next);
   Flow endOfPass() const;
   void playRequest(int request);
@@ -144,7 +147,6 @@ private:
   void gameOver();
   void sys();
   void runBasic(const StreetInput &input);
-  void redraw();
 
   StreetHost &m_host;
   GameSession &m_session;
@@ -153,7 +155,7 @@ private:
   ImageBank m_images;
   BobLayer m_bobs;
   IndexedSurface m_screen;
-  IndexedSurface m_display;
+  DoubleBuffer m_buffer;
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
   effects::AmigaPalette m_palette;

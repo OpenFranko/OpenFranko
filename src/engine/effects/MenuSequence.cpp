@@ -76,9 +76,11 @@ MenuSequence::MenuSequence(GameOptions &options, AmigaPalette palette)
                      iconImage(icon, m_options), false};
   }
   placeHand();
+  m_shownBobs = m_bobs;
 }
 
 void MenuSequence::advance(const Joystick &joystick) {
+  m_shownBobs = m_bobs;
   runScript(joystick);
   if (m_attractDue) {
     return;
@@ -97,6 +99,11 @@ void MenuSequence::resumeAfterAttract() {
 const std::array<MenuSequence::Bob, MenuSequence::BOBS> &
 MenuSequence::bobs() const {
   return m_bobs;
+}
+
+const std::array<MenuSequence::Bob, MenuSequence::BOBS> &
+MenuSequence::shownBobs() const {
+  return m_shownBobs;
 }
 
 const AmigaPalette &MenuSequence::palette() const { return m_palette; }

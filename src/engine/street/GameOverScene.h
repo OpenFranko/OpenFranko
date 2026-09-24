@@ -5,11 +5,13 @@
 #include "../effects/AmigaPalette.h"
 #include "../effects/PaletteFader.h"
 #include "Bobs.h"
+#include "DoubleBuffer.h"
 #include "IndexedSurface.h"
 #include "LoadingMock.h"
 #include "StreetStage.h"
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace openfranko {
@@ -43,6 +45,8 @@ private:
     Close,
     Loading,
     Open,
+    Unpacked,
+    Opened,
     Pan,
     Click,
     MusicFade,
@@ -51,14 +55,17 @@ private:
   };
   enum class Flow { Continue, Yield };
 
+  Flow wait(int frames, Step next);
+  bool holdsAtStart() const;
+  bool holdsAtEnd() const;
   void close();
+  void unpack();
   void open();
   Flow pan();
   Flow click(int16_t joystick);
   Flow musicFade();
   Flow hold();
   void finish();
-  void redraw();
 
   StreetHost &m_host;
   LoadingMock m_loading;
@@ -66,7 +73,7 @@ private:
   BobLayer m_bobs;
   Picture m_picture;
   IndexedSurface m_screen;
-  IndexedSurface m_display;
+  std::optional<DoubleBuffer> m_buffer;
   effects::AmigaPalette m_palette;
   effects::AmigaPalette m_rainbow;
   effects::PaletteFader m_fader;
@@ -78,7 +85,13 @@ private:
   bool m_rainbowShown = false;
   bool m_animating = false;
   int m_offset = 0;
+  int m_shownOffset = 0;
   int m_count = 0;
+  int m_frame = 0;
+  int m_resumeFrame = 0;
+  int m_holdStart = -1;
+  int m_holdUntil = -1;
+  int m_shownFrom = 0;
 };
 
 } // namespace street

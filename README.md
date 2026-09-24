@@ -56,8 +56,13 @@ Only Version 1.0 is supported right now.
 Usage:
 
 ```
-./frankoExtract -i {game_data_directory} -o {output_directory}
+./frankoExtract -i {game_data_directory} -o {output_directory} [-e {game_executable}]
 ```
+
+The ending credits are read from the compiled game program, the `game` file
+the original installer puts next to the data files. It is picked up
+automatically when it sits in the game data directory; otherwise pass it with
+`-e`. Without it the ending credits are not extracted.
 
 Game data directory must contain files:
 
@@ -72,3 +77,4 @@ Data will be extracted as:
 - Music as ScreamTracker3 modules (.s3m)
 - Level scripts (enemy waves) as JSON files (.json)
 - Copy protection code cards as a JSON file (0384_codecards.json)
+- Ending credits as a JSON file (credits.json), from the game executable

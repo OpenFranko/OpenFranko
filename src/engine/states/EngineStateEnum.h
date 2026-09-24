@@ -23,6 +23,7 @@ enum class EngineStateEnum {
   StageProtectionCheck,
   Level3,
   Level3Boss,
+  Ending,
   GameOver,
   HighScore,
   Continue

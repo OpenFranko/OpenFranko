@@ -27,6 +27,7 @@ public:
   effects::AmigaPalette loadPalette(int resource) override;
   std::vector<street::Picture> loadScenery(int resource) override;
   street::LevelScript loadLevelScript(int resource) override;
+  street::EndingCredits loadEndingCredits() override;
   street::Picture loadPanelPicture(int part) override;
   void loadMusic(int resource) override;
   void playMusic() override;
