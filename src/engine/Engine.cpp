@@ -19,15 +19,21 @@
 #include "states/titleAndStory/TitleAndStoryState.h"
 #include "states/worldSoftware/WorldSoftwareState.h"
 
+#include <utility>
+
 namespace openfranko::src::engine {
 
 Engine::Engine()
-    : currentState(std::make_unique<states::mirage::MirageState>(videoSystem)),
-      running(true) {
+    : Engine(states::EngineStateEnum::Mirage, street::GameSession{}) {}
+
+Engine::Engine(states::EngineStateEnum firstState,
+               street::GameSession startingSession)
+    : session(std::move(startingSession)), running(true) {
   SDL_StartTextInput();
   session.highScores =
       street::readHighScoreFile(street::HighScoreTable::FILE_NAME)
           .value_or(street::HighScoreTable());
+  switchState(firstState);
 }
 
 Engine::~Engine() {
@@ -150,6 +156,26 @@ void Engine::update() {
   updateState();
   audioSystem.setVblRate(videoSystem.refreshRate());
   videoSystem.sync();
+}
+
+void Engine::run() {
+  const double ticksPerSecond =
+      static_cast<double>(SDL_GetPerformanceFrequency());
+  double nextFrame = static_cast<double>(SDL_GetPerformanceCounter());
+
+  while (isRunning()) {
+    update();
+
+    const double frameTicks = ticksPerSecond / refreshRate();
+    nextFrame += frameTicks;
+    const double now = static_cast<double>(SDL_GetPerformanceCounter());
+    if (nextFrame > now) {
+      SDL_Delay(
+          static_cast<uint32_t>((nextFrame - now) * 1000.0 / ticksPerSecond));
+    } else if (now - nextFrame > frameTicks) {
+      nextFrame = now;
+    }
+  }
 }
 
 int Engine::refreshRate() const { return videoSystem.refreshRate(); }

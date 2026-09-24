@@ -17,11 +17,14 @@ namespace engine {
 class Engine {
 public:
   Engine();
+  Engine(states::EngineStateEnum firstState,
+         street::GameSession startingSession);
   ~Engine();
 
   bool isRunning();
 
   void update();
+  void run();
 
   int refreshRate() const;
 

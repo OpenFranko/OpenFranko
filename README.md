@@ -47,6 +47,11 @@ ctest --output-on-failure
 
 Executables can be located in the build directory
 
+With tests enabled, `test/manual/startAtLevel1Car` is also built. It starts
+the game at the stage-1 bonus drive, as if the first boss had just been
+beaten, so the car scene can be tried without playing up to it. Like the game,
+run it from the directory that holds `assets`.
+
 # FrankoExtract
 
 it's a tool to extract graphics/sounds/music/levels from original franko game data.
