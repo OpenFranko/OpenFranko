@@ -34,6 +34,8 @@ constexpr int RAINBOW_Y = 0;
 constexpr int FIRST_RAINBOW_LINE = 28;
 constexpr int RAINBOW_LINES = 240;
 
+constexpr int PAN_STEP_PIXELS = 5;
+constexpr int PAN_STEP_FRAMES = 4;
 constexpr int CLICK_FRAMES = 400;
 constexpr int FADE_SPEED = 5;
 constexpr int HOLD_FRAMES = 100;
@@ -175,12 +177,13 @@ void GameOverScene::open() {
 }
 
 GameOverScene::Flow GameOverScene::pan() {
-  if (m_count > PAN_END) {
+  const int offset = m_count * PAN_STEP_PIXELS / PAN_STEP_FRAMES;
+  if (offset > PAN_END) {
     m_count = 0;
     m_step = Step::Click;
     return Flow::Continue;
   }
-  m_offset = m_count;
+  m_offset = offset;
   m_bobs.setX(TITLE, PINNED_X - WINDOW_X + m_offset);
   ++m_count;
   return Flow::Yield;

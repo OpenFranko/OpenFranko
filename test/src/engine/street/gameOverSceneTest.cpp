@@ -16,7 +16,7 @@ constexpr int OBJECTS = 0x36;
 constexpr int GRAVEYARD = 0x3BB;
 constexpr int TUNE = 0x262;
 constexpr int OPEN_FRAME = 1 + GameOverScene::FILES * LoadingMock::FILE_FRAMES;
-constexpr int PAN_FRAMES = GameOverScene::PAN_END + 1;
+constexpr int PAN_FRAMES = 545;
 constexpr int16_t JOY_FIRE = 16;
 constexpr uint8_t SILHOUETTE = 1;
 constexpr uint8_t TITLE_INK = 2;
@@ -183,7 +183,7 @@ SCENARIO("Game over loads its three files while the screens are closed") {
   }
 }
 
-SCENARIO("The picture pans a pixel a frame under the pinned title") {
+SCENARIO("The picture pans 5 px every 4 frames under the pinned title") {
   GIVEN("The open graveyard") {
     Graveyard graveyard;
     graveyard.run(OPEN_FRAME);
@@ -192,8 +192,8 @@ SCENARIO("The picture pans a pixel a frame under the pinned title") {
       graveyard.run(300);
 
       THEN("The offset and the title have moved together") {
-        REQUIRE(graveyard.scene.offset() == 300);
-        REQUIRE(graveyard.scene.bobs().x(1) == 404);
+        REQUIRE(graveyard.scene.offset() == 375);
+        REQUIRE(graveyard.scene.bobs().x(1) == 479);
         REQUIRE(graveyard.pixel(104, 80) == 0xFFFF0000u);
       }
     }
@@ -214,7 +214,7 @@ SCENARIO("The picture pans a pixel a frame under the pinned title") {
     }
 
     WHEN("The pan reaches 680") {
-      graveyard.run(GameOverScene::PAN_END);
+      graveyard.run(PAN_FRAMES - 1);
 
       THEN("The last 40 columns show the start of the next row") {
         REQUIRE(graveyard.scene.offset() == GameOverScene::PAN_END);
