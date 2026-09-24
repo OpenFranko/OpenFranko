@@ -119,12 +119,15 @@ std::string passwordFor(int stage) {
 
 CarStage::CarStage(StreetHost &host, GameSession &session,
                    effects::GameOptions &options)
-    : m_host(host), m_session(session), m_machine(session.registers),
-      m_screen(SCREEN_WIDTH, SCREEN_HEIGHT), m_buffer(m_screen), m_road(0, 0),
-      m_strip(0, 0), m_panel(std::make_unique<StatusPanel>(
-                         host.loadPanelPicture(StreetStage::LOADING_STRIP),
-                         host.loadPanelPicture(StreetStage::PANEL_ARTWORK))),
-      m_screenDisplay{DISPLAY_X, DISPLAY_TOP, 0},
+    : m_host(host), m_session(session), m_options(options),
+      m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
+      m_buffer(m_screen), m_road(0, 0), m_strip(0, 0),
+      m_panel(std::make_unique<StatusPanel>(
+          host.loadPanelPicture(StreetStage::LOADING_STRIP),
+          host.loadPanelPicture(StreetStage::PANEL_ARTWORK))),
+      m_screenDisplay{DISPLAY_X,
+                      static_cast<int16_t>(playDisplayY(stageLayout(options))),
+                      0},
       m_palette(levelPalette(options.mono)), m_panelPalette(panelPalette()),
       m_screenOffsetX(stage() == 2 ? 16 : 0) {
   m_panel->score(stats());
@@ -153,7 +156,8 @@ void CarStage::advance(const StreetInput &input) {
 
 void CarStage::compose(std::vector<uint32_t> &frame) const {
   composeFrame(frame, &m_buffer.shown(), m_palette, m_screenDisplay,
-               m_screenOffsetX, m_panel.get(), m_panelPalette);
+               m_screenOffsetX, m_panel.get(), m_panelPalette,
+               stageLayout(m_options));
 }
 
 CarStage::Outcome CarStage::outcome() const { return m_outcome; }
@@ -558,6 +562,9 @@ void CarStage::gameOver() {
 void CarStage::sys() {
   const SystemKey key = m_pendingKey;
   m_pendingKey = SystemKey::None;
+  if (key == SystemKey::Pal || key == SystemKey::Ntsc) {
+    switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
+  }
   if (key == SystemKey::Escape) {
     global(RN) = 0;
     m_escape = true;

@@ -84,6 +84,7 @@ public:
   void stopMusic() override { ++musicStops; }
 
   void setMusicVolume(int volume) override { volumes.push_back(volume); }
+  void setMusicTempo(int) override {}
 
   void playSample(int, int, int) override {}
 

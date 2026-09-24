@@ -209,3 +209,10 @@ add_executable(${CHEAT_CODES_TEST_TARGET}
 )
 target_link_libraries(${CHEAT_CODES_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${CHEAT_CODES_TEST_TARGET} COMMAND ${CHEAT_CODES_TEST_TARGET})
+
+set(STAGE_FRAME_TEST_TARGET stageFrameTest)
+add_executable(${STAGE_FRAME_TEST_TARGET}
+    engine/street/stageFrameTest.cpp
+)
+target_link_libraries(${STAGE_FRAME_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${STAGE_FRAME_TEST_TARGET} COMMAND ${STAGE_FRAME_TEST_TARGET})

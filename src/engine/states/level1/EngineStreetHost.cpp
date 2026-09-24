@@ -1,6 +1,7 @@
 #include "EngineStreetHost.h"
 
 #include "../../../systems/Bitmap.h"
+#include "../../effects/AmigaDisplay.h"
 
 #include <cctype>
 #include <cstdio>
@@ -128,6 +129,10 @@ void EngineStreetHost::stopMusic() { m_audioSystem.stopMusic(); }
 
 void EngineStreetHost::setMusicVolume(int volume) {
   m_audioSystem.setMusicVolume(volume);
+}
+
+void EngineStreetHost::setMusicTempo(int tempo) {
+  m_audioSystem.setMusicTempoScale(effects::menuTuneScale(tempo));
 }
 
 void EngineStreetHost::playSample(int bank, int sample, int voices) {

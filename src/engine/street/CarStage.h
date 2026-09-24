@@ -111,6 +111,7 @@ private:
 
   StreetHost &m_host;
   GameSession &m_session;
+  effects::GameOptions &m_options;
   amal::Machine m_machine;
   ImageBank m_images;
   BobLayer m_bobs;

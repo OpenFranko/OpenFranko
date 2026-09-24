@@ -13,6 +13,7 @@ GameOverState::GameOverState(systems::VideoSystem &videoSystem,
                              systems::ControllerSystem &controllerSystem)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem), m_scene(m_host) {
+  m_videoSystem.setNtsc(false);
   m_videoSystem.createScreen(SCREEN, street::GameOverScene::WIDTH,
                              street::GameOverScene::HEIGHT);
   m_videoSystem.switchScreen(SCREEN);

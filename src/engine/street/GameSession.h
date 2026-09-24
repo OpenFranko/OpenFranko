@@ -6,6 +6,7 @@
 #include "DoubleBuffer.h"
 #include "HighScoreTable.h"
 #include "IndexedSurface.h"
+#include "StageFrame.h"
 
 #include <optional>
 #include <string>
@@ -30,6 +31,8 @@ struct BossExit {
   int displayY = 0;
   int offsetX = 0;
   IndexedSurface panel;
+  int panelY = PANEL_DISPLAY_Y;
+  bool laced = false;
 };
 
 struct DriveCarryOver {

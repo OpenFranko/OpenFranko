@@ -40,6 +40,7 @@ public:
   virtual void playMusic() = 0;
   virtual void stopMusic() = 0;
   virtual void setMusicVolume(int volume) = 0;
+  virtual void setMusicTempo(int tempo) = 0;
   virtual void playSample(int bank, int sample, int voices) = 0;
   virtual void playSampleAt(int bank, int sample, int voices,
                             int frequency) = 0;
@@ -47,7 +48,7 @@ public:
   virtual int random(int limit) = 0;
 };
 
-enum class SystemKey { None, MusicOn, MusicOff, Escape };
+enum class SystemKey { None, MusicOn, MusicOff, Pal, Ntsc, Escape };
 
 struct StreetInput {
   int16_t joystick = 0;

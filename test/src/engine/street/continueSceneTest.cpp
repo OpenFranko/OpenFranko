@@ -60,6 +60,7 @@ public:
   void stopMusic() override {}
 
   void setMusicVolume(int) override {}
+  void setMusicTempo(int) override {}
 
   void playSample(int, int, int) override {}
 

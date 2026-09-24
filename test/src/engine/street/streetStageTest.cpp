@@ -134,6 +134,7 @@ public:
   void stopMusic() override { ++musicStops; }
 
   void setMusicVolume(int volume) override { volumes.push_back(volume); }
+  void setMusicTempo(int) override {}
 
   void playSample(int bank, int sample, int voices) override {
     samples.push_back({bank, sample, voices});
@@ -743,6 +744,66 @@ SCENARIO("The composed frame shows the play screen over the panel") {
       REQUIRE(frame[0] == 0xFF555555u);
       REQUIRE(frame[221 * 304 + 303] == 0xFF555555u);
       REQUIRE(frame[(223 + 10) * 304 + 101] == 0xFFDDDDDDu);
+    }
+  }
+}
+
+SCENARIO("F4 and F3 switch the display as SYS does") {
+  GIVEN("A PAL street being walked") {
+    Street street(emptyStreet(600));
+    StreetStage &stage = street.start();
+    street.run(OPENING_FRAMES + 1 + LoadingMock::FILE_FRAMES);
+    std::vector<uint32_t> pal;
+    stage.compose(pal);
+
+    WHEN("F4 is pressed") {
+      street.run(1, 0, SystemKey::Ntsc);
+      std::vector<uint32_t> frame;
+      stage.compose(frame);
+
+      THEN("SYS turns NTSC on and moves both screens up 40 lines, so the "
+           "rows above line 26 are lost") {
+        REQUIRE(street.options.ntsc);
+        REQUIRE(frame[18 * 304] == 0xFF000000u);
+        REQUIRE(frame[19 * 304] == pal[19 * 304]);
+        REQUIRE(frame[222 * 304] == 0xFF555555u);
+        REQUIRE(frame[223 * 304] == pal[223 * 304]);
+      }
+
+      AND_WHEN("F4 is pressed again") {
+        street.run(1, 0, SystemKey::Ntsc);
+
+        THEN("Nothing changes") { REQUIRE(street.options.ntsc); }
+      }
+
+      AND_WHEN("F3 is pressed") {
+        street.run(1, 0, SystemKey::Pal);
+        stage.compose(frame);
+
+        THEN("The PAL layout is back") {
+          REQUIRE_FALSE(street.options.ntsc);
+          REQUIRE(frame[18 * 304] == pal[18 * 304]);
+          REQUIRE(frame[222 * 304] == pal[222 * 304]);
+          REQUIRE(frame[223 * 304] == pal[223 * 304]);
+        }
+      }
+    }
+  }
+
+  GIVEN("A street opened with 320x512 chosen") {
+    Street street(emptyStreet(600));
+    street.options.tallScreen = true;
+    StreetStage &stage = street.start();
+    street.open();
+    std::vector<uint32_t> frame;
+    stage.compose(frame);
+
+    THEN("The laced play screen starts on line 107 and the panel on 219") {
+      REQUIRE(frame.size() == 304u * 510u);
+      REQUIRE(frame[119 * 304] == 0xFF555555u);
+      REQUIRE(frame[120 * 304] == 0xFF008833u);
+      REQUIRE(frame[343 * 304] == 0xFF555555u);
+      REQUIRE(frame[344 * 304] == 0xFF000000u);
     }
   }
 }

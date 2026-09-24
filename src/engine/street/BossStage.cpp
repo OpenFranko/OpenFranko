@@ -128,7 +128,10 @@ BossStage::BossStage(StreetHost &host, GameSession &session,
                      effects::GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_buffer(m_screen), m_screenDisplay{DISPLAY_X, DISPLAY_TOP, 0},
+      m_buffer(m_screen),
+      m_screenDisplay{DISPLAY_X,
+                      static_cast<int16_t>(playDisplayY(stageLayout(options))),
+                      0},
       m_palette(levelPalette(options.mono)), m_panelPalette(panelPalette()) {}
 
 void BossStage::advance(const StreetInput &input) {
@@ -155,7 +158,8 @@ void BossStage::advance(const StreetInput &input) {
 
 void BossStage::compose(std::vector<uint32_t> &frame) const {
   composeFrame(frame, &m_buffer.shown(), m_palette, m_screenDisplay,
-               m_screenOffsetX, m_panel.get(), m_panelPalette);
+               m_screenOffsetX, m_panel.get(), m_panelPalette,
+               stageLayout(m_options));
 }
 
 BossStage::Outcome BossStage::outcome() const { return m_outcome; }
@@ -850,7 +854,9 @@ BossStage::Flow BossStage::finishCleanUp() {
   if (stage() == 3) {
     m_buffer.autoback([](IndexedSurface &surface) { surface.fill(0); });
     m_session.bossExit.emplace(BossExit{m_buffer, m_palette, m_screenDisplay.y,
-                                        m_screenOffsetX, m_panel->surface()});
+                                        m_screenOffsetX, m_panel->surface(),
+                                        panelDisplayY(stageLayout(m_options)),
+                                        m_options.tallScreen});
     m_outcome = Outcome::BossDefeated;
     m_step = Step::Finished;
     return Flow::Yield;
@@ -891,6 +897,10 @@ void BossStage::sys() {
   case SystemKey::MusicOn:
     m_options.music = true;
     m_host.setMusicVolume(MUSIC_VOLUME);
+    break;
+  case SystemKey::Pal:
+  case SystemKey::Ntsc:
+    switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
     break;
   case SystemKey::Escape:
     global(RN) = 0;

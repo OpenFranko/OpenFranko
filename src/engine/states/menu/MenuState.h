@@ -30,6 +30,7 @@ public:
 
 private:
   void advanceAttract(const effects::MenuSequence::Joystick &joystick);
+  void switchStandard();
   void startAttract();
   void drawMenu();
   void drawAttract();
@@ -48,6 +49,7 @@ private:
       effects::AttractSequence::Kind::Title;
   effects::AmigaPalette m_menuPaletteShown;
   effects::AmigaPalette m_attractPaletteShown;
+  int m_attractTop = 0;
 };
 
 } // namespace menu

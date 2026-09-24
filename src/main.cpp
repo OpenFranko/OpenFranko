@@ -6,21 +6,21 @@ int main() {
 
   engine::Engine engine;
 
-  const int FPS = 50;
-  const int frameDelay = 1000 / FPS;
-
-  uint32_t frameStart;
-  int frameTime;
+  const double ticksPerSecond =
+      static_cast<double>(SDL_GetPerformanceFrequency());
+  double nextFrame = static_cast<double>(SDL_GetPerformanceCounter());
 
   while (engine.isRunning()) {
-    frameStart = SDL_GetTicks();
-
     engine.update();
 
-    frameTime = SDL_GetTicks() - frameStart;
-
-    if (frameDelay > frameTime) {
-      SDL_Delay(frameDelay - frameTime);
+    const double frameTicks = ticksPerSecond / engine.refreshRate();
+    nextFrame += frameTicks;
+    const double now = static_cast<double>(SDL_GetPerformanceCounter());
+    if (nextFrame > now) {
+      SDL_Delay(
+          static_cast<uint32_t>((nextFrame - now) * 1000.0 / ticksPerSecond));
+    } else if (now - nextFrame > frameTicks) {
+      nextFrame = now;
     }
   }
   return 0;

@@ -101,6 +101,7 @@ public:
   void stopMusic() override { ++musicStops; }
 
   void setMusicVolume(int) override {}
+  void setMusicTempo(int) override {}
 
   void playSample(int bank, int sample, int voices) override {
     samples.emplace_back(bank, sample, voices);
@@ -555,6 +556,41 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
         REQUIRE(stage.outcome() == CarStage::Outcome::Playing);
         drive.run(1);
         REQUIRE(stage.outcome() == CarStage::Outcome::GameOver);
+      }
+    }
+  }
+}
+
+SCENARIO("F4 and F3 switch the display during the drive as SYS does") {
+  GIVEN("A drive under way in PAL") {
+    Drive drive;
+    drive.toTheWheel();
+    CarStage &stage = *drive.stage;
+    std::vector<uint32_t> pal;
+    stage.compose(pal);
+
+    WHEN("F4 is pressed") {
+      drive.run(1, 0, SystemKey::Ntsc);
+      drive.run(3);
+      std::vector<uint32_t> frame;
+      stage.compose(frame);
+
+      THEN("Screen 0 and the panel move up 40 lines") {
+        REQUIRE(drive.options.ntsc);
+        REQUIRE(frame[18 * 304] == 0xFF000000u);
+        REQUIRE(frame[222 * 304] == 0xFF555555u);
+        REQUIRE(frame[223 * 304] == pal[223 * 304]);
+      }
+
+      AND_WHEN("F3 is pressed") {
+        drive.run(1, 0, SystemKey::Pal);
+        drive.run(3);
+        stage.compose(frame);
+
+        THEN("PAL is back") {
+          REQUIRE_FALSE(drive.options.ntsc);
+          REQUIRE(frame[18 * 304] != 0xFF000000u);
+        }
       }
     }
   }

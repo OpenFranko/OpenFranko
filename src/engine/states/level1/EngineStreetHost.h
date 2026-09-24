@@ -33,6 +33,7 @@ public:
   void playMusic() override;
   void stopMusic() override;
   void setMusicVolume(int volume) override;
+  void setMusicTempo(int tempo) override;
   void playSample(int bank, int sample, int voices) override;
   void playSampleAt(int bank, int sample, int voices, int frequency) override;
   void setSampleLoop(bool loop) override;

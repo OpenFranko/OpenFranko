@@ -14,6 +14,7 @@ EndingState::EndingState(systems::VideoSystem &videoSystem,
                          street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem), m_scene(m_host, session) {
+  m_videoSystem.setNtsc(false);
   m_videoSystem.createScreen(SCREEN, street::EndingScene::WIDTH,
                              street::EndingScene::HEIGHT);
   m_videoSystem.switchScreen(SCREEN);

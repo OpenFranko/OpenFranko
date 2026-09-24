@@ -61,6 +61,7 @@ CharacterSelectionState::CharacterSelectionState(
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_session(session),
       m_selection(options) {
+  m_videoSystem.setNtsc(false);
   m_videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, SCREEN_HEIGHT);
   m_videoSystem.switchScreen(SCREEN_ID);
   m_videoSystem.loadIndexedImage(PICTURE, PICTURE_PATH);

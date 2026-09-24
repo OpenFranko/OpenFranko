@@ -57,6 +57,7 @@ public:
   std::vector<int> palettes;
   std::vector<int> music;
   std::vector<int> volumes;
+  std::vector<int> tempos;
   int musicStarts = 0;
   int musicStops = 0;
 
@@ -95,6 +96,7 @@ public:
   void stopMusic() override { ++musicStops; }
 
   void setMusicVolume(int volume) override { volumes.push_back(volume); }
+  void setMusicTempo(int tempo) override { tempos.push_back(tempo); }
 
   void playSample(int, int, int) override {}
 
@@ -214,6 +216,23 @@ SCENARIO("State 05 resets the run and reloads the menu music first") {
     THEN("Mvolume 63+63*(MUZ=0) is 0") {
       REQUIRE(board.host.musicStarts == 1);
       REQUIRE(board.host.volumes.back() == 0);
+    }
+  }
+
+  GIVEN("A run that ended with 12 kills, PAL or NTSC chosen") {
+    Board pal(12);
+    Board ntsc(12);
+    ntsc.options.ntsc = true;
+    pal.run(MUSIC + 1);
+    ntsc.run(MUSIC + 1);
+    const bool setDuringWait = !pal.host.tempos.empty();
+    pal.run(1);
+    ntsc.run(1);
+
+    THEN("Tempo 37+5*SYS follows the Wait 2") {
+      REQUIRE_FALSE(setDuringWait);
+      REQUIRE(pal.host.tempos == std::vector<int>{37});
+      REQUIRE(ntsc.host.tempos == std::vector<int>{32});
     }
   }
 }

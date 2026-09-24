@@ -148,7 +148,10 @@ void Engine::update() {
   controllerSystem.update();
   audioSystem.update();
   updateState();
+  audioSystem.setVblRate(videoSystem.refreshRate());
   videoSystem.sync();
 }
+
+int Engine::refreshRate() const { return videoSystem.refreshRate(); }
 
 } // namespace openfranko::src::engine

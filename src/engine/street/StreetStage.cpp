@@ -76,7 +76,10 @@ StreetStage::StreetStage(StreetHost &host, GameSession &session,
                          effects::GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_buffer(m_screen), m_screenDisplay{DISPLAY_X, DISPLAY_TOP, 0},
+      m_buffer(m_screen),
+      m_screenDisplay{DISPLAY_X,
+                      static_cast<int16_t>(playDisplayY(stageLayout(options))),
+                      0},
       m_palette(levelPalette(false)), m_panelPalette(panelPalette()) {}
 
 void StreetStage::advance(const StreetInput &input) {
@@ -103,7 +106,8 @@ void StreetStage::advance(const StreetInput &input) {
 
 void StreetStage::compose(std::vector<uint32_t> &frame) const {
   composeFrame(frame, m_screenShown ? &m_buffer.shown() : nullptr, m_palette,
-               m_screenDisplay, m_screenOffsetX, m_panel.get(), m_panelPalette);
+               m_screenDisplay, m_screenOffsetX, m_panel.get(), m_panelPalette,
+               stageLayout(m_options));
 }
 
 StreetStage::Outcome StreetStage::outcome() const { return m_outcome; }
@@ -873,6 +877,10 @@ void StreetStage::sys() {
   case SystemKey::MusicOn:
     m_options.music = true;
     m_host.setMusicVolume(STREET_MUSIC_VOLUME);
+    break;
+  case SystemKey::Pal:
+  case SystemKey::Ntsc:
+    switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
     break;
   case SystemKey::Escape:
     global(RN) = 0;

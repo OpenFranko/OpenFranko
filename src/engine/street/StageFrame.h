@@ -3,6 +3,7 @@
 
 #include "../amal/Machine.h"
 #include "../effects/AmigaPalette.h"
+#include "../effects/GameOptions.h"
 #include "IndexedSurface.h"
 #include "StatusPanel.h"
 
@@ -18,6 +19,21 @@ constexpr int FRAME_WIDTH = 304;
 constexpr int FRAME_HEIGHT = 255;
 constexpr int DISPLAY_X = 128;
 constexpr int DISPLAY_TOP = 47;
+constexpr int PANEL_DISPLAY_Y = 270;
+
+struct StageLayout {
+  bool ntsc = false;
+  bool laced = false;
+};
+
+StageLayout stageLayout(const effects::GameOptions &options);
+int playDisplayY(const StageLayout &layout);
+int panelDisplayY(const StageLayout &layout);
+int frameTop(const StageLayout &layout);
+int rowsPerLine(const StageLayout &layout);
+int frameRows(const StageLayout &layout);
+void switchStandard(effects::GameOptions &options, amal::Object &screenDisplay,
+                    bool ntsc);
 
 uint32_t toArgb(effects::AmigaColor color);
 const effects::AmigaPalette &levelPalette(bool mono);
@@ -27,7 +43,8 @@ void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,
                   const StatusPanel *panel,
-                  const effects::AmigaPalette &panelColors);
+                  const effects::AmigaPalette &panelColors,
+                  const StageLayout &layout);
 
 } // namespace street
 } // namespace engine

@@ -5,7 +5,6 @@
 namespace openfranko::src::engine::states::level1 {
 namespace {
 
-constexpr int SCREEN = 0;
 constexpr auto FRAME = "level1CarFrame";
 
 } // namespace
@@ -16,9 +15,9 @@ Level1CarState::Level1CarState(systems::VideoSystem &videoSystem,
                                effects::GameOptions &options,
                                street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_host(audioSystem), m_stage(m_host, session, options) {
-  m_videoSystem.createScreen(SCREEN, street::FRAME_WIDTH, street::FRAME_HEIGHT);
-  m_videoSystem.switchScreen(SCREEN);
+      m_options(options), m_host(audioSystem),
+      m_stage(m_host, session, options) {
+  openStageScreen(m_videoSystem, options);
 }
 
 Level1CarState::~Level1CarState() { m_videoSystem.clearImage(FRAME); }
@@ -26,9 +25,7 @@ Level1CarState::~Level1CarState() { m_videoSystem.clearImage(FRAME); }
 std::optional<EngineStateEnum> Level1CarState::update() {
   m_stage.advance(readStreetInput(m_controllerSystem));
   m_stage.compose(m_frame);
-  m_videoSystem.updateFrameImage(FRAME, street::FRAME_WIDTH,
-                                 street::FRAME_HEIGHT, m_frame);
-  m_videoSystem.drawImage(FRAME, 0, 0);
+  showStageFrame(m_videoSystem, FRAME, m_frame, m_options);
 
   switch (m_stage.outcome()) {
   case street::CarStage::Outcome::GameOver:

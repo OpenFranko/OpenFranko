@@ -17,6 +17,8 @@ uint8_t nibbleToChannel(int nibble) {
 constexpr auto WINDOW_NAME = "OpenFranko";
 constexpr auto WINDOW_WIDTH = 800;
 constexpr auto WINDOW_HEIGHT = 600;
+constexpr int PAL_HERTZ = 50;
+constexpr int NTSC_HERTZ = 60;
 
 } // namespace
 
@@ -76,7 +78,8 @@ VideoSystem::~VideoSystem() {
   IMG_Quit();
 }
 
-void VideoSystem::createScreen(int screenId, int width, int height) {
+void VideoSystem::createScreen(int screenId, int width, int height,
+                               int displayHeight) {
   auto it = screens.find(screenId);
   if (it != screens.end()) {
     if (it->second.targetTexture) {
@@ -95,7 +98,8 @@ void VideoSystem::createScreen(int screenId, int width, int height) {
 
   SDL_SetTextureBlendMode(target, SDL_BLENDMODE_BLEND);
 
-  screens[screenId] = {screenId, width, height, target};
+  screens[screenId] = {screenId, width, height,
+                       displayHeight > 0 ? displayHeight : height, target};
 
   if (currentScreenId == screenId) {
     SDL_SetRenderTarget(renderer, target);
@@ -147,7 +151,7 @@ void VideoSystem::sync() {
   auto it = screens.find(currentScreenId);
 
   if (it == screens.end() || !it->second.targetTexture ||
-      it->second.height == 0) {
+      it->second.displayHeight == 0) {
     SDL_RenderPresent(renderer);
     return;
   }
@@ -157,7 +161,8 @@ void VideoSystem::sync() {
   int windowWidth, windowHeight;
   SDL_GetWindowSize(window, &windowWidth, &windowHeight);
 
-  float targetAspect = static_cast<float>(activeScr.width) / activeScr.height;
+  float targetAspect =
+      static_cast<float>(activeScr.width) / activeScr.displayHeight;
   float windowAspect = static_cast<float>(windowWidth) / windowHeight;
 
   SDL_Rect dstRect;
@@ -178,6 +183,12 @@ void VideoSystem::sync() {
   SDL_RenderPresent(renderer);
   SDL_SetRenderTarget(renderer, activeScr.targetTexture);
 }
+
+void VideoSystem::setNtsc(bool enabled) { ntsc = enabled; }
+
+bool VideoSystem::isNtsc() const { return ntsc; }
+
+int VideoSystem::refreshRate() const { return ntsc ? NTSC_HERTZ : PAL_HERTZ; }
 
 void VideoSystem::loadImage(const std::string &name, const std::string &path,
                             bool applyColorKey) {

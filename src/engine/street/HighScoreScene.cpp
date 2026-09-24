@@ -1,5 +1,6 @@
 #include "HighScoreScene.h"
 
+#include "../effects/AmigaDisplay.h"
 #include "StageFrame.h"
 
 #include <array>
@@ -139,6 +140,7 @@ void HighScoreScene::runBasic(char key) {
       flow = wait(MUSIC_START_WAIT, Step::Pictures);
       break;
     case Step::Pictures:
+      m_host.setMusicTempo(effects::menuTempo(m_options.ntsc));
       queuePictures();
       break;
     case Step::Loaded:

@@ -134,6 +134,7 @@ private:
   std::unique_ptr<StatusPanel> m_panel;
   bool m_stageShown = false;
   bool m_panelShown = false;
+  int m_panelTop = PANEL_DISPLAY_Y;
   Picture m_picture;
   effects::AmigaPalette m_picturePalette;
   effects::PaletteFader m_fader;

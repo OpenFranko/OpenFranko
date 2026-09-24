@@ -136,6 +136,7 @@ public:
   void stopMusic() override { ++musicStops; }
 
   void setMusicVolume(int volume) override { volumes.push_back(volume); }
+  void setMusicTempo(int) override {}
 
   void playSample(int, int, int) override {}
 
@@ -209,6 +210,54 @@ struct Ending {
 };
 
 } // namespace
+
+SCENARIO("CONGRA shows the stage where 320x512 or NTSC left it") {
+  GIVEN("A laced play screen on line 107 and the panel on line 219") {
+    Ending ending;
+    ending.session.bossExit->laced = true;
+    ending.session.bossExit->displayY = 107;
+    ending.session.bossExit->panelY = 219;
+    ending.run(1);
+    const effects::AmigaPalette &colors = levelPalette(false);
+
+    THEN("Each line shows the even field's row, so the screen fills 111 "
+         "lines") {
+      REQUIRE(ending.pixel(0, 106 - EndingScene::DISPLAY_LINE) ==
+              toArgb(0x555));
+      REQUIRE(ending.pixel(0, 107 - EndingScene::DISPLAY_LINE) ==
+              toArgb(colors[STREET_COLOR]));
+      REQUIRE(ending.pixel(100, 157 - EndingScene::DISPLAY_LINE) ==
+              toArgb(colors[BOB_COLOR]));
+      REQUIRE(ending.pixel(100, 165 - EndingScene::DISPLAY_LINE) ==
+              toArgb(colors[STREET_COLOR]));
+      REQUIRE(ending.pixel(0, 218 - EndingScene::DISPLAY_LINE) ==
+              toArgb(0x555));
+    }
+
+    THEN("The panel sits on line 219") {
+      REQUIRE(ending.pixel(101, 219 - EndingScene::DISPLAY_LINE) ==
+              toArgb(panelPalette()[SCORE_COLOR]));
+      REQUIRE(ending.pixel(101, 251 - EndingScene::DISPLAY_LINE) ==
+              toArgb(0x555));
+    }
+  }
+
+  GIVEN("The NTSC lines: play screen on 7, panel on 230") {
+    Ending ending;
+    ending.session.bossExit->displayY = 7;
+    ending.session.bossExit->panelY = 230;
+    ending.run(1);
+
+    THEN("The PAL frame shows them there") {
+      REQUIRE(ending.pixel(100, 100 + 7 - EndingScene::DISPLAY_LINE) ==
+              toArgb(levelPalette(false)[BOB_COLOR]));
+      REQUIRE(ending.pixel(101, 230 - EndingScene::DISPLAY_LINE) ==
+              toArgb(panelPalette()[SCORE_COLOR]));
+      REQUIRE(ending.pixel(101, 262 - EndingScene::DISPLAY_LINE) ==
+              toArgb(0x555));
+    }
+  }
+}
 
 SCENARIO("CONGRA clears the stage, stops the tune and loads four files") {
   GIVEN("The third boss just beaten") {

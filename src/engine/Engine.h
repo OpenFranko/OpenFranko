@@ -23,6 +23,8 @@ public:
 
   void update();
 
+  int refreshRate() const;
+
 private:
   void updateState();
 

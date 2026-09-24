@@ -29,7 +29,6 @@ constexpr effects::AmigaColor INK = 0xFFF;
 constexpr effects::AmigaColor SHADE = 0xAAA;
 
 constexpr int STAGE_WIDTH = 304;
-constexpr int PANEL_TOP = 270;
 
 constexpr int AUTOBACK_VBLS = 3;
 constexpr int SCREEN_OPEN_VBLS = 1;
@@ -130,8 +129,9 @@ void EndingScene::compose(std::vector<uint32_t> &frame) const {
   if (m_stageShown && m_stage) {
     const IndexedSurface &display = m_stage->buffer.shown();
     const std::size_t mask = m_stage->palette.size() - 1;
+    const int rowsPerLine = m_stage->laced ? 2 : 1;
     for (int row = 0; row < HEIGHT; ++row) {
-      const int y = DISPLAY_LINE + row - m_stage->displayY;
+      const int y = (DISPLAY_LINE + row - m_stage->displayY) * rowsPerLine;
       if (y < 0 || y >= display.height()) {
         continue;
       }
@@ -148,7 +148,7 @@ void EndingScene::compose(std::vector<uint32_t> &frame) const {
     const IndexedSurface &surface = *shown;
     const effects::AmigaPalette &colors = panelPalette();
     for (int y = 0; y < StatusPanel::VISIBLE_HEIGHT; ++y) {
-      const int row = PANEL_TOP - DISPLAY_LINE + y;
+      const int row = m_panelTop - DISPLAY_LINE + y;
       if (row < 0 || row >= HEIGHT) {
         continue;
       }
@@ -434,6 +434,7 @@ void EndingScene::start() {
   }
   m_stage.emplace(std::move(*m_session.bossExit));
   m_session.bossExit.reset();
+  m_panelTop = m_stage->panelY;
   if (!m_stage->buffer.isAutobacking()) {
     m_stage->buffer.autoback([](IndexedSurface &surface) { surface.fill(0); });
   }

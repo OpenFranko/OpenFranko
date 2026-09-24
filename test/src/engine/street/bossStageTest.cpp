@@ -145,6 +145,7 @@ public:
   void stopMusic() override { ++musicStops; }
 
   void setMusicVolume(int volume) override { volumes.push_back(volume); }
+  void setMusicTempo(int) override {}
 
   void playSample(int bank, int sample, int voices) override {
     samples.push_back({bank, sample, voices});
@@ -304,6 +305,41 @@ SCENARIO("The boss stage reloads the cast over the street's last screen") {
 
     THEN("Starting the stage is refused") {
       REQUIRE_THROWS_AS(duel.run(1), std::logic_error);
+    }
+  }
+}
+
+SCENARIO("The boss stage keeps the display lines state 09 and SYS set") {
+  GIVEN("NTSC chosen") {
+    Duel duel;
+    duel.options.ntsc = true;
+    BossStage &stage = duel.start();
+    duel.run(1);
+    std::vector<uint32_t> frame;
+    stage.compose(frame);
+
+    THEN("The play screen sits on line 7, its top rows above line 26 lost") {
+      const effects::AmigaPalette &colors = levelPalette(false);
+      REQUIRE(frame.size() == 304u * 255u);
+      REQUIRE(frame[18 * 304] == 0xFF000000u);
+      REQUIRE(frame[19 * 304] == toArgb(colors[STREET_COLOR]));
+    }
+  }
+
+  GIVEN("320x512 chosen") {
+    Duel duel;
+    duel.options.tallScreen = true;
+    BossStage &stage = duel.start();
+    duel.run(1);
+    std::vector<uint32_t> frame;
+    stage.compose(frame);
+
+    THEN("The laced play screen starts 60 lines lower in a double-height "
+         "frame") {
+      const effects::AmigaPalette &colors = levelPalette(false);
+      REQUIRE(frame.size() == 304u * 510u);
+      REQUIRE(frame[119 * 304] == 0xFF555555u);
+      REQUIRE(frame[120 * 304] == toArgb(colors[STREET_COLOR]));
     }
   }
 }
@@ -915,6 +951,8 @@ SCENARIO("On stage 3 KONBOSS sends the boss over the railing") {
                 REQUIRE(exit.palette == levelPalette(false));
                 REQUIRE(exit.displayY == 47);
                 REQUIRE(exit.offsetX == 0);
+                REQUIRE(exit.panelY == 270);
+                REQUIRE_FALSE(exit.laced);
                 REQUIRE(exit.panel.pixels() ==
                         stage.panel()->surface().pixels());
               }
