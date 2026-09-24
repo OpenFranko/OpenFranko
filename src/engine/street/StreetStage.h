@@ -38,6 +38,8 @@ public:
   virtual void stopMusic() = 0;
   virtual void setMusicVolume(int volume) = 0;
   virtual void playSample(int bank, int sample, int voices) = 0;
+  virtual void playSampleAt(int bank, int sample, int voices,
+                            int frequency) = 0;
   virtual void setSampleLoop(bool loop) = 0;
   virtual int random(int limit) = 0;
 };

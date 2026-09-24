@@ -162,3 +162,21 @@ SCENARIO("WZAB centres the kill counter on x 82") {
     }
   }
 }
+
+SCENARIO("PLUS fills the energy bar up to the new level") {
+  GIVEN("A panel showing 10 energy") {
+    StatusPanel panel(loadingStrip(), artwork());
+    panel.score(stats(10, 1, 0, 3));
+
+    WHEN("The energy rises to 30") {
+      panel.gainEnergy(30);
+
+      THEN("Colour 2 runs from x 111 to 140 on rows 13 and 14") {
+        REQUIRE(panel.surface().pixel(111, 13) == 2);
+        REQUIRE(panel.surface().pixel(140, 14) == 2);
+        REQUIRE(panel.surface().pixel(141, 13) == 6);
+        REQUIRE(panel.surface().pixel(111, 15) == PANEL_COLOR);
+      }
+    }
+  }
+}
