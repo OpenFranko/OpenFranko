@@ -76,3 +76,101 @@ add_executable(${CHARACTER_SELECTION_TEST_TARGET}
 )
 target_link_libraries(${CHARACTER_SELECTION_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${CHARACTER_SELECTION_TEST_TARGET} COMMAND ${CHARACTER_SELECTION_TEST_TARGET})
+
+set(AMAL_MACHINE_TEST_TARGET amalMachineTest)
+add_executable(${AMAL_MACHINE_TEST_TARGET}
+    engine/amal/amalMachineTest.cpp
+)
+target_link_libraries(${AMAL_MACHINE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Amal)
+add_test(NAME ${AMAL_MACHINE_TEST_TARGET} COMMAND ${AMAL_MACHINE_TEST_TARGET})
+
+set(AMAL_ACTORS_TEST_TARGET amalActorsTest)
+add_executable(${AMAL_ACTORS_TEST_TARGET}
+    engine/amal/amalActorsTest.cpp
+)
+target_link_libraries(${AMAL_ACTORS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Amal)
+add_test(NAME ${AMAL_ACTORS_TEST_TARGET} COMMAND ${AMAL_ACTORS_TEST_TARGET})
+
+set(INDEXED_SURFACE_TEST_TARGET indexedSurfaceTest)
+add_executable(${INDEXED_SURFACE_TEST_TARGET}
+    engine/street/indexedSurfaceTest.cpp
+)
+target_link_libraries(${INDEXED_SURFACE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${INDEXED_SURFACE_TEST_TARGET} COMMAND ${INDEXED_SURFACE_TEST_TARGET})
+
+set(BOBS_TEST_TARGET bobsTest)
+add_executable(${BOBS_TEST_TARGET}
+    engine/street/bobsTest.cpp
+)
+target_link_libraries(${BOBS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${BOBS_TEST_TARGET} COMMAND ${BOBS_TEST_TARGET})
+
+set(STATUS_PANEL_TEST_TARGET statusPanelTest)
+add_executable(${STATUS_PANEL_TEST_TARGET}
+    engine/street/statusPanelTest.cpp
+)
+target_link_libraries(${STATUS_PANEL_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${STATUS_PANEL_TEST_TARGET} COMMAND ${STATUS_PANEL_TEST_TARGET})
+
+set(STREET_LEVEL_SCRIPT_TEST_TARGET streetLevelScriptTest)
+add_executable(${STREET_LEVEL_SCRIPT_TEST_TARGET}
+    engine/street/streetLevelScriptTest.cpp
+)
+target_link_libraries(${STREET_LEVEL_SCRIPT_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${STREET_LEVEL_SCRIPT_TEST_TARGET} COMMAND ${STREET_LEVEL_SCRIPT_TEST_TARGET})
+
+set(STREET_STAGE_TEST_TARGET streetStageTest)
+add_executable(${STREET_STAGE_TEST_TARGET}
+    engine/street/streetStageTest.cpp
+)
+target_link_libraries(${STREET_STAGE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${STREET_STAGE_TEST_TARGET} COMMAND ${STREET_STAGE_TEST_TARGET})
+
+set(BOSS_STAGE_TEST_TARGET bossStageTest)
+add_executable(${BOSS_STAGE_TEST_TARGET}
+    engine/street/bossStageTest.cpp
+)
+target_link_libraries(${BOSS_STAGE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${BOSS_STAGE_TEST_TARGET} COMMAND ${BOSS_STAGE_TEST_TARGET})
+
+set(LOADING_MOCK_TEST_TARGET loadingMockTest)
+add_executable(${LOADING_MOCK_TEST_TARGET}
+    engine/street/loadingMockTest.cpp
+)
+target_link_libraries(${LOADING_MOCK_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${LOADING_MOCK_TEST_TARGET} COMMAND ${LOADING_MOCK_TEST_TARGET})
+
+set(RAINBOW_TEST_TARGET rainbowTest)
+add_executable(${RAINBOW_TEST_TARGET}
+    engine/effects/rainbowTest.cpp
+)
+target_link_libraries(${RAINBOW_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${RAINBOW_TEST_TARGET} COMMAND ${RAINBOW_TEST_TARGET})
+
+set(GAME_OVER_SCENE_TEST_TARGET gameOverSceneTest)
+add_executable(${GAME_OVER_SCENE_TEST_TARGET}
+    engine/street/gameOverSceneTest.cpp
+)
+target_link_libraries(${GAME_OVER_SCENE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${GAME_OVER_SCENE_TEST_TARGET} COMMAND ${GAME_OVER_SCENE_TEST_TARGET})
+
+set(HIGH_SCORE_TABLE_TEST_TARGET highScoreTableTest)
+add_executable(${HIGH_SCORE_TABLE_TEST_TARGET}
+    engine/street/highScoreTableTest.cpp
+)
+target_link_libraries(${HIGH_SCORE_TABLE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${HIGH_SCORE_TABLE_TEST_TARGET} COMMAND ${HIGH_SCORE_TABLE_TEST_TARGET})
+
+set(HIGH_SCORE_SCENE_TEST_TARGET highScoreSceneTest)
+add_executable(${HIGH_SCORE_SCENE_TEST_TARGET}
+    engine/street/highScoreSceneTest.cpp
+)
+target_link_libraries(${HIGH_SCORE_SCENE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${HIGH_SCORE_SCENE_TEST_TARGET} COMMAND ${HIGH_SCORE_SCENE_TEST_TARGET})
+
+set(CONTINUE_SCENE_TEST_TARGET continueSceneTest)
+add_executable(${CONTINUE_SCENE_TEST_TARGET}
+    engine/street/continueSceneTest.cpp
+)
+target_link_libraries(${CONTINUE_SCENE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${CONTINUE_SCENE_TEST_TARGET} COMMAND ${CONTINUE_SCENE_TEST_TARGET})

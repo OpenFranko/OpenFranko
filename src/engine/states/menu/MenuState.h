@@ -7,6 +7,7 @@
 #include "../../effects/AttractSequence.h"
 #include "../../effects/GameOptions.h"
 #include "../../effects/MenuSequence.h"
+#include "../../street/GameSession.h"
 #include "../IEngineState.h"
 
 #include <optional>
@@ -22,7 +23,7 @@ public:
   MenuState(systems::VideoSystem &videoSystem,
             systems::AudioSystem &audioSystem,
             systems::ControllerSystem &controllerSystem,
-            effects::GameOptions &options);
+            effects::GameOptions &options, street::GameSession &session);
   ~MenuState();
 
   std::optional<EngineStateEnum> update() override;
@@ -37,6 +38,7 @@ private:
   systems::AudioSystem &m_audioSystem;
   systems::ControllerSystem &m_controllerSystem;
   effects::GameOptions &m_options;
+  street::GameSession &m_session;
   effects::MenuSequence m_menu;
   effects::AmigaPalette m_titlePalette;
   effects::AmigaPalette m_hiscorePalette;

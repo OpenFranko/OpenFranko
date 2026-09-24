@@ -9,12 +9,17 @@ namespace openfranko {
 namespace src {
 namespace systems {
 
+enum class FunctionKey { F1, F2, F3, F4, Escape };
+
 class ControllerSystem {
 public:
   void update();
   void clearFireLatch();
   bool isFireLatched() const;
   std::optional<char> typedLetter() const;
+  std::optional<char> typedKey() const;
+  std::optional<FunctionKey> functionKey() const;
+  int16_t joystick() const;
 
   struct ControllerStates {
     bool up = false;
@@ -29,10 +34,16 @@ public:
 private:
   void clearStates();
   void updateTypedLetter(const uint8_t *keys);
+  void updateTypedKey(const uint8_t *keys);
+  void updateFunctionKey(const uint8_t *keys);
 
   bool fireLatched = false;
   std::array<bool, 26> lettersDown{};
   std::optional<char> letter;
+  std::array<bool, 4> editingKeysDown{};
+  std::optional<char> key;
+  std::array<bool, 5> functionKeysDown{};
+  std::optional<FunctionKey> pressedFunctionKey;
 };
 
 } // namespace systems

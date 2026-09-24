@@ -22,17 +22,17 @@ SCENARIO("AmalAnim animates like the AMAL A instruction") {
     AmalAnim anim({{0, 10}, {2, 10}}, 2);
     const auto images = run(anim, 0, 45);
 
-    THEN("It follows the reference VM: 9, 10 and 10 frames, then stays") {
-      for (int frame = 0; frame < 9; ++frame) {
+    THEN("Like AmAni and AmDoAni: each image 10 frames, then the last stays") {
+      for (int frame = 0; frame < 10; ++frame) {
         REQUIRE(images[frame] == 0);
       }
-      for (int frame = 9; frame < 19; ++frame) {
+      for (int frame = 10; frame < 20; ++frame) {
         REQUIRE(images[frame] == 2);
       }
-      for (int frame = 19; frame < 29; ++frame) {
+      for (int frame = 20; frame < 30; ++frame) {
         REQUIRE(images[frame] == 0);
       }
-      for (int frame = 29; frame < 45; ++frame) {
+      for (int frame = 30; frame < 45; ++frame) {
         REQUIRE(images[frame] == 2);
       }
       REQUIRE(anim.isFinished());
@@ -42,8 +42,8 @@ SCENARIO("AmalAnim animates like the AMAL A instruction") {
   GIVEN("An animation with no loop count") {
     AmalAnim anim({{5, 1}, {6, 1}}, 0);
 
-    THEN("It never stops, and a one-frame first frame is replaced at once") {
-      REQUIRE(run(anim, 0, 6) == std::vector<int>{6, 5, 6, 5, 6, 5});
+    THEN("It never stops, the first image shown on the very first frame") {
+      REQUIRE(run(anim, 0, 6) == std::vector<int>{5, 6, 5, 6, 5, 6});
       REQUIRE_FALSE(anim.isFinished());
     }
   }
@@ -52,7 +52,7 @@ SCENARIO("AmalAnim animates like the AMAL A instruction") {
     AmalAnim anim({{7, 0}, {8, 0}}, 1);
 
     THEN("It is clamped to one frame") {
-      REQUIRE(run(anim, 0, 3) == std::vector<int>{8, 8, 8});
+      REQUIRE(run(anim, 0, 3) == std::vector<int>{7, 8, 8});
     }
   }
 
