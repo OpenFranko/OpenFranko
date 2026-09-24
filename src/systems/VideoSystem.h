@@ -40,6 +40,8 @@ public:
                        const std::vector<uint16_t> &palette);
   void xorImageRect(const std::string &name, int x, int y, int width,
                     int height, uint8_t mask);
+  void updateFrameImage(const std::string &name, int width, int height,
+                        const std::vector<uint32_t> &argb);
 
 private:
   struct VirtualScreen {

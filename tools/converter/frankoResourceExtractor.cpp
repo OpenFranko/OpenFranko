@@ -81,8 +81,7 @@ int validateDirectory(const std::string &dirPath) {
 
 namespace {
 
-int extractFile(const std::string &inputPath, const std::string &outDir,
-                SeenSampleBanks &seenSamBanks) {
+int extractFile(const std::string &inputPath, const std::string &outDir) {
   auto rawData = lib::filesystem::readFile::readFile(inputPath);
   auto info = lib::converter::fileContainer::parseFooter(rawData);
   std::string fileId = lib::converter::fileContainer::fileIdToHex(info.fileId);
@@ -150,7 +149,7 @@ int extractFile(const std::string &inputPath, const std::string &outDir,
     }
     try {
       auto samBank = embeddedSamBank(dec);
-      if (!samBank.empty() && seenSamBanks.insert(std::move(samBank)).second) {
+      if (!samBank.empty()) {
         auto samples =
             lib::converter::audioExtractor::extractEmbeddedSamBank(dec, fileId);
         for (auto &s : samples) {
@@ -264,10 +263,9 @@ int extractFile(const std::string &inputPath, const std::string &outDir,
 
 } // namespace
 
-int processFile(const std::string &inputPath, const std::string &outDir,
-                SeenSampleBanks &seenSamBanks) {
+int processFile(const std::string &inputPath, const std::string &outDir) {
   try {
-    return extractFile(inputPath, outDir, seenSamBanks);
+    return extractFile(inputPath, outDir);
   } catch (const std::exception &e) {
     std::cerr << inputPath << ": " << e.what() << std::endl;
     return 1;

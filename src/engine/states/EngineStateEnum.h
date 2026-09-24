@@ -13,7 +13,12 @@ enum class EngineStateEnum {
   TitleAndStory,
   ProtectionCheck,
   Menu,
-  CharacterSelection
+  CharacterSelection,
+  Level1,
+  Level1Boss,
+  GameOver,
+  HighScore,
+  Continue
 };
 
 }

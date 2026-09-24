@@ -1,5 +1,5 @@
-#include "frankoResourceExtractor.h"
 #include "../../lib/argumentParser/ArgumentParser.h"
+#include "frankoResourceExtractor.h"
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -73,18 +73,16 @@ int main(int argc, char **argv) {
         return 1;
       }
 
-      extractor::SeenSampleBanks seenSamBanks;
       std::cerr << "Processing " << files.size() << " data files..."
                 << std::endl;
       for (const auto &f : files) {
-        errors += extractor::processFile(f, outDir, seenSamBanks);
+        errors += extractor::processFile(f, outDir);
       }
 
       std::cerr << "\nDone. " << files.size() << " files processed, " << errors
                 << " errors." << std::endl;
     } else {
-      extractor::SeenSampleBanks seenSamBanks;
-      errors = extractor::processFile(inputPath, outDir, seenSamBanks);
+      errors = extractor::processFile(inputPath, outDir);
     }
 
     return errors > 0 ? 1 : 0;

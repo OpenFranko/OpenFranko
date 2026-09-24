@@ -3,6 +3,8 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
+#include <array>
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <string>
@@ -25,16 +27,24 @@ public:
   void setMusicVolume(int volume);
   void playSFX(const std::string &name);
   void playSFXSilencingMusic(const std::string &name);
+  void playSample(const std::string &name, int voiceMask);
+  void setSampleLooping(bool looping);
   void stopSFX();
   void update();
 
 private:
   void applyMusicVolume();
+  bool isVoicePlaying(const Mix_Chunk *chunk) const;
+  uint32_t chunkMilliseconds(const Mix_Chunk *chunk) const;
 
   Mix_Music *trackerModule = nullptr;
   std::map<std::string, Mix_Chunk *> soundEffects;
   int musicVolume;
   std::optional<int> silencingChannel;
+  const Mix_Chunk *silencingSample = nullptr;
+  bool sampleLooping = false;
+  std::array<uint32_t, 4> voiceStarted{};
+  std::array<const Mix_Chunk *, 4> loopingVoices{};
 };
 
 } // namespace systems

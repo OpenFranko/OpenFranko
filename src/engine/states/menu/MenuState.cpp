@@ -1,6 +1,5 @@
 #include "MenuState.h"
 
-#include <array>
 #include <cstddef>
 #include <cstdio>
 #include <string>
@@ -39,22 +38,7 @@ constexpr int SCORE_CHARACTERS = 4;
 constexpr int FIRST_ROW_Y = 32;
 constexpr int ROW_PITCH = 20;
 
-struct Hiscore {
-  const char *name;
-  int score;
-};
-
-constexpr std::array<Hiscore, effects::AttractSequence::HISCORE_ROWS>
-    DEFAULT_HISCORES = {{{"WORLD SOFTWARE", 0},
-                         {"WORLD SOFTWARE", 0},
-                         {"WORLD SOFTWARE", 0},
-                         {"WORLD SOFTWARE", 0},
-                         {"WORLD SOFTWARE", 0},
-                         {"WORLD SOFTWARE", 0},
-                         {"WORLD SOFTWARE", 0},
-                         {"WORLD SOFTWARE", 0},
-                         {"WORLD SOFTWARE", 0},
-                         {"WORLD SOFTWARE", 0}}};
+constexpr int RO = 14;
 
 std::string spritePath(const char *resource, int index) {
   char path[64];
@@ -100,10 +84,11 @@ bool isTouched(const effects::MenuSequence::Joystick &joystick) {
 MenuState::MenuState(systems::VideoSystem &videoSystem,
                      systems::AudioSystem &audioSystem,
                      systems::ControllerSystem &controllerSystem,
-                     effects::GameOptions &options)
+                     effects::GameOptions &options,
+                     street::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_options(options),
-      m_menu(options, openMenuScreen(videoSystem)) {
+      m_session(session), m_menu(options, openMenuScreen(videoSystem)) {
   for (int image = FIRST_MENU_IMAGE; image <= LAST_MENU_IMAGE; ++image) {
     m_videoSystem.loadMaskedImage(menuBobName(image),
                                   spritePath("0034", image - FIRST_MENU_IMAGE));
@@ -153,6 +138,7 @@ std::optional<EngineStateEnum> MenuState::update() {
     m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
   }
   if (m_menu.isFinished()) {
+    m_session.registers[RO] = 0;
     return EngineStateEnum::CharacterSelection;
   }
 
@@ -228,19 +214,18 @@ void MenuState::drawAttract() {
 }
 
 void MenuState::drawHiscoreRow(int row) {
-  const Hiscore &hiscore = DEFAULT_HISCORES[row];
+  const street::HighScoreTable &table = m_session.highScores;
   const int y = FIRST_ROW_Y + row * ROW_PITCH;
 
-  const std::string name = hiscore.name;
-  for (std::size_t i = 0; i < name.size(); ++i) {
-    if (name[i] >= 'A' && name[i] <= 'Z') {
-      m_videoSystem.drawImage(letterName(name[i] - 'A' + LETTER_A_IMAGE),
-                              NAME_X + static_cast<int>(i) * CHARACTER_PITCH,
-                              y);
+  for (int column = 0; column < street::HighScoreTable::NAME_LENGTH; ++column) {
+    const int letter = table.letter(row, column);
+    if (letter < street::HighScoreTable::LETTERS) {
+      m_videoSystem.drawImage(letterName(letter + LETTER_A_IMAGE),
+                              NAME_X + column * CHARACTER_PITCH, y);
     }
   }
 
-  const std::string score = " " + std::to_string(hiscore.score) + "   ";
+  const std::string score = " " + std::to_string(table.score(row)) + "   ";
   const int scoreX =
       SCORE_RIGHT - CHARACTER_PITCH * static_cast<int>(score.size());
   for (int i = 1; i <= SCORE_CHARACTERS; ++i) {
