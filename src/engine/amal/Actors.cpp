@@ -423,6 +423,13 @@ std::string victoryLift() {
          "M0,0,50;LA=38+RR;";
 }
 
+std::string bossRests() {
+  return "LA=75+RR;LR0=0;A:P;IR0=0JA;A0,(43+RR,5)(44+RR,5)(45+RR,5)(46+RR,5);"
+         "MRU,RS,RT;";
+}
+
+std::string bubbleUntilFire() { return "A:P;IJ1<>16JA;LA=10;"; }
+
 std::string pointingHand() {
   return "A:P;IR1=0JA;FR0=0T3;M4,0,2;M-4,0,2;NR0;LR1=0;JA;";
 }

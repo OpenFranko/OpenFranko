@@ -48,6 +48,7 @@ public:
   bool isTalking() const;
   bool isFighting() const;
   bool isFinishing() const;
+  bool isAtRailing() const;
 
 private:
   enum class Step {
@@ -58,6 +59,10 @@ private:
     Approach,
     ApproachUnpacked,
     ApproachScrolled,
+    ChildPasted,
+    ChildHit,
+    ChildRaised,
+    ChildCried,
     Dialogue,
     Fight,
     FightBloodStamped,
@@ -70,6 +75,20 @@ private:
     LiftRaised,
     LiftThrown,
     LiftDone,
+    RailingSpeech,
+    RailingWaitFire,
+    RailingReached,
+    RailingSat,
+    RailingSitting,
+    RailingCurse,
+    RailingFall,
+    RailingFell,
+    RailingFallNext,
+    RailingQuiet,
+    RailingPose,
+    RailingGrin,
+    RailingGrinned,
+    RailingDone,
     Cleared,
     GameOverWait,
     Finished
@@ -101,6 +120,9 @@ private:
   Flow approachScrolled();
   Flow approachTail();
   void startDialogue();
+  void beginTalk();
+  Flow beatChild();
+  Flow childRaised();
   Flow dialogue();
   Flow fightTop();
   Flow fightBlood();
@@ -113,6 +135,10 @@ private:
   Flow finishWalkOff();
   Flow liftStart();
   Flow liftBoss();
+  Flow railingStart();
+  Flow railingSpeech();
+  Flow railingWaitFire();
+  Flow pasteRailing(int image, Step next);
   Flow finishCleanUp();
   void scrollStep();
   void gameOver();
@@ -144,6 +170,7 @@ private:
   long m_passFrame = 0;
   int m_index = 0;
   SystemKey m_pendingKey = SystemKey::None;
+  std::optional<long> m_lastTaunt;
 
   int m_energyShown = 0;
   int m_killsShown = 0;

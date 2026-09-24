@@ -10,6 +10,7 @@
 #include "states/level2/Level2BossState.h"
 #include "states/level2/Level2CarState.h"
 #include "states/level2/Level2State.h"
+#include "states/level3/Level3BossState.h"
 #include "states/level3/Level3State.h"
 #include "states/menu/MenuState.h"
 #include "states/mirage/MirageState.h"
@@ -114,6 +115,10 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     break;
   case states::EngineStateEnum::Level3:
     currentState = std::make_unique<states::level3::Level3State>(
+        videoSystem, audioSystem, controllerSystem, options, session);
+    break;
+  case states::EngineStateEnum::Level3Boss:
+    currentState = std::make_unique<states::level3::Level3BossState>(
         videoSystem, audioSystem, controllerSystem, options, session);
     break;
   case states::EngineStateEnum::GameOver:

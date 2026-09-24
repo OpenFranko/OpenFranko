@@ -71,6 +71,7 @@ void ImageBank::load(int base, const std::vector<Picture> &frames) {
     entry.picture = frames[i];
     entry.orientation = 0;
     entry.loaded = frames[i].width > 0 && frames[i].height > 0;
+    entry.masked = true;
   }
 }
 
@@ -92,6 +93,16 @@ void ImageBank::orient(int number, uint16_t flags) {
     m_entries[static_cast<std::size_t>(number)].orientation =
         flags & (FLIP_X | FLIP_Y);
   }
+}
+
+void ImageBank::noMask(int number) {
+  if (find(number)) {
+    m_entries[static_cast<std::size_t>(number)].masked = false;
+  }
+}
+
+bool ImageBank::isMasked(int number) const {
+  return !find(number) || m_entries[static_cast<std::size_t>(number)].masked;
 }
 
 amal::Object &BobLayer::object(int number) {
@@ -161,7 +172,7 @@ bool BobLayer::collide(int number, const ImageBank &images, int first,
     const int image =
         static_cast<uint16_t>(bob.object.image) & ImageBank::NUMBER_MASK;
     shape.picture = images.find(image);
-    if (!shape.picture) {
+    if (!shape.picture || !images.isMasked(image)) {
       return false;
     }
     shape.orientation = images.orientation(image);
@@ -223,7 +234,7 @@ void BobLayer::draw(IndexedSurface &surface, ImageBank &images) const {
     }
     images.orient(index, flags);
     surface.draw(*picture, left, top, flags & ImageBank::FLIP_X,
-                 flags & ImageBank::FLIP_Y);
+                 flags & ImageBank::FLIP_Y, !images.isMasked(index));
   }
 }
 
@@ -241,7 +252,7 @@ bool BobLayer::paste(IndexedSurface &surface, ImageBank &images, int x, int y,
     return false;
   }
   surface.draw(*picture, x, y, flags & ImageBank::FLIP_X,
-               flags & ImageBank::FLIP_Y);
+               flags & ImageBank::FLIP_Y, !images.isMasked(index));
   return true;
 }
 

@@ -220,6 +220,20 @@ SCENARIO("KONBOSS on stage 2 throws the boss overhead") {
   }
 }
 
+SCENARIO("KONBOSS on stage 3 walks the boss to the railing") {
+  THEN("The boss rests until R0 is set, then walks RU,RS in RT frames") {
+    REQUIRE(actors::bossRests() ==
+            "LA=75+RR;LR0=0;A:P;IR0=0JA;A0,(43+RR,5)(44+RR,5)(45+RR,5)(46+"
+            "RR,5);MRU,RS,RT;");
+    REQUIRE_NOTHROW(parse(actors::bossRests()));
+  }
+
+  THEN("His bubble hides on fire alone") {
+    REQUIRE(actors::bubbleUntilFire() == "A:P;IJ1<>16JA;LA=10;");
+    REQUIRE_NOTHROW(parse(actors::bubbleUntilFire()));
+  }
+}
+
 SCENARIO("The bonus drive builds each pedestrian from its first image") {
   THEN("A type starting at image 9 squashes through images $C and $D") {
     REQUIRE(actors::pedestrian(9) ==

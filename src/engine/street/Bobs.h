@@ -24,12 +24,15 @@ public:
   const Picture *find(int number) const;
   uint16_t orientation(int number) const;
   void orient(int number, uint16_t flags);
+  void noMask(int number);
+  bool isMasked(int number) const;
 
 private:
   struct Entry {
     Picture picture;
     uint16_t orientation = 0;
     bool loaded = false;
+    bool masked = true;
   };
 
   std::vector<Entry> m_entries;

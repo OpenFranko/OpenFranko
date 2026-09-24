@@ -212,6 +212,51 @@ SCENARIO("Bob Col sees an image as it was last drawn") {
   }
 }
 
+SCENARIO("No Mask makes an image opaque and blind to Bob Col") {
+  GIVEN(
+      "Two solid images with a hole in the corner, the first set to No Mask") {
+    ImageBank images;
+    Picture holed = box(8, 4, 0, 0, 6);
+    holed.pixels[0] = 0;
+    images.load(1, {holed, holed});
+    images.noMask(1);
+    IndexedSurface screen(320, 222);
+    screen.fill(9);
+
+    THEN("Paste Bob writes its colour 0 as well") {
+      REQUIRE(BobLayer::paste(screen, images, 10, 20, 1));
+      REQUIRE(screen.pixel(10, 20) == 0);
+      REQUIRE(screen.pixel(11, 20) == 6);
+      REQUIRE(BobLayer::paste(screen, images, 30, 20, 2));
+      REQUIRE(screen.pixel(30, 20) == 9);
+    }
+
+    THEN("A bob showing it covers what is behind") {
+      BobLayer bobs;
+      bobs.set(1, 10, 20, 1);
+      bobs.draw(screen, images);
+      REQUIRE(screen.pixel(10, 20) == 0);
+    }
+
+    THEN("It never collides, from either side") {
+      BobLayer bobs;
+      bobs.set(1, 0, 0, 1);
+      bobs.set(2, 4, 2, 2);
+      REQUIRE_FALSE(bobs.collide(1, images));
+      REQUIRE_FALSE(bobs.collide(2, images));
+      bobs.setImage(1, 2);
+      REQUIRE(bobs.collide(2, images));
+    }
+
+    THEN("Loading the bank again brings the mask back") {
+      REQUIRE_FALSE(images.isMasked(1));
+      REQUIRE(images.isMasked(2));
+      images.load(1, {holed});
+      REQUIRE(images.isMasked(1));
+    }
+  }
+}
+
 SCENARIO("The sprite bank holds frames at base plus index") {
   GIVEN("Two sets loaded over each other") {
     ImageBank images;

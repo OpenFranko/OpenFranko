@@ -83,6 +83,41 @@ constexpr int SHOUT_WAIT = 50;
 constexpr int BOSS_THROWN_SAMPLE = 9;
 constexpr int VICTORY_SAMPLE = 8;
 
+constexpr int TAUNT_POSE = 78;
+constexpr int TAUNT_SAMPLE = 7;
+constexpr int TAUNT_EVERY = 15;
+constexpr int CHILD_STANDS = 71;
+constexpr int CHILD_BODY = 80;
+constexpr int CHILD_BODY_X = 232;
+constexpr int CHILD_BODY_Y = 180;
+constexpr int CHILD_PUNCH = 81;
+constexpr int CHILD_FLEX = 74;
+constexpr int CHILD_BEATS = 3;
+constexpr int CHILD_WAIT = 15;
+constexpr int CHILD_CRY_SAMPLE = 7;
+
+constexpr int RAILING_X = 208;
+constexpr int RAILING_Y = 143;
+constexpr int RAILING_TILE_X = 183;
+constexpr int RAILING_TILE_Y = 60;
+constexpr int RAILING_SIT = 82;
+constexpr int RAILING_BROKEN = 85;
+constexpr int REST_BUBBLE = 93;
+constexpr int CURSE_BUBBLE = 94;
+constexpr int CURSE_BUBBLE_X = 220;
+constexpr int CURSE_BUBBLE_Y = 64;
+constexpr int REST_WAIT = 50;
+constexpr int SIT_WAIT = 100;
+constexpr int FALL_WAIT = 15;
+constexpr int FALLEN_WAIT = 25;
+constexpr int VICTORY_POSE_DELAY = 90;
+constexpr int POSE_IMAGE = 38;
+constexpr int GRIN_IMAGE = 39;
+constexpr int POSE_HOLD = 30;
+constexpr int GRIN_HOLD = 40;
+constexpr int CURSE_SAMPLE = 9;
+constexpr int GRIN_SAMPLE = 3;
+
 int16_t word(int value) { return static_cast<int16_t>(value); }
 
 int clampBound(int stage) { return stage == 2 ? 48 : 272; }
@@ -135,7 +170,11 @@ bool BossStage::isApproaching() const {
          m_step == Step::ApproachScrolled;
 }
 
-bool BossStage::isTalking() const { return m_step == Step::Dialogue; }
+bool BossStage::isTalking() const {
+  return m_step == Step::ChildPasted || m_step == Step::ChildHit ||
+         m_step == Step::ChildRaised || m_step == Step::ChildCried ||
+         m_step == Step::Dialogue;
+}
 
 bool BossStage::isFighting() const {
   return m_step == Step::Fight || m_step == Step::FightBloodStamped;
@@ -146,7 +185,17 @@ bool BossStage::isFinishing() const {
          m_step == Step::FinishStamped || m_step == Step::FinishPosedBack ||
          m_step == Step::FinishWalkedOff || m_step == Step::LiftWalkedToBoss ||
          m_step == Step::LiftRaised || m_step == Step::LiftThrown ||
-         m_step == Step::LiftDone || m_step == Step::Cleared;
+         m_step == Step::LiftDone || isAtRailing() || m_step == Step::Cleared;
+}
+
+bool BossStage::isAtRailing() const {
+  return m_step == Step::RailingSpeech || m_step == Step::RailingWaitFire ||
+         m_step == Step::RailingReached || m_step == Step::RailingSat ||
+         m_step == Step::RailingSitting || m_step == Step::RailingCurse ||
+         m_step == Step::RailingFall || m_step == Step::RailingFell ||
+         m_step == Step::RailingFallNext || m_step == Step::RailingQuiet ||
+         m_step == Step::RailingPose || m_step == Step::RailingGrin ||
+         m_step == Step::RailingGrinned || m_step == Step::RailingDone;
 }
 
 int16_t &BossStage::global(int index) {
@@ -356,8 +405,17 @@ BossStage::Flow BossStage::approachTail() {
   if (m_columnsWalked == APPROACH_COLUMNS) {
     global(RX) = 2;
     startDialogue();
+    if (stage() == 3) {
+      return beatChild();
+    }
+    beginTalk();
     m_step = Step::Dialogue;
     return Flow::Continue;
+  }
+  if (stage() == 3 && iBob(BOSS) == TAUNT_POSE && global(RE) == 0 &&
+      (!m_lastTaunt || m_frame - *m_lastTaunt > TAUNT_EVERY)) {
+    m_lastTaunt = m_frame;
+    m_host.playSample(PLAYER_SAMPLE_BANK, TAUNT_SAMPLE, PRIORITY_VOICE);
   }
   if (global(RE) != 0) {
     m_host.playSample(PLAYER_SAMPLE_BANK, global(RE), PRIORITY_VOICE);
@@ -378,10 +436,34 @@ void BossStage::startDialogue() {
   m_machine.freeze(PLAYER_WALK_CHANNEL);
   m_machine.freeze(BOSS_WALK_CHANNEL);
   m_bobs.setImage(PLAYER, IDLE_IMAGE + m_facing);
+}
+
+void BossStage::beginTalk() {
   global(RT) = DIALOGUE_START;
   if (stage() == 1) {
     m_bobs.set(BOSS_BUBBLE, 176, 40, BOSS_BUBBLE_IMAGE);
   }
+}
+
+BossStage::Flow BossStage::beatChild() {
+  m_bobs.setImage(BOSS, CHILD_STANDS);
+  m_step = Step::ChildPasted;
+  if (BobLayer::paste(m_screen, m_images, CHILD_BODY_X, CHILD_BODY_Y,
+                      CHILD_BODY)) {
+    stall();
+    return Flow::Yield;
+  }
+  return Flow::Continue;
+}
+
+BossStage::Flow BossStage::childRaised() {
+  if (++m_index <= CHILD_BEATS) {
+    m_bobs.setImage(BOSS, CHILD_STANDS);
+    return waitFrames(CHILD_WAIT, Step::ChildHit);
+  }
+  m_bobs.setImage(BOSS, CHILD_FLEX);
+  m_host.playSample(BOSS_SAMPLE_BANK, CHILD_CRY_SAMPLE, PRIORITY_VOICE);
+  return waitFrames(CHILD_WAIT, Step::ChildCried);
 }
 
 BossStage::Flow BossStage::dialogue() {
@@ -619,7 +701,51 @@ BossStage::Flow BossStage::finishStart() {
   if (stage() == 2) {
     return liftStart();
   }
+  if (stage() == 3) {
+    return railingStart();
+  }
   return finishWalkOff();
+}
+
+BossStage::Flow BossStage::railingStart() {
+  for (int image = RAILING_SIT; image <= RAILING_BROKEN; ++image) {
+    m_images.noMask(image);
+  }
+  global(RU) = word(RAILING_X - xBob(BOSS));
+  global(RS) = word(RAILING_Y - yBob(BOSS));
+  global(RT) = word((std::abs(global(RU)) + std::abs(global(RS))) / 2);
+  global(RR) = word(0x8000 * amosBool(global(RB) < 0));
+  m_bobs.setImage(PLAYER, word(IDLE_IMAGE + global(RR)));
+  m_machine.create(BOSS_WALK_CHANNEL, amal::actors::bossRests());
+  m_machine.startAll();
+  return waitFrames(REST_WAIT, Step::RailingSpeech);
+}
+
+BossStage::Flow BossStage::railingSpeech() {
+  m_bobs.set(BOSS_BUBBLE, xBob(BOSS) - 32 - 64 * amosBool(global(RR) != 0),
+             yBob(BOSS) - 72, REST_BUBBLE);
+  m_machine.create(BOSS_TALK_CHANNEL, amal::actors::bubbleUntilFire());
+  m_machine.startAll();
+  m_step = Step::RailingWaitFire;
+  return Flow::Continue;
+}
+
+BossStage::Flow BossStage::railingWaitFire() {
+  if (iBob(BOSS_BUBBLE) != HIDDEN_IMAGE) {
+    return Flow::Yield;
+  }
+  reg(BOSS_WALK_CHANNEL, 0) = 1;
+  return waitFrames(global(RT), Step::RailingReached);
+}
+
+BossStage::Flow BossStage::pasteRailing(int image, Step next) {
+  m_step = next;
+  if (BobLayer::paste(m_screen, m_images, RAILING_TILE_X, RAILING_TILE_Y,
+                      image)) {
+    stall();
+    return Flow::Yield;
+  }
+  return Flow::Continue;
 }
 
 BossStage::Flow BossStage::liftStart() {
@@ -784,6 +910,23 @@ void BossStage::runBasic(const StreetInput &input) {
     case Step::ApproachScrolled:
       flow = approachScrolled();
       break;
+    case Step::ChildPasted:
+      m_index = 1;
+      m_bobs.setImage(BOSS, CHILD_STANDS);
+      flow = waitFrames(CHILD_WAIT, Step::ChildHit);
+      break;
+    case Step::ChildHit:
+      m_bobs.setImage(BOSS, CHILD_PUNCH);
+      flow = waitFrames(CHILD_WAIT, Step::ChildRaised);
+      break;
+    case Step::ChildRaised:
+      flow = childRaised();
+      break;
+    case Step::ChildCried:
+      m_bobs.setImage(BOSS, CHILD_PUNCH);
+      beginTalk();
+      m_step = Step::Dialogue;
+      break;
     case Step::Dialogue:
       flow = dialogue();
       break;
@@ -821,6 +964,60 @@ void BossStage::runBasic(const StreetInput &input) {
       flow = waitFrames(SHOUT_WAIT, Step::LiftDone);
       break;
     case Step::LiftDone:
+      flow = finishWalkOff();
+      break;
+    case Step::RailingSpeech:
+      flow = railingSpeech();
+      break;
+    case Step::RailingWaitFire:
+      flow = railingWaitFire();
+      break;
+    case Step::RailingReached:
+      m_machine.destroy(BOSS_WALK_CHANNEL);
+      m_bobs.off(BOSS);
+      flow = waitFrames(1, Step::RailingSat);
+      break;
+    case Step::RailingSat:
+      flow = pasteRailing(RAILING_SIT, Step::RailingSitting);
+      break;
+    case Step::RailingSitting:
+      flow = waitFrames(SIT_WAIT, Step::RailingCurse);
+      break;
+    case Step::RailingCurse:
+      m_host.playSample(BOSS_SAMPLE_BANK, CURSE_SAMPLE, PRIORITY_VOICE);
+      m_bobs.set(BOSS_BUBBLE, CURSE_BUBBLE_X, CURSE_BUBBLE_Y, CURSE_BUBBLE);
+      m_index = RAILING_SIT + 1;
+      flow = waitFrames(1, Step::RailingFall);
+      break;
+    case Step::RailingFall:
+      flow = pasteRailing(m_index, Step::RailingFell);
+      break;
+    case Step::RailingFell:
+      flow = waitFrames(FALL_WAIT, Step::RailingFallNext);
+      break;
+    case Step::RailingFallNext:
+      flow = ++m_index <= RAILING_BROKEN
+                 ? waitFrames(1, Step::RailingFall)
+                 : waitFrames(FALLEN_WAIT, Step::RailingQuiet);
+      break;
+    case Step::RailingQuiet:
+      m_bobs.setImage(BOSS_BUBBLE, HIDDEN_IMAGE);
+      flow = waitFrames(VICTORY_POSE_DELAY, Step::RailingPose);
+      break;
+    case Step::RailingPose:
+      m_bobs.setImage(PLAYER, POSE_IMAGE);
+      flow = waitFrames(POSE_HOLD, Step::RailingGrin);
+      break;
+    case Step::RailingGrin:
+      m_bobs.setImage(PLAYER, GRIN_IMAGE);
+      m_host.playSample(PLAYER_SAMPLE_BANK, GRIN_SAMPLE, PRIORITY_VOICE);
+      flow = waitFrames(GRIN_HOLD, Step::RailingGrinned);
+      break;
+    case Step::RailingGrinned:
+      m_bobs.setImage(PLAYER, POSE_IMAGE);
+      flow = waitFrames(POSE_HOLD, Step::RailingDone);
+      break;
+    case Step::RailingDone:
       flow = finishWalkOff();
       break;
     case Step::Cleared:
