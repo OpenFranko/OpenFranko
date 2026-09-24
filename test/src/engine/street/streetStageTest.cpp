@@ -137,6 +137,8 @@ public:
     samples.push_back({bank, sample, voices});
   }
 
+  void playSampleAt(int, int, int, int) override {}
+
   void setSampleLoop(bool) override {}
 
   int random(int limit) override {

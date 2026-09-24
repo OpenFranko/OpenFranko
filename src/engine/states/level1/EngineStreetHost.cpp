@@ -122,6 +122,11 @@ void EngineStreetHost::playSample(int bank, int sample, int voices) {
   m_audioSystem.playSample(sampleName(bank, sample), voices);
 }
 
+void EngineStreetHost::playSampleAt(int bank, int sample, int voices,
+                                    int frequency) {
+  m_audioSystem.playSampleAt(sampleName(bank, sample), voices, frequency);
+}
+
 void EngineStreetHost::setSampleLoop(bool loop) {
   m_audioSystem.setSampleLooping(loop);
 }

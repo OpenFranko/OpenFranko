@@ -28,6 +28,7 @@ public:
   void score(const Stats &stats);
   void drawKills(int kills);
   void loseEnergy(int energy);
+  void gainEnergy(int energy);
 
   const IndexedSurface &surface() const;
 

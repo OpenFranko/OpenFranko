@@ -207,6 +207,21 @@ SCENARIO("The spectator, the speech bubbles and the finishing moves") {
   }
 }
 
+SCENARIO("The bonus drive builds each pedestrian from its first image") {
+  THEN("A type starting at image 9 squashes through images $C and $D") {
+    REQUIRE(actors::pedestrian(9) ==
+            "LR3=A+3;LR2=A;FR0=0T50;LX=X-RT;LA=A+1;IA<R3JA;LA=R2;A:P;LY=Y+4;"
+            "FR1=1T10;IR4=1JB;NR1;NR0;JD;B:A1,($C,10)($D,10);C:P;LX=X-RU;"
+            "M0,0,7;IX>-80JC;D:");
+    REQUIRE_NOTHROW(parse(actors::pedestrian(24)));
+  }
+
+  THEN("The car drives off with one long Move") {
+    REQUIRE(actors::carDriveOff() == "A0,(1,10)(2,10);M800,0,400;");
+    REQUIRE_NOTHROW(parse(actors::carDriveOff()));
+  }
+}
+
 SCENARIO("RACZKA's pointing hand waits on R1 and waggles four times") {
   THEN("The program is the source's, and it parses") {
     REQUIRE(actors::pointingHand() ==

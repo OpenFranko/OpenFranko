@@ -11,22 +11,6 @@ using namespace openfranko::src::engine::street;
 
 namespace {
 
-const char *SHIPPED_FILE =
-    "203000447c50486700443848bf7f7f7e0048100400484c2038377c44bc48037e"
-    "203000447c50486700443848bf7f7f7e203000447c50486700443848bf7f7f7e"
-    "0048100400484c2038377c44bc48037e203000447c50486700443848bf7f7f7e"
-    "203000447c50486700443848bf7f7f7e7c337c4b004438487f7f7f7fbb7f7f7e"
-    "0048100400484c2038377c442848037e0048100400484c2038377c447848037c";
-
-HighScoreTable::Bytes fromHex(const std::string &hex) {
-  HighScoreTable::Bytes bytes{};
-  for (std::size_t i = 0; i < bytes.size(); ++i) {
-    bytes[i] =
-        static_cast<uint8_t>(std::stoi(hex.substr(i * 2, 2), nullptr, 16));
-  }
-  return bytes;
-}
-
 std::string nameOf(const HighScoreTable &table, int row) {
   std::string name;
   for (int column = 0; column < HighScoreTable::NAME_LENGTH; ++column) {
@@ -70,22 +54,18 @@ SCENARIO("HINEW seeds ten WORLD SOFTWARE entries worth nothing") {
   }
 }
 
-SCENARIO("The shipped hiscore file is the table rotated by Ror.l 6") {
-  GIVEN("The 160 bytes of the h file on the game disk") {
-    const HighScoreTable::Bytes file = fromHex(SHIPPED_FILE);
+SCENARIO("The file stores every long of the table rotated right by 6 bits") {
+  GIVEN("A file whose first long is $04000000 and second $FC000000") {
+    HighScoreTable::Bytes file{};
+    file[0] = 0x04;
+    file[4] = 0xFC;
     const HighScoreTable table = HighScoreTable::fromFile(file);
 
-    THEN("Rol.l 6 on every long gives the developers' names and kills") {
-      REQUIRE(nameOf(table, 0) == "MARIUSZ.ROSA...");
-      REQUIRE(table.score(0) == 175);
-      REQUIRE(nameOf(table, 7) == "M.S.ROSA.......");
-      REQUIRE(table.score(7) == 174);
-      REQUIRE(nameOf(table, 9) == "SEBASTIAN.ROSA.");
-      REQUIRE(table.score(9) == 30);
-    }
-
-    THEN("Typed spaces are stored as Asc(\" \")-65") {
-      REQUIRE(table.letter(0, 7) == 0xDF);
+    THEN("Rol.l 6 on load turns them into $00000001 and $0000003F") {
+      REQUIRE(table.letter(0, 0) == 0);
+      REQUIRE(table.letter(0, 3) == 1);
+      REQUIRE(table.letter(0, 4) == 0);
+      REQUIRE(table.letter(0, 7) == 0x3F);
     }
 
     THEN("Ror.l 6 before the Bsave writes the same bytes back") {

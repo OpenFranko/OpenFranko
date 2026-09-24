@@ -16,6 +16,7 @@ enum class EngineStateEnum {
   CharacterSelection,
   Level1,
   Level1Boss,
+  Level1Car,
   GameOver,
   HighScore,
   Continue

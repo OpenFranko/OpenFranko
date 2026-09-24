@@ -417,4 +417,13 @@ std::string pointingHand() {
   return "A:P;IR1=0JA;FR0=0T3;M4,0,2;M-4,0,2;NR0;LR1=0;JA;";
 }
 
+std::string pedestrian(int image) {
+  return "LR3=A+3;LR2=A;FR0=0T50;LX=X-RT;LA=A+1;IA<R3JA;LA=R2;A:P;LY=Y+4;FR1="
+         "1T10;IR4=1JB;NR1;NR0;JD;B:A1,(" +
+         hex(image + 3) + ",10)(" + hex(image + 4) +
+         ",10);C:P;LX=X-RU;M0,0,7;IX>-80JC;D:";
+}
+
+std::string carDriveOff() { return "A0,(1,10)(2,10);M800,0,400;"; }
+
 } // namespace openfranko::src::engine::amal::actors

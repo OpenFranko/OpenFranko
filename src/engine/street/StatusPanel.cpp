@@ -11,6 +11,7 @@ namespace openfranko::src::engine::street {
 namespace {
 
 constexpr uint8_t EMPTY_BAR_COLOR = 6;
+constexpr uint8_t FULL_BAR_COLOR = 2;
 constexpr int BAR_LEFT = 111;
 constexpr int BAR_RIGHT = 176;
 constexpr int BAR_TOP = 13;
@@ -60,6 +61,11 @@ void StatusPanel::drawKills(int kills) {
 
 void StatusPanel::loseEnergy(int energy) {
   m_surface.clear(EMPTY_BAR_COLOR, BAR_LEFT + energy, BAR_TOP, BAR_RIGHT,
+                  BAR_BOTTOM);
+}
+
+void StatusPanel::gainEnergy(int energy) {
+  m_surface.clear(FULL_BAR_COLOR, BAR_LEFT, BAR_TOP, BAR_LEFT + energy,
                   BAR_BOTTOM);
 }
 
