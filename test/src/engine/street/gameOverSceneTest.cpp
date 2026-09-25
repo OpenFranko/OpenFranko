@@ -131,6 +131,18 @@ struct Graveyard {
     scene.compose(frame);
     return frame[static_cast<std::size_t>(y * GameOverScene::WIDTH + x)];
   }
+
+  int leftmost(int y, uint32_t color) const {
+    std::vector<uint32_t> frame;
+    scene.compose(frame);
+    for (int x = 0; x < GameOverScene::WIDTH; ++x) {
+      if (frame[static_cast<std::size_t>(y * GameOverScene::WIDTH + x)] ==
+          color) {
+        return x;
+      }
+    }
+    return -1;
+  }
 };
 
 } // namespace
@@ -245,36 +257,32 @@ SCENARIO("The picture pans 5 px every 4 frames under the pinned title") {
     Graveyard graveyard;
     graveyard.run(OPENED_FRAME);
 
-    WHEN("It pans for forty frames") {
-      std::vector<int> offsets;
+    WHEN("It pans for forty frames after the one that shows BACK[0]'s title") {
+      graveyard.run(1);
+      std::vector<int> steps;
+      std::vector<int> lefts;
       for (int frame = 0; frame < 40; ++frame) {
+        const int before = graveyard.scene.offset();
         graveyard.run(1);
-        offsets.push_back(graveyard.scene.offset());
-      }
-      int left = -1;
-      for (int x = 0; x < GameOverScene::WIDTH; ++x) {
-        if (graveyard.pixel(x, 80) == RED) {
-          left = x;
-          break;
-        }
+        steps.push_back(graveyard.scene.offset() - before);
+        lefts.push_back(graveyard.leftmost(80, RED));
       }
 
-      THEN("The title trails its pin by a step: the offset reaches the "
-           "screen two VBLs after Screen Offset, and X Screen places the bob "
-           "with the offset the copper already has") {
-        REQUIRE(offsets[37] - offsets[36] > 0);
-        REQUIRE(left == 104 - (offsets[37] - offsets[36]));
+      THEN("The picture moves by uneven steps but the title holds X "
+           "Screen(200) on every frame") {
+        REQUIRE(std::count(steps.begin(), steps.end(), 1) > 0);
+        REQUIRE(std::count(steps.begin(), steps.end(), 2) > 0);
+        REQUIRE(lefts == std::vector<int>(lefts.size(), 104));
       }
     }
 
     WHEN("Three hundred frames have passed") {
       graveyard.run(300);
 
-      THEN("The offset and the title have moved together, the title a step "
-           "behind") {
+      THEN("The offset and the title have moved together") {
         REQUIRE(graveyard.scene.offset() == 375);
-        REQUIRE(graveyard.scene.bobs().x(1) == 104 + 373);
-        REQUIRE(graveyard.pixel(104, 80) == 0xFFFF0000u);
+        REQUIRE(graveyard.scene.bobs().x(1) == 104 + 375);
+        REQUIRE(graveyard.leftmost(80, RED) == 104);
       }
     }
 
@@ -303,6 +311,11 @@ SCENARIO("The picture pans 5 px every 4 frames under the pinned title") {
         REQUIRE(graveyard.pixel(367, 0) == 0xFF000000u);
         REQUIRE(graveyard.pixel(367, 1) != 0xFF000000u);
         REQUIRE(graveyard.pixel(327, 0) != 0xFF000000u);
+      }
+
+      THEN("The title rests on its pin once the pan has stopped") {
+        graveyard.run(2);
+        REQUIRE(graveyard.leftmost(80, RED) == 104);
       }
     }
   }
