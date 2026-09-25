@@ -248,7 +248,7 @@ GameOverScene::Flow GameOverScene::pan() {
     return Flow::Continue;
   }
   m_offset = offset;
-  m_bobs.setX(TITLE, PINNED_X - WINDOW_X + m_copperOffset);
+  m_bobs.setX(TITLE, PINNED_X - WINDOW_X + m_offset);
   ++m_count;
   return Flow::Yield;
 }
