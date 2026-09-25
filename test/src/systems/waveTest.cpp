@@ -71,8 +71,8 @@ SCENARIO("readWave reads the sample files the asset pipeline writes") {
 
       THEN("It keeps its rate") { REQUIRE(sound.rate == 6453); }
 
-      THEN("Its unsigned bytes become signed 16-bit frames") {
-        REQUIRE(sound.frames == std::vector<int16_t>{0, 32512, -32768});
+      THEN("Its unsigned bytes become signed 8-bit frames") {
+        REQUIRE(sound.frames == std::vector<int8_t>{0, 127, -128});
       }
     }
   }
@@ -81,11 +81,10 @@ SCENARIO("readWave reads the sample files the asset pipeline writes") {
     WaveFile file;
     file.channels = 2;
     file.bits = 16;
-    file.data = {0x10, 0x00, 0x30, 0x00, 0x00, 0x80, 0x00, 0x80};
+    file.data = {0x00, 0x10, 0x00, 0x30, 0x00, 0x80, 0x00, 0x80};
 
-    THEN("Each frame is the mean of its two channels") {
-      REQUIRE(readWave(file.bytes()).frames ==
-              std::vector<int16_t>{0x20, -32768});
+    THEN("Each frame is the high byte of the mean of its two channels") {
+      REQUIRE(readWave(file.bytes()).frames == std::vector<int8_t>{0x20, -128});
     }
   }
 

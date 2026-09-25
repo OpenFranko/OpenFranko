@@ -1,6 +1,7 @@
 #ifndef ENGINE_STREET_CONTINUESCENE_H_
 #define ENGINE_STREET_CONTINUESCENE_H_
 
+#include "../../systems/Display.h"
 #include "../amal/Machine.h"
 #include "../effects/AmigaPalette.h"
 #include "Bobs.h"
@@ -29,6 +30,7 @@ public:
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
+  systems::Display output() const;
 
   Outcome outcome() const;
   bool isShown() const;

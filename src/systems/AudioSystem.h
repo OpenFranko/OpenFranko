@@ -1,11 +1,6 @@
 #ifndef SYSTEMS_AUDIOSYSTEM_H_
 #define SYSTEMS_AUDIOSYSTEM_H_
 
-#include "AudioDevice.h"
-#include "Mixer.h"
-#include "Wave.h"
-
-#include <map>
 #include <memory>
 #include <string>
 
@@ -15,9 +10,10 @@ namespace systems {
 
 class AudioSystem {
 public:
-  static constexpr int ALL_VOICES = Mixer::ALL_VOICES;
+  static constexpr int ALL_VOICES = 0xF;
 
   AudioSystem();
+  ~AudioSystem();
 
   AudioSystem(const AudioSystem &) = delete;
   AudioSystem &operator=(const AudioSystem &) = delete;
@@ -40,15 +36,11 @@ public:
   void update();
 
 private:
+  struct Output;
+
   void applyTempo();
 
-  Mixer mixer;
-  std::map<std::string, std::unique_ptr<Sound>> sounds;
-  std::string musicPath;
-  double tempoScale = 1.0;
-  int vblRate;
-  bool sampleLooping = false;
-  std::unique_ptr<AudioDevice> device;
+  std::unique_ptr<Output> output;
 };
 
 } // namespace systems

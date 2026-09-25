@@ -208,13 +208,13 @@ void MenuState::drawMenu() {
     return;
   }
 
-  const effects::AmigaPalette &palette = m_menu.palette();
-  m_menuScreen.draw(m_backdrop, palette, 0, 0);
+  m_menuScreen.setPalette(m_menu.palette());
+  m_menuScreen.draw(m_backdrop, 0, 0);
   for (const effects::MenuSequence::Bob &bob : m_menu.shownBobs()) {
     const systems::IndexedBitmap *image =
         findImage(m_menuBobs, FIRST_MENU_IMAGE, bob.image);
     if (bob.shown && image) {
-      m_menuScreen.drawMasked(*image, palette, bob.x, bob.y, bob.flipped);
+      m_menuScreen.drawMasked(*image, bob.x, bob.y, bob.flipped);
     }
   }
   show(m_menuScreen);
@@ -230,12 +230,14 @@ void MenuState::drawAttract() {
 
 void MenuState::drawAttractPicture() {
   if (m_attract->kind() == effects::AttractSequence::Kind::Title) {
-    m_attractScreen.draw(m_title, m_title.palette, 0, -m_attractTop);
+    m_attractScreen.setPalette(m_title.palette);
+    m_attractScreen.draw(m_title, 0, -m_attractTop);
     show(m_attractScreen);
     return;
   }
 
-  m_attractScreen.draw(m_hiscores, m_attract->palette(), 0, -m_attractTop);
+  m_attractScreen.setPalette(m_attract->palette());
+  m_attractScreen.draw(m_hiscores, 0, -m_attractTop);
   for (int drawn = 0; drawn < m_attract->rowsShown(); ++drawn) {
     drawHiscoreRow(effects::AttractSequence::HISCORE_ROWS - 1 - drawn);
   }
@@ -244,7 +246,6 @@ void MenuState::drawAttractPicture() {
 
 void MenuState::drawHiscoreRow(int row) {
   const street::HighScoreTable &table = m_session.highScores;
-  const effects::AmigaPalette &palette = m_attract->palette();
   const int y = FIRST_ROW_Y + row * ROW_PITCH - m_attractTop;
 
   for (int column = 0; column < street::HighScoreTable::NAME_LENGTH; ++column) {
@@ -252,8 +253,7 @@ void MenuState::drawHiscoreRow(int row) {
     const systems::IndexedBitmap *image =
         findImage(m_letters, FIRST_LETTER_IMAGE, letter + LETTER_A_IMAGE);
     if (letter < street::HighScoreTable::LETTERS && image) {
-      m_attractScreen.drawMasked(*image, palette,
-                                 NAME_X + column * CHARACTER_PITCH, y);
+      m_attractScreen.drawMasked(*image, NAME_X + column * CHARACTER_PITCH, y);
     }
   }
 
@@ -265,14 +265,13 @@ void MenuState::drawHiscoreRow(int row) {
     const systems::IndexedBitmap *image = findImage(
         m_letters, FIRST_LETTER_IMAGE, character - DIGIT_IMAGE_OFFSET);
     if (character > ' ' && image) {
-      m_attractScreen.drawMasked(*image, palette, scoreX + i * CHARACTER_PITCH,
-                                 y);
+      m_attractScreen.drawMasked(*image, scoreX + i * CHARACTER_PITCH, y);
     }
   }
 }
 
 void MenuState::show(const systems::Canvas &screen) {
-  m_videoSystem.show(screen.pixels().data(), screen.width(), screen.height());
+  m_videoSystem.show(screen.output());
 }
 
 } // namespace openfranko::src::engine::states::menu

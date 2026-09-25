@@ -3,6 +3,7 @@
 #include "../effects/AmigaDisplay.h"
 #include "StageFrame.h"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstddef>
@@ -87,15 +88,30 @@ void HighScoreScene::advance() {
 }
 
 void HighScoreScene::compose(std::vector<uint32_t> &frame) const {
-  frame.assign(static_cast<std::size_t>(WIDTH * HEIGHT),
-               toArgb(m_session.border));
+  systems::rasterize(output(), frame);
+}
+
+systems::Display HighScoreScene::output() const {
+  systems::Display display;
+  display.width = WIDTH;
+  display.height = HEIGHT;
+  display.displayHeight = HEIGHT;
+  display.border = m_session.border;
   if (!m_shown) {
-    return;
+    return display;
   }
-  const std::vector<uint8_t> &pixels = m_display.pixels();
-  for (std::size_t i = 0; i < frame.size(); ++i) {
-    frame[i] = toArgb(m_palette[pixels[i] & (COLORS - 1)]);
-  }
+  systems::Layer layer;
+  layer.pixels = m_display.pixels().data();
+  layer.stride = WIDTH;
+  layer.sourceColumns = WIDTH;
+  layer.sourceRows =
+      std::min(HEIGHT, static_cast<int>(m_display.pixels().size() / WIDTH));
+  layer.columns = WIDTH;
+  layer.rows = HEIGHT;
+  layer.mask = COLORS - 1;
+  layer.palette = m_palette;
+  display.layers.push_back(std::move(layer));
+  return display;
 }
 
 HighScoreScene::Outcome HighScoreScene::outcome() const { return m_outcome; }

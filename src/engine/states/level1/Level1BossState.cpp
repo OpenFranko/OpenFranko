@@ -15,8 +15,7 @@ Level1BossState::Level1BossState(systems::VideoSystem &videoSystem,
 
 std::optional<EngineStateEnum> Level1BossState::update() {
   m_stage.advance(readStreetInput(m_controllerSystem));
-  m_stage.compose(m_frame);
-  showStageFrame(m_videoSystem, m_frame, m_options);
+  showStageFrame(m_videoSystem, m_stage.output(), m_options);
 
   switch (m_stage.outcome()) {
   case street::BossStage::Outcome::GameOver:

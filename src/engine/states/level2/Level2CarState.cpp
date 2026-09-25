@@ -15,8 +15,7 @@ Level2CarState::Level2CarState(systems::VideoSystem &videoSystem,
 
 std::optional<EngineStateEnum> Level2CarState::update() {
   m_stage.advance(level1::readStreetInput(m_controllerSystem));
-  m_stage.compose(m_frame);
-  level1::showStageFrame(m_videoSystem, m_frame, m_options);
+  level1::showStageFrame(m_videoSystem, m_stage.output(), m_options);
 
   switch (m_stage.outcome()) {
   case street::CarStage::Outcome::GameOver:

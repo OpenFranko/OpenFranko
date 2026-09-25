@@ -135,38 +135,43 @@ void EndingScene::advance(int16_t joystick) {
 }
 
 void EndingScene::compose(std::vector<uint32_t> &frame) const {
-  frame.assign(static_cast<std::size_t>(WIDTH * HEIGHT), toArgb(m_border));
+  systems::rasterize(output(), frame);
+}
+
+systems::Display EndingScene::output() const {
+  systems::Display display;
+  display.width = WIDTH;
+  display.height = HEIGHT;
+  display.displayHeight = HEIGHT;
+  display.border = m_border;
   if (m_stageShown && m_stage) {
-    const IndexedSurface &display = m_stage->buffer.shown();
-    const std::size_t mask = m_stage->palette.size() - 1;
+    const IndexedSurface &shown = m_stage->buffer.shown();
     const int rowsPerLine = m_stage->laced ? 2 : 1;
-    for (int row = 0; row < HEIGHT; ++row) {
-      const int y = (m_displayLine + row - m_stage->displayY) * rowsPerLine;
-      if (y < 0 || y >= display.height()) {
-        continue;
-      }
-      for (int x = 0; x < STAGE_WIDTH; ++x) {
-        const int column = x + m_stage->offsetX;
-        if (column < display.width()) {
-          frame[static_cast<std::size_t>(row * WIDTH + x)] =
-              toArgb(m_stage->palette[display.pixel(column, y) & mask]);
-        }
-      }
-    }
+    systems::Layer stage;
+    stage.pixels = shown.pixels().data();
+    stage.stride = shown.width();
+    stage.sourceColumns = shown.width();
+    stage.sourceRows = shown.height();
+    stage.sourceX = m_stage->offsetX;
+    stage.sourceY = (m_displayLine - m_stage->displayY) * rowsPerLine;
+    stage.sourceStep = rowsPerLine;
+    stage.columns = STAGE_WIDTH;
+    stage.rows = HEIGHT;
+    stage.mask = static_cast<uint8_t>(m_stage->palette.size() - 1);
+    stage.palette = m_stage->palette;
+    display.layers.push_back(std::move(stage));
   }
   if (const IndexedSurface *shown = panel()) {
-    const IndexedSurface &surface = *shown;
-    const effects::AmigaPalette &colors = panelPalette();
-    for (int y = 0; y < StatusPanel::VISIBLE_HEIGHT; ++y) {
-      const int row = m_panelTop - m_displayLine + y;
-      if (row < 0 || row >= HEIGHT) {
-        continue;
-      }
-      for (int x = 0; x < StatusPanel::WIDTH; ++x) {
-        frame[static_cast<std::size_t>(row * WIDTH + x)] =
-            toArgb(colors[surface.pixel(x, y)]);
-      }
-    }
+    systems::Layer layer;
+    layer.pixels = shown->pixels().data();
+    layer.stride = shown->width();
+    layer.sourceColumns = shown->width();
+    layer.sourceRows = StatusPanel::VISIBLE_HEIGHT;
+    layer.top = m_panelTop - m_displayLine;
+    layer.columns = StatusPanel::WIDTH;
+    layer.rows = StatusPanel::VISIBLE_HEIGHT;
+    layer.palette = panelPalette();
+    display.layers.push_back(std::move(layer));
   }
   for (int number : {1, 0}) {
     const Screen &screen = m_screens[static_cast<std::size_t>(number)];
@@ -177,18 +182,19 @@ void EndingScene::compose(std::vector<uint32_t> &frame) const {
         number == 1 && m_dancerBuffer
             ? m_dancerBuffer->shown()
             : (number == m_bobScreen ? m_display : screen.surface);
-    const std::size_t mask = screen.palette.size() - 1;
-    for (int y = 0; y < surface.height(); ++y) {
-      const int row = screen.top - m_displayLine + y;
-      if (row < 0 || row >= HEIGHT) {
-        continue;
-      }
-      for (int x = 0; x < WIDTH && x < surface.width(); ++x) {
-        frame[static_cast<std::size_t>(row * WIDTH + x)] =
-            toArgb(screen.palette[surface.pixel(x, y) & mask]);
-      }
-    }
+    systems::Layer layer;
+    layer.pixels = surface.pixels().data();
+    layer.stride = surface.width();
+    layer.sourceColumns = surface.width();
+    layer.sourceRows = surface.height();
+    layer.top = screen.top - m_displayLine;
+    layer.columns = std::min(WIDTH, surface.width());
+    layer.rows = surface.height();
+    layer.mask = static_cast<uint8_t>(screen.palette.size() - 1);
+    layer.palette = screen.palette;
+    display.layers.push_back(std::move(layer));
   }
+  return display;
 }
 
 bool EndingScene::isLoading() const {

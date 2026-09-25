@@ -74,10 +74,10 @@ std::optional<EngineStateEnum> KneeAnimationState::update() {
     m_screen.fill(BACKGROUND_GREY);
   } else {
     const systems::IndexedBitmap &image = m_images[copied - 1];
-    m_screen.draw(image, image.palette, 0, 0);
+    m_screen.setPalette(image.palette);
+    m_screen.draw(image, 0, 0);
   }
-  m_videoSystem.show(m_screen.pixels().data(), m_screen.width(),
-                     m_screen.height());
+  m_videoSystem.show(m_screen.output());
 
   ++m_frame;
   return std::nullopt;

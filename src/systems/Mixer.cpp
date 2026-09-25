@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <limits>
 #include <stdexcept>
+#include <xmp.h>
 
 namespace openfranko::src::systems {
 namespace {
@@ -12,6 +13,7 @@ namespace {
 constexpr int DEFAULT_MUSIC_VOLUME = 56;
 constexpr int STEREO = 2;
 constexpr int FRACTION_BITS = 32;
+constexpr int BYTE_SCALE = 256;
 constexpr double LED_FILTER_HERTZ = 3275.0;
 constexpr double BUTTERWORTH_Q = 0.7071067811865476;
 constexpr double PI = 3.14159265358979323846;
@@ -26,10 +28,24 @@ int16_t clampSample(long value) {
 
 } // namespace
 
+struct Mixer::Module {
+  Module() : player(xmp_create_context()) {}
+  ~Module() {
+    if (player) {
+      xmp_free_context(player);
+    }
+  }
+
+  Module(const Module &) = delete;
+  Module &operator=(const Module &) = delete;
+
+  xmp_context player;
+};
+
 Mixer::Mixer(int outputRate)
-    : rate(outputRate), player(xmp_create_context()),
+    : rate(outputRate), module(std::make_unique<Module>()),
       musicVolume(DEFAULT_MUSIC_VOLUME) {
-  if (!player) {
+  if (!module->player) {
     throw std::runtime_error("Mixer error: no module player");
   }
   const double w0 = 2.0 * PI * LED_FILTER_HERTZ / rate;
@@ -43,20 +59,19 @@ Mixer::Mixer(int outputRate)
 Mixer::~Mixer() {
   stopPlayer();
   if (moduleLoaded) {
-    xmp_release_module(player);
+    xmp_release_module(module->player);
   }
-  xmp_free_context(player);
 }
 
-bool Mixer::loadModule(const std::vector<char> &module) {
+bool Mixer::loadModule(const std::vector<char> &data) {
   std::lock_guard<std::mutex> lock(mutex);
   stopPlayer();
   if (moduleLoaded) {
-    xmp_release_module(player);
+    xmp_release_module(module->player);
   }
-  moduleLoaded = !module.empty() && xmp_load_module_from_memory(
-                                        player, module.data(),
-                                        static_cast<long>(module.size())) == 0;
+  moduleLoaded = !data.empty() && xmp_load_module_from_memory(
+                                      module->player, data.data(),
+                                      static_cast<long>(data.size())) == 0;
   return moduleLoaded;
 }
 
@@ -64,7 +79,7 @@ void Mixer::releaseModule() {
   std::lock_guard<std::mutex> lock(mutex);
   stopPlayer();
   if (moduleLoaded) {
-    xmp_release_module(player);
+    xmp_release_module(module->player);
     moduleLoaded = false;
   }
 }
@@ -72,7 +87,7 @@ void Mixer::releaseModule() {
 void Mixer::startModule() {
   std::lock_guard<std::mutex> lock(mutex);
   stopPlayer();
-  if (moduleLoaded && xmp_start_player(player, rate, 0) == 0) {
+  if (moduleLoaded && xmp_start_player(module->player, rate, 0) == 0) {
     modulePlaying = true;
   }
 }
@@ -90,7 +105,7 @@ bool Mixer::isModulePlaying() const {
 void Mixer::setModuleTempo(double factor) {
   std::lock_guard<std::mutex> lock(mutex);
   if (modulePlaying) {
-    xmp_set_tempo_factor(player, factor);
+    xmp_set_tempo_factor(module->player, factor);
   }
 }
 
@@ -172,7 +187,7 @@ void Mixer::render(int16_t *stereo, int frames) {
   const std::size_t samples = static_cast<std::size_t>(frames) * STEREO;
   musicBuffer.assign(samples, 0);
   if (modulePlaying &&
-      xmp_play_buffer(player, musicBuffer.data(),
+      xmp_play_buffer(module->player, musicBuffer.data(),
                       static_cast<int>(samples * sizeof(int16_t)), 0) < 0) {
     std::fill(musicBuffer.begin(), musicBuffer.end(), 0);
   }
@@ -200,7 +215,7 @@ void Mixer::render(int16_t *stereo, int frames) {
 
 void Mixer::stopPlayer() {
   if (modulePlaying) {
-    xmp_end_player(player);
+    xmp_end_player(module->player);
     modulePlaying = false;
   }
 }
@@ -212,9 +227,10 @@ bool Mixer::isSounding(const Playing &playing) const {
 }
 
 int Mixer::nextSample(Voice &voice) {
-  const std::vector<int16_t> &frames = voice.sound->frames;
+  const std::vector<int8_t> &frames = voice.sound->frames;
   const int sample =
-      frames[static_cast<std::size_t>(voice.position >> FRACTION_BITS)];
+      frames[static_cast<std::size_t>(voice.position >> FRACTION_BITS)] *
+      BYTE_SCALE;
   voice.position += voice.step;
   const uint64_t end = static_cast<uint64_t>(frames.size()) << FRACTION_BITS;
   if (voice.position >= end) {

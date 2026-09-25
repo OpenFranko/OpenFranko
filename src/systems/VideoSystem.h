@@ -1,6 +1,8 @@
 #ifndef SYSTEMS_VIDEOSYSTEM_H_
 #define SYSTEMS_VIDEOSYSTEM_H_
 
+#include "Display.h"
+
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -17,7 +19,8 @@ public:
   VideoSystem(const VideoSystem &) = delete;
   VideoSystem &operator=(const VideoSystem &) = delete;
 
-  void show(const uint32_t *argb, int width, int height, int displayHeight = 0);
+  void show(const Display &display);
+  void clear();
   void sync();
   void setNtsc(bool enabled);
   bool isNtsc() const;
@@ -27,10 +30,8 @@ private:
   struct Window;
 
   std::unique_ptr<Window> window;
+  Display shown;
   std::vector<uint32_t> frame;
-  int frameWidth = 0;
-  int frameHeight = 0;
-  int frameDisplayHeight = 0;
   bool frameChanged = false;
   bool ntsc = false;
 };

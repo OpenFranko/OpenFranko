@@ -15,8 +15,7 @@ Level1State::Level1State(systems::VideoSystem &videoSystem,
 
 std::optional<EngineStateEnum> Level1State::update() {
   m_stage.advance(readStreetInput(m_controllerSystem));
-  m_stage.compose(m_frame);
-  showStageFrame(m_videoSystem, m_frame, m_options);
+  showStageFrame(m_videoSystem, m_stage.output(), m_options);
 
   switch (m_stage.outcome()) {
   case street::StreetStage::Outcome::GameOver:

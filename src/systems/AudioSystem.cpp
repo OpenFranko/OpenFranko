@@ -1,4 +1,5 @@
 #include "AudioSystem.h"
+#include "AudioOutput.h"
 
 #include <fstream>
 #include <iterator>
@@ -14,102 +15,111 @@ constexpr int PAL_VBL_RATE = 50;
 
 } // namespace
 
-AudioSystem::AudioSystem()
-    : mixer(OUTPUT_RATE), vblRate(PAL_VBL_RATE),
-      device(std::make_unique<AudioDevice>(OUTPUT_RATE, OUTPUT_FRAMES,
-                                           [this](int16_t *stereo, int frames) {
-                                             mixer.render(stereo, frames);
-                                           })) {}
+AudioSystem::AudioSystem() : output(std::make_unique<Output>(OUTPUT_RATE)) {
+  output->vblRate = PAL_VBL_RATE;
+  output->device = std::make_unique<AudioDevice>(
+      OUTPUT_RATE, OUTPUT_FRAMES,
+      [mixer = &output->mixer](int16_t *stereo, int frames) {
+        mixer->render(stereo, frames);
+      });
+}
+
+AudioSystem::~AudioSystem() = default;
 
 void AudioSystem::loadMusic(const std::string &path) {
   clearMusic();
   std::ifstream file(path, std::ios::binary);
   const std::vector<char> module{std::istreambuf_iterator<char>(file),
                                  std::istreambuf_iterator<char>()};
-  if (mixer.loadModule(module)) {
-    musicPath = path;
+  if (output->mixer.loadModule(module)) {
+    output->musicPath = path;
   }
 }
 
 void AudioSystem::clearMusic() {
-  mixer.releaseModule();
-  musicPath.clear();
+  output->mixer.releaseModule();
+  output->musicPath.clear();
 }
 
-const std::string &AudioSystem::loadedMusic() const { return musicPath; }
+const std::string &AudioSystem::loadedMusic() const {
+  return output->musicPath;
+}
 
 void AudioSystem::loadSFX(const std::string &name, const std::string &path) {
   clearSFX(name);
   try {
-    sounds[name] = std::make_unique<Sound>(loadWave(path));
+    output->sounds[name] = std::make_unique<Sound>(loadWave(path));
   } catch (const std::runtime_error &) {
     return;
   }
 }
 
 void AudioSystem::clearSFX(const std::string &name) {
-  const auto sound = sounds.find(name);
-  if (sound == sounds.end()) {
+  const auto sound = output->sounds.find(name);
+  if (sound == output->sounds.end()) {
     return;
   }
-  mixer.stop(*sound->second);
-  sounds.erase(sound);
+  output->mixer.stop(*sound->second);
+  output->sounds.erase(sound);
 }
 
 void AudioSystem::playMusic() {
-  tempoScale = 1.0;
-  mixer.startModule();
+  output->tempoScale = 1.0;
+  output->mixer.startModule();
   applyTempo();
 }
 
-void AudioSystem::stopMusic() { mixer.stopModule(); }
+void AudioSystem::stopMusic() { output->mixer.stopModule(); }
 
-void AudioSystem::setMusicVolume(int volume) { mixer.setMusicVolume(volume); }
+void AudioSystem::setMusicVolume(int volume) {
+  output->mixer.setMusicVolume(volume);
+}
 
 void AudioSystem::setMusicTempoScale(double scale) {
-  tempoScale = scale;
+  output->tempoScale = scale;
   applyTempo();
 }
 
 void AudioSystem::setVblRate(int hertz) {
-  if (hertz == vblRate) {
+  if (hertz == output->vblRate) {
     return;
   }
-  vblRate = hertz;
+  output->vblRate = hertz;
   applyTempo();
 }
 
-void AudioSystem::setLowPassFilter(bool on) { mixer.setFilter(on); }
+void AudioSystem::setLowPassFilter(bool on) { output->mixer.setFilter(on); }
 
 void AudioSystem::playSample(const std::string &name, int voiceMask) {
-  const auto sound = sounds.find(name);
-  if (sound != sounds.end()) {
-    mixer.play(*sound->second, voiceMask, 0, sampleLooping);
+  const auto sound = output->sounds.find(name);
+  if (sound != output->sounds.end()) {
+    output->mixer.play(*sound->second, voiceMask, 0, output->sampleLooping);
   }
 }
 
 void AudioSystem::playSampleAt(const std::string &name, int voiceMask,
                                int frequency) {
-  const auto sound = sounds.find(name);
-  if (sound != sounds.end() && frequency > 0) {
-    mixer.play(*sound->second, voiceMask, frequency, sampleLooping);
+  const auto sound = output->sounds.find(name);
+  if (sound != output->sounds.end() && frequency > 0) {
+    output->mixer.play(*sound->second, voiceMask, frequency,
+                       output->sampleLooping);
   }
 }
 
 void AudioSystem::setSampleLooping(bool looping) {
-  sampleLooping = looping;
+  output->sampleLooping = looping;
   if (!looping) {
-    mixer.endLoops();
+    output->mixer.endLoops();
   }
 }
 
-void AudioSystem::stopSFX() { mixer.stopAll(); }
+void AudioSystem::stopSFX() { output->mixer.stopAll(); }
 
-void AudioSystem::update() { mixer.update(); }
+void AudioSystem::update() { output->mixer.update(); }
 
 void AudioSystem::applyTempo() {
-  mixer.setModuleTempo(static_cast<double>(PAL_VBL_RATE) /
-                       (vblRate * tempoScale));
+  output->mixer.setModuleTempo(static_cast<double>(PAL_VBL_RATE) /
+                               (output->vblRate * output->tempoScale));
 }
 
 } // namespace openfranko::src::systems

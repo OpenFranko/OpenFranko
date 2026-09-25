@@ -1,6 +1,7 @@
 #ifndef ENGINE_STREET_ENDINGSCENE_H_
 #define ENGINE_STREET_ENDINGSCENE_H_
 
+#include "../../systems/Display.h"
 #include "../amal/Machine.h"
 #include "../effects/AmigaPalette.h"
 #include "../effects/PaletteFader.h"
@@ -37,6 +38,7 @@ public:
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
+  systems::Display output() const;
 
   bool isLoading() const;
   bool isShowingStill() const;

@@ -37,6 +37,7 @@ public:
 
   void advance(const StreetInput &input);
   void compose(std::vector<uint32_t> &frame) const;
+  systems::Display output() const;
 
   Outcome outcome() const;
   const BobLayer &bobs() const;

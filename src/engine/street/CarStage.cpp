@@ -171,12 +171,16 @@ StageCopper CarStage::registers() const {
 }
 
 void CarStage::compose(std::vector<uint32_t> &frame) const {
+  systems::rasterize(output(), frame);
+}
+
+systems::Display CarStage::output() const {
   const StageCopper &live = m_copper.live();
-  composeFrame(frame, live.screenShown ? &m_buffer.shown() : nullptr, m_palette,
-               live.screenDisplay, m_screenOffsetX,
-               m_panelShown ? m_panel.get() : nullptr,
-               m_copper.panelY(m_options.tallScreen), m_panelPalette,
-               m_copper.window(m_options.tallScreen));
+  return stageOutput(live.screenShown ? &m_buffer.shown() : nullptr, m_palette,
+                     live.screenDisplay, m_screenOffsetX,
+                     m_panelShown ? m_panel.get() : nullptr,
+                     m_copper.panelY(m_options.tallScreen), m_panelPalette,
+                     m_copper.window(m_options.tallScreen));
 }
 
 CarStage::Outcome CarStage::outcome() const { return m_outcome; }

@@ -27,7 +27,7 @@ Output render(Mixer &mixer, int frames) {
   return output;
 }
 
-Sound sound(std::vector<int16_t> frames, int rate = RATE) {
+Sound sound(std::vector<int8_t> frames, int rate = RATE) {
   return Sound{rate, std::move(frames)};
 }
 
@@ -36,14 +36,14 @@ Sound sound(std::vector<int16_t> frames, int rate = RATE) {
 SCENARIO("A sample plays on one side at Volume 56") {
   GIVEN("A mixer and a short sample") {
     Mixer mixer(RATE);
-    const Sound sample = sound({6400, -6400, 64, 3});
+    const Sound sample = sound({25, -25, 1, 0});
 
     WHEN("It plays on voice 0") {
       mixer.play(sample, 0x1, 0, false);
       const Output output = render(mixer, 5);
 
-      THEN("It sounds on the left at 56/64, rounded toward zero") {
-        REQUIRE(output.left == std::vector<int16_t>{5600, -5600, 56, 2, 0});
+      THEN("It sounds on the left, shifted to 16 bits and at 56/64") {
+        REQUIRE(output.left == std::vector<int16_t>{5600, -5600, 224, 0, 0});
         REQUIRE(output.right == std::vector<int16_t>(5, 0));
       }
 
@@ -68,7 +68,7 @@ SCENARIO("A sample plays on one side at Volume 56") {
 
   GIVEN("A loud sample on both left voices") {
     Mixer mixer(RATE);
-    const Sound loud = sound({32767, -32768});
+    const Sound loud = sound({127, -128});
     mixer.play(loud, 0x9, 0, false);
 
     THEN("The sum clips to 16 bits") {
@@ -81,25 +81,25 @@ SCENARIO("A sample plays on one side at Volume 56") {
 SCENARIO("A sample steps through its frames at its playing rate") {
   GIVEN("A mixer and a four-frame sample") {
     Mixer mixer(RATE);
-    const Sound sample = sound({640, 1280, 1920, 2560});
+    const Sound sample = sound({10, 20, 30, 40});
 
     THEN("Half the output rate holds every frame for two output frames") {
       mixer.play(sample, 0x1, RATE / 2, false);
-      REQUIRE(render(mixer, 9).left == std::vector<int16_t>{560, 560, 1120,
-                                                            1120, 1680, 1680,
-                                                            2240, 2240, 0});
+      REQUIRE(render(mixer, 9).left == std::vector<int16_t>{2240, 2240, 4480,
+                                                            4480, 6720, 6720,
+                                                            8960, 8960, 0});
     }
 
     THEN("Twice the output rate skips every other frame") {
       mixer.play(sample, 0x1, RATE * 2, false);
-      REQUIRE(render(mixer, 3).left == std::vector<int16_t>{560, 1680, 0});
+      REQUIRE(render(mixer, 3).left == std::vector<int16_t>{2240, 6720, 0});
     }
 
     THEN("Frequency 0 plays at the sample's own rate") {
-      const Sound slow = sound({640, 1280}, RATE / 2);
+      const Sound slow = sound({10, 20}, RATE / 2);
       mixer.play(slow, 0x1, 0, false);
       REQUIRE(render(mixer, 5).left ==
-              std::vector<int16_t>{560, 560, 1120, 1120, 0});
+              std::vector<int16_t>{2240, 2240, 4480, 4480, 0});
     }
   }
 }
@@ -107,12 +107,12 @@ SCENARIO("A sample steps through its frames at its playing rate") {
 SCENARIO("A looping sample restarts until its loops are ended") {
   GIVEN("A two-frame sample playing in a loop") {
     Mixer mixer(RATE);
-    const Sound sample = sound({640, 1280});
+    const Sound sample = sound({10, 20});
     mixer.play(sample, 0x1, 0, true);
 
     THEN("It starts over at its end") {
       REQUIRE(render(mixer, 5).left ==
-              std::vector<int16_t>{560, 1120, 560, 1120, 560});
+              std::vector<int16_t>{2240, 4480, 2240, 4480, 2240});
     }
 
     WHEN("Its loop is ended midway") {
@@ -120,7 +120,7 @@ SCENARIO("A looping sample restarts until its loops are ended") {
       mixer.endLoops();
 
       THEN("It finishes the pass it is on and stops") {
-        REQUIRE(render(mixer, 3).left == std::vector<int16_t>{1120, 0, 0});
+        REQUIRE(render(mixer, 3).left == std::vector<int16_t>{4480, 0, 0});
         REQUIRE_FALSE(mixer.isPlaying(0));
       }
     }
@@ -130,7 +130,7 @@ SCENARIO("A looping sample restarts until its loops are ended") {
 SCENARIO("A sample on all four voices silences the music") {
   GIVEN("A mixer") {
     Mixer mixer(RATE);
-    const Sound sample = sound({640, 1280});
+    const Sound sample = sound({10, 20});
 
     THEN("Three voices leave the music alone") {
       mixer.play(sample, 0x7, 0, false);
@@ -176,7 +176,7 @@ SCENARIO("A sample on all four voices silences the music") {
 SCENARIO("stopAll frees every voice") {
   GIVEN("A looping sample on every voice") {
     Mixer mixer(RATE);
-    const Sound sample = sound({640, 1280});
+    const Sound sample = sound({10, 20});
     mixer.play(sample, Mixer::ALL_VOICES, 0, true);
 
     THEN("Nothing plays after stopAll") {
@@ -190,13 +190,13 @@ SCENARIO("The LED filter smooths the output") {
   GIVEN("A mixer at the game's rate and a steady sample") {
     constexpr int GAME_RATE = 22050;
     Mixer mixer(GAME_RATE);
-    const Sound steady = sound(std::vector<int16_t>(64, 16000), GAME_RATE);
+    const Sound steady = sound(std::vector<int8_t>(64, 64), GAME_RATE);
 
     THEN("With the filter off the output is the sample") {
       mixer.play(steady, 0x1, 0, false);
       const Output output = render(mixer, 64);
-      REQUIRE(output.left.front() == 14000);
-      REQUIRE(output.left.back() == 14000);
+      REQUIRE(output.left.front() == 14336);
+      REQUIRE(output.left.back() == 14336);
     }
 
     THEN("With the filter on the step rises smoothly to the same level") {
@@ -204,8 +204,8 @@ SCENARIO("The LED filter smooths the output") {
       mixer.play(steady, 0x1, 0, false);
       const Output output = render(mixer, 64);
       REQUIRE(output.left.front() > 0);
-      REQUIRE(output.left.front() < 14000);
-      REQUIRE(std::abs(output.left.back() - 14000) <= 1);
+      REQUIRE(output.left.front() < 14336);
+      REQUIRE(std::abs(output.left.back() - 14336) <= 1);
     }
   }
 }
