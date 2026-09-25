@@ -5,7 +5,7 @@
 
 SCENARIO("WriteFile works correctly") {
   GIVEN("A valid text file") {
-    std::string filePath = "./test.txt";
+    std::string filePath = "./writeFileTest.txt";
 
     std::vector<uint8_t> expectedData = {'T', 'e', 's', 't', ' ',
                                          'd', 'a', 't', 'a'};
