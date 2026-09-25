@@ -16,7 +16,7 @@ void createTestFile(const std::string &filePath,
 
 SCENARIO("ReadFile works correctly") {
   GIVEN("A valid text file") {
-    std::string filePath = "./test.txt";
+    std::string filePath = "./readFileTest.txt";
 
     std::vector<uint8_t> expectedData = {'T', 'e', 's', 't', ' ',
                                          'd', 'a', 't', 'a'};

@@ -162,6 +162,7 @@ SCENARIO("The table is saved and loaded as the rotated 160-byte file") {
       std::ifstream file(path, std::ios::binary);
       const std::vector<char> written((std::istreambuf_iterator<char>(file)),
                                       std::istreambuf_iterator<char>());
+      file.close();
       const auto loaded = readHighScoreFile(path.string());
       std::filesystem::remove(path);
 

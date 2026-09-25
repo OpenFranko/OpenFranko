@@ -12,6 +12,7 @@ namespace {
 
 constexpr int DEFAULT_MUSIC_VOLUME = 56;
 constexpr int STEREO = 2;
+constexpr int VOICES_PER_SIDE = 2;
 constexpr int FRACTION_BITS = 32;
 constexpr int BYTE_SCALE = 256;
 constexpr double LED_FILTER_HERTZ = 3275.0;
@@ -205,7 +206,8 @@ void Mixer::render(int16_t *stereo, int frames) {
       if (!playing.sound) {
         continue;
       }
-      const int sample = nextSample(playing) * SAMPLE_VOLUME / MAX_VOLUME;
+      const int sample = nextSample(playing) * SAMPLE_VOLUME / MAX_VOLUME /
+                         VOICES_PER_SIDE;
       int16_t &side = out[isLeftVoice(voice) ? 0 : 1];
       side = clampSample(side + sample);
     }

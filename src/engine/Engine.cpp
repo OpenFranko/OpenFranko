@@ -90,6 +90,13 @@ void Engine::updateState() {
 }
 
 void Engine::switchState(states::EngineStateEnum nextState) {
+#ifdef SKIP_COPY_PROTECTION
+  if (nextState == states::EngineStateEnum::ProtectionCheck) {
+    nextState = states::EngineStateEnum::HighScore;
+  } else if (nextState == states::EngineStateEnum::StageProtectionCheck) {
+    nextState = states::EngineStateEnum::Level3;
+  }
+#endif
   videoSystem.clear();
   currentState.reset();
   booting = nextState == states::EngineStateEnum::Mirage;

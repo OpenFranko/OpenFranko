@@ -35,7 +35,7 @@ git clone https://github.com/OpenFranko/OpenFranko.git
 cd OpenFranko
 mkdir build && cd build
 cmake -DBUILD_TOOLS=ON .. 
-cmake --build -j $(nproc)
+cmake --build . -j $(nproc)
 ```
 
 To enable tests add `-DBUILD_TESTS=ON` to `cmake -DBUILD_TOOLS=ON ..`
@@ -52,6 +52,35 @@ scenes can be tried without playing up to them. `startAtLevel1Car` starts the
 game at the stage-1 bonus drive, as if the first boss had just been beaten.
 `startAtEnding` starts it at the ending, as if the third boss had just been
 beaten. Like the game, run them from the directory that holds `assets`.
+
+## Windows (MSYS2)
+
+Install [MSYS2](https://www.msys2.org/) and open the `MSYS2 UCRT64` terminal.
+
+Install dependencies (if `pacman -Syu` closes the terminal, open it again and
+repeat the command):
+
+```
+pacman -Syu
+pacman -S --needed git mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja mingw-w64-ucrt-x86_64-SDL2 mingw-w64-ucrt-x86_64-libxmp mingw-w64-ucrt-x86_64-catch
+```
+
+Compilation:
+
+```
+git clone https://github.com/OpenFranko/OpenFranko.git
+cd OpenFranko
+mkdir build && cd build
+cmake -G Ninja -DBUILD_TOOLS=ON ..
+cmake --build . -j $(nproc)
+```
+
+Tests are enabled and launched the same way as on Linux.
+
+The executables are linked statically, so they also run outside of MSYS2 without
+any extra DLLs. Like on Linux, the game has to be started from the directory
+that holds `assets`, e.g. copy `build/src/OpenFranko.exe` next to `assets` and
+double-click it.
 
 # FrankoExtract
 
