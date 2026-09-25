@@ -131,20 +131,19 @@ void CharacterSelectionState::draw() {
   if (!m_selection.isScreenShown()) {
     m_screen.fill(m_session.border);
   } else {
-    m_screen.draw(m_picture, m_picture.palette, 0, -m_rows.first);
+    m_screen.setPalette(m_picture.palette);
+    m_screen.draw(m_picture, 0, -m_rows.first);
     for (const effects::CharacterSelection::Bob *bob :
          {&m_selection.face(), &m_selection.hand()}) {
       const int sprite = bob->image - FIRST_SPRITE_IMAGE;
       if (bob->shown && bob->image != HIDDEN_IMAGE && sprite >= 0 &&
           sprite < static_cast<int>(m_sprites.size())) {
-        m_screen.drawMasked(m_sprites[static_cast<std::size_t>(sprite)],
-                            m_screenPalette, bob->x, bob->y - m_rows.first,
-                            bob->flipped);
+        m_screen.drawMasked(m_sprites[static_cast<std::size_t>(sprite)], bob->x,
+                            bob->y - m_rows.first, bob->flipped);
       }
     }
   }
-  m_videoSystem.show(m_screen.pixels().data(), m_screen.width(),
-                     m_screen.height());
+  m_videoSystem.show(m_screen.output());
 }
 
 } // namespace openfranko::src::engine::states::characterSelection

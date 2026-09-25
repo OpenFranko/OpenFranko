@@ -3,11 +3,11 @@
 #include "../effects/AmigaDisplay.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace openfranko::src::engine::street {
 namespace {
 
-constexpr uint32_t BLANK = 0xFF000000u;
 constexpr int NTSC_SHIFT = 40;
 constexpr int LACED_PLAY_SHIFT = 60;
 constexpr int LACED_PANEL_SHIFT = 51;
@@ -61,13 +61,6 @@ void switchStandard(effects::GameOptions &options, amal::Object &screenDisplay,
   screenDisplay.y = static_cast<int16_t>(playDisplayY(stageLayout(options)));
 }
 
-uint32_t toArgb(effects::AmigaColor color) {
-  const uint32_t r = ((color >> 8) & 0xF) * 17;
-  const uint32_t g = ((color >> 4) & 0xF) * 17;
-  const uint32_t b = (color & 0xF) * 17;
-  return 0xFF000000u | r << 16 | g << 8 | b;
-}
-
 const effects::AmigaPalette &levelPalette(bool mono) {
   return mono ? GREY_PALETTE : LEVEL_PALETTE;
 }
@@ -104,46 +97,62 @@ int StageDisplay::panelY(bool laced) const {
   return panelDisplayY({m_live.ntsc, laced});
 }
 
+systems::Display stageOutput(const IndexedSurface *display,
+                             const effects::AmigaPalette &palette,
+                             const amal::Object &screenDisplay, int offsetX,
+                             const StatusPanel *panel, int panelY,
+                             const effects::AmigaPalette &panelColors,
+                             const StageLayout &window) {
+  const int rows = frameRows(window);
+  const int perLine = rowsPerLine(window);
+  const int top = frameTop(window);
+  systems::Display output;
+  output.width = FRAME_WIDTH;
+  output.height = rows;
+  output.displayHeight = FRAME_HEIGHT;
+  output.border = STAGE_BORDER;
+  if (!panel) {
+    return output;
+  }
+  if (display) {
+    systems::Layer screen;
+    screen.pixels = display->pixels().data();
+    screen.stride = display->width();
+    screen.sourceColumns = display->width();
+    screen.sourceRows = display->height();
+    screen.sourceX = offsetX;
+    screen.sourceY = (top - screenDisplay.y) * perLine;
+    screen.columns = FRAME_WIDTH;
+    screen.rows = rows;
+    screen.palette = palette;
+    output.layers.push_back(std::move(screen));
+  }
+  const IndexedSurface &panelSurface = panel->surface();
+  systems::Layer panelLayer;
+  panelLayer.pixels = panelSurface.pixels().data();
+  panelLayer.stride = panelSurface.width();
+  panelLayer.sourceColumns = panelSurface.width();
+  panelLayer.sourceRows = StatusPanel::VISIBLE_HEIGHT;
+  panelLayer.repeat = perLine;
+  panelLayer.top = (panelY - top) * perLine;
+  panelLayer.columns = FRAME_WIDTH;
+  panelLayer.rows = StatusPanel::VISIBLE_HEIGHT * perLine;
+  panelLayer.palette = panelColors;
+  output.layers.push_back(std::move(panelLayer));
+  output.layers.push_back(systems::solidLayer(
+      0x000, 0, (effects::FIRST_VISIBLE_LINE - top) * perLine, FRAME_WIDTH));
+  return output;
+}
+
 void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,
                   const StatusPanel *panel, int panelY,
                   const effects::AmigaPalette &panelColors,
                   const StageLayout &window) {
-  const int rows = frameRows(window);
-  const int perLine = rowsPerLine(window);
-  const int top = frameTop(window);
-  frame.assign(static_cast<std::size_t>(FRAME_WIDTH * rows),
-               toArgb(STAGE_BORDER));
-  if (!panel) {
-    return;
-  }
-  const IndexedSurface &panelSurface = panel->surface();
-  for (int row = 0; row < rows; ++row) {
-    uint32_t *line = frame.data() + row * FRAME_WIDTH;
-    const int beam = top + row / perLine;
-    if (beam < effects::FIRST_VISIBLE_LINE) {
-      std::fill(line, line + FRAME_WIDTH, BLANK);
-      continue;
-    }
-    const int panelRow = beam - panelY;
-    if (panelRow >= 0 && panelRow < StatusPanel::VISIBLE_HEIGHT) {
-      for (int x = 0; x < FRAME_WIDTH; ++x) {
-        line[x] = toArgb(panelColors[panelSurface.pixel(x, panelRow)]);
-      }
-      continue;
-    }
-    const int screenRow = (beam - screenDisplay.y) * perLine + row % perLine;
-    if (!display || screenRow < 0 || screenRow >= display->height()) {
-      continue;
-    }
-    for (int x = 0; x < FRAME_WIDTH; ++x) {
-      const int column = x + offsetX;
-      if (column < display->width()) {
-        line[x] = toArgb(palette[display->pixel(column, screenRow)]);
-      }
-    }
-  }
+  systems::rasterize(stageOutput(display, palette, screenDisplay, offsetX,
+                                 panel, panelY, panelColors, window),
+                     frame);
 }
 
 } // namespace openfranko::src::engine::street

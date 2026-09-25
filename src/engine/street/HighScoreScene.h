@@ -1,6 +1,7 @@
 #ifndef ENGINE_STREET_HIGHSCORESCENE_H_
 #define ENGINE_STREET_HIGHSCORESCENE_H_
 
+#include "../../systems/Display.h"
 #include "../effects/AmigaPalette.h"
 #include "../effects/GameOptions.h"
 #include "../effects/PaletteFader.h"
@@ -39,6 +40,7 @@ public:
 
   void advance();
   void compose(std::vector<uint32_t> &frame) const;
+  systems::Display output() const;
 
   Outcome outcome() const;
   bool isShown() const;

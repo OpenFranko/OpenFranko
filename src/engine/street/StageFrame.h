@@ -1,6 +1,7 @@
 #ifndef ENGINE_STREET_STAGEFRAME_H_
 #define ENGINE_STREET_STAGEFRAME_H_
 
+#include "../../systems/Display.h"
 #include "../amal/Machine.h"
 #include "../effects/AmigaPalette.h"
 #include "../effects/GameOptions.h"
@@ -59,10 +60,15 @@ int frameRows(const StageLayout &layout);
 void switchStandard(effects::GameOptions &options, amal::Object &screenDisplay,
                     bool ntsc);
 
-uint32_t toArgb(effects::AmigaColor color);
 const effects::AmigaPalette &levelPalette(bool mono);
 const effects::AmigaPalette &panelPalette();
 
+systems::Display stageOutput(const IndexedSurface *display,
+                             const effects::AmigaPalette &palette,
+                             const amal::Object &screenDisplay, int offsetX,
+                             const StatusPanel *panel, int panelY,
+                             const effects::AmigaPalette &panelColors,
+                             const StageLayout &window);
 void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,

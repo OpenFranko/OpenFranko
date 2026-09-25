@@ -1,6 +1,7 @@
 #include "VideoSystem.h"
 
 #include <SDL2/SDL.h>
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 
@@ -63,12 +64,13 @@ VideoSystem::VideoSystem() : window(std::make_unique<Window>()) {
 
 VideoSystem::~VideoSystem() = default;
 
-void VideoSystem::show(const uint32_t *argb, int width, int height,
-                       int displayHeight) {
-  frame.assign(argb, argb + static_cast<std::size_t>(width) * height);
-  frameWidth = width;
-  frameHeight = height;
-  frameDisplayHeight = displayHeight > 0 ? displayHeight : height;
+void VideoSystem::show(const Display &display) {
+  shown = display;
+  frameChanged = true;
+}
+
+void VideoSystem::clear() {
+  shown = Display{};
   frameChanged = true;
 }
 
@@ -77,37 +79,39 @@ void VideoSystem::sync() {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
   SDL_RenderClear(renderer);
 
-  if (frameWidth <= 0 || frameHeight <= 0) {
+  if (shown.width <= 0 || shown.height <= 0) {
     SDL_RenderPresent(renderer);
     return;
   }
 
   if (frameChanged) {
-    if (window->textureWidth != frameWidth ||
-        window->textureHeight != frameHeight) {
+    rasterize(shown, frame);
+    if (window->textureWidth != shown.width ||
+        window->textureHeight != shown.height) {
       if (window->texture) {
         SDL_DestroyTexture(window->texture);
       }
       window->texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                                           SDL_TEXTUREACCESS_STREAMING,
-                                          frameWidth, frameHeight);
+                                          shown.width, shown.height);
       if (!window->texture) {
         throwError("Failed to create frame texture: " +
                    std::string(SDL_GetError()));
       }
       SDL_SetTextureBlendMode(window->texture, SDL_BLENDMODE_NONE);
-      window->textureWidth = frameWidth;
-      window->textureHeight = frameHeight;
+      window->textureWidth = shown.width;
+      window->textureHeight = shown.height;
     }
     SDL_UpdateTexture(window->texture, nullptr, frame.data(),
-                      frameWidth * static_cast<int>(sizeof(uint32_t)));
+                      shown.width * static_cast<int>(sizeof(uint32_t)));
     frameChanged = false;
   }
 
   int windowWidth, windowHeight;
   SDL_GetWindowSize(window->window, &windowWidth, &windowHeight);
 
-  const float frameAspect = static_cast<float>(frameWidth) / frameDisplayHeight;
+  const float frameAspect =
+      static_cast<float>(shown.width) / std::max(shown.displayHeight, 1);
   const float windowAspect = static_cast<float>(windowWidth) / windowHeight;
 
   SDL_Rect dstRect;

@@ -10,10 +10,6 @@
 #include "../IEngineState.h"
 #include "../level1/EngineStreetHost.h"
 
-#include <cstddef>
-#include <cstdint>
-#include <vector>
-
 namespace openfranko {
 namespace src {
 namespace engine {
@@ -35,7 +31,6 @@ private:
   level1::EngineStreetHost m_host;
   street::HighScoreScene m_scene;
   effects::VisibleRows m_rows;
-  std::vector<uint32_t> m_frame;
 };
 
 } // namespace highScore

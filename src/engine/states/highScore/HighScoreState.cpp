@@ -24,10 +24,9 @@ HighScoreState::HighScoreState(systems::VideoSystem &videoSystem,
 
 std::optional<EngineStateEnum> HighScoreState::update() {
   m_scene.advance();
-  m_scene.compose(m_frame);
-  m_videoSystem.show(m_frame.data() + static_cast<std::size_t>(m_rows.first) *
-                                          street::HighScoreScene::WIDTH,
-                     street::HighScoreScene::WIDTH, m_rows.count);
+  systems::Display output = m_scene.output();
+  systems::cropRows(output, m_rows.first, m_rows.count);
+  m_videoSystem.show(output);
 
   switch (m_scene.outcome()) {
   case street::HighScoreScene::Outcome::Menu:

@@ -18,10 +18,9 @@ ContinueState::ContinueState(systems::VideoSystem &videoSystem,
 
 std::optional<EngineStateEnum> ContinueState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  m_scene.compose(m_frame);
-  m_videoSystem.show(m_frame.data() + static_cast<std::size_t>(m_rows.first) *
-                                          street::ContinueScene::WIDTH,
-                     street::ContinueScene::WIDTH, m_rows.count);
+  systems::Display output = m_scene.output();
+  systems::cropRows(output, m_rows.first, m_rows.count);
+  m_videoSystem.show(output);
 
   switch (m_scene.outcome()) {
   case street::ContinueScene::Outcome::Continue:

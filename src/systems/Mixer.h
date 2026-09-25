@@ -5,10 +5,10 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <vector>
-#include <xmp.h>
 
 namespace openfranko {
 namespace src {
@@ -27,7 +27,7 @@ public:
   Mixer(const Mixer &) = delete;
   Mixer &operator=(const Mixer &) = delete;
 
-  bool loadModule(const std::vector<char> &module);
+  bool loadModule(const std::vector<char> &data);
   void releaseModule();
   void startModule();
   void stopModule();
@@ -60,6 +60,8 @@ private:
     int frequency;
   };
 
+  struct Module;
+
   struct Biquad {
     double b0 = 0.0;
     double b1 = 0.0;
@@ -75,7 +77,7 @@ private:
 
   mutable std::mutex mutex;
   int rate;
-  xmp_context player;
+  std::unique_ptr<Module> module;
   bool moduleLoaded = false;
   bool modulePlaying = false;
   int musicVolume;

@@ -90,6 +90,7 @@ void Engine::updateState() {
 }
 
 void Engine::switchState(states::EngineStateEnum nextState) {
+  videoSystem.clear();
   currentState.reset();
   booting = nextState == states::EngineStateEnum::Mirage;
   controllerSystem.setKeyMode(keyMode(nextState));

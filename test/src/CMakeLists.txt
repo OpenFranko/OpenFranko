@@ -258,3 +258,10 @@ add_executable(${MIXER_TEST_TARGET}
 )
 target_link_libraries(${MIXER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Mixer)
 add_test(NAME ${MIXER_TEST_TARGET} COMMAND ${MIXER_TEST_TARGET})
+
+set(DISPLAY_TEST_TARGET displayTest)
+add_executable(${DISPLAY_TEST_TARGET}
+    systems/displayTest.cpp
+)
+target_link_libraries(${DISPLAY_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Graphics)
+add_test(NAME ${DISPLAY_TEST_TARGET} COMMAND ${DISPLAY_TEST_TARGET})

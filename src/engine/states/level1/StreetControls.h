@@ -6,9 +6,6 @@
 #include "../../effects/GameOptions.h"
 #include "../../street/StreetStage.h"
 
-#include <cstdint>
-#include <vector>
-
 namespace openfranko {
 namespace src {
 namespace engine {
@@ -18,7 +15,7 @@ namespace level1 {
 street::StreetInput
 readStreetInput(const systems::ControllerSystem &controller);
 void showStageFrame(systems::VideoSystem &videoSystem,
-                    const std::vector<uint32_t> &frame,
+                    const systems::Display &frame,
                     const effects::GameOptions &options);
 
 } // namespace level1

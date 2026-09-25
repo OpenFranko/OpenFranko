@@ -34,12 +34,10 @@ readStreetInput(const systems::ControllerSystem &controller) {
 }
 
 void showStageFrame(systems::VideoSystem &videoSystem,
-                    const std::vector<uint32_t> &frame,
+                    const systems::Display &frame,
                     const effects::GameOptions &options) {
   videoSystem.setNtsc(street::stageLayout(options).ntsc);
-  videoSystem.show(frame.data(), street::FRAME_WIDTH,
-                   static_cast<int>(frame.size() / street::FRAME_WIDTH),
-                   street::FRAME_HEIGHT);
+  videoSystem.show(frame);
 }
 
 } // namespace openfranko::src::engine::states::level1

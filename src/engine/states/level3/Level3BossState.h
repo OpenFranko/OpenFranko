@@ -10,9 +10,6 @@
 #include "../IEngineState.h"
 #include "../level1/EngineStreetHost.h"
 
-#include <cstdint>
-#include <vector>
-
 namespace openfranko {
 namespace src {
 namespace engine {
@@ -36,7 +33,6 @@ private:
   const effects::GameOptions &m_options;
   level1::EngineStreetHost m_host;
   street::BossStage m_stage;
-  std::vector<uint32_t> m_frame;
 };
 
 } // namespace level3

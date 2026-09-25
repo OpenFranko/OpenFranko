@@ -11,7 +11,7 @@ namespace systems {
 
 struct Sound {
   int rate = 0;
-  std::vector<int16_t> frames;
+  std::vector<int8_t> frames;
 };
 
 Sound readWave(const std::vector<uint8_t> &file);

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <utility>
 
 namespace openfranko::src::engine::street {
 namespace {
@@ -138,33 +139,41 @@ void GameOverScene::advance(int16_t joystick) {
 }
 
 void GameOverScene::compose(std::vector<uint32_t> &frame) const {
-  frame.assign(static_cast<std::size_t>(WIDTH * HEIGHT), toArgb(m_border));
+  systems::rasterize(output(), frame);
+}
+
+systems::Display GameOverScene::output() const {
+  systems::Display display;
+  display.width = WIDTH;
+  display.height = HEIGHT;
+  display.displayHeight = HEIGHT;
+  display.border = m_border;
   if (!m_shown || !m_buffer) {
-    return;
+    return display;
   }
-  const IndexedSurface &display = m_buffer->shown();
+  const IndexedSurface &shown = m_buffer->shown();
+  systems::Layer layer;
+  layer.pixels = shown.pixels().data();
+  layer.stride = shown.width();
+  layer.sourceColumns = PICTURE_WIDTH;
+  layer.sourceRows = PICTURE_HEIGHT;
+  layer.sourceX = m_shownOffset;
+  layer.wrap = true;
+  layer.columns = WIDTH;
+  layer.rows = HEIGHT;
+  layer.palette = m_palette;
   const int top = std::max(RAINBOW_Y, FIRST_RAINBOW_LINE);
   const int size = static_cast<int>(m_rainbow.size());
-  for (int row = 0; row < HEIGHT; ++row) {
+  for (int row = 0; m_rainbowShown && size > 0 && row < HEIGHT; ++row) {
     const int line = SCREEN_TOP + row;
-    effects::AmigaColor background = m_palette[0];
-    if (m_rainbowShown && line >= top && line < top + RAINBOW_LINES) {
-      background = m_rainbow[static_cast<std::size_t>(
-          (RAINBOW_BASE + line - top) % size)];
-    }
-    uint32_t *out = frame.data() + row * WIDTH;
-    for (int x = 0; x < WIDTH; ++x) {
-      int column = m_shownOffset + x;
-      int y = row;
-      if (column >= PICTURE_WIDTH) {
-        column -= PICTURE_WIDTH;
-        ++y;
-      }
-      const uint8_t pixel = y < PICTURE_HEIGHT ? display.pixel(column, y) : 0;
-      out[x] = toArgb(pixel == 0 ? background
-                                 : m_palette[static_cast<std::size_t>(pixel)]);
+    if (line >= top && line < top + RAINBOW_LINES) {
+      layer.rowColors.push_back({row, 0,
+                                 m_rainbow[static_cast<std::size_t>(
+                                     (RAINBOW_BASE + line - top) % size)]});
     }
   }
+  display.layers.push_back(std::move(layer));
+  return display;
 }
 
 bool GameOverScene::isShown() const { return m_shown; }

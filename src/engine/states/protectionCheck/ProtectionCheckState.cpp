@@ -183,19 +183,18 @@ bool ProtectionCheckState::takeAnswer() {
 
 void ProtectionCheckState::draw() {
   if (m_failureShown) {
-    m_screen.draw(m_failure, m_failure.palette, 0, -m_failureTop);
+    m_screen.setPalette(m_failure.palette);
+    m_screen.draw(m_failure, 0, -m_failureTop);
   } else if (m_questionShown) {
-    m_screen.draw(m_question, m_questionPalette, 0, 0);
+    m_screen.setPalette(m_questionPalette);
+    m_screen.draw(m_question, 0, 0);
   } else {
     m_screen.fill(m_border);
   }
   show();
 }
 
-void ProtectionCheckState::show() {
-  m_videoSystem.show(m_screen.pixels().data(), m_screen.width(),
-                     m_screen.height());
-}
+void ProtectionCheckState::show() { m_videoSystem.show(m_screen.output()); }
 
 const effects::CodeCardCheck &ProtectionCheckState::check() const {
   return m_check;

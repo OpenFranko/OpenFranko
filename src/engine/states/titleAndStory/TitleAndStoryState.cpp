@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <string>
+#include <vector>
 
 namespace openfranko::src::engine::states::titleAndStory {
 namespace {
@@ -23,7 +24,6 @@ constexpr effects::FotoSequence::Timings TITLE_TIMINGS{5, LOADING_FRAMES, 3, 45,
 const std::vector<effects::StorySequence::Page> PAGES = {
     {1, 8, 0}, {8, 11, 1}, {11, 14, 2}, {14, 20, 3}, {20, 28, 4}, {28, 69, 5}};
 constexpr int CLOSING_PICTURE = 6;
-constexpr int ANIMATION_FRAMES = 69;
 constexpr int PICTURES = 7;
 
 struct Position {
@@ -45,15 +45,6 @@ std::string assetPath(const std::string &resource, int index) {
   return "assets/" + resource + "/" + file + ".bmp";
 }
 
-std::vector<systems::IndexedBitmap> loadImages(const std::string &resource,
-                                               int count) {
-  std::vector<systems::IndexedBitmap> images;
-  for (int index = 0; index < count; ++index) {
-    images.push_back(systems::loadIndexedBitmap(assetPath(resource, index)));
-  }
-  return images;
-}
-
 effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
   effects::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
@@ -73,9 +64,6 @@ TitleAndStoryState::TitleAndStoryState(
     systems::ControllerSystem &controllerSystem)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_titlePicture(systems::loadIndexedBitmap(TITLE_PATH)),
-      m_frames(loadImages("03BE", ANIMATION_FRAMES)),
-      m_pictures(loadImages("03BF", PICTURES)),
-      m_texts(loadImages("03C0", PICTURES)),
       m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_title(screenPalette(m_titlePicture), TITLE_TIMINGS),
       m_story(PAGES, CLOSING_PICTURE) {}
@@ -83,8 +71,7 @@ TitleAndStoryState::TitleAndStoryState(
 std::optional<EngineStateEnum> TitleAndStoryState::update() {
   const std::optional<EngineStateEnum> next = runTitle();
   if (!next) {
-    m_videoSystem.show(m_screen.pixels().data(), m_screen.width(),
-                       m_screen.height());
+    m_videoSystem.show(m_screen.output());
   }
   return next;
 }
@@ -94,7 +81,8 @@ std::optional<EngineStateEnum> TitleAndStoryState::runTitle() {
     if (!m_title.isFinished()) {
       m_title.advance();
       if (m_title.isShown()) {
-        m_screen.draw(m_titlePicture, m_title.palette(), 0, 0);
+        m_screen.setPalette(m_title.palette());
+        m_screen.draw(m_titlePicture, 0, 0);
       } else {
         m_screen.fill(BLACK);
       }
@@ -105,6 +93,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::runTitle() {
     }
     m_phase = Phase::StoryOpening;
     m_phaseFrames = 0;
+    m_titlePicture = systems::IndexedBitmap{};
   }
   return runStory();
 }
@@ -145,18 +134,30 @@ std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
 void TitleAndStoryState::drawStory(const effects::StorySequence::View &view) {
   m_screen.fill(STORY_BACKGROUND_GREY);
   if (view.frame) {
-    const systems::IndexedBitmap &frame = m_frames.at(*view.frame - 1);
-    m_screen.draw(frame, frame.palette, FRAME_POSITION.x, FRAME_POSITION.y);
+    drawStoryImage(m_frame, *view.frame - 1, FRAME_POSITION.x, FRAME_POSITION.y,
+                   false);
   }
   if (view.picture) {
-    const systems::IndexedBitmap &picture = m_pictures.at(*view.picture);
-    m_screen.draw(picture, picture.palette, PICTURE_POSITION.x,
-                  PICTURE_POSITION.y);
+    drawStoryImage(m_picture, *view.picture, PICTURE_POSITION.x,
+                   PICTURE_POSITION.y, false);
   }
   if (view.text) {
-    const systems::IndexedBitmap &text = m_texts.at(*view.text);
     const Position &position = TEXT_POSITIONS.at(*view.text);
-    m_screen.drawMasked(text, text.palette, position.x, position.y);
+    drawStoryImage(m_text, *view.text, position.x, position.y, true);
+  }
+}
+
+void TitleAndStoryState::drawStoryImage(StoryImage &image, int index, int x,
+                                        int y, bool masked) {
+  if (image.index != index) {
+    image.bitmap = systems::loadIndexedBitmap(assetPath(image.resource, index));
+    image.index = index;
+  }
+  m_screen.setPalette(image.bitmap.palette);
+  if (masked) {
+    m_screen.drawMasked(image.bitmap, x, y);
+  } else {
+    m_screen.draw(image.bitmap, x, y);
   }
 }
 

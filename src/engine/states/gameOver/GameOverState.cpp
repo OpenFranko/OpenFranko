@@ -18,10 +18,9 @@ GameOverState::GameOverState(systems::VideoSystem &videoSystem,
 
 std::optional<EngineStateEnum> GameOverState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  m_scene.compose(m_frame);
-  m_videoSystem.show(m_frame.data() + static_cast<std::size_t>(m_rows.first) *
-                                          street::GameOverScene::WIDTH,
-                     street::GameOverScene::WIDTH, m_rows.count);
+  systems::Display output = m_scene.output();
+  systems::cropRows(output, m_rows.first, m_rows.count);
+  m_videoSystem.show(output);
   if (m_scene.isFinished()) {
     return EngineStateEnum::HighScore;
   }

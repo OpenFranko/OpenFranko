@@ -101,7 +101,8 @@ Sound readWave(const std::vector<uint8_t> &file) {
       sum += sampleAt(data + frame * frameBytes + channel * sampleBytes,
                       format->bits);
     }
-    sound.frames.push_back(static_cast<int16_t>(sum / format->channels));
+    sound.frames.push_back(
+        static_cast<int8_t>((sum / format->channels) >> BYTE_SHIFT));
   }
   return sound;
 }

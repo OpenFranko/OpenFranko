@@ -57,12 +57,12 @@ std::optional<EngineStateEnum> WorldSoftwareState::update() {
 
   m_sequence.advance();
   if (m_sequence.isShown()) {
-    m_screen.draw(m_picture, m_sequence.palette(), 0, -m_rows.first);
+    m_screen.setPalette(m_sequence.palette());
+    m_screen.draw(m_picture, 0, -m_rows.first);
   } else {
     m_screen.fill(BLACK);
   }
-  m_videoSystem.show(m_screen.pixels().data(), m_screen.width(),
-                     m_screen.height());
+  m_videoSystem.show(m_screen.output());
   return std::nullopt;
 }
 
