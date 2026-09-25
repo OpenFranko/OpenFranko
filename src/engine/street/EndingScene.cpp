@@ -21,7 +21,6 @@ constexpr int ENDING_TUNE = 0x25F;
 constexpr int FIRST_IMAGE = 1;
 
 constexpr int FULL_VOLUME = 63;
-constexpr effects::AmigaColor STAGE_BORDER = 0x555;
 constexpr effects::AmigaColor BLACK = 0x000;
 constexpr effects::AmigaColor DEFAULT_COLOR = 0x000;
 constexpr effects::AmigaColor WHITE = 0xFFF;
@@ -32,8 +31,6 @@ constexpr effects::AmigaColor SHADE = 0xAAA;
 constexpr int STAGE_WIDTH = 304;
 
 constexpr int AUTOBACK_VBLS = 3;
-constexpr int SCREEN_OPEN_VBLS = 1;
-constexpr int SCREEN_CLOSE_VBLS = 2;
 constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr int KLIKER_FRAMES = 2000;
 
@@ -112,6 +109,10 @@ void EndingScene::advance(int16_t joystick) {
   }
   if (m_dancerBuffer) {
     m_dancerBuffer->vbl();
+  }
+  if (m_dancerCopper) {
+    m_screens[1].hidden = false;
+    m_dancerCopper = false;
   }
   m_machine.tick();
   m_fader.tick(m_screens[0].palette);
@@ -293,13 +294,19 @@ void EndingScene::runBasic(int16_t joystick) {
         flow = Flow::Yield;
         break;
       }
+      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::StageGone);
+      break;
+    case Step::StageGone:
       m_stageShown = false;
-      flow = hold(SCREEN_CLOSE_VBLS, Step::ClosePanel);
+      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::ClosePanel);
       break;
     case Step::ClosePanel:
+      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::PanelGone);
+      break;
+    case Step::PanelGone:
       m_panelShown = false;
       m_stage.reset();
-      flow = hold(SCREEN_CLOSE_VBLS, Step::Foto);
+      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::Foto);
       break;
     case Step::Foto:
       m_host.setMusicVolume(FULL_VOLUME);
@@ -315,11 +322,11 @@ void EndingScene::runBasic(int16_t joystick) {
       flow = wait(FOTO_WAIT, Step::FotoClose);
       break;
     case Step::FotoClose:
-      flow = hold(SCREEN_CLOSE_VBLS, Step::Still);
+      flow = hold(effects::SCREEN_CLOSE_VBLS, Step::Still);
       break;
     case Step::Still:
       m_bobs.set(TEXT_BOX, TEXT_BOX_X, TEXT_BOX_Y, TEXT_BOX_IMAGE);
-      flow = hold(SCREEN_OPEN_VBLS, Step::StillHidden);
+      flow = hold(effects::SCREEN_OPEN_VBLS, Step::StillHidden);
       break;
     case Step::StillHidden:
       hideStill();
@@ -363,26 +370,31 @@ void EndingScene::runBasic(int16_t joystick) {
       break;
     case Step::CloseStill:
       off();
+      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::StillGone);
+      break;
+    case Step::StillGone:
       closeScreen(0);
-      flow = hold(SCREEN_CLOSE_VBLS, Step::CloseHidden);
+      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::CloseHidden);
       break;
     case Step::CloseHidden:
       closeScreen(1);
-      flow = hold(SCREEN_CLOSE_VBLS, Step::Dancer);
+      flow = hold(effects::SCREEN_CLOSE_VBLS, Step::Dancer);
       break;
     case Step::Dancer:
       std::swap(m_images, m_parked);
-      flow = hold(SCREEN_OPEN_VBLS, Step::DancerShown);
+      flow = hold(effects::SCREEN_OPEN_VBLS, Step::DancerShown);
       break;
     case Step::DancerShown:
       openScreen(1, DANCER_TOP, DANCER_HEIGHT, DANCER_PALETTE);
+      m_screens[1].hidden = true;
       m_dancerBuffer.emplace(m_screens[1].surface);
       m_bobScreen = 1;
       flow = hold(DOUBLE_BUFFER_VBLS, Step::Dance);
       break;
     case Step::Dance:
       dance();
-      flow = hold(SCREEN_OPEN_VBLS, Step::TextScreen);
+      m_dancerCopper = true;
+      flow = hold(effects::SCREEN_OPEN_VBLS, Step::TextScreen);
       break;
     case Step::TextScreen:
       textScreen();
@@ -414,13 +426,19 @@ void EndingScene::runBasic(int16_t joystick) {
         break;
       }
       off();
+      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::TextGone);
+      break;
+    case Step::TextGone:
       closeScreen(0);
-      flow = hold(SCREEN_CLOSE_VBLS, Step::CloseDancer);
+      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::CloseDancer);
       break;
     case Step::CloseDancer:
+      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::DancerGone);
+      break;
+    case Step::DancerGone:
       closeScreen(1);
       m_count = FULL_VOLUME;
-      flow = hold(SCREEN_CLOSE_VBLS, Step::MusicFade);
+      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::MusicFade);
       break;
     case Step::MusicFade:
       flow = musicFade();
@@ -565,6 +583,7 @@ EndingScene::Flow EndingScene::musicFade() {
   m_host.stopMusic();
   m_host.setMusicVolume(FULL_VOLUME);
   m_session.stageReached = m_session.registers[RO];
+  m_session.border = m_border;
   m_step = Step::Finished;
   return Flow::Yield;
 }

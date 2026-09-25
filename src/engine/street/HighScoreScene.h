@@ -37,7 +37,7 @@ public:
   HighScoreScene(StreetHost &host, GameSession &session,
                  const effects::GameOptions &options, Save save);
 
-  void advance(char key);
+  void advance();
   void compose(std::vector<uint32_t> &frame) const;
 
   Outcome outcome() const;
@@ -71,7 +71,7 @@ private:
   enum class Flow { Continue, Yield };
 
   Flow wait(int frames, Step next);
-  void runBasic(char key);
+  void runBasic();
   void reset();
   void queuePictures();
   Flow loaded();
@@ -81,7 +81,7 @@ private:
   Flow row();
   void pasteRow(int row);
   void startEntry();
-  Flow entry(char key);
+  Flow entry();
   void restoreCell();
   void commit();
   void clear();

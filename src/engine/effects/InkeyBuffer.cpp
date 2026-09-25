@@ -14,6 +14,8 @@ void InkeyBuffer::permit() {
   deliver();
 }
 
+void InkeyBuffer::forbid() { m_permitted = false; }
+
 void InkeyBuffer::sleep() { deliver(); }
 
 std::optional<char> InkeyBuffer::inkey() {

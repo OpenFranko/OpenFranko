@@ -56,6 +56,17 @@ SCENARIO("InkeyBuffer holds keys back under Forbid as input.device does") {
         THEN("They arrive, and later keys come straight through") {
           REQUIRE(readAll(keyboard) == "CENT");
         }
+
+        AND_WHEN("Forbid is called again") {
+          keyboard.forbid();
+          pressAll(keyboard, "DRZE");
+
+          THEN("Later keys wait for the next sleep") {
+            REQUIRE(readAll(keyboard) == "CENT");
+            keyboard.sleep();
+            REQUIRE(readAll(keyboard) == "DRZE");
+          }
+        }
       }
     }
 

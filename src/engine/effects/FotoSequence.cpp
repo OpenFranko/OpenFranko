@@ -1,5 +1,7 @@
 #include "FotoSequence.h"
 
+#include "AmigaDisplay.h"
+
 #include <utility>
 
 namespace openfranko::src::engine::effects {
@@ -10,8 +12,7 @@ constexpr AmigaColor BLACK = 0x000;
 
 constexpr int WHITE_FRAMES = 5;
 constexpr int FOTO_WAIT_PER_SPEED = 15;
-constexpr int OPEN_VBLS = 2;
-constexpr int SCREEN_CLOSE_VBLS = 2;
+constexpr int FOTO_OPEN_VBLS = 2 * SCREEN_OPEN_VBLS;
 
 } // namespace
 
@@ -45,7 +46,8 @@ const AmigaPalette &FotoSequence::palette() const { return m_palette; }
 
 bool FotoSequence::isShown() const {
   const int shownFrame = m_frame - 1;
-  return shownFrame >= whiteStart() && shownFrame < closeStart();
+  return shownFrame >= whiteStart() &&
+         shownFrame < closeStart() + SCREEN_CLOSE_SHOWN_VBLS;
 }
 
 bool FotoSequence::isFinished() const { return m_frame >= totalFrames(); }
@@ -57,7 +59,9 @@ int FotoSequence::holdStart() const {
          SCREEN_CLOSE_VBLS;
 }
 
-int FotoSequence::whiteStart() const { return OPEN_VBLS; }
+int FotoSequence::whiteStart() const {
+  return FOTO_OPEN_VBLS + (m_timings.replacesScreen ? SCREEN_CLOSE_VBLS : 0);
+}
 
 int FotoSequence::fadeInStart() const { return whiteStart() + WHITE_FRAMES; }
 

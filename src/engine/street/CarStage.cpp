@@ -1,5 +1,7 @@
 #include "CarStage.h"
 
+#include "../effects/AmigaDisplay.h"
+
 #include "../amal/Actors.h"
 #include "SystemText.h"
 
@@ -19,8 +21,6 @@ constexpr int RT = 19;
 constexpr int RU = 20;
 
 constexpr int AUTOBACK_VBLS = 3;
-constexpr int SCREEN_OPEN_VBLS = 1;
-constexpr int SCREEN_CLOSE_VBLS = 2;
 constexpr int GAME_OVER_WAIT = 200;
 constexpr int IGNITION_WAIT = 30;
 constexpr int PAL_HERTZ = 50;
@@ -132,6 +132,7 @@ CarStage::CarStage(StreetHost &host, GameSession &session,
                       0},
       m_palette(levelPalette(options.mono)), m_panelPalette(panelPalette()),
       m_screenOffsetX(stage() == 2 ? 16 : 0) {
+  m_session.border = STAGE_BORDER;
   m_panel->score(stats());
 }
 
@@ -523,7 +524,7 @@ CarStage::Flow CarStage::driveBottom() {
     m_session.lastDrive = {m_ignition, m_roadBand, m_fenceBand, m_clock,
                            m_engineBeat};
     m_buffer.setUpdates(true);
-    return hold(SCREEN_CLOSE_VBLS, Step::StripClosed);
+    return hold(effects::SCREEN_CLOSE_VBLS, Step::StripClosed);
   }
   sys();
   m_step = Step::DriveTop;
@@ -580,8 +581,7 @@ void CarStage::gameOver() {
 }
 
 CarStage::Flow CarStage::closePlayScreen() {
-  m_screenShown = false;
-  return hold(SCREEN_CLOSE_VBLS, Step::GameOverPanelClose);
+  return hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::GameOverScreenGone);
 }
 
 void CarStage::sys() {
@@ -630,15 +630,15 @@ void CarStage::runBasic(const StreetInput &input) {
     case Step::Loaded:
       m_panel->score(stats());
       m_road = IndexedSurface(ROAD_WIDTH, SCREEN_HEIGHT);
-      flow = hold(SCREEN_OPEN_VBLS, Step::RoadOpened);
+      flow = hold(effects::SCREEN_OPEN_VBLS, Step::RoadOpened);
       break;
     case Step::RoadOpened:
       openRoad();
-      flow = hold(SCREEN_OPEN_VBLS, Step::StripOpened);
+      flow = hold(effects::SCREEN_OPEN_VBLS, Step::StripOpened);
       break;
     case Step::StripOpened:
       openStrip();
-      flow = hold(SCREEN_CLOSE_VBLS, Step::RoadClosed);
+      flow = hold(effects::SCREEN_CLOSE_VBLS, Step::RoadClosed);
       break;
     case Step::RoadClosed:
       startDrive();
@@ -668,9 +668,16 @@ void CarStage::runBasic(const StreetInput &input) {
     case Step::GameOverWait:
       flow = closePlayScreen();
       break;
+    case Step::GameOverScreenGone:
+      m_screenShown = false;
+      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverPanelClose);
+      break;
     case Step::GameOverPanelClose:
+      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::GameOverPanelGone);
+      break;
+    case Step::GameOverPanelGone:
       m_panelShown = false;
-      flow = hold(SCREEN_CLOSE_VBLS, Step::GameOverClosed);
+      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverClosed);
       break;
     case Step::GameOverClosed:
       m_outcome = m_escape ? Outcome::Quit : Outcome::GameOver;

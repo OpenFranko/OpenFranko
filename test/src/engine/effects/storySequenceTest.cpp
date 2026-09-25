@@ -68,12 +68,12 @@ SCENARIO("StorySequence plays the story pages as ANI, TEX and KLIKER do") {
     WHEN("The first page plays without any input") {
       const auto views = run(story, FIRST_PAGE_END + FRAME + 1);
 
-      THEN("Blank at first, then a new frame every 8 frames (ANI's Timer>7)") {
-        REQUIRE(isBlank(views[0]));
-        REQUIRE(isBlank(views[7]));
-        REQUIRE(views[8].frame == 1);
-        REQUIRE(views[15].frame == 1);
-        REQUIRE(views[16].frame == 2);
+      THEN("Each frame is unpacked at once, then held for ANI's Timer>7") {
+        REQUIRE(views[0].frame == 1);
+        REQUIRE(views[7].frame == 1);
+        REQUIRE(views[8].frame == 2);
+        REQUIRE(views[55].frame == 7);
+        REQUIRE(views[56].frame == 8);
         REQUIRE(views[64].frame == 8);
       }
 
@@ -85,11 +85,14 @@ SCENARIO("StorySequence plays the story pages as ANI, TEX and KLIKER do") {
         REQUIRE(views[FIRST_PAGE_TEXT].text == 0);
       }
 
-      THEN("KLIKER[20] keeps the page up for 2000 frames after its Wait 10") {
+      THEN("KLIKER[20] keeps the page up for 2000 frames after its Wait 10, "
+           "then Cls 0 and the next ANI's first unpack come together") {
         REQUIRE(views[FIRST_PAGE_END - 1].text == 0);
-        REQUIRE(isBlank(views[FIRST_PAGE_END]));
-        REQUIRE(isBlank(views[FIRST_PAGE_END + FRAME - 1]));
-        REQUIRE(views[FIRST_PAGE_END + FRAME].frame == 8);
+        REQUIRE(views[FIRST_PAGE_END].frame == 8);
+        REQUIRE_FALSE(views[FIRST_PAGE_END].picture.has_value());
+        REQUIRE_FALSE(views[FIRST_PAGE_END].text.has_value());
+        REQUIRE(views[FIRST_PAGE_END + FRAME - 1].frame == 8);
+        REQUIRE(views[FIRST_PAGE_END + FRAME].frame == 9);
       }
     }
 
@@ -98,10 +101,12 @@ SCENARIO("StorySequence plays the story pages as ANI, TEX and KLIKER do") {
       story.advance(false, true);
 
       THEN("The screen clears and the next page starts at once") {
-        REQUIRE(isBlank(story.view()));
+        REQUIRE(story.view().frame == 8);
+        REQUIRE_FALSE(story.view().picture.has_value());
+        REQUIRE_FALSE(story.view().text.has_value());
         const auto views = run(story, FRAME);
-        REQUIRE(isBlank(views[FRAME - 2]));
-        REQUIRE(views[FRAME - 1].frame == 8);
+        REQUIRE(views[FRAME - 2].frame == 8);
+        REQUIRE(views[FRAME - 1].frame == 9);
       }
     }
 
@@ -174,12 +179,23 @@ SCENARIO("StorySequence stops when fire has been latched") {
       }
     }
 
-    WHEN("Fire is latched while a frame is being unpacked") {
+    WHEN("Fire is latched while a frame is held") {
       run(story, 2 * FRAME + 1);
       const auto views = run(story, FRAME, true);
 
-      THEN("The story ends when that unpack is over, before the frame shows") {
-        REQUIRE(views[FRAME - 2].frame == 2);
+      THEN("The story ends at ANI's next check, before the next unpack") {
+        REQUIRE(views[FRAME - 2].frame == 3);
+        REQUIRE(isBlank(views[FRAME - 1]));
+        REQUIRE(story.isFinished());
+      }
+    }
+
+    WHEN("Fire is latched while the last frame of a page is held") {
+      run(story, 7 * FRAME + 1);
+      const auto views = run(story, FRAME, true);
+
+      THEN("ANI's If Amreg(25)=0 skips the picture and the story ends") {
+        REQUIRE(views[FRAME - 2].frame == 8);
         REQUIRE(isBlank(views[FRAME - 1]));
         REQUIRE(story.isFinished());
       }

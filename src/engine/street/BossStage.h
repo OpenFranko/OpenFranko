@@ -94,7 +94,9 @@ private:
     RailingDone,
     Cleared,
     GameOverWait,
+    GameOverScreenGone,
     GameOverPanelClose,
+    GameOverPanelGone,
     GameOverClosed,
     Finished
   };

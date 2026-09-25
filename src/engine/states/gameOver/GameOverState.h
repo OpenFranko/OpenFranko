@@ -24,7 +24,8 @@ public:
   GameOverState(systems::VideoSystem &videoSystem,
                 systems::AudioSystem &audioSystem,
                 systems::ControllerSystem &controllerSystem,
-                const effects::GameOptions &options);
+                const effects::GameOptions &options,
+                street::GameSession &session);
   ~GameOverState();
 
   std::optional<EngineStateEnum> update() override;

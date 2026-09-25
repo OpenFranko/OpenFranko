@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <map>
 #include <mutex>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,11 +19,14 @@ namespace systems {
 
 class AudioSystem {
 public:
+  static constexpr int ALL_VOICES = 0xF;
+
   AudioSystem();
   ~AudioSystem();
 
   void loadMusic(const std::string &path);
   void clearMusic();
+  const std::string &loadedMusic() const;
   void loadSFX(const std::string &name, const std::string &path);
   void clearSFX(const std::string &name);
   void playMusic();
@@ -33,8 +35,6 @@ public:
   void setMusicTempoScale(double scale);
   void setVblRate(int hertz);
   void setLowPassFilter(bool on);
-  void playSFX(const std::string &name);
-  void playSFXSilencingMusic(const std::string &name);
   void playSample(const std::string &name, int voiceMask);
   void playSampleAt(const std::string &name, int voiceMask, int frequency);
   void setSampleLooping(bool looping);
@@ -68,6 +68,7 @@ private:
 
   xmp_context player = nullptr;
   bool moduleLoaded = false;
+  std::string musicPath;
   bool musicPlaying = false;
   std::mutex musicMutex;
   SDL_AudioStream *musicStream = nullptr;
@@ -86,7 +87,6 @@ private:
   std::map<std::string, int> nativeRates;
   std::map<std::pair<std::string, int>, PitchedChunk> pitchedChunks;
   int musicVolume;
-  std::optional<int> silencingChannel;
   const Mix_Chunk *silencingSample = nullptr;
   bool sampleLooping = false;
   std::array<uint32_t, 4> voiceStarted{};

@@ -59,7 +59,9 @@ private:
     Start,
     Era,
     Loading,
+    StageGone,
     ClosePanel,
+    PanelGone,
     Foto,
     FotoWhite,
     FotoFade,
@@ -73,6 +75,7 @@ private:
     WalkAway,
     FarewellKliker,
     CloseStill,
+    StillGone,
     CloseHidden,
     Dancer,
     DancerShown,
@@ -82,7 +85,9 @@ private:
     PageFade,
     PageClear,
     FinalKliker,
+    TextGone,
     CloseDancer,
+    DancerGone,
     MusicFade,
     Finished
   };
@@ -140,6 +145,7 @@ private:
   effects::AmigaPalette m_picturePalette;
   effects::PaletteFader m_fader;
   effects::AmigaColor m_border;
+  bool m_dancerCopper = false;
   EndingCredits m_credits;
 
   Step m_step = Step::Start;

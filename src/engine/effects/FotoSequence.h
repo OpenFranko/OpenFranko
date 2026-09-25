@@ -18,6 +18,7 @@ public:
     int holdFrames;
     int fadeOutSpeed;
     int fadeOutFrames;
+    bool replacesScreen;
   };
 
   FotoSequence(AmigaPalette picturePalette, Timings timings);

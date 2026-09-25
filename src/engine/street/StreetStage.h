@@ -37,6 +37,7 @@ public:
   virtual EndingCredits loadEndingCredits() = 0;
   virtual Picture loadPanelPicture(int part) = 0;
   virtual void loadMusic(int resource) = 0;
+  virtual bool isMusicLoaded(int resource) const = 0;
   virtual void playMusic() = 0;
   virtual void stopMusic() = 0;
   virtual void setMusicVolume(int volume) = 0;
@@ -105,7 +106,9 @@ private:
     AdvanceLeaveFlushed,
     AdvanceLeavePasted,
     GameOverWait,
+    GameOverScreenGone,
     GameOverPanelClose,
+    GameOverPanelGone,
     GameOverClosed,
     Finished
   };
@@ -131,6 +134,8 @@ private:
   void newGame();
   void gameInit();
   void openScreens(bool shown);
+  void test();
+  void hideScreen();
   Flow stageInit();
   Flow stageMusic();
   Flow stageScreen();
@@ -175,6 +180,8 @@ private:
   DoubleBuffer m_buffer;
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
+  amal::Object m_copperDisplay;
+  amal::Object m_liveDisplay;
   effects::AmigaPalette m_palette;
   effects::AmigaPalette m_panelPalette;
   LevelScript m_script;
@@ -204,6 +211,8 @@ private:
   int m_facing = 0;
   int m_screenOffsetX = 0;
   bool m_screenShown = false;
+  bool m_copperShown = false;
+  bool m_liveShown = false;
   bool m_panelShown = true;
   bool m_escape = false;
   std::array<int, 4> m_energy{};

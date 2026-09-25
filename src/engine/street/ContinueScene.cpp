@@ -1,5 +1,7 @@
 #include "ContinueScene.h"
 
+#include "../effects/AmigaDisplay.h"
+
 #include "../amal/Actors.h"
 #include "StageFrame.h"
 
@@ -21,7 +23,6 @@ constexpr int RIGHT_X = 268;
 constexpr int HAND_Y = 124;
 constexpr int WAGGLE_REGISTER = 1;
 constexpr int MACH_WAIT = 40;
-constexpr int SCREEN_CLOSE_VBLS = 2;
 
 constexpr int16_t JOY_LEFT = 4;
 constexpr int16_t JOY_RIGHT = 8;
@@ -53,7 +54,6 @@ void ContinueScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
     return;
   }
-  m_machine.tick();
   Flow flow = Flow::Continue;
   while (flow == Flow::Continue && m_frame >= m_resumeFrame) {
     switch (m_step) {
@@ -68,6 +68,13 @@ void ContinueScene::advance(int16_t joystick) {
       close();
       flow = Flow::Yield;
       break;
+    case Step::Gone:
+      m_bobs.offAll();
+      m_shown = false;
+      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_step = Step::Closed;
+      flow = Flow::Yield;
+      break;
     case Step::Closed:
       leave();
       flow = Flow::Yield;
@@ -77,12 +84,14 @@ void ContinueScene::advance(int16_t joystick) {
       break;
     }
   }
+  m_machine.tick();
   redraw();
   ++m_frame;
 }
 
 void ContinueScene::compose(std::vector<uint32_t> &frame) const {
-  frame.assign(static_cast<std::size_t>(WIDTH * HEIGHT), toArgb(BLACK));
+  frame.assign(static_cast<std::size_t>(WIDTH * HEIGHT),
+               toArgb(m_session.border));
   if (!m_shown) {
     return;
   }
@@ -112,6 +121,7 @@ void ContinueScene::open() {
   m_machine.create(HAND, amal::actors::pointingHand());
   m_machine.startAll();
   m_palette = continuePalette();
+  m_session.border = m_palette[0];
   m_shown = true;
   m_continue = true;
 }
@@ -136,10 +146,8 @@ ContinueScene::Flow ContinueScene::choose(int16_t joystick) {
 
 void ContinueScene::close() {
   m_machine.destroyAll();
-  m_bobs.offAll();
-  m_shown = false;
-  m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
-  m_step = Step::Closed;
+  m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+  m_step = Step::Gone;
 }
 
 void ContinueScene::leave() {

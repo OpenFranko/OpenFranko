@@ -35,12 +35,12 @@ void StorySequence::step(bool skipLatched, bool joystickTouched) {
   const int animationEnd = FRAMES_PER_ANIMATION_FRAME * frameCount(page);
 
   if (time <= animationEnd && time % FRAMES_PER_ANIMATION_FRAME == 0) {
-    if (time > 0) {
-      m_view.frame = page.firstFrame + time / FRAMES_PER_ANIMATION_FRAME - 1;
-    }
     if (skipLatched) {
       finish();
       return;
+    }
+    if (time < animationEnd) {
+      m_view.frame = page.firstFrame + time / FRAMES_PER_ANIMATION_FRAME;
     }
   }
 

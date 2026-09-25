@@ -29,7 +29,7 @@ public:
   static constexpr int PAN_END = 680;
   static constexpr int FILES = 3;
 
-  explicit GameOverScene(StreetHost &host);
+  GameOverScene(StreetHost &host, GameSession &session);
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
@@ -52,6 +52,7 @@ private:
     Click,
     MusicFade,
     Hold,
+    CloseShown,
     Closed,
     Finished
   };
@@ -70,6 +71,7 @@ private:
   void closeGraveyard();
 
   StreetHost &m_host;
+  GameSession &m_session;
   LoadingMock m_loading;
   ImageBank m_images;
   BobLayer m_bobs;
@@ -83,17 +85,19 @@ private:
 
   Step m_step = Step::Close;
   effects::AmigaColor m_border;
+  effects::AmigaColor m_copperBorder;
   bool m_shown = false;
+  bool m_copperShown = false;
   bool m_rainbowShown = false;
   bool m_animating = false;
   int m_offset = 0;
+  int m_copperOffset = 0;
   int m_shownOffset = 0;
   int m_count = 0;
   int m_frame = 0;
   int m_resumeFrame = 0;
   int m_holdStart = -1;
   int m_holdUntil = -1;
-  int m_shownFrom = 0;
 };
 
 } // namespace street

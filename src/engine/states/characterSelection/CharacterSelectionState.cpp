@@ -71,6 +71,7 @@ CharacterSelectionState::CharacterSelectionState(
   m_videoSystem.loadIndexedImage(PICTURE, PICTURE_PATH);
   auto palette = m_videoSystem.getImagePalette(PICTURE);
   palette.resize(SCREEN_COLORS);
+  m_pictureBack = palette[0];
   for (const Sprite &sprite : SPRITES) {
     m_videoSystem.loadMaskedImage(spriteName(sprite.image), sprite.path);
     m_videoSystem.setImagePalette(spriteName(sprite.image), palette);
@@ -96,12 +97,16 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
     return firstStreet();
   }
 
+  const bool shown = m_selection.isScreenShown();
   m_selection.advance(joystickFrom(m_controllerSystem.states));
+  if (!shown && m_selection.isScreenShown()) {
+    m_session.border = m_pictureBack;
+  }
 
   if (const auto sample = m_selection.sample()) {
     for (const Voice &voice : VOICES) {
       if (voice.sample == *sample) {
-        m_audioSystem.playSFXSilencingMusic(voice.name);
+        m_audioSystem.playSample(voice.name, systems::AudioSystem::ALL_VOICES);
       }
     }
   }
@@ -134,7 +139,8 @@ EngineStateEnum CharacterSelectionState::firstStreet() const {
 
 void CharacterSelectionState::draw() {
   if (!m_selection.isScreenShown()) {
-    m_videoSystem.fillScreen(0, 0, 0);
+    const effects::Rgb border = effects::toRgb(m_session.border);
+    m_videoSystem.fillScreen(border.r, border.g, border.b);
     return;
   }
   m_videoSystem.drawImage(PICTURE, 0, -m_rows.first);

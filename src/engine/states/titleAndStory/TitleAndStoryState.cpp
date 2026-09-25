@@ -1,5 +1,7 @@
 #include "TitleAndStoryState.h"
 
+#include "../../effects/AmigaDisplay.h"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -18,8 +20,8 @@ constexpr int SCREEN_HEIGHT = 256;
 constexpr std::size_t SCREEN_COLORS = 32;
 
 constexpr int LOADING_FRAMES = 300;
-constexpr effects::FotoSequence::Timings TITLE_TIMINGS{5, LOADING_FRAMES, 3,
-                                                       45};
+constexpr effects::FotoSequence::Timings TITLE_TIMINGS{5, LOADING_FRAMES, 3, 45,
+                                                       false};
 
 const std::vector<effects::StorySequence::Page> PAGES = {
     {1, 8, 0}, {8, 11, 1}, {11, 14, 2}, {14, 20, 3}, {20, 28, 4}, {28, 69, 5}};
@@ -39,8 +41,6 @@ constexpr std::array<Position, PICTURES> TEXT_POSITIONS = {
 
 constexpr uint8_t STORY_BACKGROUND_GREY = 0x44;
 constexpr int STORY_SCREENS = 2;
-constexpr int SCREEN_OPEN_VBLS = 1;
-constexpr int SCREEN_CLOSE_VBLS = 2;
 
 std::string assetPath(const std::string &resource, int index) {
   const std::string file =
@@ -75,8 +75,7 @@ bool isJoystickTouched(
 }
 
 void drawStory(systems::VideoSystem &videoSystem,
-               const effects::StorySequence &story) {
-  const effects::StorySequence::View &view = story.view();
+               const effects::StorySequence::View &view) {
   videoSystem.fillScreen(STORY_BACKGROUND_GREY, STORY_BACKGROUND_GREY,
                          STORY_BACKGROUND_GREY);
   if (view.frame) {
@@ -148,7 +147,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::update() {
 
 std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
   if (m_phase == Phase::StoryOpening) {
-    if (m_phaseFrames < STORY_SCREENS * SCREEN_OPEN_VBLS) {
+    if (m_phaseFrames < STORY_SCREENS * effects::SCREEN_OPEN_VBLS) {
       if (m_phaseFrames == 0) {
         m_videoSystem.fillScreen(0, 0, 0);
       } else {
@@ -161,20 +160,27 @@ std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
     m_phase = Phase::Story;
   }
   if (m_phase == Phase::Story) {
+    const effects::StorySequence::View shown = m_story.view();
     m_story.advance(m_controllerSystem.isFireLatched(),
                     isJoystickTouched(m_controllerSystem.states));
     if (!m_story.isFinished()) {
-      drawStory(m_videoSystem, m_story);
+      drawStory(m_videoSystem, m_story.view());
       return std::nullopt;
     }
+    m_lastView = shown;
     m_phase = Phase::StoryClosing;
     m_phaseFrames = 0;
   }
-  if (m_phaseFrames == STORY_SCREENS * SCREEN_CLOSE_VBLS) {
+  if (m_phaseFrames == STORY_SCREENS * effects::SCREEN_CLOSE_VBLS) {
     return EngineStateEnum::ProtectionCheck;
   }
+  if (m_phaseFrames < effects::SCREEN_CLOSE_SHOWN_VBLS) {
+    drawStory(m_videoSystem, m_lastView);
+  } else {
+    m_videoSystem.fillScreen(STORY_BACKGROUND_GREY, STORY_BACKGROUND_GREY,
+                             STORY_BACKGROUND_GREY);
+  }
   ++m_phaseFrames;
-  m_videoSystem.fillScreen(0, 0, 0);
   return std::nullopt;
 }
 

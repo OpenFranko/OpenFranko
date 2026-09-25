@@ -103,7 +103,8 @@ MenuState::MenuState(systems::VideoSystem &videoSystem,
       m_controllerSystem(controllerSystem), m_options(options),
       m_session(session),
       m_menu(options, openMenuScreen(videoSystem, options.ntsc),
-             session.nameScreenOpen ? 1 : 0) {
+             session.keyboard) {
+  m_session.nameScreenOpen = false;
   for (int image = FIRST_MENU_IMAGE; image <= LAST_MENU_IMAGE; ++image) {
     m_videoSystem.loadMaskedImage(menuBobName(image),
                                   spritePath("0034", image - FIRST_MENU_IMAGE));
@@ -134,25 +135,26 @@ MenuState::~MenuState() {
 std::optional<EngineStateEnum> MenuState::update() {
   const effects::MenuSequence::Joystick joystick =
       joystickFrom(m_controllerSystem.states);
-  for (const char key : m_controllerSystem.typedText()) {
-    m_menu.press(key);
-  }
 
-  if (m_attract) {
+  if (m_attract && m_attractClosing == 0) {
     advanceAttract(joystick);
     if (!m_attract->isFinished()) {
       drawAttract();
       return std::nullopt;
     }
-    m_attract.reset();
     m_menu.resumeAfterAttract();
+    m_attractClosing = effects::SCREEN_CLOSE_SHOWN_VBLS;
   }
 
   const bool music = m_options.music;
   const bool bass = m_options.bass;
   const bool ntsc = m_options.ntsc;
   m_menu.setMouseButton(m_controllerSystem.isMouseButtonDown());
+  const bool shown = m_menu.isScreenShown();
   m_menu.advance(joystick);
+  if (!shown && m_menu.isScreenShown()) {
+    m_session.border = m_menu.palette()[0];
+  }
   for (const char key : m_menu.keysRead()) {
     street::typeCheatKey(m_session.textBuffer, key);
   }
@@ -166,7 +168,6 @@ std::optional<EngineStateEnum> MenuState::update() {
     switchStandard();
   }
   if (m_menu.isFinished()) {
-    m_session.nameScreenOpen = false;
     m_session.registers[RO] = 0;
     street::applyCheatCodes(m_session);
     return EngineStateEnum::CharacterSelection;
@@ -179,6 +180,14 @@ std::optional<EngineStateEnum> MenuState::update() {
     return std::nullopt;
   }
 
+  if (m_attractClosing > 0) {
+    drawAttractPicture();
+    if (--m_attractClosing == 0) {
+      m_attract.reset();
+    }
+    return std::nullopt;
+  }
+
   drawMenu();
   return std::nullopt;
 }
@@ -187,7 +196,7 @@ void MenuState::advanceAttract(
     const effects::MenuSequence::Joystick &joystick) {
   m_attract->advance(isTouched(joystick));
   if (m_attract->isWaiting()) {
-    m_menu.sleep();
+    m_session.keyboard.sleep();
   }
 }
 
@@ -216,7 +225,8 @@ void MenuState::startAttract() {
 void MenuState::drawMenu() {
   m_videoSystem.switchScreen(MENU_SCREEN_ID);
   if (m_menu.isFinished() || !m_menu.isScreenShown()) {
-    m_videoSystem.fillScreen(0, 0, 0);
+    const effects::Rgb border = effects::toRgb(m_session.border);
+    m_videoSystem.fillScreen(border.r, border.g, border.b);
     return;
   }
 
@@ -243,7 +253,10 @@ void MenuState::drawAttract() {
     drawMenu();
     return;
   }
+  drawAttractPicture();
+}
 
+void MenuState::drawAttractPicture() {
   m_videoSystem.switchScreen(ATTRACT_SCREEN_ID);
   if (m_attract->kind() == effects::AttractSequence::Kind::Title) {
     m_videoSystem.drawImage(TITLE, 0, -m_attractTop);

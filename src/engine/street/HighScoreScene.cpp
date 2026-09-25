@@ -6,6 +6,7 @@
 #include <array>
 #include <cctype>
 #include <cstddef>
+#include <optional>
 #include <utility>
 
 namespace openfranko::src::engine::street {
@@ -23,8 +24,6 @@ constexpr int FIRST_IMAGE = 1;
 constexpr int FULL_VOLUME = 63;
 constexpr int MUSIC_START_WAIT = 2;
 constexpr int UNPACK_VBLS = 1;
-constexpr int SCREEN_OPEN_VBLS = 1;
-constexpr int SCREEN_CLOSE_VBLS = 2;
 
 constexpr std::size_t COLORS = 32;
 constexpr effects::AmigaColor BLACK = 0x000;
@@ -59,6 +58,7 @@ constexpr int TYPED_IMAGE_OFFSET = 51;
 constexpr int CURSOR = 1;
 constexpr int CURSOR_IMAGE = 40;
 constexpr int CURSOR_DROP = 15;
+constexpr int KEY_WAIT = 10;
 constexpr int SCRATCH_COPY_WIDTH = 166;
 constexpr int SCRATCH_WIDTH = SCRATCH_COPY_WIDTH & ~15;
 constexpr int SCRATCH_HEIGHT = 20;
@@ -76,18 +76,19 @@ HighScoreScene::HighScoreScene(StreetHost &host, GameSession &session,
       m_scratch(SCRATCH_WIDTH, SCRATCH_HEIGHT), m_display(WIDTH, HEIGHT),
       m_palette(COLORS, BLACK) {}
 
-void HighScoreScene::advance(char key) {
+void HighScoreScene::advance() {
   if (m_step == Step::Finished) {
     return;
   }
   m_fader.tick(m_palette);
-  runBasic(key);
+  runBasic();
   redraw();
   ++m_frame;
 }
 
 void HighScoreScene::compose(std::vector<uint32_t> &frame) const {
-  frame.assign(static_cast<std::size_t>(WIDTH * HEIGHT), toArgb(BLACK));
+  frame.assign(static_cast<std::size_t>(WIDTH * HEIGHT),
+               toArgb(m_session.border));
   if (!m_shown) {
     return;
   }
@@ -123,7 +124,7 @@ HighScoreScene::Flow HighScoreScene::wait(int frames, Step next) {
   return Flow::Yield;
 }
 
-void HighScoreScene::runBasic(char key) {
+void HighScoreScene::runBasic() {
   Flow flow = Flow::Continue;
   while (flow == Flow::Continue && m_frame >= m_resumeFrame) {
     switch (m_step) {
@@ -144,6 +145,7 @@ void HighScoreScene::runBasic(char key) {
       break;
     case Step::Pictures:
       m_host.setMusicTempo(effects::menuTempo(m_options.ntsc));
+      m_loading.queue([this] { m_host.loadPicture(TITLE); });
       queuePictures();
       break;
     case Step::Loaded:
@@ -165,9 +167,10 @@ void HighScoreScene::runBasic(char key) {
       startEntry();
       break;
     case Step::Entry:
-      flow = entry(key);
+      flow = entry();
       break;
     case Step::Hold:
+      m_bobs.offAll();
       flow = wait(HOLD_FRAMES, Step::FadeOut);
       break;
     case Step::FadeOut:
@@ -191,6 +194,10 @@ void HighScoreScene::reset() {
   const int16_t kills = registers[RN];
   registers = GameSession::freshRegisters();
   registers[RN] = kills;
+  if (m_host.isMusicLoaded(MENU_TUNE)) {
+    queuePictures();
+    return;
+  }
   m_host.stopMusic();
   m_loading.queue([this] { m_host.loadMusic(MENU_TUNE); });
   m_afterLoading = Step::MenuMusic;
@@ -198,7 +205,6 @@ void HighScoreScene::reset() {
 }
 
 void HighScoreScene::queuePictures() {
-  m_loading.queue([this] { m_host.loadPicture(TITLE); });
   m_loading.queue([this] {
     m_picture = m_host.loadPicture(PICTURE);
     m_picturePalette = m_host.loadPalette(PICTURE);
@@ -225,7 +231,7 @@ HighScoreScene::Flow HighScoreScene::loaded() {
   m_palette.resize(COLORS, BLACK);
   m_round = 0;
   m_session.nameScreenOpen = true;
-  return wait(UNPACK_VBLS + SCREEN_OPEN_VBLS, Step::Dim);
+  return wait(UNPACK_VBLS + effects::SCREEN_OPEN_VBLS, Step::Dim);
 }
 
 HighScoreScene::Flow HighScoreScene::dim() {
@@ -235,6 +241,7 @@ HighScoreScene::Flow HighScoreScene::dim() {
 
 HighScoreScene::Flow HighScoreScene::dimmed() {
   m_fader.start(m_palette, 1, m_palette);
+  m_session.border = m_palette[0];
   m_shown = true;
   ++m_round;
   return wait(DIMMED_WAIT, m_round < DIM_ROUNDS ? Step::Dim : Step::Relight);
@@ -291,33 +298,41 @@ void HighScoreScene::startEntry() {
   m_step = Step::Entry;
 }
 
-HighScoreScene::Flow HighScoreScene::entry(char key) {
+HighScoreScene::Flow HighScoreScene::entry() {
   m_bobs.set(CURSOR, m_x, m_y + CURSOR_DROP, CURSOR_IMAGE);
-  const char typed =
-      static_cast<char>(std::toupper(static_cast<unsigned char>(key)));
-  const std::size_t cell =
-      static_cast<std::size_t>((m_x - NAME_X) / CELL_WIDTH);
-  if (typed >= 'A' && typed <= 'Z') {
-    restoreCell();
-    BobLayer::paste(m_screen, m_images, m_x, m_y, typed - TYPED_IMAGE_OFFSET);
-    m_name[cell] = typed;
-    if (m_x < LAST_CELL_X) {
-      m_x += CELL_WIDTH;
+  while (const std::optional<char> key = m_session.keyboard.inkey()) {
+    const char typed =
+        static_cast<char>(std::toupper(static_cast<unsigned char>(*key)));
+    const std::size_t cell =
+        static_cast<std::size_t>((m_x - NAME_X) / CELL_WIDTH);
+    if (typed >= 'A' && typed <= 'Z') {
+      restoreCell();
+      BobLayer::paste(m_screen, m_images, m_x, m_y, typed - TYPED_IMAGE_OFFSET);
+      m_name[cell] = typed;
+      if (m_x < LAST_CELL_X) {
+        m_x += CELL_WIDTH;
+      }
+      return wait(KEY_WAIT, Step::Entry);
     }
-  } else if (typed == ' ') {
-    if (m_x < LAST_CELL_X) {
-      m_x += CELL_WIDTH;
+    if (typed == ' ') {
+      if (m_x < LAST_CELL_X) {
+        m_x += CELL_WIDTH;
+      }
+      return wait(KEY_WAIT, Step::Entry);
     }
-  } else if (typed == BACKSPACE) {
-    restoreCell();
-    m_name[cell] = ' ';
-    if (m_x > NAME_X) {
-      m_x -= CELL_WIDTH;
+    if (typed == BACKSPACE) {
+      restoreCell();
+      m_name[cell] = ' ';
+      if (m_x > NAME_X) {
+        m_x -= CELL_WIDTH;
+      }
+      return wait(KEY_WAIT, Step::Entry);
     }
-  } else if (typed == RETURN) {
-    commit();
-    m_session.nameScreenOpen = false;
-    return wait(SCREEN_CLOSE_VBLS, Step::Hold);
+    if (typed == RETURN) {
+      commit();
+      m_session.nameScreenOpen = false;
+      return wait(effects::SCREEN_CLOSE_VBLS, Step::Hold);
+    }
   }
   return Flow::Yield;
 }
@@ -330,7 +345,6 @@ void HighScoreScene::restoreCell() {
 void HighScoreScene::commit() {
   m_session.highScores.setName(m_slot, m_name);
   m_session.textBuffer = m_name;
-  m_bobs.offAll();
   m_entering = false;
   if (m_save) {
     m_save(m_session.highScores);

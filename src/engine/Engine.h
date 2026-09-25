@@ -42,6 +42,7 @@ private:
 
   std::unique_ptr<states::IEngineState> currentState;
   bool running;
+  bool booting = false;
 };
 
 } // namespace engine

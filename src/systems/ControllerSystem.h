@@ -1,6 +1,7 @@
 #ifndef SYSTEMS_CONTROLLERSYSTEM_H_
 #define SYSTEMS_CONTROLLERSYSTEM_H_
 
+#include <SDL2/SDL.h>
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -12,16 +13,18 @@ namespace systems {
 
 enum class FunctionKey { F1, F2, F3, F4, Escape };
 
+enum class KeyMode { Game, FrontEnd, NameEntry };
+
 class ControllerSystem {
 public:
   void update();
-  void receiveText(const char *typed);
+  void receiveKey(const SDL_KeyboardEvent &key);
+  void setKeyMode(KeyMode mode);
   void clearFireLatch();
   bool isFireLatched() const;
   bool isMouseButtonDown() const;
-  std::optional<char> typedLetter() const;
-  std::optional<char> typedKey() const;
-  const std::string &typedText() const;
+  bool isDeleteHeld() const;
+  const std::string &typedKeys() const;
   std::optional<FunctionKey> functionKey() const;
   int16_t joystick() const;
 
@@ -36,19 +39,16 @@ public:
   ControllerStates states;
 
 private:
-  void clearStates();
-  void updateTypedLetter(const uint8_t *keys);
-  void updateTypedKey(const uint8_t *keys);
+  std::optional<char> typedCharacter(SDL_Keycode keycode) const;
   void updateFunctionKey(const uint8_t *keys);
 
+  KeyMode keyMode = KeyMode::FrontEnd;
   bool fireLatched = false;
   bool mouseButtonDown = false;
-  std::string receivedText;
-  std::string text;
-  std::array<bool, 26> lettersDown{};
-  std::optional<char> letter;
-  std::array<bool, 4> editingKeysDown{};
-  std::optional<char> key;
+  bool deleteHeld = false;
+  std::string receivedKeys;
+  std::string typed;
+  std::array<bool, SDL_NUM_SCANCODES> typingKeys{};
   std::array<bool, 5> functionKeysDown{};
   std::optional<FunctionKey> pressedFunctionKey;
 };

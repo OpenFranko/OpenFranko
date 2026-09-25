@@ -16,7 +16,7 @@ constexpr int SCREEN_WIDTH = 368;
 constexpr int SCREEN_HEIGHT = 290;
 constexpr std::size_t SCREEN_COLORS = 32;
 
-constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 75};
+constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 75, false};
 
 constexpr std::size_t EYES_COLOR = 22;
 const effects::FlashSteps EYES_FLASH = {
@@ -57,7 +57,7 @@ std::optional<EngineStateEnum> WorldSoftwareState::update() {
 
   if (m_sequence.frame() == m_sequence.holdStart()) {
     m_sequence.flash(EYES_COLOR, EYES_FLASH);
-    m_audioSystem.playSFX(SAMPLE);
+    m_audioSystem.playSample(SAMPLE, systems::AudioSystem::ALL_VOICES);
   }
 
   if (m_sequence.advance()) {

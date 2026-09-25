@@ -15,6 +15,7 @@ namespace src {
 namespace engine {
 namespace street {
 
+constexpr effects::AmigaColor STAGE_BORDER = 0x555;
 constexpr int FRAME_WIDTH = 304;
 constexpr int FRAME_HEIGHT = 255;
 constexpr int DISPLAY_X = 128;

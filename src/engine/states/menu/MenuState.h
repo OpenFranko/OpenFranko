@@ -34,6 +34,7 @@ private:
   void startAttract();
   void drawMenu();
   void drawAttract();
+  void drawAttractPicture();
   void drawHiscoreRow(int row);
 
   systems::VideoSystem &m_videoSystem;
@@ -50,6 +51,7 @@ private:
   effects::AmigaPalette m_menuPaletteShown;
   effects::AmigaPalette m_attractPaletteShown;
   int m_attractTop = 0;
+  int m_attractClosing = 0;
 };
 
 } // namespace menu

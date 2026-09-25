@@ -37,7 +37,7 @@ public:
   const effects::AmigaPalette &palette() const;
 
 private:
-  enum class Step { Open, Choose, Chosen, Closed, Finished };
+  enum class Step { Open, Choose, Chosen, Gone, Closed, Finished };
   enum class Flow { Continue, Yield };
 
   void open();

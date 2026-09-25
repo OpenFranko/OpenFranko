@@ -1,5 +1,7 @@
 #include "CharacterSelection.h"
 
+#include "AmigaDisplay.h"
+
 #include <vector>
 
 namespace openfranko::src::engine::effects {
@@ -29,7 +31,6 @@ constexpr int BOBS_OFF_AT = MACH_WAIT + SHOW_WAIT;
 constexpr int LOUDEST = 63;
 constexpr int MUSIC_STOP_AT = BOBS_OFF_AT + LOUDEST + 1;
 constexpr int UNPACK_VBLS = 1;
-constexpr int SCREEN_CLOSE_VBLS = 2;
 
 const std::vector<AmalMotion::Move> WAGGLE = {
     {4, 2}, {-4, 2}, {0, 1}, {4, 2}, {-4, 2}, {0, 1},
@@ -113,6 +114,9 @@ void CharacterSelection::choose(Character character) {
 
 void CharacterSelection::runScript(int time) {
   if (m_closedAt) {
+    if (time == *m_closedAt + SCREEN_CLOSE_SHOWN_VBLS) {
+      m_screenShown = false;
+    }
     if (time == *m_closedAt + SCREEN_CLOSE_VBLS * (1 + m_otherScreens)) {
       m_finished = true;
     }
@@ -147,9 +151,6 @@ void CharacterSelection::runScript(int time) {
   }
 }
 
-void CharacterSelection::close(int time) {
-  m_screenShown = false;
-  m_closedAt = time;
-}
+void CharacterSelection::close(int time) { m_closedAt = time; }
 
 } // namespace openfranko::src::engine::effects

@@ -16,6 +16,7 @@ constexpr int RE = 4;
 constexpr int RF = 5;
 constexpr int RG = 6;
 constexpr int RI = 8;
+constexpr int RM = 12;
 constexpr int RN = 13;
 constexpr int RO = 14;
 constexpr int RQ = 16;
@@ -35,6 +36,7 @@ constexpr int GAME_INIT_FRAMES = 1 + 3 + 1;
 constexpr int STAGE_OPENING_FRAMES =
     1 + OPENING_FILES * LoadingMock::FILE_FRAMES + 3;
 constexpr int OPENING_FRAMES = GAME_INIT_FRAMES + STAGE_OPENING_FRAMES;
+constexpr int SCREEN_SHOW_FRAMES = 2;
 
 Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
   return Picture{
@@ -131,6 +133,8 @@ public:
   }
 
   void loadMusic(int resource) override { music.push_back(resource); }
+
+  bool isMusicLoaded(int) const override { return false; }
 
   void playMusic() override { ++musicStarts; }
 
@@ -415,6 +419,49 @@ SCENARIO("A wave spawns at its trigger column") {
   }
 }
 
+SCENARIO("A wave that loads nothing shows its bobs a VBL after CZEKAJ's") {
+  GIVEN("A wave of empty slots due at column 2") {
+    Street street(oneEnemyAt(2, EnemySlot{}));
+    StreetStage &stage = street.start();
+    street.run(OPENING_FRAMES + 1);
+    street.runUntil([&] { return stage.wavesSpawned() == 1; }, 400, JOY_RIGHT);
+    const int x = stage.bobs().x(1);
+    const int y = stage.bobs().y(1) - 22;
+
+    THEN("The CZEKAJ call after Paste Bob uses up that VBL's update, so Put "
+         "Block's background shows for two frames before the player") {
+      REQUIRE(stage.display().pixel(x, y) == OPENING_COLOR);
+      street.run(1);
+      REQUIRE(stage.display().pixel(x, y) == OPENING_COLOR);
+      street.run(1);
+      REQUIRE(stage.display().pixel(x, y) == 1);
+    }
+  }
+}
+
+SCENARIO("TRZES moves the screen when the rebuilt copper list goes live") {
+  GIVEN("A street running after its first chunk") {
+    Street street(emptyStreet(600));
+    StreetStage &stage = street.start();
+    street.open();
+    street.run(SCREEN_SHOW_FRAMES + 80);
+    std::vector<uint32_t> frame;
+    street.global(RM) = 1;
+    street.run(1);
+    stage.compose(frame);
+    const uint32_t tickTop = frame[0];
+    street.run(1);
+    stage.compose(frame);
+
+    THEN("The channel moves Screen Display 8 lines down at its VBL, and the "
+         "list the next test point builds shows it a VBL later") {
+      REQUIRE(tickTop == 0xFF008833u);
+      REQUIRE(frame[0] == 0xFF555555u);
+      REQUIRE(frame[8 * 304] == 0xFF008833u);
+    }
+  }
+}
+
 SCENARIO("The referee resolves a punch and a kill") {
   GIVEN("A weak enemy walking in from the right") {
     Street street(oneEnemyAt(1, enemy(1, 300, 172, 0, 100)));
@@ -609,13 +656,15 @@ SCENARIO("The run ends as state 11 and SYS decide") {
       street.run(1, 0, SystemKey::Escape);
 
       THEN("The score is zeroed and the next pass's _CLOSE shuts the play "
-           "screen, then the panel, two VBLs each, before the game quits") {
+           "screen, then the panel, four VBLs each, each gone after two") {
         REQUIRE(street.global(RN) == 0);
         REQUIRE(stage.outcome() == StreetStage::Outcome::Playing);
+        street.run(2);
+        REQUIRE(stage.isScreenShown());
         street.run(1);
         REQUIRE_FALSE(stage.isScreenShown());
         REQUIRE(stage.isPanelShown());
-        street.run(1);
+        street.run(3);
         REQUIRE(stage.isPanelShown());
         street.run(1);
         REQUIRE_FALSE(stage.isPanelShown());
@@ -633,12 +682,12 @@ SCENARIO("The run ends as state 11 and SYS decide") {
 
       THEN("After state 19's Wait 200, _CLOSE shuts the play screen and the "
            "panel, two VBLs each, before game over") {
-        street.run(199);
+        street.run(200);
         REQUIRE(stage.isScreenShown());
-        street.run(1);
+        street.run(2);
         REQUIRE_FALSE(stage.isScreenShown());
         REQUIRE(stage.isPanelShown());
-        street.run(2);
+        street.run(4);
         REQUIRE_FALSE(stage.isPanelShown());
         REQUIRE(stage.outcome() == StreetStage::Outcome::Playing);
         street.run(1);
@@ -671,10 +720,13 @@ SCENARIO("The run ends as state 11 and SYS decide") {
     StreetStage &stage = street.start();
     street.run(OPENING_FRAMES + 1 + LoadingMock::FILE_FRAMES);
 
-    THEN("Escape closes the play screen at once and quits after _CLOSE") {
+    THEN("Escape starts _CLOSE at once and quits once both screens have "
+         "closed") {
       street.run(1, 0, SystemKey::Escape);
+      REQUIRE(stage.isScreenShown());
+      street.run(2);
       REQUIRE_FALSE(stage.isScreenShown());
-      street.run(3);
+      street.run(5);
       REQUIRE(stage.outcome() == StreetStage::Outcome::Playing);
       street.run(1);
       REQUIRE(stage.outcome() == StreetStage::Outcome::Quit);
@@ -774,9 +826,16 @@ SCENARIO("The composed frame shows the play screen over the panel") {
 
     THEN("It is 304 x 255: 222 play rows, one border row, 32 panel rows") {
       REQUIRE(frame.size() == 304u * 255u);
-      REQUIRE(frame[0] == 0xFF008833u);
       REQUIRE(frame[222 * 304] == 0xFF555555u);
       REQUIRE(frame[223 * 304] == 0xFF000000u);
+    }
+
+    THEN("The play screen joins them once the list with Screen Show 0 is "
+         "live") {
+      REQUIRE(frame[0] == 0xFF555555u);
+      street.run(SCREEN_SHOW_FRAMES);
+      stage.compose(frame);
+      REQUIRE(frame[0] == 0xFF008833u);
     }
   }
 
@@ -857,10 +916,12 @@ SCENARIO("F4 and F3 switch the display as SYS does") {
 
     THEN("The laced play screen starts on line 107 and the panel on 219") {
       REQUIRE(frame.size() == 304u * 510u);
-      REQUIRE(frame[119 * 304] == 0xFF555555u);
-      REQUIRE(frame[120 * 304] == 0xFF008833u);
       REQUIRE(frame[343 * 304] == 0xFF555555u);
       REQUIRE(frame[344 * 304] == 0xFF000000u);
+      street.run(SCREEN_SHOW_FRAMES);
+      stage.compose(frame);
+      REQUIRE(frame[119 * 304] == 0xFF555555u);
+      REQUIRE(frame[120 * 304] == 0xFF008833u);
     }
   }
 }
@@ -905,14 +966,22 @@ SCENARIO("A stage's files load one by one as LADUJ and CZEKAJ show them") {
     WHEN("All five files are in") {
       street.run(OPENING_FILES * LoadingMock::FILE_FRAMES);
 
-      THEN("The unpack of the opening screen stalls three VBLs before it "
-           "shows") {
+      THEN("The unpack of the opening screen stalls three VBLs. CZEKAJ's "
+           "test point then comes before Screen Show 0, so the copper list "
+           "that shows the screen is built after the next VBL and goes live "
+           "a VBL later, with the player already drawn") {
         REQUIRE_FALSE(stage.isScreenShown());
         street.run(2);
         REQUIRE_FALSE(stage.isScreenShown());
         street.run(1);
-        REQUIRE(stage.isScreenShown());
         REQUIRE(stage.isFighting());
+        REQUIRE_FALSE(stage.isScreenShown());
+        street.run(SCREEN_SHOW_FRAMES - 1);
+        REQUIRE_FALSE(stage.isScreenShown());
+        street.run(1);
+        REQUIRE(stage.isScreenShown());
+        REQUIRE(stage.display().pixel(stage.bobs().x(1),
+                                      stage.bobs().y(1) - 22) == 1);
       }
     }
   }

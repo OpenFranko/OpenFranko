@@ -7,7 +7,6 @@
 namespace openfranko::src::engine::street {
 namespace {
 
-constexpr effects::AmigaColor BORDER = 0x555;
 constexpr uint32_t BLANK = 0xFF000000u;
 constexpr int NTSC_SHIFT = 40;
 constexpr int LACED_PLAY_SHIFT = 60;
@@ -84,7 +83,8 @@ void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
   const int rows = frameRows(layout);
   const int perLine = rowsPerLine(layout);
   const int top = frameTop(layout);
-  frame.assign(static_cast<std::size_t>(FRAME_WIDTH * rows), toArgb(BORDER));
+  frame.assign(static_cast<std::size_t>(FRAME_WIDTH * rows),
+               toArgb(STAGE_BORDER));
   if (!panel) {
     return;
   }

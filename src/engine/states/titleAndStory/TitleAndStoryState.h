@@ -32,6 +32,7 @@ private:
   effects::StorySequence m_story;
   Phase m_phase = Phase::Title;
   int m_phaseFrames = 0;
+  effects::StorySequence::View m_lastView;
 };
 
 } // namespace titleAndStory

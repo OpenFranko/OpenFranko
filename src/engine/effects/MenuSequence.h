@@ -41,11 +41,9 @@ public:
   static constexpr int ATTRACT_AFTER = 300;
 
   MenuSequence(GameOptions &options, AmigaPalette palette,
-               int otherScreens = 0);
+               InkeyBuffer &keyboard);
 
-  void press(char key);
   void setMouseButton(bool down);
-  void sleep();
   void advance(const Joystick &joystick);
   void resumeAfterAttract();
 
@@ -80,7 +78,7 @@ private:
   std::array<Bob, BOBS> m_shownBobs{};
   std::array<AmalMotion, BOBS> m_motions{};
   std::array<std::optional<CreditScroll>, 3> m_credits{};
-  InkeyBuffer m_keyboard;
+  InkeyBuffer &m_keyboard;
   std::string m_keysRead;
   Phase m_phase = Phase::Unpacking;
   Resume m_resume = Resume::Nothing;
@@ -94,7 +92,6 @@ private:
   bool m_mouseButton = false;
   bool m_screenShown = false;
   bool m_busy = false;
-  int m_otherScreens = 0;
 };
 
 } // namespace effects

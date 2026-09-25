@@ -26,7 +26,9 @@ constexpr int PASSWORD_FRAMES = 6;
 constexpr int SKIP_FRAME = PASSWORD_FRAMES + 1;
 constexpr int LOADED_FRAME =
     SKIP_FRAME + CarStage::FILES * LoadingMock::FILE_FRAMES;
-constexpr int DRIVE_FRAME = LOADED_FRAME + 4;
+constexpr int SCREEN_CLOSE = 4;
+constexpr int ROAD_SCREENS = 1 + 1 + SCREEN_CLOSE;
+constexpr int DRIVE_FRAME = LOADED_FRAME + ROAD_SCREENS;
 constexpr int PASS_LIMIT = 100;
 constexpr int PAL_FRAMES_PER_SECOND = 50;
 constexpr int NTSC_FRAMES_PER_SECOND = 60;
@@ -34,7 +36,7 @@ constexpr int LONGEST_PASS =
     (PAL_FRAMES_PER_SECOND + CarStage::PASSES_PER_SECOND - 1) /
     CarStage::PASSES_PER_SECOND;
 constexpr int MOVE_END = 401;
-constexpr int EXIT_FRAMES = 5;
+constexpr int EXIT_FRAMES = SCREEN_CLOSE + 3;
 constexpr int WALKER_LIMIT = 1000;
 
 constexpr uint8_t CAR_INK = 3;
@@ -104,6 +106,8 @@ public:
   }
 
   void loadMusic(int) override {}
+
+  bool isMusicLoaded(int) const override { return false; }
 
   void playMusic() override {}
 
@@ -292,8 +296,8 @@ SCENARIO("The road opens after the screen juggle and the drive begins") {
     drive.run(1, JOY_FIRE);
     drive.run(LOADED_FRAME - SKIP_FRAME);
 
-    THEN("Screen Open, Screen Open and Screen Close cost four frames") {
-      drive.run(3);
+    THEN("Screen Open, Screen Open and Screen Close cost six frames") {
+      drive.run(ROAD_SCREENS - 1);
       REQUIRE_FALSE(stage.isDriving());
       drive.run(1);
       REQUIRE(stage.isDriving());
@@ -301,7 +305,7 @@ SCENARIO("The road opens after the screen juggle and the drive begins") {
 
     THEN("The bands start 10, 5, 0 and 0 px along, as the main program left "
          "I, J, L and M, once the first pass's blits have landed") {
-      drive.run(4);
+      drive.run(ROAD_SCREENS);
       drive.runPasses(1);
       REQUIRE(drive.markerIn(94) == MARKER_COLUMN - 10);
       REQUIRE(drive.markerIn(210) == MARKER_COLUMN - 5);
@@ -311,7 +315,7 @@ SCENARIO("The road opens after the screen juggle and the drive begins") {
 
     THEN("The car waits at 96,168, the walkers are parked, the bushes set, "
          "on screen once the first pass is done") {
-      drive.run(4);
+      drive.run(ROAD_SCREENS);
       drive.runPasses(1);
       const BobLayer &bobs = stage.bobs();
       REQUIRE(bobs.x(CarStage::CAR) == 96);
@@ -666,16 +670,17 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
     WHEN("The lives run out") {
       drive.global(RG) = -1;
       drive.runUntil([&] { return !stage.isDriving(); }, PASS_LIMIT);
-      drive.run(2);
+      drive.run(SCREEN_CLOSE);
 
-      THEN("Game over follows Wait 200 and _CLOSE's four VBLs") {
+      THEN("Game over follows Wait 200 and _CLOSE's two screens, four VBLs "
+           "each, each gone after two") {
         REQUIRE(stage.outcome() == CarStage::Outcome::Playing);
-        drive.run(199);
+        drive.run(200);
         REQUIRE(stage.isScreenShown());
-        drive.run(1);
+        drive.run(2);
         REQUIRE_FALSE(stage.isScreenShown());
         REQUIRE(stage.isPanelShown());
-        drive.run(2);
+        drive.run(4);
         REQUIRE_FALSE(stage.isPanelShown());
         drive.run(1);
         REQUIRE(stage.outcome() == CarStage::Outcome::Playing);

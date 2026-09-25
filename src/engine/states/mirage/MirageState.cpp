@@ -13,7 +13,7 @@ constexpr int SCREEN_WIDTH = 368;
 constexpr int SCREEN_HEIGHT = 290;
 constexpr std::size_t SCREEN_COLORS = 32;
 
-constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 70};
+constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 70, true};
 
 effects::AmigaPalette openScreen(systems::VideoSystem &videoSystem) {
   videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, SCREEN_HEIGHT);

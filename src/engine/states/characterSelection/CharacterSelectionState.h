@@ -37,6 +37,7 @@ private:
   street::GameSession &m_session;
   effects::CharacterSelection m_selection;
   effects::VisibleRows m_rows;
+  effects::AmigaColor m_pictureBack = 0;
 };
 
 } // namespace characterSelection

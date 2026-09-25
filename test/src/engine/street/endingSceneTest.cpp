@@ -37,8 +37,10 @@ constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
 
 constexpr int LOADED = 3 + EndingScene::FILES * LoadingMock::FILE_FRAMES + 1;
-constexpr int STILL_SHOWN = LOADED + 2 + 2 + 2;
-constexpr int TEXT_BOX_SHOWN = STILL_SHOWN + 5 + 60 + 2;
+constexpr int SCREEN_CLOSE = 4;
+constexpr int SCREEN_CLOSE_SHOWN = 2;
+constexpr int STILL_SHOWN = LOADED + SCREEN_CLOSE + SCREEN_CLOSE + 2;
+constexpr int TEXT_BOX_SHOWN = STILL_SHOWN + 5 + 60 + SCREEN_CLOSE;
 constexpr int KLIKER_START = TEXT_BOX_SHOWN + 1;
 
 constexpr int CREDIT_PAGES = 12;
@@ -130,6 +132,8 @@ public:
   }
 
   void loadMusic(int resource) override { music.push_back(resource); }
+
+  bool isMusicLoaded(int) const override { return false; }
 
   void playMusic() override { ++musicStarts; }
 
@@ -337,11 +341,16 @@ SCENARIO("CONGRA clears the stage, stops the tune and loads four files") {
         REQUIRE_FALSE(scene.isLoading());
       }
 
-      THEN("_CLOSE takes the stage away, then two frames later the panel") {
+      THEN("_CLOSE drops the stage two frames after the call and the panel "
+           "two frames after its own close, four frames later") {
+        REQUIRE(scene.isStageShown());
+        ending.run(SCREEN_CLOSE_SHOWN);
         REQUIRE_FALSE(scene.isStageShown());
         REQUIRE(scene.panel() != nullptr);
         REQUIRE(ending.panelPixel(101, 10) == WAIT_WORD_COLOR);
-        ending.run(2);
+        ending.run(SCREEN_CLOSE - 1);
+        REQUIRE(scene.panel() != nullptr);
+        ending.run(1);
         REQUIRE(scene.panel() == nullptr);
         REQUIRE(scene.border() == 0x555);
       }
@@ -381,8 +390,8 @@ SCENARIO("FOTO fades the still in from white and holds it for KLIKER") {
         REQUIRE(scene.screen(0).pixel(100, 100) == PICTURE_COLOR);
       }
 
-      AND_WHEN("Wait 5, Fade 4 To 7 and Wait 60 are over") {
-        ending.run(5 + 60 + 2);
+      AND_WHEN("Wait 5, Fade 4 To 7, Wait 60 and Screen Close 7 are over") {
+        ending.run(5 + 60 + SCREEN_CLOSE);
 
         THEN("The picture has its own colours and the text box is up") {
           REQUIRE(scene.palette(0) == picturePalette());
@@ -510,13 +519,14 @@ SCENARIO("The break-dance opens two screens and walks the dancer in") {
     }
 
     WHEN("_OFF, _CLOSE and the dancer's screen have taken their frames") {
-      ending.run(50 + 2 + 2);
+      ending.run(50 + SCREEN_CLOSE + SCREEN_CLOSE);
       const bool closed = !scene.isShown(0) && !scene.isShown(1);
       ending.run(1);
 
-      THEN("Screen 1 opens at line 131 with the orange ramp") {
+      THEN("Screen 1 opens at line 131 with the orange ramp, but no copper "
+           "list holds it yet, so the grey border stays") {
         REQUIRE(closed);
-        REQUIRE(scene.isShown(1));
+        REQUIRE_FALSE(scene.isShown(1));
         REQUIRE(scene.screen(1).height() == 164);
         REQUIRE(scene.palette(1)[1] == 0x06F);
         REQUIRE(scene.palette(1)[15] == 0xFFF);
@@ -524,7 +534,7 @@ SCENARIO("The break-dance opens two screens and walks the dancer in") {
         std::vector<uint32_t> frame;
         scene.compose(frame);
         REQUIRE(frame[80 * 320] == 0xFF444444u);
-        REQUIRE(frame[81 * 320] == 0xFF000000u);
+        REQUIRE(frame[81 * 320] == 0xFF444444u);
       }
 
       AND_WHEN("Double Buffer is over") {
@@ -541,10 +551,19 @@ SCENARIO("The break-dance opens two screens and walks the dancer in") {
             REQUIRE(scene.bobs().image(bob) == bob - 1);
           }
           REQUIRE_FALSE(scene.isShown(0));
+          REQUIRE_FALSE(scene.isShown(1));
         }
 
         AND_WHEN("Screen Open 0 has taken its frame") {
           ending.run(1);
+
+          THEN("The For loop's test point built the copper list with the "
+               "dancer's screen, live from this VBL") {
+            REQUIRE(scene.isShown(1));
+            std::vector<uint32_t> frame;
+            scene.compose(frame);
+            REQUIRE(frame[81 * 320] == 0xFF000000u);
+          }
 
           THEN("The text screen sits at line 50 in black on a black border") {
             REQUIRE(scene.isShown(0));
@@ -677,14 +696,17 @@ SCENARIO("After the last page the music fades out and ETAP goes to HI") {
     WHEN("Fire ends the final KLIKER") {
       ending.host.volumes.clear();
       ending.run(1, JOY_FIRE);
+      const bool bothUp = scene.isShown(0) && scene.isShown(1);
+      ending.run(SCREEN_CLOSE_SHOWN);
       const bool textClosed = !scene.isShown(0) && scene.isShown(1);
-      ending.run(2);
+      ending.run(SCREEN_CLOSE);
       const bool allClosed = !scene.isShown(0) && !scene.isShown(1);
       const int ended =
           ending.runUntil([&] { return scene.isFinished(); }, 200);
 
-      THEN("_CLOSE shuts both screens, SCICH steps the volume down 64 "
-           "frames, then HI gets ETAP") {
+      THEN("_CLOSE shuts both screens, each gone two frames into its four, "
+           "SCICH steps the volume down 64 frames, then HI gets ETAP") {
+        REQUIRE(bothUp);
         REQUIRE(textClosed);
         REQUIRE(allClosed);
         REQUIRE(ended == 1 + 64 + 1);

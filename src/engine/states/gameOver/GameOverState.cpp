@@ -11,9 +11,10 @@ constexpr auto FRAME = "gameOverFrame";
 GameOverState::GameOverState(systems::VideoSystem &videoSystem,
                              systems::AudioSystem &audioSystem,
                              systems::ControllerSystem &controllerSystem,
-                             const effects::GameOptions &options)
+                             const effects::GameOptions &options,
+                             street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_host(audioSystem), m_scene(m_host),
+      m_host(audioSystem), m_scene(m_host, session),
       m_rows(effects::visibleRows(
           effects::pictureLine(street::GameOverScene::DISPLAY_LINE,
                                options.ntsc),

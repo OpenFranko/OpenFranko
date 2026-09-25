@@ -23,6 +23,8 @@ constexpr int DIMMED = OPENED + 13;
 constexpr int RELIT = OPENED + 16;
 constexpr int ENTRY = RELIT + 100;
 constexpr int CURSOR_IMAGE = 40;
+constexpr int KEY_WAIT = 10;
+constexpr int KEY_LIMIT = 100;
 constexpr uint8_t PAPER = 0;
 
 uint8_t inkOf(int image) { return static_cast<uint8_t>(1 + image % 31); }
@@ -61,6 +63,7 @@ public:
   std::vector<int> tempos;
   int musicStarts = 0;
   int musicStops = 0;
+  int tuneInMemory = 0;
 
   std::vector<Picture> loadSpriteSet(int resource, int sampleBank) override {
     spriteSets.emplace_back(resource, sampleBank);
@@ -90,7 +93,14 @@ public:
 
   Picture loadPanelPicture(int) override { return box(304, 48, 7); }
 
-  void loadMusic(int resource) override { music.push_back(resource); }
+  void loadMusic(int resource) override {
+    music.push_back(resource);
+    tuneInMemory = resource;
+  }
+
+  bool isMusicLoaded(int resource) const override {
+    return resource == tuneInMemory;
+  }
 
   void playMusic() override { ++musicStarts; }
 
@@ -119,23 +129,36 @@ struct Board {
 
   explicit Board(int kills) {
     session.registers[RN] = static_cast<int16_t>(kills);
+    session.keyboard.permit();
   }
 
   void run(int frames) {
     for (int frame = 0; frame < frames; ++frame) {
-      scene.advance('\0');
+      scene.advance();
+    }
+  }
+
+  void press(const std::string &keys) {
+    for (char key : keys) {
+      session.keyboard.press(key);
     }
   }
 
   void type(const std::string &keys) {
     for (char key : keys) {
-      scene.advance(key);
+      session.keyboard.press(key);
+      for (int frame = 0; frame < KEY_LIMIT; ++frame) {
+        scene.advance();
+        if (session.keyboard.isEmpty()) {
+          break;
+        }
+      }
     }
   }
 
   int runUntil(const std::function<bool()> &done, int limit) {
     for (int frame = 0; frame < limit; ++frame) {
-      scene.advance('\0');
+      scene.advance();
       if (done()) {
         return frame + 1;
       }
@@ -254,6 +277,57 @@ SCENARIO("A run without kills goes to the menu once the files are in") {
   }
 }
 
+SCENARIO("Until HISHOW the display is the Colour Back left by earlier states") {
+  GIVEN("A run quit with Esc, whose street left a grey Colour Back") {
+    Board board(0);
+    board.session.border = 0x555;
+    board.run(1);
+
+    THEN("The loads show it, and it is left for the menu") {
+      REQUIRE(board.pixel(0, 0) == toArgb(0x555));
+      board.run(LOADED - 1);
+      REQUIRE(board.scene.outcome() == HighScoreScene::Outcome::Menu);
+      REQUIRE(board.pixel(0, 0) == toArgb(0x555));
+      REQUIRE(board.session.border == 0x555);
+    }
+  }
+
+  GIVEN("12 kills after a game over, whose BACK[0] left black") {
+    Board board(12);
+    board.run(OPENED + 1);
+
+    THEN("Each BACK[-1] in HISHOW takes the dimmed colour 0, ending black") {
+      REQUIRE(board.session.border == 0x333);
+      board.run(RELIT - OPENED - 1);
+      REQUIRE(board.session.border == 0x000);
+    }
+  }
+}
+
+SCENARIO("After the title check, the menu tune is still loaded") {
+  GIVEN("The intro's session, with the menu tune playing") {
+    Board board(0);
+    board.host.tuneInMemory = 0x261;
+
+    THEN("Length(3) is not 0, so only the picture and the letters load before "
+         "Goto MENU") {
+      board.run(2 * LoadingMock::FILE_FRAMES);
+      REQUIRE(board.scene.outcome() == HighScoreScene::Outcome::Running);
+      board.run(1);
+      REQUIRE(board.scene.outcome() == HighScoreScene::Outcome::Menu);
+      REQUIRE(board.host.musicStops == 0);
+      REQUIRE(board.host.music.empty());
+      REQUIRE(board.host.musicStarts == 0);
+      REQUIRE(board.host.volumes.empty());
+      REQUIRE(board.host.tempos.empty());
+      REQUIRE(board.host.pictures == std::vector<int>{0x3B9});
+      REQUIRE(board.host.spriteSets ==
+              std::vector<std::pair<int, int>>{{0x35, 5}});
+      REQUIRE_FALSE(board.scene.isShown());
+    }
+  }
+}
+
 SCENARIO("HISHOW dims the picture four steps, relights 29-31, draws upwards") {
   GIVEN("12 kills against the seeded table") {
     Board board(12);
@@ -332,12 +406,26 @@ SCENARIO("The name is typed over the row the score went into") {
     WHEN("A letter is typed") {
       board.type("N");
 
-      THEN("Its image A-51 is pasted at the cursor, which moves next pass") {
+      THEN("Its image A-51 is pasted at the cursor, which moves on once Wait "
+           "10 is over") {
         REQUIRE(board.ink(56, 32) == inkOf('N' - 51));
         REQUIRE(board.scene.name().front() == 'N');
+        board.run(KEY_WAIT - 1);
         REQUIRE(board.scene.bobs().x(1) == 56);
         board.run(1);
         REQUIRE(board.scene.bobs().x(1) == 66);
+      }
+
+      AND_WHEN("The next letter comes during the Wait 10") {
+        board.press("O");
+        board.run(KEY_WAIT - 1);
+        const std::string duringWait = board.scene.name();
+        board.run(1);
+
+        THEN("It is read when the Wait is over") {
+          REQUIRE(duringWait.substr(0, 2) == "N ");
+          REQUIRE(board.scene.name().substr(0, 2) == "NO");
+        }
       }
     }
 
@@ -360,6 +448,8 @@ SCENARIO("The name is typed over the row the score went into") {
           REQUIRE(untouched);
           REQUIRE(board.ink(76, 32) == PAPER);
           REQUIRE(board.scene.name().substr(0, 4) == "N   ");
+          board.run(KEY_WAIT - 1);
+          REQUIRE(board.scene.bobs().x(1) == 76);
           board.run(1);
           REQUIRE(board.scene.bobs().x(1) == 66);
         }
@@ -396,28 +486,65 @@ SCENARIO("The name is typed over the row the score went into") {
         REQUIRE(board.session.highScores.bytes() == saved.bytes());
       }
 
-      THEN("Bob Off removes the cursor and entry is over") {
-        REQUIRE_FALSE(board.scene.bobs().isActive(1));
+      THEN("Entry is over, and Bob Off's cursor goes at the first update "
+           "after Screen Close 7's four VBLs") {
         REQUIRE_FALSE(board.scene.isEntering());
+        REQUIRE(board.scene.bobs().isActive(1));
+        board.run(3);
+        REQUIRE(board.scene.bobs().isActive(1));
+        board.run(1);
+        REQUIRE_FALSE(board.scene.bobs().isActive(1));
       }
 
       THEN("N$ keeps the name, which the menu's cheat entry then extends") {
         REQUIRE(board.session.textBuffer == "N O            ");
       }
 
-      THEN("Screen Close 7 takes two VBLs, then Wait 300, Fade 2 and Wait 30 "
-           "lead to a black Cls 0") {
+      THEN("Screen Close 7 takes four VBLs, then Wait 300, Fade 2 and Wait "
+           "30 lead to a black Cls 0") {
         REQUIRE_FALSE(board.session.nameScreenOpen);
         const int frames = board.runUntil(
             [&] {
               return board.scene.outcome() != HighScoreScene::Outcome::Running;
             },
             400);
-        REQUIRE(frames == 2 + 330);
+        REQUIRE(frames == 4 + 330);
         REQUIRE(board.scene.outcome() == HighScoreScene::Outcome::Continue);
         REQUIRE(board.scene.palette() == effects::AmigaPalette(32, 0x000));
         REQUIRE(board.ink(56, 32) == 0);
         REQUIRE(board.saves.size() == 1);
+      }
+    }
+  }
+}
+
+SCENARIO("The name entry reads AMOS's key buffer one key per pass") {
+  GIVEN("12 kills in the top slot") {
+    Board board(12);
+
+    WHEN("Keys are typed while HISHOW is still drawing the table") {
+      board.run(ENTRY - 50);
+      board.press("AB");
+      board.run(50);
+
+      THEN("The first is read as the entry starts, the next after Wait 10") {
+        REQUIRE(board.scene.isEntering());
+        REQUIRE(board.scene.name().substr(0, 2) == "A ");
+        board.run(KEY_WAIT - 1);
+        REQUIRE(board.scene.name().substr(0, 2) == "A ");
+        board.run(1);
+        REQUIRE(board.scene.name().substr(0, 2) == "AB");
+      }
+    }
+
+    WHEN("Keys the entry ignores come before a letter") {
+      board.run(ENTRY);
+      board.press("1!A");
+      board.run(1);
+
+      THEN("They are used up in the same frame without a Wait") {
+        REQUIRE(board.scene.name().front() == 'A');
+        REQUIRE(board.session.keyboard.isEmpty());
       }
     }
   }

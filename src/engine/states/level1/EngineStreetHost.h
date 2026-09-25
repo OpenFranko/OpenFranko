@@ -30,6 +30,7 @@ public:
   street::EndingCredits loadEndingCredits() override;
   street::Picture loadPanelPicture(int part) override;
   void loadMusic(int resource) override;
+  bool isMusicLoaded(int resource) const override;
   void playMusic() override;
   void stopMusic() override;
   void setMusicVolume(int volume) override;
@@ -43,6 +44,7 @@ public:
 
 private:
   std::string resourcePath(int resource) const;
+  std::string musicPath(int resource) const;
   std::vector<street::Picture> loadFrames(int resource) const;
   void loadSamples(int resource, int bank);
   void clearSamples(int bank);

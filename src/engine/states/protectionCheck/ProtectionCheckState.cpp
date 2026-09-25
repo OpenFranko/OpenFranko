@@ -3,6 +3,7 @@
 #include "../../street/LoadingMock.h"
 
 #include <array>
+#include <cctype>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -34,9 +35,8 @@ constexpr int FAILURE_SCREEN_HEIGHT = 256;
 constexpr int FAILURE_DISPLAY_LINE = 50;
 
 constexpr int STAGE_CHECK_FILES = 2;
-constexpr int UNPACK_VBLS = 1;
-constexpr int SCREEN_CLOSE_VBLS = 2;
-constexpr uint8_t HIDDEN_SCREENS_GREY = 0x55;
+constexpr effects::AmigaColor STAGE_BORDER = 0x555;
+constexpr effects::AmigaColor BLACK = 0x000;
 
 constexpr int CELL_PITCH = 15;
 constexpr int BOX_OFFSET = 11;
@@ -77,16 +77,17 @@ effects::CodeCardCheck makeCheck(ProtectionCheckState::Check check) {
 
 } // namespace
 
-ProtectionCheckState::ProtectionCheckState(
-    systems::VideoSystem &videoSystem, systems::AudioSystem &audioSystem,
-    systems::ControllerSystem &controllerSystem, Check check)
+ProtectionCheckState::ProtectionCheckState(systems::VideoSystem &videoSystem,
+                                           systems::AudioSystem &audioSystem,
+                                           effects::InkeyBuffer &keyboard,
+                                           Check check)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_controllerSystem(controllerSystem), m_kind(check),
-      m_check(makeCheck(check)),
+      m_keyboard(keyboard), m_kind(check), m_check(makeCheck(check)),
       m_loadingFrames(check == Check::Stage3
                           ? STAGE_CHECK_FILES * street::LoadingMock::FILE_FRAMES
                           : 0),
-      m_resumeFrame(UNPACK_VBLS) {
+      m_resumeFrame(effects::SCREEN_OPEN_VBLS),
+      m_border(check == Check::Stage3 ? STAGE_BORDER : BLACK) {
   m_videoSystem.createScreen(QUESTION_SCREEN_ID, QUESTION_SCREEN_WIDTH,
                              QUESTION_SCREEN_HEIGHT);
   m_videoSystem.switchScreen(QUESTION_SCREEN_ID);
@@ -101,12 +102,8 @@ ProtectionCheckState::~ProtectionCheckState() {
 std::optional<EngineStateEnum> ProtectionCheckState::update() {
   if (m_loadingFrames > 0) {
     --m_loadingFrames;
-    m_videoSystem.fillScreen(HIDDEN_SCREENS_GREY, HIDDEN_SCREENS_GREY,
-                             HIDDEN_SCREENS_GREY);
+    fillBorder();
     return std::nullopt;
-  }
-  if (const auto letter = m_controllerSystem.typedLetter()) {
-    m_typed.push_back(*letter);
   }
   const std::optional<EngineStateEnum> next = runCheck();
   if (m_questionShown && m_flasher.tick(m_questionPalette)) {
@@ -132,20 +129,26 @@ std::optional<EngineStateEnum> ProtectionCheckState::runCheck() {
       if (!takeAnswer()) {
         return std::nullopt;
       }
+      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+      m_step = Step::Hidden;
+      break;
+    case Step::Hidden:
       m_questionShown = false;
-      m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::Closed;
       break;
     case Step::Closed:
       if (!m_check.isFinished()) {
-        m_resumeFrame = m_frame + UNPACK_VBLS;
+        m_resumeFrame = m_frame + effects::SCREEN_OPEN_VBLS;
         m_step = Step::Unpack;
       } else if (m_check.isPassed()) {
         return m_kind == Check::Stage3 ? EngineStateEnum::Level3
-                                       : EngineStateEnum::Menu;
+                                       : EngineStateEnum::HighScore;
       } else {
         showFailure();
-        m_resumeFrame = m_frame + UNPACK_VBLS;
+        m_resumeFrame =
+            m_frame + (m_kind == Check::Stage3 ? effects::SCREEN_REOPEN_VBLS
+                                               : effects::SCREEN_OPEN_VBLS);
         m_step = Step::FailureUnpacked;
       }
       break;
@@ -162,9 +165,9 @@ std::optional<EngineStateEnum> ProtectionCheckState::runCheck() {
 }
 
 bool ProtectionCheckState::takeAnswer() {
-  while (!m_typed.empty()) {
-    const char letter = m_typed.front();
-    m_typed.pop_front();
+  while (const std::optional<char> key = m_keyboard.inkey()) {
+    const char letter =
+        static_cast<char>(std::toupper(static_cast<unsigned char>(*key)));
     if (letter >= effects::CodeCardCheck::FIRST_ANSWER &&
         letter <= effects::CodeCardCheck::LAST_ANSWER) {
       m_check.answer(letter);
@@ -179,12 +182,14 @@ void ProtectionCheckState::draw() {
     m_videoSystem.drawImage(FAILURE, 0, -m_failureTop);
   } else if (m_questionShown) {
     m_videoSystem.drawImage(QUESTION, 0, 0);
-  } else if (m_kind == Check::Stage3) {
-    m_videoSystem.fillScreen(HIDDEN_SCREENS_GREY, HIDDEN_SCREENS_GREY,
-                             HIDDEN_SCREENS_GREY);
   } else {
-    m_videoSystem.fillScreen(0, 0, 0);
+    fillBorder();
   }
+}
+
+void ProtectionCheckState::fillBorder() {
+  const effects::Rgb border = effects::toRgb(m_border);
+  m_videoSystem.fillScreen(border.r, border.g, border.b);
 }
 
 const effects::CodeCardCheck &ProtectionCheckState::check() const {
@@ -194,6 +199,7 @@ const effects::CodeCardCheck &ProtectionCheckState::check() const {
 void ProtectionCheckState::showQuestion() {
   m_videoSystem.loadIndexedImage(QUESTION, QUESTION_PATH);
   m_questionPalette = m_videoSystem.getImagePalette(QUESTION);
+  m_border = m_questionPalette[0];
   m_flasher.start(BOX_INK, BOX_FLASH);
   const effects::CodeCardCheck::Cell cell = m_check.cell();
   m_videoSystem.xorImageRect(QUESTION, CELL_PITCH * cell.x + BOX_OFFSET,

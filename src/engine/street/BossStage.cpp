@@ -1,5 +1,7 @@
 #include "BossStage.h"
 
+#include "../effects/AmigaDisplay.h"
+
 #include "../amal/Actors.h"
 
 #include <cstdlib>
@@ -58,7 +60,6 @@ constexpr int PLAYER_BLOOD_CHANNEL = 15;
 
 constexpr int AUTOBACK_VBLS = 3;
 constexpr int GAME_OVER_WAIT = 200;
-constexpr int SCREEN_CLOSE_VBLS = 2;
 constexpr int FULL_ENERGY = 64;
 constexpr int EXTRA_LIFE_STEP = 40;
 constexpr int MUSIC_VOLUME = 30;
@@ -133,7 +134,9 @@ BossStage::BossStage(StreetHost &host, GameSession &session,
       m_screenDisplay{DISPLAY_X,
                       static_cast<int16_t>(playDisplayY(stageLayout(options))),
                       0},
-      m_palette(levelPalette(options.mono)), m_panelPalette(panelPalette()) {}
+      m_palette(levelPalette(options.mono)), m_panelPalette(panelPalette()) {
+  m_session.border = STAGE_BORDER;
+}
 
 void BossStage::advance(const StreetInput &input) {
   if (m_step == Step::Finished) {
@@ -892,9 +895,8 @@ void BossStage::gameOver() {
 }
 
 void BossStage::closePlayScreen() {
-  m_screenShown = false;
-  m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
-  m_step = Step::GameOverPanelClose;
+  m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+  m_step = Step::GameOverScreenGone;
 }
 
 void BossStage::sys() {
@@ -1073,9 +1075,20 @@ void BossStage::runBasic(const StreetInput &input) {
       closePlayScreen();
       flow = Flow::Yield;
       break;
+    case Step::GameOverScreenGone:
+      m_screenShown = false;
+      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_step = Step::GameOverPanelClose;
+      flow = Flow::Yield;
+      break;
     case Step::GameOverPanelClose:
+      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+      m_step = Step::GameOverPanelGone;
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverPanelGone:
       m_panelShown = false;
-      m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::GameOverClosed;
       flow = Flow::Yield;
       break;

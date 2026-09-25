@@ -21,7 +21,7 @@ const Joystick FIRE{false, false, false, false, true};
 
 constexpr int UNPACKED = 4;
 constexpr int OPENING_FRAMES = UNPACKED + 50;
-constexpr int SCREEN_CLOSE = 2;
+constexpr int SCREEN_CLOSE = 4;
 
 void run(MenuSequence &menu, int frames, const Joystick &joystick = NOTHING) {
   for (int frame = 0; frame < frames; ++frame) {
@@ -33,10 +33,11 @@ const MenuSequence::Bob &bob(const MenuSequence &menu, int number) {
   return menu.bobs()[number - 1];
 }
 
-std::string type(MenuSequence &menu, const std::string &keys) {
+std::string type(MenuSequence &menu, InkeyBuffer &keyboard,
+                 const std::string &keys) {
   std::string read;
   for (const char key : keys) {
-    menu.press(key);
+    keyboard.press(key);
     menu.advance(NOTHING);
     read += menu.keysRead();
   }
@@ -64,7 +65,8 @@ void clickMouse(MenuSequence &menu) {
 SCENARIO("MenuSequence opens the menu as state_07 does") {
   GIVEN("A menu with the options boot sets") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
 
     THEN("The icons wait off screen and the hand points at START") {
       REQUIRE(bob(menu, 4).x == -64);
@@ -129,7 +131,8 @@ SCENARIO("MenuSequence opens the menu as state_07 does") {
 SCENARIO("MenuSequence moves the hand and toggles the options") {
   GIVEN("An open menu") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
     run(menu, OPENING_FRAMES);
 
     WHEN("The joystick goes right") {
@@ -204,7 +207,8 @@ SCENARIO("MenuSequence moves the hand and toggles the options") {
     GameOptions options;
     options.music = false;
     options.mono = true;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
 
     THEN("Their icons show them") {
       REQUIRE(bob(menu, 5).image == 44);
@@ -217,7 +221,8 @@ SCENARIO("MenuSequence moves the hand and toggles the options") {
 SCENARIO("MenuSequence leaves through START") {
   GIVEN("An open menu with START fired") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
     run(menu, OPENING_FRAMES);
     menu.advance(FIRE);
 
@@ -250,35 +255,22 @@ SCENARIO("MenuSequence leaves through START") {
       const bool shownBefore = menu.isScreenShown();
       menu.advance(NOTHING);
 
-      THEN("_OFF and _CLOSE hide everything, and the menu is done after "
-           "Screen Close's two VBLs") {
+      THEN("_CLOSE's copper list drops the black screen two VBLs later and "
+           "the menu is done after four") {
         REQUIRE(shownBefore);
-        REQUIRE_FALSE(menu.isScreenShown());
+        REQUIRE(menu.isScreenShown());
         REQUIRE(menu.palette() == AmigaPalette(16, 0x000));
+        run(menu, 2);
+        REQUIRE_FALSE(menu.isScreenShown());
         for (const MenuSequence::Bob &shown : menu.bobs()) {
           REQUIRE_FALSE(shown.shown);
         }
-        run(menu, SCREEN_CLOSE - 1);
+        REQUIRE_FALSE(menu.isFinished());
+        run(menu, 1);
         REQUIRE_FALSE(menu.isFinished());
         run(menu, 1);
         REQUIRE(menu.isFinished());
       }
-    }
-  }
-
-  GIVEN("Screen 7 left open by the hiscore table") {
-    GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE, 1);
-    run(menu, OPENING_FRAMES);
-    menu.advance(FIRE);
-    run(menu, 135);
-
-    THEN("_CLOSE closes it too, two more VBLs") {
-      REQUIRE_FALSE(menu.isScreenShown());
-      run(menu, 2 * SCREEN_CLOSE - 1);
-      REQUIRE_FALSE(menu.isFinished());
-      run(menu, 1);
-      REQUIRE(menu.isFinished());
     }
   }
 }
@@ -286,7 +278,8 @@ SCENARIO("MenuSequence leaves through START") {
 SCENARIO("MenuSequence asks for the attract screens when left alone") {
   GIVEN("An open menu") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
     run(menu, OPENING_FRAMES);
 
     WHEN("300 idle frames pass after it opened") {
@@ -346,7 +339,8 @@ SCENARIO(
     "The double-buffered menu screen shows each frame's bobs a VBL later") {
   GIVEN("The first icons flying in") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
     run(menu, UNPACKED + 5);
     const auto before = menu.bobs();
     run(menu, 1);
@@ -360,10 +354,27 @@ SCENARIO(
 }
 
 SCENARIO("MenuSequence reads typed keys only when the keyboard gets through") {
+  GIVEN("Keys that reached AMOS's buffer on an earlier screen") {
+    GameOptions options;
+    InkeyBuffer keyboard;
+    keyboard.permit();
+    keyboard.press('C');
+    keyboard.press('E');
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
+    const std::string readInOpening = readDuring(menu, OPENING_FRAMES + 1);
+    const std::string typedAfterDisable = type(menu, keyboard, "NT");
+
+    THEN("The first loop pass reads them, but _DISABLE holds back new keys") {
+      REQUIRE(readInOpening == "CE");
+      REQUIRE(typedAfterDisable.empty());
+    }
+  }
+
   GIVEN("Keys typed while the icons fly in") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
-    const std::string readWhileFlying = type(menu, "CENT");
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
+    const std::string readWhileFlying = type(menu, keyboard, "CENT");
     const std::string readInOpening = readDuring(menu, OPENING_FRAMES - 4);
     menu.advance(NOTHING);
 
@@ -376,16 +387,17 @@ SCENARIO("MenuSequence reads typed keys only when the keyboard gets through") {
 
   GIVEN("Keys typed in the open menu under Forbid") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
     run(menu, OPENING_FRAMES + 1);
-    const std::string readWhileTyping = type(menu, "CENT");
+    const std::string readWhileTyping = type(menu, keyboard, "CENT");
 
     THEN("Inkey$ gets none of them") { REQUIRE(readWhileTyping.empty()); }
 
     WHEN("The left mouse button is pressed") {
       clickMouse(menu);
       const std::string readOnClick = menu.keysRead();
-      const std::string readLater = type(menu, "DRZE");
+      const std::string readLater = type(menu, keyboard, "DRZE");
 
       THEN("_ENABLE lets them through at once and later keys as they come") {
         REQUIRE(readOnClick == "CENT");
@@ -425,13 +437,14 @@ SCENARIO("MenuSequence reads typed keys only when the keyboard gets through") {
 
   GIVEN("A menu whose attract screens are due") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
     run(menu, OPENING_FRAMES + 303);
     REQUIRE(menu.isAttractDue());
-    menu.press('D');
+    keyboard.press('D');
 
     WHEN("The key comes while an attract screen sits in a Wait") {
-      menu.sleep();
+      keyboard.sleep();
       menu.resumeAfterAttract();
       const std::string readDuringClose = readDuring(menu, SCREEN_CLOSE);
       menu.advance(NOTHING);
@@ -454,14 +467,15 @@ SCENARIO("MenuSequence reads typed keys only when the keyboard gets through") {
 SCENARIO("A key read by the menu restarts the attract timer as Timer=0 does") {
   GIVEN("An open menu with the keyboard let through") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
     run(menu, OPENING_FRAMES + 1);
     clickMouse(menu);
 
     WHEN("A key is typed every 200 frames") {
       for (int i = 0; i < 5; ++i) {
         run(menu, 200);
-        type(menu, "A");
+        type(menu, keyboard, "A");
       }
 
       THEN("The attract screens never come") {

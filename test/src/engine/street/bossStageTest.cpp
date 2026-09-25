@@ -140,6 +140,8 @@ public:
 
   void loadMusic(int resource) override { music.push_back(resource); }
 
+  bool isMusicLoaded(int) const override { return false; }
+
   void playMusic() override { ++musicStarts; }
 
   void stopMusic() override { ++musicStops; }
@@ -503,9 +505,10 @@ SCENARIO("The boss referee resolves hits and sounds as state 16 does") {
       const int ended = duel.runUntil(
           [&] { return stage.outcome() != BossStage::Outcome::Playing; }, 300);
 
-      THEN("Game over follows state 19's Wait 200 and _CLOSE's four VBLs") {
+      THEN("Game over follows state 19's Wait 200 and _CLOSE's two screens, "
+           "four VBLs each") {
         REQUIRE(stage.outcome() == BossStage::Outcome::GameOver);
-        REQUIRE(ended == 200 + 4);
+        REQUIRE(ended == 200 + 8);
         REQUIRE_FALSE(stage.isScreenShown());
         REQUIRE_FALSE(stage.isPanelShown());
         REQUIRE(duel.global(RO) == -1);

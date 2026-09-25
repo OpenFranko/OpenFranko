@@ -14,11 +14,10 @@ void save(const street::HighScoreTable &table) {
 
 HighScoreState::HighScoreState(systems::VideoSystem &videoSystem,
                                systems::AudioSystem &audioSystem,
-                               systems::ControllerSystem &controllerSystem,
                                effects::GameOptions &options,
                                street::GameSession &session)
-    : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_host(audioSystem), m_scene(m_host, session, options, save),
+    : m_videoSystem(videoSystem), m_host(audioSystem),
+      m_scene(m_host, session, options, save),
       m_rows(effects::visibleRows(
           effects::pictureLine(street::HighScoreScene::DISPLAY_LINE,
                                options.ntsc),
@@ -32,7 +31,7 @@ HighScoreState::HighScoreState(systems::VideoSystem &videoSystem,
 HighScoreState::~HighScoreState() { m_videoSystem.clearImage(FRAME); }
 
 std::optional<EngineStateEnum> HighScoreState::update() {
-  m_scene.advance(m_controllerSystem.typedKey().value_or('\0'));
+  m_scene.advance();
   m_scene.compose(m_frame);
   m_videoSystem.updateFrameImage(FRAME, street::HighScoreScene::WIDTH,
                                  street::HighScoreScene::HEIGHT, m_frame);

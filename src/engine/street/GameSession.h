@@ -3,6 +3,7 @@
 
 #include "../amal/Machine.h"
 #include "../effects/AmigaPalette.h"
+#include "../effects/InkeyBuffer.h"
 #include "DoubleBuffer.h"
 #include "HighScoreTable.h"
 #include "IndexedSurface.h"
@@ -56,8 +57,10 @@ struct GameSession {
   int stageReached = 0;
   bool fromBonusDrive = false;
   bool nameScreenOpen = false;
+  effects::AmigaColor border = 0x000;
   DriveCarryOver lastDrive;
   HighScoreTable highScores;
+  effects::InkeyBuffer keyboard;
   std::optional<StreetExit> streetExit;
   std::optional<BossExit> bossExit;
 };

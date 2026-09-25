@@ -38,14 +38,15 @@ void DoubleBuffer::vbl() {
   m_vbl = true;
 }
 
-void DoubleBuffer::test(const BobLayer &bobs, ImageBank &images) {
+bool DoubleBuffer::test(const BobLayer &bobs, ImageBank &images) {
   if (!m_vbl) {
-    return;
+    return false;
   }
   m_vbl = false;
   if (m_updates && isDirty(bobs)) {
     update(bobs, images);
   }
+  return true;
 }
 
 void DoubleBuffer::setUpdates(bool on) { m_updates = on; }

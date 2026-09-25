@@ -1,5 +1,7 @@
 #include "MenuSequence.h"
 
+#include "AmigaDisplay.h"
+
 #include <utility>
 #include <vector>
 
@@ -55,7 +57,7 @@ constexpr int LEAVING_FADE_SPEED = 3;
 constexpr int LEAVING_CLOSE_AT = 95;
 constexpr int UNPACK_VBLS = 1;
 constexpr int DOUBLE_BUFFER_VBLS = 3;
-constexpr int SCREEN_CLOSE_VBLS = 2;
+constexpr char FIRST_TYPED = ' ';
 
 const std::vector<AmalMotion::Move> FLY_RIGHT = {{88, 16}, {8, 8}};
 const std::vector<AmalMotion::Move> FLY_LEFT = {{-88, 16}, {-8, 8}};
@@ -73,9 +75,9 @@ int iconImage(const Icon &icon, const GameOptions &options) {
 } // namespace
 
 MenuSequence::MenuSequence(GameOptions &options, AmigaPalette palette,
-                           int otherScreens)
-    : m_options(options), m_palette(std::move(palette)),
-      m_otherScreens(otherScreens) {
+                           InkeyBuffer &keyboard)
+    : m_options(options), m_palette(std::move(palette)), m_keyboard(keyboard) {
+  m_keyboard.forbid();
   for (const Icon &icon : ICONS) {
     bob(icon.bob) = {true, icon.left ? LEFT_OUTSIDE : RIGHT_OUTSIDE, icon.y,
                      iconImage(icon, m_options), false};
@@ -84,11 +86,7 @@ MenuSequence::MenuSequence(GameOptions &options, AmigaPalette palette,
   m_shownBobs = m_bobs;
 }
 
-void MenuSequence::press(char key) { m_keyboard.press(key); }
-
 void MenuSequence::setMouseButton(bool down) { m_mouseButton = down; }
-
-void MenuSequence::sleep() { m_keyboard.sleep(); }
 
 void MenuSequence::advance(const Joystick &joystick) {
   m_shownBobs = m_bobs;
@@ -189,16 +187,18 @@ void MenuSequence::runScript(const Joystick &joystick) {
                     AmigaPalette(m_palette.size(), 0));
     }
     if (time == LEAVING_CLOSE_AT) {
-      for (Bob &shown : m_bobs) {
-        shown.shown = false;
-      }
-      m_screenShown = false;
       m_phase = Phase::Closing;
       m_phaseStart = m_frame;
     }
     break;
   case Phase::Closing:
-    if (time == SCREEN_CLOSE_VBLS * (1 + m_otherScreens)) {
+    if (time == SCREEN_CLOSE_SHOWN_VBLS) {
+      for (Bob &shown : m_bobs) {
+        shown.shown = false;
+      }
+      m_screenShown = false;
+    }
+    if (time == SCREEN_CLOSE_VBLS) {
       m_phase = Phase::Finished;
     }
     break;
@@ -222,7 +222,8 @@ void MenuSequence::choose(const Joystick &joystick) {
 }
 
 void MenuSequence::finishPass() {
-  if (const std::optional<char> key = m_keyboard.inkey()) {
+  const std::optional<char> key = m_keyboard.inkey();
+  if (key && *key >= FIRST_TYPED) {
     m_keysRead += *key;
     m_timer = 0;
   }

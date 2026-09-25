@@ -80,7 +80,9 @@ private:
     StripClosed,
     Cleared,
     GameOverWait,
+    GameOverScreenGone,
     GameOverPanelClose,
+    GameOverPanelGone,
     GameOverClosed,
     Finished
   };

@@ -12,8 +12,8 @@ namespace {
 
 constexpr int MAX_AMOS_VOLUME = 64;
 constexpr int DEFAULT_MUSIC_VOLUME = 56;
+constexpr int DEFAULT_SAMPLE_VOLUME = 56;
 constexpr int VOICES = 4;
-constexpr int ALL_VOICES = 0xF;
 constexpr uint8_t FULL_PAN = 255;
 
 constexpr int PAL_VBL_RATE = 50;
@@ -73,6 +73,7 @@ AudioSystem::AudioSystem() : musicVolume(DEFAULT_MUSIC_VOLUME) {
                        {});
 
   Mix_ReserveChannels(VOICES);
+  Mix_Volume(-1, DEFAULT_SAMPLE_VOLUME * MIX_MAX_VOLUME / MAX_AMOS_VOLUME);
   Mix_HookMusic(mixMusic, this);
   Mix_SetPostMix(filterOutput, this);
 
@@ -107,6 +108,9 @@ void AudioSystem::loadMusic(const std::string &path) {
   moduleLoaded =
       xmp_load_module_from_memory(player, module.data(),
                                   static_cast<long>(module.size())) == 0;
+  if (moduleLoaded) {
+    musicPath = path;
+  }
 }
 
 void AudioSystem::clearMusic() {
@@ -116,7 +120,10 @@ void AudioSystem::clearMusic() {
     xmp_release_module(player);
     moduleLoaded = false;
   }
+  musicPath.clear();
 }
+
+const std::string &AudioSystem::loadedMusic() const { return musicPath; }
 
 void AudioSystem::loadSFX(const std::string &name, const std::string &path) {
   clearSFX(name);
@@ -255,30 +262,6 @@ void AudioSystem::applyTempo() {
   }
 }
 
-void AudioSystem::playSFX(const std::string &name) {
-  if (soundEffects.find(name) == soundEffects.end()) {
-    return;
-  }
-
-  auto soundEffect = soundEffects.at(name);
-
-  Mix_PlayChannel(-1, soundEffect, 0);
-}
-
-void AudioSystem::playSFXSilencingMusic(const std::string &name) {
-  auto it = soundEffects.find(name);
-  if (it == soundEffects.end()) {
-    return;
-  }
-
-  const int channel = Mix_PlayChannel(-1, it->second, 0);
-  if (channel < 0) {
-    return;
-  }
-  silencingChannel = channel;
-  applyMusicVolume();
-}
-
 void AudioSystem::playSample(const std::string &name, int voiceMask) {
   auto it = soundEffects.find(name);
   if (it == soundEffects.end()) {
@@ -397,10 +380,6 @@ void AudioSystem::setSampleLooping(bool looping) {
 }
 
 void AudioSystem::update() {
-  if (silencingChannel && !Mix_Playing(*silencingChannel)) {
-    silencingChannel.reset();
-    applyMusicVolume();
-  }
   if (silencingSample && !isVoicePlaying(silencingSample)) {
     silencingSample = nullptr;
     applyMusicVolume();
@@ -408,8 +387,8 @@ void AudioSystem::update() {
 }
 
 void AudioSystem::applyMusicVolume() {
-  const bool silenced = silencingChannel || silencingSample;
-  mixerVolume = silenced ? 0 : musicVolume * MIX_MAX_VOLUME / MAX_AMOS_VOLUME;
+  mixerVolume =
+      silencingSample ? 0 : musicVolume * MIX_MAX_VOLUME / MAX_AMOS_VOLUME;
 }
 
 uint32_t AudioSystem::chunkMilliseconds(const Mix_Chunk *chunk) const {

@@ -1,5 +1,7 @@
 #include "GameOverScene.h"
 
+#include "../effects/AmigaDisplay.h"
+
 #include "../effects/Rainbow.h"
 #include "StageFrame.h"
 
@@ -14,7 +16,6 @@ constexpr int GRAVEYARD = 0x3BB;
 constexpr int GAME_OVER_TUNE = 0x262;
 
 constexpr int FULL_VOLUME = 63;
-constexpr effects::AmigaColor STAGE_BORDER = 0x555;
 constexpr effects::AmigaColor BLACK = 0x000;
 
 constexpr int TITLE = 1;
@@ -39,7 +40,6 @@ constexpr int PAN_STEP_FRAMES = 4;
 constexpr int CLICK_FRAMES = 400;
 constexpr int UNPACK_VBLS = 1;
 constexpr int DOUBLE_BUFFER_VBLS = 3;
-constexpr int SCREEN_CLOSE_VBLS = 2;
 constexpr int FADE_SPEED = 5;
 constexpr int HOLD_FRAMES = 100;
 
@@ -55,9 +55,10 @@ effects::AmigaPalette graveyardPalette() {
 
 } // namespace
 
-GameOverScene::GameOverScene(StreetHost &host)
-    : m_host(host), m_screen(PICTURE_WIDTH, PICTURE_HEIGHT),
-      m_palette(graveyardPalette()), m_border(STAGE_BORDER) {}
+GameOverScene::GameOverScene(StreetHost &host, GameSession &session)
+    : m_host(host), m_session(session), m_screen(PICTURE_WIDTH, PICTURE_HEIGHT),
+      m_palette(graveyardPalette()), m_border(session.border),
+      m_copperBorder(session.border) {}
 
 void GameOverScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
@@ -67,7 +68,10 @@ void GameOverScene::advance(int16_t joystick) {
   if (m_buffer) {
     m_buffer->vbl();
   }
-  m_shownOffset = m_offset;
+  m_shown = m_copperShown;
+  m_border = m_copperBorder;
+  m_shownOffset = m_copperOffset;
+  m_copperOffset = m_offset;
   if (m_animating) {
     m_bobs.setImage(HAND, m_hand.advance(m_bobs.image(HAND)));
   }
@@ -96,8 +100,6 @@ void GameOverScene::advance(int16_t joystick) {
       break;
     case Step::Unpacked:
       m_buffer.emplace(m_screen);
-      m_shown = true;
-      m_shownFrom = m_frame + 1;
       flow = wait(DOUBLE_BUFFER_VBLS, Step::Opened);
       break;
     case Step::Opened:
@@ -117,6 +119,10 @@ void GameOverScene::advance(int16_t joystick) {
     case Step::Hold:
       flow = hold();
       break;
+    case Step::CloseShown:
+      closeGraveyard();
+      flow = wait(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::Closed);
+      break;
     case Step::Closed:
       m_step = Step::Finished;
       flow = Flow::Yield;
@@ -133,7 +139,7 @@ void GameOverScene::advance(int16_t joystick) {
 
 void GameOverScene::compose(std::vector<uint32_t> &frame) const {
   frame.assign(static_cast<std::size_t>(WIDTH * HEIGHT), toArgb(m_border));
-  if (!m_shown || !m_buffer || m_frame < m_shownFrom) {
+  if (!m_shown || !m_buffer) {
     return;
   }
   const IndexedSurface &display = m_buffer->shown();
@@ -179,7 +185,7 @@ void GameOverScene::close() {
   m_host.stopMusic();
   m_images.clear();
   m_shown = false;
-  m_border = STAGE_BORDER;
+  m_copperShown = false;
   m_loading.queue(
       [this] { m_images.load(1, m_host.loadSpriteSet(OBJECTS, 0)); });
   m_loading.queue([this] { m_picture = m_host.loadPicture(GRAVEYARD); });
@@ -215,10 +221,14 @@ void GameOverScene::open() {
                                     "(8,1,15)(16,-1,15)");
   m_rainbowShown = true;
   m_bobs.set(HAND, HAND_X, HAND_Y, HAND_IMAGE);
-  m_bobs.set(TITLE, PINNED_X - WINDOW_X, TITLE_Y, TITLE_IMAGE);
+  m_bobs.set(TITLE, PINNED_X, TITLE_Y, TITLE_IMAGE);
   m_hand = effects::AmalAnim(HAND_FRAMES, 0);
   m_animating = true;
-  m_border = BLACK;
+  m_copperShown = true;
+  m_copperOffset = m_offset;
+  m_copperBorder = BLACK;
+  m_session.border = BLACK;
+  m_buffer->test(m_bobs, m_images);
 }
 
 GameOverScene::Flow GameOverScene::pan() {
@@ -229,7 +239,7 @@ GameOverScene::Flow GameOverScene::pan() {
     return Flow::Continue;
   }
   m_offset = offset;
-  m_bobs.setX(TITLE, PINNED_X - WINDOW_X + m_offset);
+  m_bobs.setX(TITLE, PINNED_X - WINDOW_X + m_copperOffset);
   ++m_count;
   return Flow::Yield;
 }
@@ -263,15 +273,15 @@ GameOverScene::Flow GameOverScene::hold() {
   if (--m_count > 0) {
     return Flow::Yield;
   }
-  closeGraveyard();
-  return wait(SCREEN_CLOSE_VBLS, Step::Closed);
+  m_animating = false;
+  return wait(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::CloseShown);
 }
 
 void GameOverScene::closeGraveyard() {
   m_rainbowShown = false;
-  m_animating = false;
   m_bobs.offAll();
   m_shown = false;
+  m_copperShown = false;
 }
 
 } // namespace openfranko::src::engine::street

@@ -27,7 +27,7 @@ public:
   bool isDirty(const BobLayer &bobs) const;
 
   void vbl();
-  void test(const BobLayer &bobs, ImageBank &images);
+  bool test(const BobLayer &bobs, ImageBank &images);
   void setUpdates(bool on);
 
   void clearBobs();

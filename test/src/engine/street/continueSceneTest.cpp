@@ -11,7 +11,7 @@ namespace {
 
 constexpr int RO = 14;
 constexpr int MACH_WAIT = 40;
-constexpr int SCREEN_CLOSE = 2;
+constexpr int SCREEN_CLOSE = 4;
 constexpr int16_t JOY_LEFT = 4;
 constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
@@ -55,6 +55,8 @@ public:
   Picture loadPanelPicture(int) override { return box(304, 48, 7); }
 
   void loadMusic(int) override {}
+
+  bool isMusicLoaded(int) const override { return false; }
 
   void playMusic() override {}
 
@@ -175,30 +177,37 @@ SCENARIO("Fire waggles the hand through MACH, then the choice is taken") {
 
     WHEN("TAK is fired") {
       choice.run(1, JOY_FIRE);
-      std::vector<int> path;
+      std::vector<int> path{choice.handX()};
       for (int frame = 0; frame < 21; ++frame) {
         choice.run(1, JOY_RIGHT);
         path.push_back(choice.handX());
       }
 
-      THEN("RACZKA's loop moves 4 px out and back four times, then rests") {
-        REQUIRE(path == std::vector<int>{50, 52, 50, 48, 48, 50, 52,
-                                         50, 48, 48, 50, 52, 50, 48,
-                                         48, 50, 52, 50, 48, 48, 48});
+      THEN("RACZKA's loop sees R1 at the VBL after the fire frame's BASIC, "
+           "moves 4 px out and back four times, then rests") {
+        REQUIRE(path == std::vector<int>{50, 52, 50, 48, 48, 50, 52, 50,
+                                         48, 48, 50, 52, 50, 48, 48, 50,
+                                         52, 50, 48, 48, 48, 48});
       }
 
       THEN("The joystick is no longer read during Wait 40") {
         REQUIRE(choice.scene.isContinueChosen());
       }
 
-      THEN("After Wait 40, Screen Close 1 holds two VBLs, then the run "
-           "resumes one stage back from ETAP") {
+      THEN("After Wait 40, Screen Close 1 drops the screen two VBLs later "
+           "and holds BASIC four, then the run resumes one stage back from "
+           "ETAP") {
         choice.run(MACH_WAIT - 22);
         REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::Choosing);
         REQUIRE(choice.scene.isShown());
+        choice.run(2);
+        REQUIRE(choice.scene.isShown());
+        REQUIRE(choice.scene.bobs().isActive(ContinueScene::HAND));
         choice.run(1);
         REQUIRE_FALSE(choice.scene.isShown());
         REQUIRE_FALSE(choice.scene.bobs().isActive(ContinueScene::HAND));
+        REQUIRE(choice.pixel(48, 124) == PURPLE);
+        REQUIRE(choice.session.border == 0x707);
         choice.run(1);
         REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::Choosing);
         choice.run(1);

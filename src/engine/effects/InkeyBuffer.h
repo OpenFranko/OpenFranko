@@ -16,6 +16,7 @@ public:
 
   void press(char key);
   void permit();
+  void forbid();
   void sleep();
   std::optional<char> inkey();
   bool isEmpty() const;

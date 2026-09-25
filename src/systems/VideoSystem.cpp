@@ -41,6 +41,7 @@ VideoSystem::VideoSystem()
   if (!window) {
     throwError("Window creation failed");
   }
+  SDL_ShowCursor(SDL_DISABLE);
 
   renderer = SDL_CreateRenderer(
       window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
