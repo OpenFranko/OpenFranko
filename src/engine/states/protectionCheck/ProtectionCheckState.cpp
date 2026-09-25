@@ -41,7 +41,8 @@ constexpr uint8_t HIDDEN_SCREENS_GREY = 0x55;
 constexpr int CELL_PITCH = 15;
 constexpr int BOX_OFFSET = 11;
 constexpr int BOX_SIZE = 13;
-constexpr uint8_t ALL_BITPLANES = 31;
+constexpr uint8_t BOX_INK = 15;
+const effects::FlashSteps BOX_FLASH = {{0xFFF, 5}, {0x000, 5}};
 
 std::vector<uint8_t> loadCards() {
   std::ifstream file(CARDS_PATH, std::ios::binary);
@@ -108,6 +109,9 @@ std::optional<EngineStateEnum> ProtectionCheckState::update() {
     m_typed.push_back(*letter);
   }
   const std::optional<EngineStateEnum> next = runCheck();
+  if (m_questionShown && m_flasher.tick(m_questionPalette)) {
+    m_videoSystem.setImagePalette(QUESTION, m_questionPalette);
+  }
   ++m_frame;
   if (next) {
     return next;
@@ -189,10 +193,12 @@ const effects::CodeCardCheck &ProtectionCheckState::check() const {
 
 void ProtectionCheckState::showQuestion() {
   m_videoSystem.loadIndexedImage(QUESTION, QUESTION_PATH);
+  m_questionPalette = m_videoSystem.getImagePalette(QUESTION);
+  m_flasher.start(BOX_INK, BOX_FLASH);
   const effects::CodeCardCheck::Cell cell = m_check.cell();
   m_videoSystem.xorImageRect(QUESTION, CELL_PITCH * cell.x + BOX_OFFSET,
                              CELL_PITCH * cell.y + BOX_OFFSET, BOX_SIZE,
-                             BOX_SIZE, ALL_BITPLANES);
+                             BOX_SIZE, BOX_INK);
 }
 
 void ProtectionCheckState::showFailure() {

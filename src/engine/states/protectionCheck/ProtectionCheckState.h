@@ -6,6 +6,7 @@
 #include "../../../systems/VideoSystem.h"
 #include "../../effects/AmigaDisplay.h"
 #include "../../effects/CodeCardCheck.h"
+#include "../../effects/PaletteFlasher.h"
 #include "../IEngineState.h"
 
 #include <deque>
@@ -51,6 +52,8 @@ private:
   int m_resumeFrame;
   bool m_questionShown = false;
   bool m_failureShown = false;
+  effects::AmigaPalette m_questionPalette;
+  effects::PaletteFlasher m_flasher;
   int m_failureTop = 0;
 };
 
