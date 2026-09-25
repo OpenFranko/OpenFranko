@@ -42,8 +42,8 @@ SCENARIO("A sample plays on one side at Volume 56") {
       mixer.play(sample, 0x1, 0, false);
       const Output output = render(mixer, 5);
 
-      THEN("It sounds on the left, shifted to 16 bits and at 56/64") {
-        REQUIRE(output.left == std::vector<int16_t>{5600, -5600, 224, 0, 0});
+      THEN("It sounds on the left at 56/64 of half the 16-bit range") {
+        REQUIRE(output.left == std::vector<int16_t>{2800, -2800, 112, 0, 0});
         REQUIRE(output.right == std::vector<int16_t>(5, 0));
       }
 
@@ -58,8 +58,8 @@ SCENARIO("A sample plays on one side at Volume 56") {
           mixer.play(sample, 1 << voice, 0, false);
           const Output output = render(mixer, 1);
           const bool left = voice == 0 || voice == 3;
-          REQUIRE(output.left[0] == (left ? 5600 : 0));
-          REQUIRE(output.right[0] == (left ? 0 : 5600));
+          REQUIRE(output.left[0] == (left ? 2800 : 0));
+          REQUIRE(output.right[0] == (left ? 0 : 2800));
           render(mixer, 4);
         }
       }
@@ -71,9 +71,9 @@ SCENARIO("A sample plays on one side at Volume 56") {
     const Sound loud = sound({127, -128});
     mixer.play(loud, 0x9, 0, false);
 
-    THEN("The sum clips to 16 bits") {
+    THEN("The sum fits in 16 bits without clipping") {
       const Output output = render(mixer, 2);
-      REQUIRE(output.left == std::vector<int16_t>{32767, -32768});
+      REQUIRE(output.left == std::vector<int16_t>{28448, -28672});
     }
   }
 }
@@ -85,21 +85,21 @@ SCENARIO("A sample steps through its frames at its playing rate") {
 
     THEN("Half the output rate holds every frame for two output frames") {
       mixer.play(sample, 0x1, RATE / 2, false);
-      REQUIRE(render(mixer, 9).left == std::vector<int16_t>{2240, 2240, 4480,
-                                                            4480, 6720, 6720,
-                                                            8960, 8960, 0});
+      REQUIRE(render(mixer, 9).left == std::vector<int16_t>{1120, 1120, 2240,
+                                                            2240, 3360, 3360,
+                                                            4480, 4480, 0});
     }
 
     THEN("Twice the output rate skips every other frame") {
       mixer.play(sample, 0x1, RATE * 2, false);
-      REQUIRE(render(mixer, 3).left == std::vector<int16_t>{2240, 6720, 0});
+      REQUIRE(render(mixer, 3).left == std::vector<int16_t>{1120, 3360, 0});
     }
 
     THEN("Frequency 0 plays at the sample's own rate") {
       const Sound slow = sound({10, 20}, RATE / 2);
       mixer.play(slow, 0x1, 0, false);
       REQUIRE(render(mixer, 5).left ==
-              std::vector<int16_t>{2240, 2240, 4480, 4480, 0});
+              std::vector<int16_t>{1120, 1120, 2240, 2240, 0});
     }
   }
 }
@@ -112,7 +112,7 @@ SCENARIO("A looping sample restarts until its loops are ended") {
 
     THEN("It starts over at its end") {
       REQUIRE(render(mixer, 5).left ==
-              std::vector<int16_t>{2240, 4480, 2240, 4480, 2240});
+              std::vector<int16_t>{1120, 2240, 1120, 2240, 1120});
     }
 
     WHEN("Its loop is ended midway") {
@@ -120,7 +120,7 @@ SCENARIO("A looping sample restarts until its loops are ended") {
       mixer.endLoops();
 
       THEN("It finishes the pass it is on and stops") {
-        REQUIRE(render(mixer, 3).left == std::vector<int16_t>{4480, 0, 0});
+        REQUIRE(render(mixer, 3).left == std::vector<int16_t>{2240, 0, 0});
         REQUIRE_FALSE(mixer.isPlaying(0));
       }
     }
@@ -195,8 +195,8 @@ SCENARIO("The LED filter smooths the output") {
     THEN("With the filter off the output is the sample") {
       mixer.play(steady, 0x1, 0, false);
       const Output output = render(mixer, 64);
-      REQUIRE(output.left.front() == 14336);
-      REQUIRE(output.left.back() == 14336);
+      REQUIRE(output.left.front() == 7168);
+      REQUIRE(output.left.back() == 7168);
     }
 
     THEN("With the filter on the step rises smoothly to the same level") {
@@ -204,8 +204,8 @@ SCENARIO("The LED filter smooths the output") {
       mixer.play(steady, 0x1, 0, false);
       const Output output = render(mixer, 64);
       REQUIRE(output.left.front() > 0);
-      REQUIRE(output.left.front() < 14336);
-      REQUIRE(std::abs(output.left.back() - 14336) <= 1);
+      REQUIRE(output.left.front() < 7168);
+      REQUIRE(std::abs(output.left.back() - 7168) <= 1);
     }
   }
 }
