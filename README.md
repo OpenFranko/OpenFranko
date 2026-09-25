@@ -47,11 +47,13 @@ ctest --output-on-failure
 
 Executables can be located in the build directory
 
-With tests enabled, two launchers are also built in `test/manual`, so late
+With tests enabled, three launchers are also built in `test/manual`, so late
 scenes can be tried without playing up to them. `startAtLevel1Car` starts the
 game at the stage-1 bonus drive, as if the first boss had just been beaten.
 `startAtEnding` starts it at the ending, as if the third boss had just been
-beaten. Like the game, run them from the directory that holds `assets`.
+beaten. `startAtGameOver` starts it at the game over graveyard, as if the last
+life had just been lost on stage 1. Like the game, run them from the directory
+that holds `assets`.
 
 ## Windows (MSYS2)
 
