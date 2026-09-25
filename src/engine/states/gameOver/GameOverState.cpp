@@ -1,12 +1,6 @@
 #include "GameOverState.h"
 
 namespace openfranko::src::engine::states::gameOver {
-namespace {
-
-constexpr int SCREEN = 0;
-constexpr auto FRAME = "gameOverFrame";
-
-} // namespace
 
 GameOverState::GameOverState(systems::VideoSystem &videoSystem,
                              systems::AudioSystem &audioSystem,
@@ -20,19 +14,14 @@ GameOverState::GameOverState(systems::VideoSystem &videoSystem,
                                options.ntsc),
           street::GameOverScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
-  m_videoSystem.createScreen(SCREEN, street::GameOverScene::WIDTH,
-                             m_rows.count);
-  m_videoSystem.switchScreen(SCREEN);
 }
-
-GameOverState::~GameOverState() { m_videoSystem.clearImage(FRAME); }
 
 std::optional<EngineStateEnum> GameOverState::update() {
   m_scene.advance(m_controllerSystem.joystick());
   m_scene.compose(m_frame);
-  m_videoSystem.updateFrameImage(FRAME, street::GameOverScene::WIDTH,
-                                 street::GameOverScene::HEIGHT, m_frame);
-  m_videoSystem.drawImage(FRAME, 0, -m_rows.first);
+  m_videoSystem.show(m_frame.data() + static_cast<std::size_t>(m_rows.first) *
+                                          street::GameOverScene::WIDTH,
+                     street::GameOverScene::WIDTH, m_rows.count);
   if (m_scene.isFinished()) {
     return EngineStateEnum::HighScore;
   }

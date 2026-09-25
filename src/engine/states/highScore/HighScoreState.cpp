@@ -3,9 +3,6 @@
 namespace openfranko::src::engine::states::highScore {
 namespace {
 
-constexpr int SCREEN = 0;
-constexpr auto FRAME = "highScoreFrame";
-
 void save(const street::HighScoreTable &table) {
   street::writeHighScoreFile(table, street::HighScoreTable::FILE_NAME);
 }
@@ -23,19 +20,14 @@ HighScoreState::HighScoreState(systems::VideoSystem &videoSystem,
                                options.ntsc),
           street::HighScoreScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
-  m_videoSystem.createScreen(SCREEN, street::HighScoreScene::WIDTH,
-                             m_rows.count);
-  m_videoSystem.switchScreen(SCREEN);
 }
-
-HighScoreState::~HighScoreState() { m_videoSystem.clearImage(FRAME); }
 
 std::optional<EngineStateEnum> HighScoreState::update() {
   m_scene.advance();
   m_scene.compose(m_frame);
-  m_videoSystem.updateFrameImage(FRAME, street::HighScoreScene::WIDTH,
-                                 street::HighScoreScene::HEIGHT, m_frame);
-  m_videoSystem.drawImage(FRAME, 0, -m_rows.first);
+  m_videoSystem.show(m_frame.data() + static_cast<std::size_t>(m_rows.first) *
+                                          street::HighScoreScene::WIDTH,
+                     street::HighScoreScene::WIDTH, m_rows.count);
 
   switch (m_scene.outcome()) {
   case street::HighScoreScene::Outcome::Menu:

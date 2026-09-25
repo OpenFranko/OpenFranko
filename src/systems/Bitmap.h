@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace openfranko {
@@ -19,8 +18,7 @@ struct IndexedBitmap {
   std::vector<uint16_t> palette;
 };
 
-int channelToNibble(uint8_t channel);
-std::pair<int, int> readBitmapHotspot(const std::string &path);
+IndexedBitmap readIndexedBitmap(const std::vector<uint8_t> &file);
 IndexedBitmap loadIndexedBitmap(const std::string &path);
 
 } // namespace systems

@@ -5,24 +5,18 @@
 namespace openfranko::src::engine::states::mirage {
 namespace {
 
-constexpr auto PICTURE = "mirage";
 constexpr auto PICTURE_PATH = "assets/03C3.bmp";
 
-constexpr int SCREEN_ID = 0;
 constexpr int SCREEN_WIDTH = 368;
 constexpr int SCREEN_HEIGHT = 290;
 constexpr int DISPLAY_LINE = 30;
 constexpr std::size_t SCREEN_COLORS = 32;
+constexpr effects::AmigaColor BLACK = 0x000;
 
 constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 70, true};
 
-effects::AmigaPalette openScreen(systems::VideoSystem &videoSystem,
-                                 const effects::VisibleRows &rows) {
-  videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, rows.count);
-  videoSystem.switchScreen(SCREEN_ID);
-  videoSystem.loadIndexedImage(PICTURE, PICTURE_PATH);
-
-  auto palette = videoSystem.getImagePalette(PICTURE);
+effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
+  effects::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
@@ -33,28 +27,23 @@ MirageState::MirageState(systems::VideoSystem &videoSystem)
     : m_videoSystem(videoSystem),
       m_rows(effects::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
                                   videoSystem.isNtsc())),
-      m_sequence(openScreen(videoSystem, m_rows), TIMINGS) {
-  m_videoSystem.setImagePalette(PICTURE, m_sequence.palette());
-}
-
-MirageState::~MirageState() {
-  m_videoSystem.clearImage(PICTURE);
-  m_videoSystem.fillScreen(0, 0, 0);
-}
+      m_picture(systems::loadIndexedBitmap(PICTURE_PATH)),
+      m_screen(SCREEN_WIDTH, m_rows.count),
+      m_sequence(screenPalette(m_picture), TIMINGS) {}
 
 std::optional<EngineStateEnum> MirageState::update() {
   if (m_sequence.isFinished()) {
     return EngineStateEnum::WorldSoftware;
   }
 
-  if (m_sequence.advance()) {
-    m_videoSystem.setImagePalette(PICTURE, m_sequence.palette());
-  }
+  m_sequence.advance();
   if (m_sequence.isShown()) {
-    m_videoSystem.drawImage(PICTURE, 0, -m_rows.first);
+    m_screen.draw(m_picture, m_sequence.palette(), 0, -m_rows.first);
   } else {
-    m_videoSystem.fillScreen(0, 0, 0);
+    m_screen.fill(BLACK);
   }
+  m_videoSystem.show(m_screen.pixels().data(), m_screen.width(),
+                     m_screen.height());
   return std::nullopt;
 }
 

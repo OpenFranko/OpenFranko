@@ -19,6 +19,8 @@
 #include "states/titleAndStory/TitleAndStoryState.h"
 #include "states/worldSoftware/WorldSoftwareState.h"
 
+#include <chrono>
+#include <thread>
 #include <utility>
 
 namespace openfranko::src::engine {
@@ -67,17 +69,11 @@ Engine::Engine(states::EngineStateEnum firstState,
   switchState(firstState);
 }
 
-Engine::~Engine() {
-  currentState.reset();
-  SDL_Quit();
-}
+Engine::~Engine() { currentState.reset(); }
 
 bool Engine::isRunning() {
-  while (SDL_PollEvent(&event)) {
-    if (event.type == SDL_QUIT)
-      running = false;
-    if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
-      controllerSystem.receiveKey(event.key);
+  if (!platform.pollEvents(controllerSystem)) {
+    running = false;
   }
   return running;
 }
@@ -203,20 +199,19 @@ void Engine::update() {
 }
 
 void Engine::run() {
-  const double ticksPerSecond =
-      static_cast<double>(SDL_GetPerformanceFrequency());
-  double nextFrame = static_cast<double>(SDL_GetPerformanceCounter());
+  using Clock = std::chrono::steady_clock;
+  Clock::time_point nextFrame = Clock::now();
 
   while (isRunning()) {
     update();
 
-    const double frameTicks = ticksPerSecond / refreshRate();
-    nextFrame += frameTicks;
-    const double now = static_cast<double>(SDL_GetPerformanceCounter());
+    const auto frameTime = std::chrono::duration_cast<Clock::duration>(
+        std::chrono::duration<double>(1.0 / refreshRate()));
+    nextFrame += frameTime;
+    const Clock::time_point now = Clock::now();
     if (nextFrame > now) {
-      SDL_Delay(
-          static_cast<uint32_t>((nextFrame - now) * 1000.0 / ticksPerSecond));
-    } else if (now - nextFrame > frameTicks) {
+      std::this_thread::sleep_until(nextFrame);
+    } else if (now - nextFrame > frameTime) {
       nextFrame = now;
     }
   }

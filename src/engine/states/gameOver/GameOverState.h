@@ -10,6 +10,7 @@
 #include "../IEngineState.h"
 #include "../level1/EngineStreetHost.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -26,7 +27,6 @@ public:
                 systems::ControllerSystem &controllerSystem,
                 const effects::GameOptions &options,
                 street::GameSession &session);
-  ~GameOverState();
 
   std::optional<EngineStateEnum> update() override;
 

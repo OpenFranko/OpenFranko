@@ -1,6 +1,8 @@
 #ifndef ENGINE_STATES_MIRAGESTATE_H_
 #define ENGINE_STATES_MIRAGESTATE_H_
 
+#include "../../../systems/Bitmap.h"
+#include "../../../systems/Canvas.h"
 #include "../../../systems/VideoSystem.h"
 #include "../../effects/AmigaDisplay.h"
 #include "../../effects/FotoSequence.h"
@@ -15,13 +17,14 @@ namespace mirage {
 class MirageState : public IEngineState {
 public:
   explicit MirageState(systems::VideoSystem &videoSystem);
-  ~MirageState();
 
   std::optional<EngineStateEnum> update() override;
 
 private:
   systems::VideoSystem &m_videoSystem;
   effects::VisibleRows m_rows;
+  systems::IndexedBitmap m_picture;
+  systems::Canvas m_screen;
   effects::FotoSequence m_sequence;
 };
 

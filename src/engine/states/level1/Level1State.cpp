@@ -3,11 +3,6 @@
 #include "StreetControls.h"
 
 namespace openfranko::src::engine::states::level1 {
-namespace {
-
-constexpr auto FRAME = "level1Frame";
-
-} // namespace
 
 Level1State::Level1State(systems::VideoSystem &videoSystem,
                          systems::AudioSystem &audioSystem,
@@ -16,16 +11,12 @@ Level1State::Level1State(systems::VideoSystem &videoSystem,
                          street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_options(options), m_host(audioSystem),
-      m_stage(m_host, session, options) {
-  openStageScreen(m_videoSystem, options);
-}
-
-Level1State::~Level1State() { m_videoSystem.clearImage(FRAME); }
+      m_stage(m_host, session, options) {}
 
 std::optional<EngineStateEnum> Level1State::update() {
   m_stage.advance(readStreetInput(m_controllerSystem));
   m_stage.compose(m_frame);
-  showStageFrame(m_videoSystem, FRAME, m_frame, m_options);
+  showStageFrame(m_videoSystem, m_frame, m_options);
 
   switch (m_stage.outcome()) {
   case street::StreetStage::Outcome::GameOver:
