@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <utility>
 
 namespace openfranko::src::engine::street {
 namespace {
@@ -94,7 +95,7 @@ void StreetStage::advance(const StreetInput &input) {
   }
   ++m_frame;
   if (input.key != SystemKey::None) {
-    m_pendingKey = input.key;
+    m_session.keyLatch = input.key;
   }
   m_buffer.vbl();
   m_copper.vbl(m_options.ntsc);
@@ -248,7 +249,7 @@ void StreetStage::openScreens(bool shown) {
 }
 
 StreetStage::Flow StreetStage::stageInit() {
-  m_pendingKey = SystemKey::None;
+  m_session.keyLatch = SystemKey::None;
   m_host.stopMusic();
   m_images.clear();
   global(RO) = word(global(RO) + 1);
@@ -902,8 +903,7 @@ void StreetStage::closePlayScreen() {
 }
 
 void StreetStage::sys() {
-  const SystemKey key = m_pendingKey;
-  m_pendingKey = SystemKey::None;
+  const SystemKey key = std::exchange(m_session.keyLatch, SystemKey::None);
   switch (key) {
   case SystemKey::MusicOff:
     m_host.setMusicVolume(0);
@@ -923,6 +923,7 @@ void StreetStage::sys() {
     m_machine.freezeAll();
     break;
   case SystemKey::None:
+  case SystemKey::Other:
     break;
   }
 }

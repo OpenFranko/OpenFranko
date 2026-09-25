@@ -181,7 +181,6 @@ private:
   long m_resumeFrame = 0;
   long m_passFrame = 0;
   int m_index = 0;
-  SystemKey m_pendingKey = SystemKey::None;
   std::optional<long> m_lastTaunt;
 
   int m_energyShown = 0;

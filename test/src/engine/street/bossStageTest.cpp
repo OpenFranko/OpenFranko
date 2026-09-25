@@ -576,6 +576,18 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
         REQUIRE(duel.host.loops.empty());
       }
 
+      AND_WHEN("F4 is pressed during KONBOSS") {
+        duel.run(10, 0, SystemKey::Ntsc);
+        duel.run(340 + 3 - 10);
+
+        THEN("No SYS reads it here, so it waits in the register for the "
+             "bonus drive") {
+          REQUIRE(stage.outcome() == BossStage::Outcome::BossDefeated);
+          REQUIRE_FALSE(duel.options.ntsc);
+          REQUIRE(duel.session.keyLatch == SystemKey::Ntsc);
+        }
+      }
+
       AND_WHEN("BASIC's Wait of 340 frames is over") {
         duel.run(340);
 

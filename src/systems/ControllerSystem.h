@@ -11,7 +11,7 @@ namespace openfranko {
 namespace src {
 namespace systems {
 
-enum class FunctionKey { F1, F2, F3, F4, Escape };
+enum class FunctionKey { F1, F2, F3, F4, Escape, Other };
 
 enum class KeyMode { Game, FrontEnd, NameEntry };
 
@@ -40,7 +40,7 @@ public:
 
 private:
   std::optional<char> typedCharacter(SDL_Keycode keycode) const;
-  void updateFunctionKey(const uint8_t *keys);
+  bool isJoystickKey(SDL_Scancode scancode) const;
 
   KeyMode keyMode = KeyMode::FrontEnd;
   bool fireLatched = false;
@@ -49,8 +49,8 @@ private:
   std::string receivedKeys;
   std::string typed;
   std::array<bool, SDL_NUM_SCANCODES> typingKeys{};
-  std::array<bool, 5> functionKeysDown{};
-  std::optional<FunctionKey> pressedFunctionKey;
+  std::optional<FunctionKey> receivedKeyEvent;
+  std::optional<FunctionKey> keyEvent;
 };
 
 } // namespace systems

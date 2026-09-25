@@ -749,6 +749,50 @@ SCENARIO("The run ends as state 11 and SYS decide") {
   }
 }
 
+SCENARIO("SYS reads the CIA key register, which keeps the last key event") {
+  constexpr int WALKING = OPENING_FRAMES + 1 + LoadingMock::FILE_FRAMES + 5;
+
+  GIVEN("A new game loading its stage files, when SYS is not called") {
+    Street street(emptyStreet(600));
+    street.start();
+    street.run(GAME_INIT_FRAMES + 10);
+
+    WHEN("F2 is pressed during the loads") {
+      street.run(1, 0, SystemKey::MusicOff);
+      street.run(WALKING - GAME_INIT_FRAMES - 11);
+
+      THEN("The first SYS after them still switches the music off") {
+        REQUIRE_FALSE(street.options.music);
+        REQUIRE(street.host.volumes.back() == 0);
+      }
+    }
+
+    WHEN("Another key is pressed after F2") {
+      street.run(1, 0, SystemKey::MusicOff);
+      street.run(1, 0, SystemKey::Other);
+      street.run(WALKING - GAME_INIT_FRAMES - 12);
+
+      THEN("Its event replaced F2's in the register, so the music stays on") {
+        REQUIRE(street.options.music);
+        REQUIRE(street.host.volumes.back() == 30);
+        REQUIRE(street.session.keyLatch == SystemKey::None);
+      }
+    }
+  }
+
+  GIVEN("A key still in the register when the stage starts") {
+    Street street(emptyStreet(600));
+    street.session.keyLatch = SystemKey::Ntsc;
+    street.start();
+    street.run(WALKING);
+
+    THEN("POCZ's Poke $BFEC01,0 has cleared it") {
+      REQUIRE_FALSE(street.options.ntsc);
+      REQUIRE(street.session.keyLatch == SystemKey::None);
+    }
+  }
+}
+
 SCENARIO("The level ends one column before its length") {
   GIVEN("A 13 column street") {
     Street street(emptyStreet(13));

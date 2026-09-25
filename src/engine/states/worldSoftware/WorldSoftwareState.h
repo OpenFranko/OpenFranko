@@ -3,6 +3,7 @@
 
 #include "../../../systems/AudioSystem.h"
 #include "../../../systems/VideoSystem.h"
+#include "../../effects/AmigaDisplay.h"
 #include "../../effects/FotoSequence.h"
 #include "../IEngineState.h"
 
@@ -23,6 +24,7 @@ public:
 private:
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
+  effects::VisibleRows m_rows;
   effects::FotoSequence m_sequence;
 };
 

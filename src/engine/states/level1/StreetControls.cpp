@@ -30,6 +30,9 @@ readStreetInput(const systems::ControllerSystem &controller) {
     case systems::FunctionKey::F4:
       input.key = street::SystemKey::Ntsc;
       break;
+    case systems::FunctionKey::Other:
+      input.key = street::SystemKey::Other;
+      break;
     }
   }
   return input;

@@ -7,6 +7,7 @@
 
 #include <cstdlib>
 #include <string>
+#include <utility>
 
 namespace openfranko::src::engine::street {
 namespace {
@@ -143,7 +144,7 @@ void CarStage::advance(const StreetInput &input) {
   }
   ++m_frame;
   if (input.key != SystemKey::None) {
-    m_pendingKey = input.key;
+    m_session.keyLatch = input.key;
   }
   m_buffer.vbl();
   m_copper.vbl(m_options.ntsc);
@@ -599,8 +600,7 @@ CarStage::Flow CarStage::closePlayScreen() {
 }
 
 void CarStage::sys() {
-  const SystemKey key = m_pendingKey;
-  m_pendingKey = SystemKey::None;
+  const SystemKey key = std::exchange(m_session.keyLatch, SystemKey::None);
   if (key == SystemKey::Pal || key == SystemKey::Ntsc) {
     switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
   }

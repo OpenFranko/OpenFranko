@@ -49,8 +49,6 @@ public:
   virtual int random(int limit) = 0;
 };
 
-enum class SystemKey { None, MusicOn, MusicOff, Pal, Ntsc, Escape };
-
 struct StreetInput {
   int16_t joystick = 0;
   SystemKey key = SystemKey::None;
@@ -197,7 +195,6 @@ private:
   long m_resumeFrame = 0;
   long m_passFrame = 0;
   int m_index = 0;
-  SystemKey m_pendingKey = SystemKey::None;
 
   int m_energyShown = 0;
   int m_killsShown = 0;

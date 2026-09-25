@@ -691,6 +691,26 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
   }
 }
 
+SCENARIO("The drive's first SYS reads a key left from the boss's finisher") {
+  GIVEN("F4 left in the key register by KONBOSS") {
+    Drive drive;
+    drive.session.keyLatch = SystemKey::Ntsc;
+    drive.start();
+    drive.run(PASSWORD_FRAMES);
+    const bool beforeDrive = drive.options.ntsc;
+    drive.run(1, JOY_FIRE);
+    drive.run(DRIVE_FRAME - SKIP_FRAME);
+    drive.runPasses(1);
+
+    THEN("Nothing reads it on the password screen or during the loads, and "
+         "the drive's first pass switches to NTSC") {
+      REQUIRE_FALSE(beforeDrive);
+      REQUIRE(drive.options.ntsc);
+      REQUIRE(drive.session.keyLatch == SystemKey::None);
+    }
+  }
+}
+
 SCENARIO("F4 and F3 switch the display during the drive as SYS does") {
   GIVEN("A drive under way in PAL") {
     Drive drive;

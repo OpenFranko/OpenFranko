@@ -147,7 +147,6 @@ private:
   long m_resumeFrame = 0;
   long m_holdStart = -1;
   long m_holdUntil = -1;
-  SystemKey m_pendingKey = SystemKey::None;
   bool m_escape = false;
   bool m_screenShown = true;
   bool m_panelShown = true;

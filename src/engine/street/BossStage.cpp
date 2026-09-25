@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace openfranko::src::engine::street {
 namespace {
@@ -145,7 +146,7 @@ void BossStage::advance(const StreetInput &input) {
   }
   ++m_frame;
   if (input.key != SystemKey::None) {
-    m_pendingKey = input.key;
+    m_session.keyLatch = input.key;
   }
   m_buffer.vbl();
   m_copper.vbl(m_options.ntsc);
@@ -914,8 +915,7 @@ void BossStage::closePlayScreen() {
 }
 
 void BossStage::sys() {
-  const SystemKey key = m_pendingKey;
-  m_pendingKey = SystemKey::None;
+  const SystemKey key = std::exchange(m_session.keyLatch, SystemKey::None);
   switch (key) {
   case SystemKey::MusicOff:
     m_host.setMusicVolume(0);
@@ -935,6 +935,7 @@ void BossStage::sys() {
     m_machine.freezeAll();
     break;
   case SystemKey::None:
+  case SystemKey::Other:
     break;
   }
 }

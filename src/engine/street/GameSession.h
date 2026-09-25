@@ -17,6 +17,8 @@ namespace src {
 namespace engine {
 namespace street {
 
+enum class SystemKey { None, Other, MusicOn, MusicOff, Pal, Ntsc, Escape };
+
 struct StreetExit {
   IndexedSurface screen;
   ScreenBlock block;
@@ -58,6 +60,7 @@ struct GameSession {
   bool fromBonusDrive = false;
   bool nameScreenOpen = false;
   effects::AmigaColor border = 0x000;
+  SystemKey keyLatch = SystemKey::None;
   DriveCarryOver lastDrive;
   HighScoreTable highScores;
   effects::InkeyBuffer keyboard;
