@@ -157,8 +157,9 @@ void CarStage::advance(const StreetInput &input) {
 }
 
 void CarStage::compose(std::vector<uint32_t> &frame) const {
-  composeFrame(frame, &m_buffer.shown(), m_palette, m_screenDisplay,
-               m_screenOffsetX, m_panel.get(), m_panelPalette,
+  composeFrame(frame, m_screenShown ? &m_buffer.shown() : nullptr, m_palette,
+               m_screenDisplay, m_screenOffsetX,
+               m_panelShown ? m_panel.get() : nullptr, m_panelPalette,
                stageLayout(m_options));
 }
 
@@ -171,6 +172,10 @@ const IndexedSurface &CarStage::screen() const { return m_screen; }
 const IndexedSurface &CarStage::display() const { return m_buffer.shown(); }
 
 const StatusPanel *CarStage::panel() const { return m_panel.get(); }
+
+bool CarStage::isScreenShown() const { return m_screenShown; }
+
+bool CarStage::isPanelShown() const { return m_panelShown; }
 
 amal::Machine &CarStage::machine() { return m_machine; }
 
@@ -567,12 +572,16 @@ void CarStage::gameOver() {
   global(RO) = -1;
   if (m_escape) {
     global(RN) = 0;
-    m_outcome = Outcome::Quit;
-    m_step = Step::Finished;
+    closePlayScreen();
     return;
   }
   m_resumeFrame = m_frame + GAME_OVER_WAIT;
   m_step = Step::GameOverWait;
+}
+
+CarStage::Flow CarStage::closePlayScreen() {
+  m_screenShown = false;
+  return hold(SCREEN_CLOSE_VBLS, Step::GameOverPanelClose);
 }
 
 void CarStage::sys() {
@@ -657,7 +666,14 @@ void CarStage::runBasic(const StreetInput &input) {
       flow = Flow::Yield;
       break;
     case Step::GameOverWait:
-      m_outcome = Outcome::GameOver;
+      flow = closePlayScreen();
+      break;
+    case Step::GameOverPanelClose:
+      m_panelShown = false;
+      flow = hold(SCREEN_CLOSE_VBLS, Step::GameOverClosed);
+      break;
+    case Step::GameOverClosed:
+      m_outcome = m_escape ? Outcome::Quit : Outcome::GameOver;
       m_step = Step::Finished;
       flow = Flow::Yield;
       break;

@@ -28,6 +28,8 @@ constexpr int SHOW_WAIT = 50;
 constexpr int BOBS_OFF_AT = MACH_WAIT + SHOW_WAIT;
 constexpr int LOUDEST = 63;
 constexpr int MUSIC_STOP_AT = BOBS_OFF_AT + LOUDEST + 1;
+constexpr int UNPACK_VBLS = 1;
+constexpr int SCREEN_CLOSE_VBLS = 2;
 
 const std::vector<AmalMotion::Move> WAGGLE = {
     {4, 2}, {-4, 2}, {0, 1}, {4, 2}, {-4, 2}, {0, 1},
@@ -39,8 +41,8 @@ const Pose &poseOf(Character character) {
 
 } // namespace
 
-CharacterSelection::CharacterSelection(GameOptions &options)
-    : m_options(options) {
+CharacterSelection::CharacterSelection(GameOptions &options, int otherScreens)
+    : m_options(options), m_otherScreens(otherScreens) {
   choose(Character::Franko);
 }
 
@@ -50,6 +52,13 @@ void CharacterSelection::advance(const Joystick &joystick) {
   m_stopsMusic = false;
   if (m_finished) {
     return;
+  }
+  if (m_frame < UNPACK_VBLS) {
+    ++m_frame;
+    return;
+  }
+  if (!m_closedAt) {
+    m_screenShown = true;
   }
 
   if (!m_confirmedAt) {
@@ -92,6 +101,8 @@ std::optional<int> CharacterSelection::musicVolume() const {
 
 bool CharacterSelection::stopsMusic() const { return m_stopsMusic; }
 
+bool CharacterSelection::isScreenShown() const { return m_screenShown; }
+
 bool CharacterSelection::isFinished() const { return m_finished; }
 
 void CharacterSelection::choose(Character character) {
@@ -101,6 +112,12 @@ void CharacterSelection::choose(Character character) {
 }
 
 void CharacterSelection::runScript(int time) {
+  if (m_closedAt) {
+    if (time == *m_closedAt + SCREEN_CLOSE_VBLS * (1 + m_otherScreens)) {
+      m_finished = true;
+    }
+    return;
+  }
   const Pose &pose = poseOf(m_options.character);
   if (time == MACH_WAIT) {
     m_face = {true, pose.faceX, FACE_Y, HIDDEN_IMAGE, false};
@@ -116,7 +133,7 @@ void CharacterSelection::runScript(int time) {
   if (!m_options.music) {
     if (time == BOBS_OFF_AT) {
       m_stopsMusic = true;
-      m_finished = true;
+      close(time);
     }
     return;
   }
@@ -126,8 +143,13 @@ void CharacterSelection::runScript(int time) {
   if (time == MUSIC_STOP_AT) {
     m_stopsMusic = true;
     m_musicVolume = LOUDEST;
-    m_finished = true;
+    close(time);
   }
+}
+
+void CharacterSelection::close(int time) {
+  m_screenShown = false;
+  m_closedAt = time;
 }
 
 } // namespace openfranko::src::engine::effects

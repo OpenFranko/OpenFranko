@@ -21,6 +21,7 @@ constexpr int RIGHT_X = 268;
 constexpr int HAND_Y = 124;
 constexpr int WAGGLE_REGISTER = 1;
 constexpr int MACH_WAIT = 40;
+constexpr int SCREEN_CLOSE_VBLS = 2;
 
 constexpr int16_t JOY_LEFT = 4;
 constexpr int16_t JOY_RIGHT = 8;
@@ -65,6 +66,10 @@ void ContinueScene::advance(int16_t joystick) {
       break;
     case Step::Chosen:
       close();
+      flow = Flow::Yield;
+      break;
+    case Step::Closed:
+      leave();
       flow = Flow::Yield;
       break;
     case Step::Finished:
@@ -133,6 +138,11 @@ void ContinueScene::close() {
   m_machine.destroyAll();
   m_bobs.offAll();
   m_shown = false;
+  m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+  m_step = Step::Closed;
+}
+
+void ContinueScene::leave() {
   if (m_continue) {
     --m_session.stageReached;
     m_session.registers[RO] = static_cast<int16_t>(m_session.stageReached);

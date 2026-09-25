@@ -43,6 +43,9 @@ constexpr int PLAYER_BLOOD_CHANNEL = 15;
 constexpr int COLUMNS_PER_CHUNK = 63;
 constexpr int AUTOBACK_VBLS = 3;
 constexpr int GAME_OVER_WAIT = 200;
+constexpr int SCREEN_CLOSE_VBLS = 2;
+constexpr int SCREEN_OPEN_VBLS = 1;
+constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr int FULL_ENERGY = 64;
 constexpr int EXTRA_LIFE_STEP = 40;
 constexpr int SHORT_LEVEL_LENGTH = 32;
@@ -106,7 +109,8 @@ void StreetStage::advance(const StreetInput &input) {
 
 void StreetStage::compose(std::vector<uint32_t> &frame) const {
   composeFrame(frame, m_screenShown ? &m_buffer.shown() : nullptr, m_palette,
-               m_screenDisplay, m_screenOffsetX, m_panel.get(), m_panelPalette,
+               m_screenDisplay, m_screenOffsetX,
+               m_panelShown ? m_panel.get() : nullptr, m_panelPalette,
                stageLayout(m_options));
 }
 
@@ -119,6 +123,8 @@ const IndexedSurface &StreetStage::screen() const { return m_screen; }
 const IndexedSurface &StreetStage::display() const { return m_buffer.shown(); }
 
 const StatusPanel *StreetStage::panel() const { return m_panel.get(); }
+
+bool StreetStage::isPanelShown() const { return m_panelShown; }
 
 amal::Machine &StreetStage::machine() { return m_machine; }
 
@@ -204,6 +210,7 @@ void StreetStage::newGame() {
 
 void StreetStage::gameInit() {
   openScreens(false);
+  m_panelShown = false;
   global(RN) = 0;
 }
 
@@ -858,12 +865,17 @@ void StreetStage::gameOver() {
   global(RO) = -1;
   if (m_escape) {
     global(RN) = 0;
-    m_outcome = Outcome::Quit;
-    m_step = Step::Finished;
+    closePlayScreen();
     return;
   }
   m_resumeFrame = m_frame + GAME_OVER_WAIT;
   m_step = Step::GameOverWait;
+}
+
+void StreetStage::closePlayScreen() {
+  m_screenShown = false;
+  m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+  m_step = Step::GameOverPanelClose;
 }
 
 void StreetStage::sys() {
@@ -900,10 +912,18 @@ void StreetStage::runBasic(const StreetInput &input) {
       if (m_session.fromBonusDrive) {
         m_session.fromBonusDrive = false;
         openScreens(true);
-      } else {
-        newGame();
-        gameInit();
+        flow = stageInit();
+        break;
       }
+      newGame();
+      gameInit();
+      m_resumeFrame =
+          m_frame + SCREEN_OPEN_VBLS + DOUBLE_BUFFER_VBLS + SCREEN_OPEN_VBLS;
+      m_step = Step::GameInitialized;
+      flow = Flow::Yield;
+      break;
+    case Step::GameInitialized:
+      m_panelShown = true;
       flow = stageInit();
       break;
     case Step::StageMusic:
@@ -969,7 +989,17 @@ void StreetStage::runBasic(const StreetInput &input) {
       flow = advanceLeavePasted();
       break;
     case Step::GameOverWait:
-      m_outcome = Outcome::GameOver;
+      closePlayScreen();
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverPanelClose:
+      m_panelShown = false;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+      m_step = Step::GameOverClosed;
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverClosed:
+      m_outcome = m_escape ? Outcome::Quit : Outcome::GameOver;
       m_step = Step::Finished;
       flow = Flow::Yield;
       break;

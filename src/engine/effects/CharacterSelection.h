@@ -29,7 +29,7 @@ public:
     bool flipped = false;
   };
 
-  explicit CharacterSelection(GameOptions &options);
+  explicit CharacterSelection(GameOptions &options, int otherScreens = 0);
 
   void advance(const Joystick &joystick);
 
@@ -38,11 +38,13 @@ public:
   std::optional<int> sample() const;
   std::optional<int> musicVolume() const;
   bool stopsMusic() const;
+  bool isScreenShown() const;
   bool isFinished() const;
 
 private:
   void choose(Character character);
   void runScript(int time);
+  void close(int time);
 
   GameOptions &m_options;
   Bob m_hand;
@@ -54,7 +56,10 @@ private:
   std::optional<int> m_sample;
   std::optional<int> m_musicVolume;
   bool m_stopsMusic = false;
+  bool m_screenShown = false;
   bool m_finished = false;
+  int m_otherScreens = 0;
+  std::optional<int> m_closedAt;
 };
 
 } // namespace effects

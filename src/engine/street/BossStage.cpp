@@ -58,6 +58,7 @@ constexpr int PLAYER_BLOOD_CHANNEL = 15;
 
 constexpr int AUTOBACK_VBLS = 3;
 constexpr int GAME_OVER_WAIT = 200;
+constexpr int SCREEN_CLOSE_VBLS = 2;
 constexpr int FULL_ENERGY = 64;
 constexpr int EXTRA_LIFE_STEP = 40;
 constexpr int MUSIC_VOLUME = 30;
@@ -157,8 +158,9 @@ void BossStage::advance(const StreetInput &input) {
 }
 
 void BossStage::compose(std::vector<uint32_t> &frame) const {
-  composeFrame(frame, &m_buffer.shown(), m_palette, m_screenDisplay,
-               m_screenOffsetX, m_panel.get(), m_panelPalette,
+  composeFrame(frame, m_screenShown ? &m_buffer.shown() : nullptr, m_palette,
+               m_screenDisplay, m_screenOffsetX,
+               m_panelShown ? m_panel.get() : nullptr, m_panelPalette,
                stageLayout(m_options));
 }
 
@@ -171,6 +173,10 @@ const IndexedSurface &BossStage::screen() const { return m_screen; }
 const IndexedSurface &BossStage::display() const { return m_buffer.shown(); }
 
 const StatusPanel *BossStage::panel() const { return m_panel.get(); }
+
+bool BossStage::isScreenShown() const { return m_screenShown; }
+
+bool BossStage::isPanelShown() const { return m_panelShown; }
 
 amal::Machine &BossStage::machine() { return m_machine; }
 
@@ -878,12 +884,17 @@ void BossStage::gameOver() {
   global(RO) = -1;
   if (m_escape) {
     global(RN) = 0;
-    m_outcome = Outcome::Quit;
-    m_step = Step::Finished;
+    closePlayScreen();
     return;
   }
   m_resumeFrame = m_frame + GAME_OVER_WAIT;
   m_step = Step::GameOverWait;
+}
+
+void BossStage::closePlayScreen() {
+  m_screenShown = false;
+  m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+  m_step = Step::GameOverPanelClose;
 }
 
 void BossStage::sys() {
@@ -1059,7 +1070,17 @@ void BossStage::runBasic(const StreetInput &input) {
       flow = Flow::Yield;
       break;
     case Step::GameOverWait:
-      m_outcome = Outcome::GameOver;
+      closePlayScreen();
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverPanelClose:
+      m_panelShown = false;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+      m_step = Step::GameOverClosed;
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverClosed:
+      m_outcome = m_escape ? Outcome::Quit : Outcome::GameOver;
       m_step = Step::Finished;
       flow = Flow::Yield;
       break;

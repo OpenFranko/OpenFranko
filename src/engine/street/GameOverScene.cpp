@@ -39,6 +39,7 @@ constexpr int PAN_STEP_FRAMES = 4;
 constexpr int CLICK_FRAMES = 400;
 constexpr int UNPACK_VBLS = 1;
 constexpr int DOUBLE_BUFFER_VBLS = 3;
+constexpr int SCREEN_CLOSE_VBLS = 2;
 constexpr int FADE_SPEED = 5;
 constexpr int HOLD_FRAMES = 100;
 
@@ -115,6 +116,10 @@ void GameOverScene::advance(int16_t joystick) {
       break;
     case Step::Hold:
       flow = hold();
+      break;
+    case Step::Closed:
+      m_step = Step::Finished;
+      flow = Flow::Yield;
       break;
     case Step::Finished:
       flow = Flow::Yield;
@@ -258,16 +263,15 @@ GameOverScene::Flow GameOverScene::hold() {
   if (--m_count > 0) {
     return Flow::Yield;
   }
-  finish();
-  return Flow::Yield;
+  closeGraveyard();
+  return wait(SCREEN_CLOSE_VBLS, Step::Closed);
 }
 
-void GameOverScene::finish() {
+void GameOverScene::closeGraveyard() {
   m_rainbowShown = false;
   m_animating = false;
   m_bobs.offAll();
   m_shown = false;
-  m_step = Step::Finished;
 }
 
 } // namespace openfranko::src::engine::street

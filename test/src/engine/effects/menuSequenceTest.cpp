@@ -19,7 +19,9 @@ const Joystick DOWN{false, true, false, false, false};
 const Joystick RIGHT{false, false, false, true, false};
 const Joystick FIRE{false, false, false, false, true};
 
-constexpr int OPENING_FRAMES = 50;
+constexpr int UNPACKED = 4;
+constexpr int OPENING_FRAMES = UNPACKED + 50;
+constexpr int SCREEN_CLOSE = 2;
 
 void run(MenuSequence &menu, int frames, const Joystick &joystick = NOTHING) {
   for (int frame = 0; frame < frames; ++frame) {
@@ -77,8 +79,18 @@ SCENARIO("MenuSequence opens the menu as state_07 does") {
       REQUIRE_FALSE(bob(menu, 1).shown);
     }
 
-    WHEN("24 frames pass") {
-      run(menu, 24);
+    THEN("Unpack 6 To 0 and Double Buffer hold the screen back four VBLs") {
+      REQUIRE_FALSE(menu.isScreenShown());
+      run(menu, UNPACKED);
+      REQUIRE_FALSE(menu.isScreenShown());
+      REQUIRE(bob(menu, 4).x == -64);
+      run(menu, 1);
+      REQUIRE(menu.isScreenShown());
+      REQUIRE(bob(menu, 4).x > -64);
+    }
+
+    WHEN("24 frames pass after the unpack") {
+      run(menu, UNPACKED + 24);
 
       THEN("The first pair has landed and the second is still flying") {
         REQUIRE(bob(menu, 4).x == 32);
@@ -87,8 +99,8 @@ SCENARIO("MenuSequence opens the menu as state_07 does") {
       }
     }
 
-    WHEN("44 frames pass") {
-      run(menu, 44);
+    WHEN("44 frames pass after the unpack") {
+      run(menu, UNPACKED + 44);
 
       THEN("All six icons are in place") {
         for (int icon = 4; icon <= 6; ++icon) {
@@ -235,17 +247,38 @@ SCENARIO("MenuSequence leaves through START") {
 
     WHEN("Fade 3 has had its Wait 45") {
       run(menu, 134);
-      const bool finishedBefore = menu.isFinished();
+      const bool shownBefore = menu.isScreenShown();
       menu.advance(NOTHING);
 
-      THEN("The menu closes in black") {
-        REQUIRE_FALSE(finishedBefore);
-        REQUIRE(menu.isFinished());
+      THEN("_OFF and _CLOSE hide everything, and the menu is done after "
+           "Screen Close's two VBLs") {
+        REQUIRE(shownBefore);
+        REQUIRE_FALSE(menu.isScreenShown());
         REQUIRE(menu.palette() == AmigaPalette(16, 0x000));
         for (const MenuSequence::Bob &shown : menu.bobs()) {
           REQUIRE_FALSE(shown.shown);
         }
+        run(menu, SCREEN_CLOSE - 1);
+        REQUIRE_FALSE(menu.isFinished());
+        run(menu, 1);
+        REQUIRE(menu.isFinished());
       }
+    }
+  }
+
+  GIVEN("Screen 7 left open by the hiscore table") {
+    GameOptions options;
+    MenuSequence menu(options, BACKDROP_PALETTE, 1);
+    run(menu, OPENING_FRAMES);
+    menu.advance(FIRE);
+    run(menu, 135);
+
+    THEN("_CLOSE closes it too, two more VBLs") {
+      REQUIRE_FALSE(menu.isScreenShown());
+      run(menu, 2 * SCREEN_CLOSE - 1);
+      REQUIRE_FALSE(menu.isFinished());
+      run(menu, 1);
+      REQUIRE(menu.isFinished());
     }
   }
 }
@@ -273,13 +306,24 @@ SCENARIO("MenuSequence asks for the attract screens when left alone") {
 
         AND_WHEN("The attract screens are over") {
           menu.resumeAfterAttract();
-          run(menu, 301);
+          run(menu, SCREEN_CLOSE + 301);
           const bool dueAgainTooEarly = menu.isAttractDue();
           menu.advance(NOTHING);
 
-          THEN("The idle count starts again from zero") {
+          THEN("Screen Close 1 holds BASIC two VBLs, then the idle count "
+               "starts again from zero") {
             REQUIRE_FALSE(dueAgainTooEarly);
             REQUIRE(menu.isAttractDue());
+          }
+        }
+
+        AND_WHEN("Screen Close 1 runs after Amal On") {
+          menu.resumeAfterAttract();
+          const int creditBefore = bob(menu, 1).y;
+          run(menu, SCREEN_CLOSE);
+
+          THEN("The credits scroll on while BASIC waits") {
+            REQUIRE(bob(menu, 1).y != creditBefore);
           }
         }
       }
@@ -303,7 +347,7 @@ SCENARIO(
   GIVEN("The first icons flying in") {
     GameOptions options;
     MenuSequence menu(options, BACKDROP_PALETTE);
-    run(menu, 5);
+    run(menu, UNPACKED + 5);
     const auto before = menu.bobs();
     run(menu, 1);
 
@@ -389,9 +433,11 @@ SCENARIO("MenuSequence reads typed keys only when the keyboard gets through") {
     WHEN("The key comes while an attract screen sits in a Wait") {
       menu.sleep();
       menu.resumeAfterAttract();
+      const std::string readDuringClose = readDuring(menu, SCREEN_CLOSE);
       menu.advance(NOTHING);
 
-      THEN("The menu loop reads it when it comes back") {
+      THEN("The menu loop reads it after Screen Close 1") {
+        REQUIRE(readDuringClose.empty());
         REQUIRE(menu.keysRead() == "D");
       }
     }

@@ -503,9 +503,11 @@ SCENARIO("The boss referee resolves hits and sounds as state 16 does") {
       const int ended = duel.runUntil(
           [&] { return stage.outcome() != BossStage::Outcome::Playing; }, 300);
 
-      THEN("Game over follows state 19's Wait 200") {
+      THEN("Game over follows state 19's Wait 200 and _CLOSE's four VBLs") {
         REQUIRE(stage.outcome() == BossStage::Outcome::GameOver);
-        REQUIRE(ended == 200);
+        REQUIRE(ended == 200 + 4);
+        REQUIRE_FALSE(stage.isScreenShown());
+        REQUIRE_FALSE(stage.isPanelShown());
         REQUIRE(duel.global(RO) == -1);
       }
 

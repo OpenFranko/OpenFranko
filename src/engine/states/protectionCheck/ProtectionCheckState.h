@@ -7,6 +7,8 @@
 #include "../../effects/CodeCardCheck.h"
 #include "../IEngineState.h"
 
+#include <deque>
+
 namespace openfranko {
 namespace src {
 namespace engine {
@@ -28,8 +30,13 @@ public:
   const effects::CodeCardCheck &check() const;
 
 private:
+  enum class Step { Unpack, Ask, Closed, FailureUnpacked, Hang };
+
+  std::optional<EngineStateEnum> runCheck();
+  bool takeAnswer();
   void showQuestion();
   void showFailure();
+  void draw();
 
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
@@ -37,6 +44,12 @@ private:
   Check m_kind;
   effects::CodeCardCheck m_check;
   int m_loadingFrames;
+  std::deque<char> m_typed;
+  Step m_step = Step::Unpack;
+  int m_frame = 0;
+  int m_resumeFrame;
+  bool m_questionShown = false;
+  bool m_failureShown = false;
 };
 
 } // namespace protectionCheck

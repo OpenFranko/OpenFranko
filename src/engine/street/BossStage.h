@@ -43,6 +43,8 @@ public:
   const IndexedSurface &screen() const;
   const IndexedSurface &display() const;
   const StatusPanel *panel() const;
+  bool isScreenShown() const;
+  bool isPanelShown() const;
   amal::Machine &machine();
   int columnsWalked() const;
   bool isApproaching() const;
@@ -92,6 +94,8 @@ private:
     RailingDone,
     Cleared,
     GameOverWait,
+    GameOverPanelClose,
+    GameOverClosed,
     Finished
   };
 
@@ -145,6 +149,7 @@ private:
   Flow finishCleanUp();
   void scrollStep();
   void gameOver();
+  void closePlayScreen();
   void sys();
   void runBasic(const StreetInput &input);
 
@@ -182,6 +187,8 @@ private:
   int m_facing = 0;
   int m_screenOffsetX = 0;
   bool m_escape = false;
+  bool m_screenShown = true;
+  bool m_panelShown = true;
 };
 
 } // namespace street

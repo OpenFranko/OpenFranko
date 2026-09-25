@@ -33,6 +33,8 @@ constexpr int FAILURE_SCREEN_WIDTH = 320;
 constexpr int FAILURE_SCREEN_HEIGHT = 256;
 
 constexpr int STAGE_CHECK_FILES = 2;
+constexpr int UNPACK_VBLS = 1;
+constexpr int SCREEN_CLOSE_VBLS = 2;
 constexpr uint8_t HIDDEN_SCREENS_GREY = 0x55;
 
 constexpr int CELL_PITCH = 15;
@@ -81,11 +83,11 @@ ProtectionCheckState::ProtectionCheckState(
       m_check(makeCheck(check)),
       m_loadingFrames(check == Check::Stage3
                           ? STAGE_CHECK_FILES * street::LoadingMock::FILE_FRAMES
-                          : 0) {
+                          : 0),
+      m_resumeFrame(UNPACK_VBLS) {
   m_videoSystem.createScreen(QUESTION_SCREEN_ID, QUESTION_SCREEN_WIDTH,
                              QUESTION_SCREEN_HEIGHT);
   m_videoSystem.switchScreen(QUESTION_SCREEN_ID);
-  showQuestion();
 }
 
 ProtectionCheckState::~ProtectionCheckState() {
@@ -101,24 +103,83 @@ std::optional<EngineStateEnum> ProtectionCheckState::update() {
                              HIDDEN_SCREENS_GREY);
     return std::nullopt;
   }
-  if (!m_check.isFinished()) {
-    if (const auto letter = m_controllerSystem.typedLetter()) {
-      m_check.answer(*letter);
-      if (!m_check.isFinished()) {
-        showQuestion();
-      } else if (!m_check.isPassed()) {
-        showFailure();
+  if (const auto letter = m_controllerSystem.typedLetter()) {
+    m_typed.push_back(*letter);
+  }
+  const std::optional<EngineStateEnum> next = runCheck();
+  ++m_frame;
+  if (next) {
+    return next;
+  }
+  draw();
+  return std::nullopt;
+}
+
+std::optional<EngineStateEnum> ProtectionCheckState::runCheck() {
+  while (m_frame >= m_resumeFrame) {
+    switch (m_step) {
+    case Step::Unpack:
+      showQuestion();
+      m_questionShown = true;
+      m_step = Step::Ask;
+      break;
+    case Step::Ask:
+      if (!takeAnswer()) {
+        return std::nullopt;
       }
+      m_questionShown = false;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+      m_step = Step::Closed;
+      break;
+    case Step::Closed:
+      if (!m_check.isFinished()) {
+        m_resumeFrame = m_frame + UNPACK_VBLS;
+        m_step = Step::Unpack;
+      } else if (m_check.isPassed()) {
+        return m_kind == Check::Stage3 ? EngineStateEnum::Level3
+                                       : EngineStateEnum::Menu;
+      } else {
+        showFailure();
+        m_resumeFrame = m_frame + UNPACK_VBLS;
+        m_step = Step::FailureUnpacked;
+      }
+      break;
+    case Step::FailureUnpacked:
+      m_audioSystem.stopMusic();
+      m_failureShown = true;
+      m_step = Step::Hang;
+      break;
+    case Step::Hang:
+      return std::nullopt;
     }
   }
-  if (m_check.isPassed()) {
-    return m_kind == Check::Stage3 ? EngineStateEnum::Level3
-                                   : EngineStateEnum::Menu;
-  }
-
-  const bool failed = m_check.isFinished() && !m_check.isPassed();
-  m_videoSystem.drawImage(failed ? FAILURE : QUESTION, 0, 0);
   return std::nullopt;
+}
+
+bool ProtectionCheckState::takeAnswer() {
+  while (!m_typed.empty()) {
+    const char letter = m_typed.front();
+    m_typed.pop_front();
+    if (letter >= effects::CodeCardCheck::FIRST_ANSWER &&
+        letter <= effects::CodeCardCheck::LAST_ANSWER) {
+      m_check.answer(letter);
+      return true;
+    }
+  }
+  return false;
+}
+
+void ProtectionCheckState::draw() {
+  if (m_failureShown) {
+    m_videoSystem.drawImage(FAILURE, 0, 0);
+  } else if (m_questionShown) {
+    m_videoSystem.drawImage(QUESTION, 0, 0);
+  } else if (m_kind == Check::Stage3) {
+    m_videoSystem.fillScreen(HIDDEN_SCREENS_GREY, HIDDEN_SCREENS_GREY,
+                             HIDDEN_SCREENS_GREY);
+  } else {
+    m_videoSystem.fillScreen(0, 0, 0);
+  }
 }
 
 const effects::CodeCardCheck &ProtectionCheckState::check() const {
@@ -134,7 +195,6 @@ void ProtectionCheckState::showQuestion() {
 }
 
 void ProtectionCheckState::showFailure() {
-  m_audioSystem.stopMusic();
   m_videoSystem.createScreen(FAILURE_SCREEN_ID, FAILURE_SCREEN_WIDTH,
                              FAILURE_SCREEN_HEIGHT);
   m_videoSystem.switchScreen(FAILURE_SCREEN_ID);

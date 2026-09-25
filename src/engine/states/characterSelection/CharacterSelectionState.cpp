@@ -60,7 +60,7 @@ CharacterSelectionState::CharacterSelectionState(
     street::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_session(session),
-      m_selection(options) {
+      m_selection(options, session.nameScreenOpen ? 1 : 0) {
   m_videoSystem.setNtsc(false);
   m_videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, SCREEN_HEIGHT);
   m_videoSystem.switchScreen(SCREEN_ID);
@@ -109,6 +109,7 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
   }
 
   if (m_selection.isFinished()) {
+    m_session.nameScreenOpen = false;
     m_videoSystem.fillScreen(0, 0, 0);
     return firstStreet();
   }
@@ -128,6 +129,10 @@ EngineStateEnum CharacterSelectionState::firstStreet() const {
 }
 
 void CharacterSelectionState::draw() {
+  if (!m_selection.isScreenShown()) {
+    m_videoSystem.fillScreen(0, 0, 0);
+    return;
+  }
   m_videoSystem.drawImage(PICTURE, 0, 0);
   for (const effects::CharacterSelection::Bob *bob :
        {&m_selection.face(), &m_selection.hand()}) {

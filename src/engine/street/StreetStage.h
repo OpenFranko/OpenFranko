@@ -80,10 +80,12 @@ public:
   int wavesSpawned() const;
   bool isFighting() const;
   bool isScreenShown() const;
+  bool isPanelShown() const;
 
 private:
   enum class Step {
     Start,
+    GameInitialized,
     StageMusic,
     StageScreen,
     StageShown,
@@ -103,6 +105,8 @@ private:
     AdvanceLeaveFlushed,
     AdvanceLeavePasted,
     GameOverWait,
+    GameOverPanelClose,
+    GameOverClosed,
     Finished
   };
 
@@ -157,6 +161,7 @@ private:
   void spawnLoaded();
   void scrollStep();
   void gameOver();
+  void closePlayScreen();
   void sys();
   void runBasic(const StreetInput &input);
 
@@ -199,6 +204,7 @@ private:
   int m_facing = 0;
   int m_screenOffsetX = 0;
   bool m_screenShown = false;
+  bool m_panelShown = true;
   bool m_escape = false;
   std::array<int, 4> m_energy{};
   std::array<int, 4> m_aggression{};

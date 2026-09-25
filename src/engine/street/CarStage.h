@@ -50,6 +50,8 @@ public:
   const IndexedSurface &screen() const;
   const IndexedSurface &display() const;
   const StatusPanel *panel() const;
+  bool isScreenShown() const;
+  bool isPanelShown() const;
   amal::Machine &machine();
   bool isShowingPassword() const;
   bool isDriving() const;
@@ -78,6 +80,8 @@ private:
     StripClosed,
     Cleared,
     GameOverWait,
+    GameOverPanelClose,
+    GameOverClosed,
     Finished
   };
   enum class Flow { Continue, Yield };
@@ -110,6 +114,7 @@ private:
   void runOver();
   Flow leave();
   void gameOver();
+  Flow closePlayScreen();
   void sys();
   void runBasic(const StreetInput &input);
 
@@ -139,6 +144,8 @@ private:
   long m_holdUntil = -1;
   SystemKey m_pendingKey = SystemKey::None;
   bool m_escape = false;
+  bool m_screenShown = true;
+  bool m_panelShown = true;
   int m_screenOffsetX = 0;
   int m_waited = 0;
 

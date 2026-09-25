@@ -45,7 +45,11 @@ std::optional<EngineStateEnum> MirageState::update() {
   if (m_sequence.advance()) {
     m_videoSystem.setImagePalette(PICTURE, m_sequence.palette());
   }
-  m_videoSystem.drawImage(PICTURE, 0, 0);
+  if (m_sequence.isShown()) {
+    m_videoSystem.drawImage(PICTURE, 0, 0);
+  } else {
+    m_videoSystem.fillScreen(0, 0, 0);
+  }
   return std::nullopt;
 }
 

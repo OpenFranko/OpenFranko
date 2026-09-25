@@ -31,7 +31,10 @@ constexpr uint8_t OPENING_COLOR = 4;
 constexpr uint8_t STRIP_COLOR = 7;
 constexpr uint8_t WAIT_WORD_COLOR = 5;
 constexpr int OPENING_FILES = 5;
-constexpr int OPENING_FRAMES = 1 + OPENING_FILES * LoadingMock::FILE_FRAMES + 3;
+constexpr int GAME_INIT_FRAMES = 1 + 3 + 1;
+constexpr int STAGE_OPENING_FRAMES =
+    1 + OPENING_FILES * LoadingMock::FILE_FRAMES + 3;
+constexpr int OPENING_FRAMES = GAME_INIT_FRAMES + STAGE_OPENING_FRAMES;
 
 Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
   return Picture{
@@ -160,6 +163,7 @@ struct Street {
   GameSession session;
   effects::GameOptions options;
   std::unique_ptr<StreetStage> stage;
+  bool afterDrive = false;
 
   explicit Street(LevelScript script) {
     host.script = std::move(script);
@@ -167,11 +171,12 @@ struct Street {
   }
 
   StreetStage &start() {
+    afterDrive = session.fromBonusDrive;
     stage = std::make_unique<StreetStage>(host, session, options);
     return *stage;
   }
 
-  void open() { run(OPENING_FRAMES); }
+  void open() { run(afterDrive ? STAGE_OPENING_FRAMES : OPENING_FRAMES); }
 
   uint8_t panelPixel(int x, int y) const {
     return stage->panel()->surface().pixel(x, y);
@@ -215,6 +220,25 @@ LevelScript oneEnemyAt(int trigger, EnemySlot slot, int length = 600) {
 } // namespace
 
 SCENARIO("A new game opens the street as states 09 and 10 do") {
+  GIVEN("The first frames of a new game") {
+    Street street(emptyStreet(600));
+    StreetStage &stage = street.start();
+
+    THEN("State 09's Screen Open, Double Buffer and Screen Open hold BASIC "
+         "five VBLs, then View shows the panel and STAGE INIT begins") {
+      street.run(1);
+      REQUIRE_FALSE(stage.isScreenShown());
+      REQUIRE_FALSE(stage.isPanelShown());
+      street.run(GAME_INIT_FRAMES - 1);
+      REQUIRE_FALSE(stage.isPanelShown());
+      REQUIRE(street.global(RO) == 0);
+      street.run(1);
+      REQUIRE(stage.isPanelShown());
+      REQUIRE_FALSE(stage.isScreenShown());
+      REQUIRE(street.global(RO) == 1);
+    }
+  }
+
   GIVEN("Franko chosen with the music on") {
     Street street(emptyStreet(600));
     StreetStage &stage = street.start();
@@ -584,8 +608,18 @@ SCENARIO("The run ends as state 11 and SYS decide") {
       street.global(RN) = 5;
       street.run(1, 0, SystemKey::Escape);
 
-      THEN("The score is zeroed and the game quits on the next pass") {
+      THEN("The score is zeroed and the next pass's _CLOSE shuts the play "
+           "screen, then the panel, two VBLs each, before the game quits") {
         REQUIRE(street.global(RN) == 0);
+        REQUIRE(stage.outcome() == StreetStage::Outcome::Playing);
+        street.run(1);
+        REQUIRE_FALSE(stage.isScreenShown());
+        REQUIRE(stage.isPanelShown());
+        street.run(1);
+        REQUIRE(stage.isPanelShown());
+        street.run(1);
+        REQUIRE_FALSE(stage.isPanelShown());
+        street.run(1);
         REQUIRE(stage.outcome() == StreetStage::Outcome::Playing);
         street.run(1);
         REQUIRE(stage.outcome() == StreetStage::Outcome::Quit);
@@ -597,8 +631,17 @@ SCENARIO("The run ends as state 11 and SYS decide") {
       street.global(RG) = -2;
       street.run(1);
 
-      THEN("Game over comes after state 19's Wait 200") {
+      THEN("After state 19's Wait 200, _CLOSE shuts the play screen and the "
+           "panel, two VBLs each, before game over") {
         street.run(199);
+        REQUIRE(stage.isScreenShown());
+        street.run(1);
+        REQUIRE_FALSE(stage.isScreenShown());
+        REQUIRE(stage.isPanelShown());
+        street.run(2);
+        REQUIRE_FALSE(stage.isPanelShown());
+        REQUIRE(stage.outcome() == StreetStage::Outcome::Playing);
+        street.run(1);
         REQUIRE(stage.outcome() == StreetStage::Outcome::Playing);
         street.run(1);
         REQUIRE(stage.outcome() == StreetStage::Outcome::GameOver);
@@ -628,8 +671,12 @@ SCENARIO("The run ends as state 11 and SYS decide") {
     StreetStage &stage = street.start();
     street.run(OPENING_FRAMES + 1 + LoadingMock::FILE_FRAMES);
 
-    THEN("Escape quits at once") {
+    THEN("Escape closes the play screen at once and quits after _CLOSE") {
       street.run(1, 0, SystemKey::Escape);
+      REQUIRE_FALSE(stage.isScreenShown());
+      street.run(3);
+      REQUIRE(stage.outcome() == StreetStage::Outcome::Playing);
+      street.run(1);
       REQUIRE(stage.outcome() == StreetStage::Outcome::Quit);
     }
 
@@ -740,10 +787,20 @@ SCENARIO("The composed frame shows the play screen over the panel") {
     std::vector<uint32_t> frame;
     stage.compose(frame);
 
-    THEN("Screen 0 is still hidden, so only the border and the strip show") {
+    THEN("Before state 09's View only the border shows") {
       REQUIRE(frame[0] == 0xFF555555u);
-      REQUIRE(frame[221 * 304 + 303] == 0xFF555555u);
-      REQUIRE(frame[(223 + 10) * 304 + 101] == 0xFFDDDDDDu);
+      REQUIRE(frame[(223 + 10) * 304 + 101] == 0xFF555555u);
+    }
+
+    WHEN("View has run") {
+      street.run(GAME_INIT_FRAMES);
+      stage.compose(frame);
+
+      THEN("Screen 0 is still hidden, so only the border and the strip show") {
+        REQUIRE(frame[0] == 0xFF555555u);
+        REQUIRE(frame[221 * 304 + 303] == 0xFF555555u);
+        REQUIRE(frame[(223 + 10) * 304 + 101] == 0xFFDDDDDDu);
+      }
     }
   }
 }
@@ -809,10 +866,10 @@ SCENARIO("F4 and F3 switch the display as SYS does") {
 }
 
 SCENARIO("A stage's files load one by one as LADUJ and CZEKAJ show them") {
-  GIVEN("A new game") {
+  GIVEN("A new game past state 09") {
     Street street(emptyStreet(600));
     StreetStage &stage = street.start();
-    street.run(1);
+    street.run(GAME_INIT_FRAMES + 1);
 
     THEN("ERA has stopped the music and the tune's file is being read") {
       REQUIRE(street.host.musicStops == 1);

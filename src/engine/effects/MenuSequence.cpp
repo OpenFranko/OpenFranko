@@ -53,6 +53,9 @@ constexpr int MACH_WAIT = 40;
 constexpr int LEAVING_FADE_AT = 50;
 constexpr int LEAVING_FADE_SPEED = 3;
 constexpr int LEAVING_CLOSE_AT = 95;
+constexpr int UNPACK_VBLS = 1;
+constexpr int DOUBLE_BUFFER_VBLS = 3;
+constexpr int SCREEN_CLOSE_VBLS = 2;
 
 const std::vector<AmalMotion::Move> FLY_RIGHT = {{88, 16}, {8, 8}};
 const std::vector<AmalMotion::Move> FLY_LEFT = {{-88, 16}, {-8, 8}};
@@ -69,8 +72,10 @@ int iconImage(const Icon &icon, const GameOptions &options) {
 
 } // namespace
 
-MenuSequence::MenuSequence(GameOptions &options, AmigaPalette palette)
-    : m_options(options), m_palette(std::move(palette)) {
+MenuSequence::MenuSequence(GameOptions &options, AmigaPalette palette,
+                           int otherScreens)
+    : m_options(options), m_palette(std::move(palette)),
+      m_otherScreens(otherScreens) {
   for (const Icon &icon : ICONS) {
     bob(icon.bob) = {true, icon.left ? LEFT_OUTSIDE : RIGHT_OUTSIDE, icon.y,
                      iconImage(icon, m_options), false};
@@ -101,6 +106,9 @@ void MenuSequence::advance(const Joystick &joystick) {
 void MenuSequence::resumeAfterAttract() {
   m_attractDue = false;
   m_timer = 0;
+  m_resume = Resume::Choosing;
+  m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+  m_busy = true;
 }
 
 const std::array<MenuSequence::Bob, MenuSequence::BOBS> &
@@ -119,14 +127,19 @@ const std::string &MenuSequence::keysRead() const { return m_keysRead; }
 
 bool MenuSequence::isAttractDue() const { return m_attractDue; }
 
+bool MenuSequence::isScreenShown() const { return m_screenShown; }
+
 bool MenuSequence::isFinished() const { return m_phase == Phase::Finished; }
 
 void MenuSequence::runScript(const Joystick &joystick) {
   if (m_resume != Resume::Nothing) {
     if (m_frame < m_resumeFrame) {
-      m_keyboard.sleep();
+      if (!m_busy) {
+        m_keyboard.sleep();
+      }
       return;
     }
+    m_busy = false;
     const Resume resume = std::exchange(m_resume, Resume::Nothing);
     m_timer = 0;
     if (resume == Resume::Hand) {
@@ -138,8 +151,19 @@ void MenuSequence::runScript(const Joystick &joystick) {
     }
   }
 
+  if (m_phase == Phase::Unpacking) {
+    if (m_frame - m_phaseStart < UNPACK_VBLS + DOUBLE_BUFFER_VBLS) {
+      return;
+    }
+    m_screenShown = true;
+    m_phase = Phase::Opening;
+    m_phaseStart = m_frame;
+  }
+
   const int time = m_frame - m_phaseStart;
   switch (m_phase) {
+  case Phase::Unpacking:
+    break;
   case Phase::Opening:
     if (time % ICON_PAIR_EVERY == 0 && time / ICON_PAIR_EVERY < ROWS) {
       flyIcons(time / ICON_PAIR_EVERY, true);
@@ -165,10 +189,17 @@ void MenuSequence::runScript(const Joystick &joystick) {
                     AmigaPalette(m_palette.size(), 0));
     }
     if (time == LEAVING_CLOSE_AT) {
-      m_phase = Phase::Finished;
       for (Bob &shown : m_bobs) {
         shown.shown = false;
       }
+      m_screenShown = false;
+      m_phase = Phase::Closing;
+      m_phaseStart = m_frame;
+    }
+    break;
+  case Phase::Closing:
+    if (time == SCREEN_CLOSE_VBLS * (1 + m_otherScreens)) {
+      m_phase = Phase::Finished;
     }
     break;
   case Phase::Finished:

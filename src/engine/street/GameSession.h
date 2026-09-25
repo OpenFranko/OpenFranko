@@ -55,6 +55,7 @@ struct GameSession {
   std::string textBuffer = HighScoreTable::FILE_NAME;
   int stageReached = 0;
   bool fromBonusDrive = false;
+  bool nameScreenOpen = false;
   DriveCarryOver lastDrive;
   HighScoreTable highScores;
   std::optional<StreetExit> streetExit;

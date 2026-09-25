@@ -40,7 +40,8 @@ public:
   static constexpr std::size_t BOBS = 10;
   static constexpr int ATTRACT_AFTER = 300;
 
-  MenuSequence(GameOptions &options, AmigaPalette palette);
+  MenuSequence(GameOptions &options, AmigaPalette palette,
+               int otherScreens = 0);
 
   void press(char key);
   void setMouseButton(bool down);
@@ -53,10 +54,11 @@ public:
   const AmigaPalette &palette() const;
   const std::string &keysRead() const;
   bool isAttractDue() const;
+  bool isScreenShown() const;
   bool isFinished() const;
 
 private:
-  enum class Phase { Opening, Choosing, Leaving, Finished };
+  enum class Phase { Unpacking, Opening, Choosing, Leaving, Closing, Finished };
   enum class Resume { Nothing, Hand, Choosing, Leaving };
 
   void runScript(const Joystick &joystick);
@@ -80,7 +82,7 @@ private:
   std::array<std::optional<CreditScroll>, 3> m_credits{};
   InkeyBuffer m_keyboard;
   std::string m_keysRead;
-  Phase m_phase = Phase::Opening;
+  Phase m_phase = Phase::Unpacking;
   Resume m_resume = Resume::Nothing;
   int m_frame = 0;
   int m_phaseStart = 0;
@@ -90,6 +92,9 @@ private:
   int m_row = 0;
   bool m_attractDue = false;
   bool m_mouseButton = false;
+  bool m_screenShown = false;
+  bool m_busy = false;
+  int m_otherScreens = 0;
 };
 
 } // namespace effects

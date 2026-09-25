@@ -11,6 +11,7 @@ namespace {
 
 constexpr int RO = 14;
 constexpr int MACH_WAIT = 40;
+constexpr int SCREEN_CLOSE = 2;
 constexpr int16_t JOY_LEFT = 4;
 constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
@@ -190,23 +191,27 @@ SCENARIO("Fire waggles the hand through MACH, then the choice is taken") {
         REQUIRE(choice.scene.isContinueChosen());
       }
 
-      THEN("After Wait 40 the run resumes one stage back from ETAP") {
+      THEN("After Wait 40, Screen Close 1 holds two VBLs, then the run "
+           "resumes one stage back from ETAP") {
         choice.run(MACH_WAIT - 22);
         REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::Choosing);
         REQUIRE(choice.scene.isShown());
         choice.run(1);
+        REQUIRE_FALSE(choice.scene.isShown());
+        REQUIRE_FALSE(choice.scene.bobs().isActive(ContinueScene::HAND));
+        choice.run(1);
+        REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::Choosing);
+        choice.run(1);
         REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::Continue);
         REQUIRE(choice.session.stageReached == 0);
         REQUIRE(choice.session.registers[RO] == 0);
-        REQUIRE_FALSE(choice.scene.isShown());
-        REQUIRE_FALSE(choice.scene.bobs().isActive(ContinueScene::HAND));
       }
     }
 
     WHEN("NIE is fired") {
       choice.run(1, JOY_RIGHT);
       choice.run(1, JOY_FIRE);
-      choice.run(MACH_WAIT);
+      choice.run(MACH_WAIT + SCREEN_CLOSE);
 
       THEN("It is back to the menu with the stage left alone") {
         REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::NewGame);

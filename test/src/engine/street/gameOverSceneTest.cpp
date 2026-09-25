@@ -329,10 +329,25 @@ SCENARIO("KLIKER, Fade 5 and SCICH close the scene") {
           REQUIRE(graveyard.host.musicStops == 2);
         }
 
-        THEN("Wait 100 follows, then the screens close to a black border") {
-          REQUIRE(finished == 63 + 1 + 100);
+        THEN("Wait 100 follows, then _CLOSE's two VBLs end on a black "
+             "border") {
+          REQUIRE(finished == 63 + 1 + 100 + 2);
           REQUIRE_FALSE(graveyard.scene.isShown());
           REQUIRE(graveyard.pixel(300, 0) == 0xFF000000u);
+        }
+      }
+
+      AND_WHEN("It runs until the screen closes") {
+        const int closed = graveyard.runUntil(
+            [&] { return !graveyard.scene.isShown(); }, 1000);
+
+        THEN("_CLOSE hides it after Wait 100 and holds BASIC two VBLs") {
+          REQUIRE(closed == 63 + 1 + 100);
+          REQUIRE_FALSE(graveyard.scene.isFinished());
+          graveyard.run(1);
+          REQUIRE_FALSE(graveyard.scene.isFinished());
+          graveyard.run(1);
+          REQUIRE(graveyard.scene.isFinished());
         }
       }
     }

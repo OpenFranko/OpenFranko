@@ -51,6 +51,7 @@ private:
     Click,
     MusicFade,
     Hold,
+    Closed,
     Finished
   };
   enum class Flow { Continue, Yield };
@@ -65,7 +66,7 @@ private:
   Flow click(int16_t joystick);
   Flow musicFade();
   Flow hold();
-  void finish();
+  void closeGraveyard();
 
   StreetHost &m_host;
   LoadingMock m_loading;

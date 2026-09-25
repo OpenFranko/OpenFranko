@@ -37,12 +37,13 @@ public:
   const effects::AmigaPalette &palette() const;
 
 private:
-  enum class Step { Open, Choose, Chosen, Finished };
+  enum class Step { Open, Choose, Chosen, Closed, Finished };
   enum class Flow { Continue, Yield };
 
   void open();
   Flow choose(int16_t joystick);
   void close();
+  void leave();
   void redraw();
 
   GameSession &m_session;

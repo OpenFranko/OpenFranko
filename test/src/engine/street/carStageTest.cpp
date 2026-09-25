@@ -654,6 +654,8 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
 
       THEN("The score is thrown away and the game quits") {
         REQUIRE(stage.outcome() == CarStage::Outcome::Quit);
+        REQUIRE_FALSE(stage.isScreenShown());
+        REQUIRE_FALSE(stage.isPanelShown());
         REQUIRE_FALSE(drive.session.fromBonusDrive);
         REQUIRE(drive.global(RN) == 0);
         REQUIRE(drive.global(RO) == -1);
@@ -666,9 +668,16 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
       drive.runUntil([&] { return !stage.isDriving(); }, PASS_LIMIT);
       drive.run(2);
 
-      THEN("Game over follows Wait 200") {
+      THEN("Game over follows Wait 200 and _CLOSE's four VBLs") {
         REQUIRE(stage.outcome() == CarStage::Outcome::Playing);
         drive.run(199);
+        REQUIRE(stage.isScreenShown());
+        drive.run(1);
+        REQUIRE_FALSE(stage.isScreenShown());
+        REQUIRE(stage.isPanelShown());
+        drive.run(2);
+        REQUIRE_FALSE(stage.isPanelShown());
+        drive.run(1);
         REQUIRE(stage.outcome() == CarStage::Outcome::Playing);
         drive.run(1);
         REQUIRE(stage.outcome() == CarStage::Outcome::GameOver);

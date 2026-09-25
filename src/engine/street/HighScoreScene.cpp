@@ -22,6 +22,9 @@ constexpr int FIRST_IMAGE = 1;
 
 constexpr int FULL_VOLUME = 63;
 constexpr int MUSIC_START_WAIT = 2;
+constexpr int UNPACK_VBLS = 1;
+constexpr int SCREEN_OPEN_VBLS = 1;
+constexpr int SCREEN_CLOSE_VBLS = 2;
 
 constexpr std::size_t COLORS = 32;
 constexpr effects::AmigaColor BLACK = 0x000;
@@ -221,8 +224,8 @@ HighScoreScene::Flow HighScoreScene::loaded() {
   m_palette = m_picturePalette;
   m_palette.resize(COLORS, BLACK);
   m_round = 0;
-  m_step = Step::Dim;
-  return Flow::Continue;
+  m_session.nameScreenOpen = true;
+  return wait(UNPACK_VBLS + SCREEN_OPEN_VBLS, Step::Dim);
 }
 
 HighScoreScene::Flow HighScoreScene::dim() {
@@ -313,8 +316,8 @@ HighScoreScene::Flow HighScoreScene::entry(char key) {
     }
   } else if (typed == RETURN) {
     commit();
-    m_step = Step::Hold;
-    return Flow::Continue;
+    m_session.nameScreenOpen = false;
+    return wait(SCREEN_CLOSE_VBLS, Step::Hold);
   }
   return Flow::Yield;
 }

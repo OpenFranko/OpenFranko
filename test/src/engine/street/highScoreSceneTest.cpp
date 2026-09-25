@@ -18,8 +18,9 @@ constexpr int RO = 14;
 
 constexpr int MUSIC = 1 + LoadingMock::FILE_FRAMES;
 constexpr int LOADED = MUSIC + 2 + 3 * LoadingMock::FILE_FRAMES;
-constexpr int DIMMED = LOADED + 13;
-constexpr int RELIT = LOADED + 16;
+constexpr int OPENED = LOADED + 2;
+constexpr int DIMMED = OPENED + 13;
+constexpr int RELIT = OPENED + 16;
 constexpr int ENTRY = RELIT + 100;
 constexpr int CURSOR_IMAGE = 40;
 constexpr uint8_t PAPER = 0;
@@ -263,8 +264,12 @@ SCENARIO("HISHOW dims the picture four steps, relights 29-31, draws upwards") {
       REQUIRE(board.session.highScores.score(0) == 12);
     }
 
-    THEN("Auto View Off keeps the screen hidden until BACK's View") {
+    THEN("Unpack 9 To 1 and Screen Open 7 wait a VBL each, and Auto View Off "
+         "keeps the screen hidden until BACK's View") {
       REQUIRE_FALSE(board.scene.isShown());
+      board.run(OPENED - LOADED);
+      REQUIRE_FALSE(board.scene.isShown());
+      REQUIRE(board.session.nameScreenOpen);
       board.run(1);
       REQUIRE(board.scene.isShown());
       REQUIRE(board.scene.palette()[3] == 0xEEE);
@@ -400,13 +405,15 @@ SCENARIO("The name is typed over the row the score went into") {
         REQUIRE(board.session.textBuffer == "N O            ");
       }
 
-      THEN("Wait 300, Fade 2 and Wait 30 lead to a black Cls 0") {
+      THEN("Screen Close 7 takes two VBLs, then Wait 300, Fade 2 and Wait 30 "
+           "lead to a black Cls 0") {
+        REQUIRE_FALSE(board.session.nameScreenOpen);
         const int frames = board.runUntil(
             [&] {
               return board.scene.outcome() != HighScoreScene::Outcome::Running;
             },
             400);
-        REQUIRE(frames == 330);
+        REQUIRE(frames == 2 + 330);
         REQUIRE(board.scene.outcome() == HighScoreScene::Outcome::Continue);
         REQUIRE(board.scene.palette() == effects::AmigaPalette(32, 0x000));
         REQUIRE(board.ink(56, 32) == 0);
@@ -427,6 +434,12 @@ SCENARIO("A score below the whole table is only shown") {
       REQUIRE(board.scene.slot() == HighScoreTable::NO_SLOT);
       REQUIRE_FALSE(board.scene.isEntering());
       REQUIRE(board.session.highScores.bytes() == before);
+    }
+
+    THEN("Screen 7 is never closed, so it stays open for a later _CLOSE") {
+      board.run(400);
+      REQUIRE(board.scene.outcome() == HighScoreScene::Outcome::Continue);
+      REQUIRE(board.session.nameScreenOpen);
     }
 
     THEN("Fade 2 steps from the frame after Wait 300, one step per two") {

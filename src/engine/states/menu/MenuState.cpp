@@ -102,7 +102,8 @@ MenuState::MenuState(systems::VideoSystem &videoSystem,
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_options(options),
       m_session(session),
-      m_menu(options, openMenuScreen(videoSystem, options.ntsc)) {
+      m_menu(options, openMenuScreen(videoSystem, options.ntsc),
+             session.nameScreenOpen ? 1 : 0) {
   for (int image = FIRST_MENU_IMAGE; image <= LAST_MENU_IMAGE; ++image) {
     m_videoSystem.loadMaskedImage(menuBobName(image),
                                   spritePath("0034", image - FIRST_MENU_IMAGE));
@@ -165,6 +166,7 @@ std::optional<EngineStateEnum> MenuState::update() {
     switchStandard();
   }
   if (m_menu.isFinished()) {
+    m_session.nameScreenOpen = false;
     m_session.registers[RO] = 0;
     street::applyCheatCodes(m_session);
     return EngineStateEnum::CharacterSelection;
@@ -213,7 +215,7 @@ void MenuState::startAttract() {
 
 void MenuState::drawMenu() {
   m_videoSystem.switchScreen(MENU_SCREEN_ID);
-  if (m_menu.isFinished()) {
+  if (m_menu.isFinished() || !m_menu.isScreenShown()) {
     m_videoSystem.fillScreen(0, 0, 0);
     return;
   }
