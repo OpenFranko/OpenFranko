@@ -13,6 +13,7 @@ constexpr auto PICTURE_PATH = "assets/03B9.bmp";
 constexpr int SCREEN_ID = 0;
 constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
+constexpr int DISPLAY_LINE = 40;
 constexpr std::size_t SCREEN_COLORS = 32;
 
 struct Sprite {
@@ -60,9 +61,12 @@ CharacterSelectionState::CharacterSelectionState(
     street::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_session(session),
-      m_selection(options, session.nameScreenOpen ? 1 : 0) {
-  m_videoSystem.setNtsc(false);
-  m_videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, SCREEN_HEIGHT);
+      m_selection(options, session.nameScreenOpen ? 1 : 0),
+      m_rows(
+          effects::visibleRows(effects::pictureLine(DISPLAY_LINE, options.ntsc),
+                               SCREEN_HEIGHT, options.ntsc)) {
+  m_videoSystem.setNtsc(options.ntsc);
+  m_videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, m_rows.count);
   m_videoSystem.switchScreen(SCREEN_ID);
   m_videoSystem.loadIndexedImage(PICTURE, PICTURE_PATH);
   auto palette = m_videoSystem.getImagePalette(PICTURE);
@@ -133,13 +137,13 @@ void CharacterSelectionState::draw() {
     m_videoSystem.fillScreen(0, 0, 0);
     return;
   }
-  m_videoSystem.drawImage(PICTURE, 0, 0);
+  m_videoSystem.drawImage(PICTURE, 0, -m_rows.first);
   for (const effects::CharacterSelection::Bob *bob :
        {&m_selection.face(), &m_selection.hand()}) {
     if (bob->shown && bob->image != HIDDEN_IMAGE) {
-      m_videoSystem.drawImage(spriteName(bob->image), bob->x, bob->y,
-                              bob->flipped ? SDL_FLIP_HORIZONTAL
-                                           : SDL_FLIP_NONE);
+      m_videoSystem.drawImage(
+          spriteName(bob->image), bob->x, bob->y - m_rows.first,
+          bob->flipped ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
     }
   }
 }

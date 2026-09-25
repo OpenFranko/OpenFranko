@@ -4,6 +4,7 @@
 #include "../../../systems/AudioSystem.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
+#include "../../effects/AmigaDisplay.h"
 #include "../../effects/CharacterSelection.h"
 #include "../../effects/GameOptions.h"
 #include "../../street/GameSession.h"
@@ -35,6 +36,7 @@ private:
   systems::ControllerSystem &m_controllerSystem;
   street::GameSession &m_session;
   effects::CharacterSelection m_selection;
+  effects::VisibleRows m_rows;
 };
 
 } // namespace characterSelection
