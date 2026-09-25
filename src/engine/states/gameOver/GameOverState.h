@@ -4,6 +4,8 @@
 #include "../../../systems/AudioSystem.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
+#include "../../effects/AmigaDisplay.h"
+#include "../../effects/GameOptions.h"
 #include "../../street/GameOverScene.h"
 #include "../IEngineState.h"
 #include "../level1/EngineStreetHost.h"
@@ -21,7 +23,8 @@ class GameOverState : public IEngineState {
 public:
   GameOverState(systems::VideoSystem &videoSystem,
                 systems::AudioSystem &audioSystem,
-                systems::ControllerSystem &controllerSystem);
+                systems::ControllerSystem &controllerSystem,
+                const effects::GameOptions &options);
   ~GameOverState();
 
   std::optional<EngineStateEnum> update() override;
@@ -33,6 +36,7 @@ private:
   systems::ControllerSystem &m_controllerSystem;
   level1::EngineStreetHost m_host;
   street::GameOverScene m_scene;
+  effects::VisibleRows m_rows;
   std::vector<uint32_t> m_frame;
 };
 

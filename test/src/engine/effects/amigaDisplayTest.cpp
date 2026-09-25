@@ -8,6 +8,7 @@ namespace {
 constexpr int SCREEN_HEIGHT = 256;
 constexpr int HISCORE_LINE = 50;
 constexpr int ATTRACT_LINE = 40;
+constexpr int GAME_OVER_LINE = 45;
 
 } // namespace
 
@@ -37,10 +38,18 @@ SCENARIO("NTSC pictures go 27 lines higher, as the attract's 40+27*SYS") {
     REQUIRE(pictureLine(ATTRACT_LINE, true) == 13);
   }
 
-  THEN("Raised, the hiscore screen shows rows 3 to 238") {
+  THEN("Raised, the hiscore screen and the ending from line 50 show rows 3 "
+       "to 238") {
     const VisibleRows rows =
         visibleRows(pictureLine(HISCORE_LINE, true), SCREEN_HEIGHT, true);
     REQUIRE(rows.first == 3);
+    REQUIRE(rows.count == 236);
+  }
+
+  THEN("Raised, game over's screen from line 45 shows rows 8 to 243") {
+    const VisibleRows rows =
+        visibleRows(pictureLine(GAME_OVER_LINE, true), SCREEN_HEIGHT, true);
+    REQUIRE(rows.first == 8);
     REQUIRE(rows.count == 236);
   }
 }

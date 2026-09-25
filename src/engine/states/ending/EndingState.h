@@ -4,6 +4,8 @@
 #include "../../../systems/AudioSystem.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
+#include "../../effects/AmigaDisplay.h"
+#include "../../effects/GameOptions.h"
 #include "../../street/EndingScene.h"
 #include "../../street/GameSession.h"
 #include "../IEngineState.h"
@@ -23,6 +25,7 @@ public:
   EndingState(systems::VideoSystem &videoSystem,
               systems::AudioSystem &audioSystem,
               systems::ControllerSystem &controllerSystem,
+              const effects::GameOptions &options,
               street::GameSession &session);
   ~EndingState();
 
@@ -35,6 +38,7 @@ private:
   systems::ControllerSystem &m_controllerSystem;
   level1::EngineStreetHost m_host;
   street::EndingScene m_scene;
+  effects::VisibleRows m_rows;
   std::vector<uint32_t> m_frame;
 };
 

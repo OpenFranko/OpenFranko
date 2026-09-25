@@ -133,11 +133,11 @@ void Engine::switchState(states::EngineStateEnum nextState) {
     break;
   case states::EngineStateEnum::Ending:
     currentState = std::make_unique<states::ending::EndingState>(
-        videoSystem, audioSystem, controllerSystem, session);
+        videoSystem, audioSystem, controllerSystem, options, session);
     break;
   case states::EngineStateEnum::GameOver:
     currentState = std::make_unique<states::gameOver::GameOverState>(
-        videoSystem, audioSystem, controllerSystem);
+        videoSystem, audioSystem, controllerSystem, options);
     break;
   case states::EngineStateEnum::HighScore:
     currentState = std::make_unique<states::highScore::HighScoreState>(

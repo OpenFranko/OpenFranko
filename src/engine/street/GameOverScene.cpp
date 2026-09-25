@@ -27,7 +27,7 @@ constexpr int TITLE_Y = 80;
 constexpr int HAND_X = 820;
 constexpr int HAND_Y = 209;
 
-constexpr int SCREEN_TOP = 45;
+constexpr int SCREEN_TOP = GameOverScene::DISPLAY_LINE;
 constexpr int RAINBOW_ENTRIES = 1000;
 constexpr int RAINBOW_BASE = 96;
 constexpr int RAINBOW_Y = 0;

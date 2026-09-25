@@ -25,6 +25,7 @@ public:
   static constexpr int HEIGHT = 256;
   static constexpr int PICTURE_WIDTH = 1008;
   static constexpr int PICTURE_HEIGHT = 256;
+  static constexpr int DISPLAY_LINE = 45;
   static constexpr int PAN_END = 680;
   static constexpr int FILES = 3;
 

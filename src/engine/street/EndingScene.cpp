@@ -1,6 +1,7 @@
 #include "EndingScene.h"
 
 #include "../amal/Actors.h"
+#include "../effects/AmigaDisplay.h"
 #include "StageFrame.h"
 
 #include <algorithm>
@@ -97,9 +98,10 @@ effects::AmigaPalette beat(effects::AmigaColor ink, effects::AmigaColor shade) {
 
 } // namespace
 
-EndingScene::EndingScene(StreetHost &host, GameSession &session)
+EndingScene::EndingScene(StreetHost &host, GameSession &session, bool ntsc)
     : m_host(host), m_session(session), m_machine(session.registers),
-      m_display(0, 0), m_border(STAGE_BORDER) {}
+      m_display(0, 0), m_border(STAGE_BORDER), m_ntsc(ntsc),
+      m_displayLine(effects::pictureLine(DISPLAY_LINE, ntsc)) {}
 
 void EndingScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
@@ -131,7 +133,7 @@ void EndingScene::compose(std::vector<uint32_t> &frame) const {
     const std::size_t mask = m_stage->palette.size() - 1;
     const int rowsPerLine = m_stage->laced ? 2 : 1;
     for (int row = 0; row < HEIGHT; ++row) {
-      const int y = (DISPLAY_LINE + row - m_stage->displayY) * rowsPerLine;
+      const int y = (m_displayLine + row - m_stage->displayY) * rowsPerLine;
       if (y < 0 || y >= display.height()) {
         continue;
       }
@@ -148,7 +150,7 @@ void EndingScene::compose(std::vector<uint32_t> &frame) const {
     const IndexedSurface &surface = *shown;
     const effects::AmigaPalette &colors = panelPalette();
     for (int y = 0; y < StatusPanel::VISIBLE_HEIGHT; ++y) {
-      const int row = m_panelTop - DISPLAY_LINE + y;
+      const int row = m_panelTop - m_displayLine + y;
       if (row < 0 || row >= HEIGHT) {
         continue;
       }
@@ -169,7 +171,7 @@ void EndingScene::compose(std::vector<uint32_t> &frame) const {
             : (number == m_bobScreen ? m_display : screen.surface);
     const std::size_t mask = screen.palette.size() - 1;
     for (int y = 0; y < surface.height(); ++y) {
-      const int row = screen.top - DISPLAY_LINE + y;
+      const int row = screen.top - m_displayLine + y;
       if (row < 0 || row >= HEIGHT) {
         continue;
       }
@@ -213,6 +215,8 @@ bool EndingScene::isShown(int screen) const {
 }
 
 bool EndingScene::isStageShown() const { return m_stageShown; }
+
+int EndingScene::displayLine() const { return m_displayLine; }
 
 effects::AmigaColor EndingScene::border() const { return m_border; }
 
@@ -575,7 +579,7 @@ void EndingScene::openScreen(int number, int top, int height,
   Screen &screen = m_screens[static_cast<std::size_t>(number)];
   screen.open = true;
   screen.hidden = false;
-  screen.top = top;
+  screen.top = effects::pictureLine(top, m_ntsc);
   screen.surface = IndexedSurface(WIDTH, height);
   screen.palette = std::move(palette);
   if (number == 0) {

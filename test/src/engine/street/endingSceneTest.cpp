@@ -150,9 +150,9 @@ public:
 struct Ending {
   FakeHost host;
   GameSession session;
-  EndingScene scene{host, session};
+  EndingScene scene;
 
-  Ending() {
+  explicit Ending(bool ntsc = false) : scene(host, session, ntsc) {
     session.registers[RF] = 40;
     session.registers[RO] = 3;
     session.registers[RN] = 99;
@@ -255,6 +255,23 @@ SCENARIO("CONGRA shows the stage where 320x512 or NTSC left it") {
               toArgb(panelPalette()[SCORE_COLOR]));
       REQUIRE(ending.pixel(101, 262 - EndingScene::DISPLAY_LINE) ==
               toArgb(0x555));
+    }
+  }
+
+  GIVEN("The NTSC lines with the ending in NTSC too") {
+    Ending ending(true);
+    ending.session.bossExit->displayY = 7;
+    ending.session.bossExit->panelY = 230;
+    ending.run(1);
+
+    THEN("Its frame starts 27 lines higher while the stage keeps its lines") {
+      const int top = EndingScene::DISPLAY_LINE - 27;
+      REQUIRE(ending.scene.displayLine() == top);
+      REQUIRE(ending.pixel(100, 100 + 7 - top) ==
+              toArgb(levelPalette(false)[BOB_COLOR]));
+      REQUIRE(ending.pixel(101, 230 - top) ==
+              toArgb(panelPalette()[SCORE_COLOR]));
+      REQUIRE(ending.pixel(101, 262 - top) == toArgb(0x555));
     }
   }
 }

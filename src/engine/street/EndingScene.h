@@ -33,7 +33,7 @@ public:
   static constexpr int FILES = 4;
   static constexpr int SECOND_DANCE_PAGE = 10;
 
-  EndingScene(StreetHost &host, GameSession &session);
+  EndingScene(StreetHost &host, GameSession &session, bool ntsc = false);
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
@@ -46,6 +46,7 @@ public:
   int page() const;
   bool isShown(int screen) const;
   bool isStageShown() const;
+  int displayLine() const;
   effects::AmigaColor border() const;
   const IndexedSurface &screen(int number) const;
   const effects::AmigaPalette &palette(int number) const;
@@ -148,6 +149,8 @@ private:
   int m_holdUntil = -1;
   int m_count = 0;
   int m_page = 0;
+  bool m_ntsc = false;
+  int m_displayLine = DISPLAY_LINE;
 };
 
 } // namespace street
