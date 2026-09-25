@@ -2,6 +2,7 @@
 #define ENGINE_STATES_MIRAGESTATE_H_
 
 #include "../../../systems/VideoSystem.h"
+#include "../../effects/AmigaDisplay.h"
 #include "../../effects/FotoSequence.h"
 #include "../IEngineState.h"
 
@@ -20,6 +21,7 @@ public:
 
 private:
   systems::VideoSystem &m_videoSystem;
+  effects::VisibleRows m_rows;
   effects::FotoSequence m_sequence;
 };
 

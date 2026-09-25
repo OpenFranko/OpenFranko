@@ -111,7 +111,7 @@ bool IndexedSurface::intersects(int left, int top, int width,
 }
 
 void IndexedSurface::draw(const Picture &picture, int left, int top, bool flipX,
-                          bool flipY) {
+                          bool flipY, bool opaque) {
   for (int row = 0; row < picture.height; ++row) {
     const int y = top + row;
     if (y < 0 || y >= m_height) {
@@ -125,7 +125,7 @@ void IndexedSurface::draw(const Picture &picture, int left, int top, bool flipX,
       }
       const int sourceColumn = flipX ? picture.width - 1 - column : column;
       const uint8_t value = picture.at(sourceColumn, sourceRow);
-      if (value != 0) {
+      if (value != 0 || opaque) {
         m_pixels[static_cast<std::size_t>(y * m_width + x)] = value;
       }
     }

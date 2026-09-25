@@ -13,7 +13,8 @@ include(GNUInstallDirs)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_image REQUIRED)
 find_package(SDL2_mixer REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS} ${SDL2_MIXER_INCLUDE_DIRS})
+pkg_check_modules(XMP REQUIRED IMPORTED_TARGET libxmp)
+include_directories(${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS} ${SDL2_MIXER_INCLUDE_DIRS} ${XMP_INCLUDE_DIRS})
 
 add_subdirectory(src)
 

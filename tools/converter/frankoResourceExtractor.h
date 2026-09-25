@@ -12,6 +12,8 @@ int validateDirectory(const std::string &dirPath);
 
 int processFile(const std::string &inputPath, const std::string &outDir);
 
+int processExecutable(const std::string &inputPath, const std::string &outDir);
+
 } // namespace frankoResourceExtractor
 } // namespace converter
 } // namespace tools

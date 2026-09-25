@@ -19,6 +19,8 @@ void run(CharacterSelection &selection, int frames,
   }
 }
 
+void unpack(CharacterSelection &selection) { run(selection, 1); }
+
 } // namespace
 
 SCENARIO("CharacterSelection chooses between Franko and Alex as TWARZ does") {
@@ -37,7 +39,17 @@ SCENARIO("CharacterSelection chooses between Franko and Alex as TWARZ does") {
       REQUIRE_FALSE(selection.face().shown);
     }
 
+    THEN("Unpack 9 To 0 holds the screen back a VBL, the joystick unread") {
+      REQUIRE_FALSE(selection.isScreenShown());
+      selection.advance(RIGHT);
+      REQUIRE_FALSE(selection.isScreenShown());
+      REQUIRE(options.character == Character::Franko);
+      selection.advance(NOTHING);
+      REQUIRE(selection.isScreenShown());
+    }
+
     WHEN("The joystick goes right") {
+      unpack(selection);
       selection.advance(RIGHT);
 
       THEN("The hand turns round to point at Alex") {
@@ -63,6 +75,7 @@ SCENARIO("CharacterSelection plays the confirmation as TWARZ does") {
     GameOptions options;
     options.music = false;
     CharacterSelection selection(options);
+    unpack(selection);
     selection.advance(FIRE);
 
     THEN("The hand starts to waggle at once") {
@@ -116,12 +129,19 @@ SCENARIO("CharacterSelection plays the confirmation as TWARZ does") {
       const bool finishedBefore = selection.isFinished();
       selection.advance(NOTHING);
 
-      THEN("The bobs go, the music stops without a fade and the state ends") {
+      THEN("The bobs go, the music stops without a fade, and _CLOSE drops "
+           "the screen two VBLs later and ends the state after four") {
         REQUIRE_FALSE(finishedBefore);
         REQUIRE_FALSE(selection.hand().shown);
         REQUIRE_FALSE(selection.face().shown);
         REQUIRE(selection.stopsMusic());
         REQUIRE_FALSE(selection.musicVolume().has_value());
+        REQUIRE(selection.isScreenShown());
+        run(selection, 2);
+        REQUIRE_FALSE(selection.isScreenShown());
+        run(selection, 1);
+        REQUIRE_FALSE(selection.isFinished());
+        run(selection, 1);
         REQUIRE(selection.isFinished());
       }
     }
@@ -131,6 +151,7 @@ SCENARIO("CharacterSelection plays the confirmation as TWARZ does") {
     GameOptions options;
     options.music = true;
     CharacterSelection selection(options);
+    unpack(selection);
     selection.advance(RIGHT);
     selection.advance(FIRE);
 
@@ -168,13 +189,40 @@ SCENARIO("CharacterSelection plays the confirmation as TWARZ does") {
         AND_WHEN("One more frame passes") {
           selection.advance(NOTHING);
 
-          THEN("Music Off, Mvolume 63, and the state ends") {
+          THEN("Music Off and Mvolume 63, then _CLOSE ends the state four "
+               "VBLs later") {
             REQUIRE(selection.stopsMusic());
             REQUIRE(selection.musicVolume() == 63);
+            REQUIRE(selection.isScreenShown());
+            run(selection, 3);
+            REQUIRE_FALSE(selection.isScreenShown());
+            REQUIRE_FALSE(selection.isFinished());
+            run(selection, 1);
             REQUIRE(selection.isFinished());
           }
         }
       }
+    }
+  }
+}
+
+SCENARIO("_CLOSE also shuts the screen the hiscore table left open") {
+  GIVEN("Screen 7 still open and Franko confirmed with the music off") {
+    GameOptions options;
+    options.music = false;
+    CharacterSelection selection(options, 1);
+    unpack(selection);
+    selection.advance(FIRE);
+    run(selection, 90);
+
+    THEN("Two screens close, eight VBLs, the picture gone after two") {
+      REQUIRE(selection.isScreenShown());
+      run(selection, 2);
+      REQUIRE_FALSE(selection.isScreenShown());
+      run(selection, 5);
+      REQUIRE_FALSE(selection.isFinished());
+      run(selection, 1);
+      REQUIRE(selection.isFinished());
     }
   }
 }

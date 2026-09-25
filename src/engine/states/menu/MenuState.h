@@ -29,9 +29,12 @@ public:
   std::optional<EngineStateEnum> update() override;
 
 private:
+  void advanceAttract(const effects::MenuSequence::Joystick &joystick);
+  void switchStandard();
   void startAttract();
   void drawMenu();
   void drawAttract();
+  void drawAttractPicture();
   void drawHiscoreRow(int row);
 
   systems::VideoSystem &m_videoSystem;
@@ -47,6 +50,8 @@ private:
       effects::AttractSequence::Kind::Title;
   effects::AmigaPalette m_menuPaletteShown;
   effects::AmigaPalette m_attractPaletteShown;
+  int m_attractTop = 0;
+  int m_attractClosing = 0;
 };
 
 } // namespace menu

@@ -27,11 +27,14 @@ public:
   effects::AmigaPalette loadPalette(int resource) override;
   std::vector<street::Picture> loadScenery(int resource) override;
   street::LevelScript loadLevelScript(int resource) override;
+  street::EndingCredits loadEndingCredits() override;
   street::Picture loadPanelPicture(int part) override;
   void loadMusic(int resource) override;
+  bool isMusicLoaded(int resource) const override;
   void playMusic() override;
   void stopMusic() override;
   void setMusicVolume(int volume) override;
+  void setMusicTempo(int tempo) override;
   void playSample(int bank, int sample, int voices) override;
   void playSampleAt(int bank, int sample, int voices, int frequency) override;
   void setSampleLoop(bool loop) override;
@@ -41,6 +44,7 @@ public:
 
 private:
   std::string resourcePath(int resource) const;
+  std::string musicPath(int resource) const;
   std::vector<street::Picture> loadFrames(int resource) const;
   void loadSamples(int resource, int bank);
   void clearSamples(int bank);

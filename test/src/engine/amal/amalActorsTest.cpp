@@ -220,6 +220,20 @@ SCENARIO("KONBOSS on stage 2 throws the boss overhead") {
   }
 }
 
+SCENARIO("KONBOSS on stage 3 walks the boss to the railing") {
+  THEN("The boss rests until R0 is set, then walks RU,RS in RT frames") {
+    REQUIRE(actors::bossRests() ==
+            "LA=75+RR;LR0=0;A:P;IR0=0JA;A0,(43+RR,5)(44+RR,5)(45+RR,5)(46+"
+            "RR,5);MRU,RS,RT;");
+    REQUIRE_NOTHROW(parse(actors::bossRests()));
+  }
+
+  THEN("His bubble hides on fire alone") {
+    REQUIRE(actors::bubbleUntilFire() == "A:P;IJ1<>16JA;LA=10;");
+    REQUIRE_NOTHROW(parse(actors::bubbleUntilFire()));
+  }
+}
+
 SCENARIO("The bonus drive builds each pedestrian from its first image") {
   THEN("A type starting at image 9 squashes through images $C and $D") {
     REQUIRE(actors::pedestrian(9) ==
@@ -240,5 +254,69 @@ SCENARIO("RACZKA's pointing hand waits on R1 and waggles four times") {
     REQUIRE(actors::pointingHand() ==
             "A:P;IR1=0JA;FR0=0T3;M4,0,2;M-4,0,2;NR0;LR1=0;JA;");
     REQUIRE_NOTHROW(parse(actors::pointingHand()));
+  }
+}
+
+SCENARIO("CONGRA's actors are the source's programs") {
+  THEN("Franko walks away through images 3 to 24, a pixel lower each") {
+    REQUIRE(actors::walkAway() == "FR0=3T24;LA=R0;LY=Y+1;M0,0,20;P;NR0;LA=26;");
+    REQUIRE_NOTHROW(parse(actors::walkAway()));
+  }
+
+  THEN("The break-dance is B$ and both C$ strings spliced as state 18 does") {
+    REQUIRE(
+        actors::breakDance() ==
+        "A6,($8004,10)($8005,10)($8006,10)($8007,10)($8008,10)($8009,10);M-320,"
+        "0,320;A1,($800A,1);M0,0,80;A1,($8011,1);M0,0,20;A6,(4,10)(5,10)(6,10)("
+        "7,10)(8,10)(9,10);M320,0,320;A1,(10,1);A12,($8012,10)($8013,10)($8014,"
+        "10)($8015,10)($8016,10)($8017,10);M-340,0,640;A1,(10,1);A6,(4,10)(5,"
+        "10)(6,10)(7,10)(8,10)(9,10);M400,0,400;A1,(10,1);A12,($800B,10)($800C,"
+        "10)($800D,10)($800E,10)($800F,10)($8010,10);M-200,0,400;A1,(10,1);A6,("
+        "4,10)(5,10)(6,10)(7,10)(8,10)(9,10);M140,0,140;A1,(10,1);A12,($8012,"
+        "10)($8013,10)($8014,10)($8015,10)($8016,10)($8017,10);M-330,0,660;A1,("
+        "10,1);M0,0,20;LA=17;M0,0,380;A1,(17,50)(11,50);A "
+        "4,(11,1)(12,1)(13,1)(14,1)(15,1)(16,1);M32,0,32;A4,(11,1)(12,1)(13,1)("
+        "14,1)(15,1)(16,1);M-16,0,16;A4,(11,1)(12,1)(13,1)(14,1)(15,1)(16,1);"
+        "M16,0,16;A4,(11,1)(12,1)(13,1)(14,1)(15,1)(16,1);M-16,0,16;A4,(11,1)("
+        "12,1)(13,1)(14,1)(15,1)(16,1);M16,0,16;A1,(4,10)(5,10)(6,10)(7,10)(8,"
+        "10)(9,10);M64,0,64;A1,(17,1);");
+    REQUIRE_NOTHROW(parse(actors::breakDance()));
+  }
+
+  THEN("The portraits wait 800, 1600 and 2400 frames before walking in") {
+    REQUIRE(actors::portraitEntrance(1) ==
+            "M0,0,800;M-310,0,580;M0,0,2080;M320,0,64;");
+    REQUIRE(actors::portraitEntrance(2) ==
+            "M0,0,1600;M-310,0,580;M0,0,1250;M320,0,64;");
+    REQUIRE(actors::portraitEntrance(3) ==
+            "M0,0,2400;M-310,0,580;M0,0,430;M320,0,64;");
+    for (int portrait = 1; portrait <= 3; ++portrait) {
+      REQUIRE_NOTHROW(parse(actors::portraitEntrance(portrait)));
+    }
+  }
+
+  THEN("The finale loops its dance and ends the program after 1000 frames") {
+    REQUIRE(
+        actors::danceFinale() ==
+        "A0,(27,10)(28,10)(29,10)(31,10)(29,10)(30,10)(31,10)(32,10)(33,10)(34,"
+        "10)($801D,10)($801F,10)($801D,10)($801E,10)($801F,10)($8020,10)($8021,"
+        "10)($8022,10)(34,10)(35,10)(36,10)(37,10)(38,10)(40,10)(41,10)($8028,"
+        "10)($8029,10)(40,10)(41,10)($8028,10)($8029,10)(40,10)(41,10)($8028,"
+        "10)($8029,10)(40,10)(41,10)($8028,10)($8029,10)(42,10)(38,10)(39,10)("
+        "35,10)(34,10)(24,10)(25,10)(26,10)(25,10)(24,10)(17,10)($8018,10)($"
+        "8019,10)($801A,10)($8019,10)($8018,10)($8011,10);M0,0,1000;");
+    REQUIRE_NOTHROW(parse(actors::danceFinale()));
+  }
+
+  THEN("The portraits then shuttle 448 px each way from staggered starts") {
+    REQUIRE(actors::portraitShuttle(1) ==
+            "LX=400;M-528,0,528;A:M448,0,448;M-448,0,448;JA;");
+    REQUIRE(actors::portraitShuttle(2) ==
+            "LX=550;M-678,0,678;A:M448,0,448;M-448,0,448;JA;");
+    REQUIRE(actors::portraitShuttle(3) ==
+            "LX=700;M-828,0,828;A:M448,0,448;M-448,0,448;JA;");
+    for (int portrait = 1; portrait <= 3; ++portrait) {
+      REQUIRE_NOTHROW(parse(actors::portraitShuttle(portrait)));
+    }
   }
 }

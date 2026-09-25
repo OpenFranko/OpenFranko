@@ -17,11 +17,16 @@ namespace engine {
 class Engine {
 public:
   Engine();
+  Engine(states::EngineStateEnum firstState,
+         street::GameSession startingSession);
   ~Engine();
 
   bool isRunning();
 
   void update();
+  void run();
+
+  int refreshRate() const;
 
 private:
   void updateState();
@@ -37,6 +42,7 @@ private:
 
   std::unique_ptr<states::IEngineState> currentState;
   bool running;
+  bool booting = false;
 };
 
 } // namespace engine

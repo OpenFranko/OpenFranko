@@ -18,6 +18,7 @@ public:
     int holdFrames;
     int fadeOutSpeed;
     int fadeOutFrames;
+    bool replacesScreen;
   };
 
   FotoSequence(AmigaPalette picturePalette, Timings timings);
@@ -27,14 +28,17 @@ public:
   void flash(std::size_t color, FlashSteps steps);
 
   const AmigaPalette &palette() const;
+  bool isShown() const;
   bool isFinished() const;
 
   int frame() const;
   int holdStart() const;
 
 private:
+  int whiteStart() const;
   int fadeInStart() const;
   int fadeOutStart() const;
+  int closeStart() const;
   int totalFrames() const;
 
   AmigaPalette m_picturePalette;

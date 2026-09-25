@@ -1,5 +1,8 @@
 #include "MenuState.h"
 
+#include "../../effects/AmigaDisplay.h"
+#include "../../street/CheatCodes.h"
+
 #include <cstddef>
 #include <cstdio>
 #include <string>
@@ -17,10 +20,12 @@ constexpr auto HISCORES_PATH = "assets/03B9.bmp";
 constexpr int MENU_SCREEN_ID = 0;
 constexpr int MENU_SCREEN_WIDTH = 368;
 constexpr int MENU_SCREEN_HEIGHT = 290;
+constexpr int MENU_DISPLAY_Y = 32;
 constexpr std::size_t MENU_COLORS = 16;
 constexpr int ATTRACT_SCREEN_ID = 1;
 constexpr int ATTRACT_SCREEN_WIDTH = 320;
 constexpr int ATTRACT_SCREEN_HEIGHT = 256;
+constexpr int ATTRACT_DISPLAY_Y = 40;
 constexpr std::size_t ATTRACT_COLORS = 32;
 
 constexpr int FIRST_MENU_IMAGE = 42;
@@ -39,6 +44,13 @@ constexpr int FIRST_ROW_Y = 32;
 constexpr int ROW_PITCH = 20;
 
 constexpr int RO = 14;
+
+void createMenuScreen(systems::VideoSystem &videoSystem, bool ntscDisplay) {
+  videoSystem.createScreen(
+      MENU_SCREEN_ID, MENU_SCREEN_WIDTH,
+      effects::visibleRows(MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay)
+          .count);
+}
 
 std::string spritePath(const char *resource, int index) {
   char path[64];
@@ -62,9 +74,10 @@ effects::AmigaPalette loadPicture(systems::VideoSystem &videoSystem,
   return palette;
 }
 
-effects::AmigaPalette openMenuScreen(systems::VideoSystem &videoSystem) {
-  videoSystem.createScreen(MENU_SCREEN_ID, MENU_SCREEN_WIDTH,
-                           MENU_SCREEN_HEIGHT);
+effects::AmigaPalette openMenuScreen(systems::VideoSystem &videoSystem,
+                                     bool ntscDisplay) {
+  videoSystem.setNtsc(ntscDisplay);
+  createMenuScreen(videoSystem, ntscDisplay);
   videoSystem.switchScreen(MENU_SCREEN_ID);
   return loadPicture(videoSystem, BACKDROP, BACKDROP_PATH, MENU_COLORS);
 }
@@ -88,7 +101,10 @@ MenuState::MenuState(systems::VideoSystem &videoSystem,
                      street::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_options(options),
-      m_session(session), m_menu(options, openMenuScreen(videoSystem)) {
+      m_session(session),
+      m_menu(options, openMenuScreen(videoSystem, options.ntsc),
+             session.keyboard) {
+  m_session.nameScreenOpen = false;
   for (int image = FIRST_MENU_IMAGE; image <= LAST_MENU_IMAGE; ++image) {
     m_videoSystem.loadMaskedImage(menuBobName(image),
                                   spritePath("0034", image - FIRST_MENU_IMAGE));
@@ -101,8 +117,6 @@ MenuState::MenuState(systems::VideoSystem &videoSystem,
       loadPicture(m_videoSystem, TITLE, TITLE_PATH, ATTRACT_COLORS);
   m_hiscorePalette =
       loadPicture(m_videoSystem, HISCORES, HISCORES_PATH, ATTRACT_COLORS);
-  m_videoSystem.createScreen(ATTRACT_SCREEN_ID, ATTRACT_SCREEN_WIDTH,
-                             ATTRACT_SCREEN_HEIGHT);
 }
 
 MenuState::~MenuState() {
@@ -122,30 +136,55 @@ std::optional<EngineStateEnum> MenuState::update() {
   const effects::MenuSequence::Joystick joystick =
       joystickFrom(m_controllerSystem.states);
 
-  if (m_attract) {
-    m_attract->advance(isTouched(joystick));
+  if (m_attract && m_attractClosing == 0) {
+    advanceAttract(joystick);
     if (!m_attract->isFinished()) {
       drawAttract();
       return std::nullopt;
     }
-    m_attract.reset();
     m_menu.resumeAfterAttract();
+    m_attractClosing = effects::SCREEN_CLOSE_SHOWN_VBLS;
   }
 
   const bool music = m_options.music;
+  const bool bass = m_options.bass;
+  const bool ntsc = m_options.ntsc;
+  m_menu.setMouseButton(m_controllerSystem.isMouseButtonDown());
+  const bool shown = m_menu.isScreenShown();
   m_menu.advance(joystick);
+  if (!shown && m_menu.isScreenShown()) {
+    m_session.border = m_menu.palette()[0];
+  }
+  for (const char key : m_menu.keysRead()) {
+    street::typeCheatKey(m_session.textBuffer, key);
+  }
   if (m_options.music != music) {
     m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
   }
+  if (m_options.bass != bass) {
+    m_audioSystem.setLowPassFilter(m_options.bass);
+  }
+  if (m_options.ntsc != ntsc) {
+    switchStandard();
+  }
   if (m_menu.isFinished()) {
     m_session.registers[RO] = 0;
+    street::applyCheatCodes(m_session);
     return EngineStateEnum::CharacterSelection;
   }
 
   if (m_menu.isAttractDue()) {
     startAttract();
-    m_attract->advance(isTouched(joystick));
+    advanceAttract(joystick);
     drawAttract();
+    return std::nullopt;
+  }
+
+  if (m_attractClosing > 0) {
+    drawAttractPicture();
+    if (--m_attractClosing == 0) {
+      m_attract.reset();
+    }
     return std::nullopt;
   }
 
@@ -153,7 +192,28 @@ std::optional<EngineStateEnum> MenuState::update() {
   return std::nullopt;
 }
 
+void MenuState::advanceAttract(
+    const effects::MenuSequence::Joystick &joystick) {
+  m_attract->advance(isTouched(joystick));
+  if (m_attract->isWaiting()) {
+    m_session.keyboard.sleep();
+  }
+}
+
+void MenuState::switchStandard() {
+  m_videoSystem.setNtsc(m_options.ntsc);
+  m_audioSystem.setMusicTempoScale(
+      effects::menuTuneScale(effects::menuTempo(m_options.ntsc)));
+  createMenuScreen(m_videoSystem, m_options.ntsc);
+}
+
 void MenuState::startAttract() {
+  const effects::VisibleRows rows = effects::visibleRows(
+      effects::pictureLine(ATTRACT_DISPLAY_Y, m_options.ntsc),
+      ATTRACT_SCREEN_HEIGHT, m_videoSystem.isNtsc());
+  m_attractTop = rows.first;
+  m_videoSystem.createScreen(ATTRACT_SCREEN_ID, ATTRACT_SCREEN_WIDTH,
+                             rows.count);
   const effects::AttractSequence::Kind kind = m_nextAttract;
   const bool title = kind == effects::AttractSequence::Kind::Title;
   m_nextAttract = title ? effects::AttractSequence::Kind::Hiscores
@@ -164,8 +224,9 @@ void MenuState::startAttract() {
 
 void MenuState::drawMenu() {
   m_videoSystem.switchScreen(MENU_SCREEN_ID);
-  if (m_menu.isFinished()) {
-    m_videoSystem.fillScreen(0, 0, 0);
+  if (m_menu.isFinished() || !m_menu.isScreenShown()) {
+    const effects::Rgb border = effects::toRgb(m_session.border);
+    m_videoSystem.fillScreen(border.r, border.g, border.b);
     return;
   }
 
@@ -178,7 +239,7 @@ void MenuState::drawMenu() {
   }
 
   m_videoSystem.drawImage(BACKDROP, 0, 0);
-  for (const effects::MenuSequence::Bob &bob : m_menu.bobs()) {
+  for (const effects::MenuSequence::Bob &bob : m_menu.shownBobs()) {
     if (bob.shown) {
       m_videoSystem.drawImage(menuBobName(bob.image), bob.x, bob.y,
                               bob.flipped ? SDL_FLIP_HORIZONTAL
@@ -192,10 +253,13 @@ void MenuState::drawAttract() {
     drawMenu();
     return;
   }
+  drawAttractPicture();
+}
 
+void MenuState::drawAttractPicture() {
   m_videoSystem.switchScreen(ATTRACT_SCREEN_ID);
   if (m_attract->kind() == effects::AttractSequence::Kind::Title) {
-    m_videoSystem.drawImage(TITLE, 0, 0);
+    m_videoSystem.drawImage(TITLE, 0, -m_attractTop);
     return;
   }
 
@@ -207,7 +271,7 @@ void MenuState::drawAttract() {
     }
   }
 
-  m_videoSystem.drawImage(HISCORES, 0, 0);
+  m_videoSystem.drawImage(HISCORES, 0, -m_attractTop);
   for (int drawn = 0; drawn < m_attract->rowsShown(); ++drawn) {
     drawHiscoreRow(effects::AttractSequence::HISCORE_ROWS - 1 - drawn);
   }
@@ -215,7 +279,7 @@ void MenuState::drawAttract() {
 
 void MenuState::drawHiscoreRow(int row) {
   const street::HighScoreTable &table = m_session.highScores;
-  const int y = FIRST_ROW_Y + row * ROW_PITCH;
+  const int y = FIRST_ROW_Y + row * ROW_PITCH - m_attractTop;
 
   for (int column = 0; column < street::HighScoreTable::NAME_LENGTH; ++column) {
     const int letter = table.letter(row, column);

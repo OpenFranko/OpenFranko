@@ -1,6 +1,7 @@
 #include "EngineStreetHost.h"
 
 #include "../../../systems/Bitmap.h"
+#include "../../effects/AmigaDisplay.h"
 
 #include <cctype>
 #include <cstdio>
@@ -15,6 +16,7 @@ namespace openfranko::src::engine::states::level1 {
 namespace {
 
 constexpr int PANEL_RESOURCE = 0x384;
+constexpr auto CREDITS_FILE = "credits.json";
 
 std::string hexName(int resource) {
   char name[8];
@@ -98,6 +100,17 @@ street::LevelScript EngineStreetHost::loadLevelScript(int resource) {
   return street::LevelScript::fromJson(text.str());
 }
 
+street::EndingCredits EngineStreetHost::loadEndingCredits() {
+  const std::string path = m_directory + "/" + CREDITS_FILE;
+  std::ifstream file(path);
+  if (!file) {
+    throw std::runtime_error("Failed to open ending credits: " + path);
+  }
+  std::stringstream text;
+  text << file.rdbuf();
+  return street::EndingCredits::fromJson(text.str());
+}
+
 street::Picture EngineStreetHost::loadPanelPicture(int part) {
   const std::string name = hexName(PANEL_RESOURCE);
   const std::string file =
@@ -107,7 +120,11 @@ street::Picture EngineStreetHost::loadPanelPicture(int part) {
 }
 
 void EngineStreetHost::loadMusic(int resource) {
-  m_audioSystem.loadMusic(resourcePath(resource) + ".s3m");
+  m_audioSystem.loadMusic(musicPath(resource));
+}
+
+bool EngineStreetHost::isMusicLoaded(int resource) const {
+  return m_audioSystem.loadedMusic() == musicPath(resource);
 }
 
 void EngineStreetHost::playMusic() { m_audioSystem.playMusic(); }
@@ -116,6 +133,10 @@ void EngineStreetHost::stopMusic() { m_audioSystem.stopMusic(); }
 
 void EngineStreetHost::setMusicVolume(int volume) {
   m_audioSystem.setMusicVolume(volume);
+}
+
+void EngineStreetHost::setMusicTempo(int tempo) {
+  m_audioSystem.setMusicTempoScale(effects::menuTuneScale(tempo));
 }
 
 void EngineStreetHost::playSample(int bank, int sample, int voices) {
@@ -145,6 +166,10 @@ std::string EngineStreetHost::sampleName(int bank, int sample) {
 
 std::string EngineStreetHost::resourcePath(int resource) const {
   return m_directory + "/" + hexName(resource);
+}
+
+std::string EngineStreetHost::musicPath(int resource) const {
+  return resourcePath(resource) + ".s3m";
 }
 
 std::vector<street::Picture> EngineStreetHost::loadFrames(int resource) const {

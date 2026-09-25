@@ -1,9 +1,12 @@
 #include "StreetStage.h"
 
+#include "../effects/AmigaDisplay.h"
+
 #include "../amal/Actors.h"
 
 #include <algorithm>
 #include <cstdlib>
+#include <utility>
 
 namespace openfranko::src::engine::street {
 namespace {
@@ -43,9 +46,10 @@ constexpr int PLAYER_BLOOD_CHANNEL = 15;
 constexpr int COLUMNS_PER_CHUNK = 63;
 constexpr int AUTOBACK_VBLS = 3;
 constexpr int GAME_OVER_WAIT = 200;
+constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr int FULL_ENERGY = 64;
-constexpr int STARTING_LIVES = 3;
 constexpr int EXTRA_LIFE_STEP = 40;
+constexpr int SHORT_LEVEL_LENGTH = 32;
 constexpr int STREET_MUSIC_VOLUME = 30;
 constexpr int OPENING_SHOUT = 12;
 constexpr int ALL_VOICES = 15;
@@ -76,9 +80,14 @@ StreetStage::StreetStage(StreetHost &host, GameSession &session,
                          effects::GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_display(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_screenDisplay{DISPLAY_X, DISPLAY_TOP, 0},
-      m_palette(levelPalette(false)), m_panelPalette(panelPalette()) {}
+      m_buffer(m_screen),
+      m_screenDisplay{DISPLAY_X,
+                      static_cast<int16_t>(playDisplayY(stageLayout(options))),
+                      0},
+      m_palette(levelPalette(false)), m_panelPalette(panelPalette()) {
+  m_copper.reset(registers());
+  m_session.border = STAGE_BORDER;
+}
 
 void StreetStage::advance(const StreetInput &input) {
   if (m_step == Step::Finished) {
@@ -86,17 +95,45 @@ void StreetStage::advance(const StreetInput &input) {
   }
   ++m_frame;
   if (input.key != SystemKey::None) {
-    m_pendingKey = input.key;
+    m_session.keyLatch = input.key;
   }
+  m_buffer.vbl();
+  m_copper.vbl(m_options.ntsc);
   m_machine.setJoystick(input.joystick);
   m_machine.tick();
+  if (m_buffer.isAutobacking()) {
+    m_buffer.autobackStep(m_bobs, m_images);
+  } else {
+    test();
+  }
   runBasic(input);
-  redraw();
+  if (!m_buffer.isAutobacking()) {
+    test();
+  }
+}
+
+void StreetStage::test() {
+  if (m_buffer.test(m_bobs, m_images)) {
+    m_copper.rebuild(registers());
+  }
+}
+
+void StreetStage::hideScreen() {
+  m_screenShown = false;
+  m_copper.hide();
+}
+
+StageCopper StreetStage::registers() const {
+  return {m_screenShown, m_screenDisplay, m_options.ntsc};
 }
 
 void StreetStage::compose(std::vector<uint32_t> &frame) const {
-  composeFrame(frame, m_screenShown ? &m_display : nullptr, m_palette,
-               m_screenDisplay, m_screenOffsetX, m_panel.get(), m_panelPalette);
+  const StageCopper &live = m_copper.live();
+  composeFrame(frame, live.screenShown ? &m_buffer.shown() : nullptr, m_palette,
+               live.screenDisplay, m_screenOffsetX,
+               m_panelShown ? m_panel.get() : nullptr,
+               m_copper.panelY(m_options.tallScreen), m_panelPalette,
+               m_copper.window(m_options.tallScreen));
 }
 
 StreetStage::Outcome StreetStage::outcome() const { return m_outcome; }
@@ -105,9 +142,11 @@ const BobLayer &StreetStage::bobs() const { return m_bobs; }
 
 const IndexedSurface &StreetStage::screen() const { return m_screen; }
 
-const IndexedSurface &StreetStage::display() const { return m_display; }
+const IndexedSurface &StreetStage::display() const { return m_buffer.shown(); }
 
 const StatusPanel *StreetStage::panel() const { return m_panel.get(); }
+
+bool StreetStage::isPanelShown() const { return m_panelShown; }
 
 amal::Machine &StreetStage::machine() { return m_machine; }
 
@@ -115,7 +154,7 @@ int StreetStage::columnsWalked() const { return m_columnsWalked; }
 
 int StreetStage::wavesSpawned() const { return m_wavesSpawned; }
 
-bool StreetStage::isScreenShown() const { return m_screenShown; }
+bool StreetStage::isScreenShown() const { return m_copper.live().screenShown; }
 
 bool StreetStage::isFighting() const {
   return m_step == Step::Referee || m_step == Step::RefereeCorpseStamped ||
@@ -151,6 +190,31 @@ StatusPanel::Stats StreetStage::stats() const {
 
 void StreetStage::stall() { m_resumeFrame = m_frame + AUTOBACK_VBLS; }
 
+void StreetStage::autoback(DoubleBuffer::Op op) {
+  op(m_screen);
+  m_buffer.autoback(std::move(op));
+  stall();
+}
+
+bool StreetStage::pasteStalled(int x, int y, int image) {
+  if (!BobLayer::paste(m_screen, m_images, x, y, image)) {
+    return false;
+  }
+  m_buffer.autoback([this, x, y, image](IndexedSurface &surface) {
+    BobLayer::paste(surface, m_images, x, y, image);
+  });
+  stall();
+  return true;
+}
+
+void StreetStage::putBlock() {
+  m_block->put(m_screen);
+  m_block->put(m_buffer.logic());
+  m_buffer.swap();
+  m_block->put(m_buffer.logic());
+  m_buffer.swap();
+}
+
 StreetStage::Flow StreetStage::endOfPass() const {
   return m_passFrame == m_frame ? Flow::Yield : Flow::Continue;
 }
@@ -160,14 +224,6 @@ void StreetStage::playRouted(int request, int voices) {
 }
 
 void StreetStage::newGame() {
-  for (int i = 0; i <= 12; ++i) {
-    global(i) = 0;
-  }
-  for (int i = 15; i <= 25; ++i) {
-    global(i) = 0;
-  }
-  global(RF) = FULL_ENERGY;
-  global(RG) = STARTING_LIVES;
   global(RQ) = m_options.character == effects::Character::Alex ? 1 : 0;
   m_resident.fill(0);
   m_needed.fill(0);
@@ -176,6 +232,7 @@ void StreetStage::newGame() {
 
 void StreetStage::gameInit() {
   openScreens(false);
+  m_panelShown = false;
   global(RN) = 0;
 }
 
@@ -183,14 +240,16 @@ void StreetStage::openScreens(bool shown) {
   m_palette = levelPalette(m_options.mono);
   m_panelPalette = panelPalette();
   m_screenShown = shown;
+  m_copper.reset(registers());
   m_screen.fill(0);
+  m_buffer = DoubleBuffer(m_screen);
   m_panel =
       std::make_unique<StatusPanel>(m_host.loadPanelPicture(LOADING_STRIP),
                                     m_host.loadPanelPicture(PANEL_ARTWORK));
 }
 
 StreetStage::Flow StreetStage::stageInit() {
-  m_pendingKey = SystemKey::None;
+  m_session.keyLatch = SystemKey::None;
   m_host.stopMusic();
   m_images.clear();
   global(RO) = word(global(RO) + 1);
@@ -219,20 +278,27 @@ StreetStage::Flow StreetStage::stageMusic() {
     m_images.load(11, m_host.loadSpriteSet(255 - 5 * global(RQ), 2));
   });
   m_loading.queue([this] { m_opening = m_host.loadPicture(stage() + 903); });
-  m_loading.queue([this] { m_script = m_host.loadLevelScript(stage() + 900); });
+  m_loading.queue([this] {
+    m_script = m_host.loadLevelScript(stage() + 900);
+    if (m_session.shortLevels) {
+      m_script.length = SHORT_LEVEL_LENGTH;
+    }
+  });
   return load(Step::StageScreen);
 }
 
 StreetStage::Flow StreetStage::stageScreen() {
-  m_screen.unpack(m_opening, 0, 0);
   m_step = Step::StageShown;
-  stall();
+  autoback([opening = m_opening](IndexedSurface &surface) {
+    surface.unpack(opening, 0, 0);
+  });
   return Flow::Yield;
 }
 
 void StreetStage::stageShown() {
   m_bobs.set(PLAYER, m_playerX, (STREET_Y / 4) * 4, IDLE_IMAGE + m_facing);
   m_opening = Picture{};
+  test();
   m_panel->showWaiting();
   m_screenShown = true;
 
@@ -257,8 +323,9 @@ StreetStage::Flow StreetStage::load(Step next) {
 bool StreetStage::grabPlayer() {
   const int left = m_playerX - 16;
   const int top = global(RB) - 77;
-  m_block.emplace(m_screen, left, top, PLAYER_BLOCK_WIDTH, PLAYER_BLOCK_HEIGHT);
-  return BobLayer::paste(m_screen, m_images, left, top, IDLE_IMAGE + m_facing);
+  m_block.emplace(m_buffer.logic(), left, top, PLAYER_BLOCK_WIDTH,
+                  PLAYER_BLOCK_HEIGHT);
+  return pasteStalled(left, top, IDLE_IMAGE + m_facing);
 }
 
 StreetStage::Flow StreetStage::stopForLoading(Step next) {
@@ -267,7 +334,7 @@ StreetStage::Flow StreetStage::stopForLoading(Step next) {
   global(RB) = word((global(RB) / 4) * 4);
   m_bobs.offAll();
   m_step = next;
-  stall();
+  autoback([](IndexedSurface &) {});
   return Flow::Yield;
 }
 
@@ -355,11 +422,8 @@ StreetStage::Flow StreetStage::refereeEnemies() {
       } else {
         x = x > 280 ? 400 : std::min(200, x);
       }
-      const bool stamped =
-          BobLayer::paste(m_screen, m_images, x, reg(p, 7) - 17, image);
-      if (stamped) {
+      if (pasteStalled(x, reg(p, 7) - 17, image)) {
         m_step = Step::RefereeCorpseStamped;
-        stall();
         return Flow::Yield;
       }
       m_bobs.setImage(i, HIDDEN_IMAGE);
@@ -564,9 +628,8 @@ StreetStage::Flow StreetStage::refereeBlood() {
     const int x = xBob(i) + m_host.random(8) - m_host.random(8);
     const int y = yBob(i) + m_host.random(8) - m_host.random(8);
     const int image = m_host.random(7) + 2;
-    if (BobLayer::paste(m_screen, m_images, x, y, image)) {
+    if (pasteStalled(x, y, image)) {
       m_step = Step::RefereeBloodStamped;
-      stall();
       return Flow::Yield;
     }
     m_bobs.setImage(i, HIDDEN_IMAGE);
@@ -677,21 +740,21 @@ StreetStage::Flow StreetStage::advanceWalk(const StreetInput &input) {
   reg(1, 1) = word(bias);
   m_scrollPhase = m_scrollPhase + 1 > 1 ? 0 : m_scrollPhase + 1;
   if (m_scrollPhase == 0) {
-    m_screen.unpack(m_columns.at(static_cast<std::size_t>(m_columnInChunk)),
-                    stage() == 2 ? 0 : 304, 0);
+    autoback([column = m_columns.at(static_cast<std::size_t>(m_columnInChunk)),
+              x = stage() == 2 ? 0 : 304](IndexedSurface &surface) {
+      surface.unpack(column, x, 0);
+    });
     ++m_columnInChunk;
     ++m_columnsWalked;
     m_step = Step::AdvanceScroll;
-    stall();
     return Flow::Yield;
   }
   return advanceScroll();
 }
 
 StreetStage::Flow StreetStage::advanceScroll() {
-  scrollStep();
   m_step = Step::AdvanceWalked;
-  stall();
+  scrollStep();
   return Flow::Yield;
 }
 
@@ -702,9 +765,8 @@ StreetStage::Flow StreetStage::advanceWalked() {
 
 StreetStage::Flow StreetStage::advanceTail() {
   if (m_columnsWalked > 10 && m_columnsWalked == m_script.length - 1) {
-    scrollStep();
     m_step = Step::AdvanceLeave;
-    stall();
+    scrollStep();
     return Flow::Yield;
   }
   sys();
@@ -718,16 +780,12 @@ StreetStage::Flow StreetStage::advanceTail() {
 
 StreetStage::Flow StreetStage::advanceLeaveFlushed() {
   m_step = Step::AdvanceLeavePasted;
-  if (grabPlayer()) {
-    stall();
-    return Flow::Yield;
-  }
-  return Flow::Continue;
+  return grabPlayer() ? Flow::Yield : Flow::Continue;
 }
 
 StreetStage::Flow StreetStage::advanceLeavePasted() {
-  m_session.streetExit.emplace(
-      StreetExit{m_screen, *m_block, m_playerX, m_energyShown, m_killsShown});
+  m_session.streetExit.emplace(StreetExit{
+      m_screen, *m_block, m_playerX, m_energyShown, m_killsShown, m_buffer});
   m_block.reset();
   m_outcome = Outcome::LevelFinished;
   m_step = Step::Finished;
@@ -736,14 +794,11 @@ StreetStage::Flow StreetStage::advanceLeavePasted() {
 
 StreetStage::Flow StreetStage::spawnFlushed() {
   m_step = Step::SpawnPasted;
-  if (grabPlayer()) {
-    stall();
-    return Flow::Yield;
-  }
-  return Flow::Continue;
+  return grabPlayer() ? Flow::Yield : Flow::Continue;
 }
 
 StreetStage::Flow StreetStage::spawnPasted() {
+  test();
   m_panel->showWaiting();
   const Wave &wave = m_script.waves[static_cast<std::size_t>(m_nextWave)];
   global(RI) = 3;
@@ -819,13 +874,15 @@ void StreetStage::spawnLoaded() {
   ++m_nextWave;
   ++m_wavesSpawned;
   m_bobs.set(PLAYER, m_playerX, (global(RB) / 4) * 4, IDLE_IMAGE + m_facing);
-  m_block->put(m_screen);
+  putBlock();
   m_block.reset();
 }
 
 void StreetStage::scrollStep() {
   const int dx = stage() == 2 ? 8 : -8;
-  m_screen.copy(m_screen, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, dx, 0);
+  autoback([dx](IndexedSurface &surface) {
+    surface.copy(surface, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, dx, 0);
+  });
 }
 
 void StreetStage::gameOver() {
@@ -833,17 +890,20 @@ void StreetStage::gameOver() {
   global(RO) = -1;
   if (m_escape) {
     global(RN) = 0;
-    m_outcome = Outcome::Quit;
-    m_step = Step::Finished;
+    closePlayScreen();
     return;
   }
   m_resumeFrame = m_frame + GAME_OVER_WAIT;
   m_step = Step::GameOverWait;
 }
 
+void StreetStage::closePlayScreen() {
+  m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+  m_step = Step::GameOverScreenGone;
+}
+
 void StreetStage::sys() {
-  const SystemKey key = m_pendingKey;
-  m_pendingKey = SystemKey::None;
+  const SystemKey key = std::exchange(m_session.keyLatch, SystemKey::None);
   switch (key) {
   case SystemKey::MusicOff:
     m_host.setMusicVolume(0);
@@ -853,12 +913,17 @@ void StreetStage::sys() {
     m_options.music = true;
     m_host.setMusicVolume(STREET_MUSIC_VOLUME);
     break;
+  case SystemKey::Pal:
+  case SystemKey::Ntsc:
+    switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
+    break;
   case SystemKey::Escape:
     global(RN) = 0;
     m_escape = true;
     m_machine.freezeAll();
     break;
   case SystemKey::None:
+  case SystemKey::Other:
     break;
   }
 }
@@ -871,10 +936,18 @@ void StreetStage::runBasic(const StreetInput &input) {
       if (m_session.fromBonusDrive) {
         m_session.fromBonusDrive = false;
         openScreens(true);
-      } else {
-        newGame();
-        gameInit();
+        flow = stageInit();
+        break;
       }
+      newGame();
+      gameInit();
+      m_resumeFrame = m_frame + effects::SCREEN_OPEN_VBLS + DOUBLE_BUFFER_VBLS +
+                      effects::SCREEN_OPEN_VBLS;
+      m_step = Step::GameInitialized;
+      flow = Flow::Yield;
+      break;
+    case Step::GameInitialized:
+      m_panelShown = true;
       flow = stageInit();
       break;
     case Step::StageMusic:
@@ -940,7 +1013,28 @@ void StreetStage::runBasic(const StreetInput &input) {
       flow = advanceLeavePasted();
       break;
     case Step::GameOverWait:
-      m_outcome = Outcome::GameOver;
+      closePlayScreen();
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverScreenGone:
+      hideScreen();
+      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_step = Step::GameOverPanelClose;
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverPanelClose:
+      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+      m_step = Step::GameOverPanelGone;
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverPanelGone:
+      m_panelShown = false;
+      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_step = Step::GameOverClosed;
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverClosed:
+      m_outcome = m_escape ? Outcome::Quit : Outcome::GameOver;
       m_step = Step::Finished;
       flow = Flow::Yield;
       break;
@@ -949,11 +1043,6 @@ void StreetStage::runBasic(const StreetInput &input) {
       break;
     }
   }
-}
-
-void StreetStage::redraw() {
-  m_display = m_screen;
-  m_bobs.draw(m_display, m_images);
 }
 
 } // namespace openfranko::src::engine::street

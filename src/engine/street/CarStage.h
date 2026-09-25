@@ -5,6 +5,7 @@
 #include "../effects/AmigaPalette.h"
 #include "../effects/GameOptions.h"
 #include "Bobs.h"
+#include "DoubleBuffer.h"
 #include "GameSession.h"
 #include "IndexedSurface.h"
 #include "LoadingMock.h"
@@ -36,6 +37,7 @@ public:
   static constexpr int PASSWORD_WAIT = 2000;
   static constexpr int DISTANCE = 5000;
   static constexpr int FILES = 3;
+  static constexpr int PASSES_PER_SECOND = 15;
 
   CarStage(StreetHost &host, GameSession &session,
            effects::GameOptions &options);
@@ -48,9 +50,12 @@ public:
   const IndexedSurface &screen() const;
   const IndexedSurface &display() const;
   const StatusPanel *panel() const;
+  bool isScreenShown() const;
+  bool isPanelShown() const;
   amal::Machine &machine();
   bool isShowingPassword() const;
   bool isDriving() const;
+  int passes() const;
   int distance() const;
   int speed() const;
   int carX() const;
@@ -70,10 +75,15 @@ private:
     RoadClosed,
     DriveTop,
     DriveIgnited,
+    DriveScenery,
     DriveBottom,
     StripClosed,
     Cleared,
     GameOverWait,
+    GameOverScreenGone,
+    GameOverPanelClose,
+    GameOverPanelGone,
+    GameOverClosed,
     Finished
   };
   enum class Flow { Continue, Yield };
@@ -82,6 +92,10 @@ private:
   int stage() const;
   StatusPanel::Stats stats() const;
   Flow wait(int frames, Step next);
+  Flow hold(int frames, Step next);
+  Flow autoback(DoubleBuffer::Op op, Step next);
+  bool holdsAtStart() const;
+  bool holdsAtEnd() const;
   void play(int voices, int sample);
   void loseEnergy(int amount);
   void gainEnergy(int amount);
@@ -94,6 +108,7 @@ private:
   void startDrive();
   Flow driveTop(const StreetInput &input);
   Flow driveInput(const StreetInput &input);
+  int nextPassFrames();
   void hitKerb(int kerb);
   void spawnPedestrians();
   Flow driveScenery();
@@ -101,23 +116,26 @@ private:
   void runOver();
   Flow leave();
   void gameOver();
+  Flow closePlayScreen();
   void sys();
-  void bobDraw();
+  void test();
+  StageCopper registers() const;
   void runBasic(const StreetInput &input);
-  void redraw();
 
   StreetHost &m_host;
   GameSession &m_session;
+  effects::GameOptions &m_options;
   amal::Machine m_machine;
   ImageBank m_images;
   BobLayer m_bobs;
   IndexedSurface m_screen;
-  IndexedSurface m_display;
+  DoubleBuffer m_buffer;
   IndexedSurface m_road;
   IndexedSurface m_strip;
   Picture m_backdrop;
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
+  StageDisplay m_copper;
   effects::AmigaPalette m_palette;
   effects::AmigaPalette m_panelPalette;
   LoadingMock m_loading;
@@ -127,9 +145,11 @@ private:
   Outcome m_outcome = Outcome::Playing;
   long m_frame = 0;
   long m_resumeFrame = 0;
-  SystemKey m_pendingKey = SystemKey::None;
+  long m_holdStart = -1;
+  long m_holdUntil = -1;
   bool m_escape = false;
-  bool m_manualBobs = false;
+  bool m_screenShown = true;
+  bool m_panelShown = true;
   int m_screenOffsetX = 0;
   int m_waited = 0;
 
@@ -152,6 +172,8 @@ private:
   int m_pavementBand = 0;
   int m_clock = 0;
   int m_engineBeat = 0;
+  int m_passes = 0;
+  int m_passTime = 0;
   std::array<bool, PEDESTRIANS + 1> m_hit{};
 };
 

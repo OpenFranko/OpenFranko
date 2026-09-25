@@ -10,11 +10,18 @@ constexpr auto FRAME = "gameOverFrame";
 
 GameOverState::GameOverState(systems::VideoSystem &videoSystem,
                              systems::AudioSystem &audioSystem,
-                             systems::ControllerSystem &controllerSystem)
+                             systems::ControllerSystem &controllerSystem,
+                             const effects::GameOptions &options,
+                             street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_host(audioSystem), m_scene(m_host) {
+      m_host(audioSystem), m_scene(m_host, session),
+      m_rows(effects::visibleRows(
+          effects::pictureLine(street::GameOverScene::DISPLAY_LINE,
+                               options.ntsc),
+          street::GameOverScene::HEIGHT, options.ntsc)) {
+  m_videoSystem.setNtsc(options.ntsc);
   m_videoSystem.createScreen(SCREEN, street::GameOverScene::WIDTH,
-                             street::GameOverScene::HEIGHT);
+                             m_rows.count);
   m_videoSystem.switchScreen(SCREEN);
 }
 
@@ -25,7 +32,7 @@ std::optional<EngineStateEnum> GameOverState::update() {
   m_scene.compose(m_frame);
   m_videoSystem.updateFrameImage(FRAME, street::GameOverScene::WIDTH,
                                  street::GameOverScene::HEIGHT, m_frame);
-  m_videoSystem.drawImage(FRAME, 0, 0);
+  m_videoSystem.drawImage(FRAME, 0, -m_rows.first);
   if (m_scene.isFinished()) {
     return EngineStateEnum::HighScore;
   }

@@ -2,7 +2,13 @@
 #define ENGINE_STATES_STREETCONTROLS_H_
 
 #include "../../../systems/ControllerSystem.h"
+#include "../../../systems/VideoSystem.h"
+#include "../../effects/GameOptions.h"
 #include "../../street/StreetStage.h"
+
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace openfranko {
 namespace src {
@@ -12,6 +18,11 @@ namespace level1 {
 
 street::StreetInput
 readStreetInput(const systems::ControllerSystem &controller);
+void openStageScreen(systems::VideoSystem &videoSystem,
+                     const effects::GameOptions &options);
+void showStageFrame(systems::VideoSystem &videoSystem, const std::string &name,
+                    const std::vector<uint32_t> &frame,
+                    const effects::GameOptions &options);
 
 } // namespace level1
 } // namespace states

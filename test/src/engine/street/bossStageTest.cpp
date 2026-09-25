@@ -1,4 +1,5 @@
 #include "../../../../src/engine/street/BossStage.h"
+#include "../../../../src/engine/street/StageFrame.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <cstdlib>
@@ -36,6 +37,7 @@ constexpr int16_t JOY_FIRE = 16;
 constexpr int FRANKO_BOSS_SET = 0xFE;
 constexpr int FRANKO_EXTRA_PHASES = 0xFD;
 constexpr int STAGE_1_BOSS = 0xC8;
+constexpr int STAGE_3_BOSS = 0xC6;
 constexpr int EXIT_X = 164;
 constexpr uint8_t STREET_COLOR = 6;
 constexpr uint8_t STAMP_COLOR = 3;
@@ -90,9 +92,16 @@ public:
       for (int i = 0; i < 32; ++i) {
         frames.push_back(box(64, 80, 16, 77, PLAYER_COLOR));
       }
-    } else if (resource == FRANKO_EXTRA_PHASES) {
+    } else if (resource >= FRANKO_BOSS_SET - 3 && resource < FRANKO_BOSS_SET) {
       for (int i = 0; i < 2; ++i) {
         frames.push_back(box(64, 80, 16, 77, PLAYER_COLOR));
+      }
+    } else if (resource == STAGE_3_BOSS) {
+      for (int i = 0; i < 52; ++i) {
+        Picture frame = box(64, 80, 16, 77, BOSS_COLOR);
+        frame.pixels[0] = 0;
+        frame.pixels[1] = static_cast<uint8_t>(43 + i);
+        frames.push_back(frame);
       }
     } else {
       for (int i = 0; i < 52; ++i) {
@@ -117,6 +126,8 @@ public:
 
   LevelScript loadLevelScript(int) override { return LevelScript{}; }
 
+  EndingCredits loadEndingCredits() override { return {}; }
+
   Picture loadPanelPicture(int part) override {
     if (part != 0) {
       return box(304, 40, 0, 0, 1);
@@ -129,11 +140,14 @@ public:
 
   void loadMusic(int resource) override { music.push_back(resource); }
 
+  bool isMusicLoaded(int) const override { return false; }
+
   void playMusic() override { ++musicStarts; }
 
   void stopMusic() override { ++musicStops; }
 
   void setMusicVolume(int volume) override { volumes.push_back(volume); }
+  void setMusicTempo(int) override {}
 
   void playSample(int bank, int sample, int voices) override {
     samples.push_back({bank, sample, voices});
@@ -166,7 +180,8 @@ struct Duel {
     screen.fill(STREET_COLOR);
     const ScreenBlock block(screen, EXIT_X - 16, 172 - 77, 48, 78);
     screen.clear(STAMP_COLOR, EXIT_X - 16, 172 - 77, EXIT_X + 16, 172 + 2);
-    session.streetExit.emplace(StreetExit{screen, block, EXIT_X, 64, 0});
+    session.streetExit.emplace(
+        StreetExit{screen, block, EXIT_X, 64, 0, std::nullopt});
   }
 
   BossStage &start() {
@@ -292,6 +307,73 @@ SCENARIO("The boss stage reloads the cast over the street's last screen") {
 
     THEN("Starting the stage is refused") {
       REQUIRE_THROWS_AS(duel.run(1), std::logic_error);
+    }
+  }
+}
+
+SCENARIO("The boss stage keeps the display lines state 09 and SYS set") {
+  GIVEN("NTSC chosen") {
+    Duel duel;
+    duel.options.ntsc = true;
+    BossStage &stage = duel.start();
+    duel.run(1);
+    std::vector<uint32_t> frame;
+    stage.compose(frame);
+
+    THEN("The play screen sits on line 7, its top rows above line 26 lost") {
+      const effects::AmigaPalette &colors = levelPalette(false);
+      REQUIRE(frame.size() == 304u * 255u);
+      REQUIRE(frame[18 * 304] == 0xFF000000u);
+      REQUIRE(frame[19 * 304] == toArgb(colors[STREET_COLOR]));
+    }
+  }
+
+  GIVEN("A PAL approach under way") {
+    Duel duel;
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 20);
+
+    WHEN("F4 is pressed") {
+      duel.run(1, 0, SystemKey::Ntsc);
+      for (int frame = 0; frame < 20 && !duel.options.ntsc; ++frame) {
+        duel.run(1);
+      }
+      std::vector<uint32_t> sysFrame;
+      stage.compose(sysFrame);
+      duel.run(1);
+      std::vector<uint32_t> beamFrame;
+      stage.compose(beamFrame);
+      duel.run(1);
+      std::vector<uint32_t> frame;
+      stage.compose(frame);
+
+      THEN("SYS's frame is PAL, the next has the NTSC beam over the PAL "
+           "lines, and a VBL later the screens are on their NTSC lines") {
+        REQUIRE(duel.options.ntsc);
+        REQUIRE(sysFrame[18 * 304] != 0xFF000000u);
+        REQUIRE(beamFrame[18 * 304] == 0xFF000000u);
+        REQUIRE(beamFrame[19 * 304] == 0xFF555555u);
+        REQUIRE(beamFrame[40 * 304] == sysFrame[0]);
+        REQUIRE(frame[18 * 304] == 0xFF000000u);
+        REQUIRE(frame[19 * 304] == sysFrame[19 * 304]);
+      }
+    }
+  }
+
+  GIVEN("320x512 chosen") {
+    Duel duel;
+    duel.options.tallScreen = true;
+    BossStage &stage = duel.start();
+    duel.run(1);
+    std::vector<uint32_t> frame;
+    stage.compose(frame);
+
+    THEN("The laced play screen starts 60 lines lower in a double-height "
+         "frame") {
+      const effects::AmigaPalette &colors = levelPalette(false);
+      REQUIRE(frame.size() == 304u * 510u);
+      REQUIRE(frame[119 * 304] == 0xFF555555u);
+      REQUIRE(frame[120 * 304] == toArgb(colors[STREET_COLOR]));
     }
   }
 }
@@ -455,9 +537,12 @@ SCENARIO("The boss referee resolves hits and sounds as state 16 does") {
       const int ended = duel.runUntil(
           [&] { return stage.outcome() != BossStage::Outcome::Playing; }, 300);
 
-      THEN("Game over follows state 19's Wait 200") {
+      THEN("Game over follows state 19's Wait 200 and _CLOSE's two screens, "
+           "four VBLs each") {
         REQUIRE(stage.outcome() == BossStage::Outcome::GameOver);
-        REQUIRE(ended == 200);
+        REQUIRE(ended == 200 + 8);
+        REQUIRE_FALSE(stage.isScreenShown());
+        REQUIRE_FALSE(stage.isPanelShown());
         REQUIRE(duel.global(RO) == -1);
       }
 
@@ -491,6 +576,18 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
         REQUIRE(duel.host.loops.empty());
       }
 
+      AND_WHEN("F4 is pressed during KONBOSS") {
+        duel.run(10, 0, SystemKey::Ntsc);
+        duel.run(340 + 3 - 10);
+
+        THEN("No SYS reads it here, so it waits in the register for the "
+             "bonus drive") {
+          REQUIRE(stage.outcome() == BossStage::Outcome::BossDefeated);
+          REQUIRE_FALSE(duel.options.ntsc);
+          REQUIRE(duel.session.keyLatch == SystemKey::Ntsc);
+        }
+      }
+
       AND_WHEN("BASIC's Wait of 340 frames is over") {
         duel.run(340);
 
@@ -509,6 +606,7 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
 
           THEN("The stage ends where the bonus drive begins") {
             REQUIRE(stage.outcome() == BossStage::Outcome::BossDefeated);
+            REQUIRE_FALSE(duel.session.bossExit.has_value());
           }
         }
       }
@@ -609,6 +707,306 @@ SCENARIO("On stage 2 KONBOSS lifts the boss overhead before the walk-off") {
                   static_cast<uint16_t>(77 + facing));
           REQUIRE(static_cast<uint16_t>(stage.bobs().image(1)) ==
                   static_cast<uint16_t>(38 + facing));
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("On stage 3 the boss taunts while Franko approaches") {
+  GIVEN("Franko on the third boss's street") {
+    Duel duel;
+    duel.global(RO) = 3;
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES);
+    REQUIRE(stage.isApproaching());
+
+    WHEN("He stands still") {
+      std::vector<int> taunts;
+      std::vector<int> images;
+      for (int frame = 1; frame <= 100; ++frame) {
+        const std::size_t before = duel.host.samples.size();
+        duel.run(1);
+        if (duel.host.samples.size() != before) {
+          REQUIRE(duel.host.samples.back() == FakeHost::Sample{2, 7, 1});
+          taunts.push_back(frame);
+          images.push_back(stage.bobs().image(2));
+        }
+      }
+
+      THEN("Sample 7 of bank 2 plays on each of his 78 frames, Timer>15 "
+           "apart") {
+        REQUIRE(taunts == std::vector<int>{1, 31, 61, 91});
+        REQUIRE(images == std::vector<int>{78, 78, 78, 78});
+      }
+    }
+
+    WHEN("RE asks for a sample on his first 78 frame") {
+      duel.global(RE) = 5;
+      duel.run(1);
+      const auto first = duel.host.samples;
+      duel.run(1);
+
+      THEN("RE's sample wins that pass and the taunt comes a frame later") {
+        REQUIRE(first == std::vector<FakeHost::Sample>{{2, 5, 1}});
+        REQUIRE(duel.host.samples.back() == FakeHost::Sample{2, 7, 1});
+      }
+    }
+  }
+
+  GIVEN("Franko on the first boss's street") {
+    Duel duel;
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 100);
+
+    THEN("That boss also shows 78, but never taunts") {
+      REQUIRE(stage.isApproaching());
+      REQUIRE_FALSE(duel.host.played(2, 7, 1));
+    }
+  }
+}
+
+SCENARIO("On stage 3 the boss beats the child before the conversation") {
+  GIVEN("Franko at the last column of the third boss's street") {
+    Duel duel;
+    duel.global(RO) = 3;
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 1);
+    duel.reachDialogue();
+
+    THEN("The walkers freeze, the boss stands over the stamped child") {
+      REQUIRE(stage.isTalking());
+      REQUIRE(stage.machine().isFrozen(1));
+      REQUIRE(stage.machine().isFrozen(4));
+      REQUIRE_FALSE(stage.machine().exists(13));
+      REQUIRE(stage.bobs().image(1) == 17);
+      REQUIRE(stage.bobs().image(2) == 71);
+      REQUIRE(stage.screen().pixel(233, 180) == 80);
+      REQUIRE(stage.screen().pixel(232, 180) != 0);
+      REQUIRE(duel.global(RT) == 0);
+    }
+
+    WHEN("The scene plays out") {
+      std::vector<std::pair<int, int>> poses;
+      int shout = 0;
+      int talk = 0;
+      for (int frame = 1; frame <= 200 && talk == 0; ++frame) {
+        const int image = stage.bobs().image(2);
+        duel.run(1);
+        if (stage.bobs().image(2) != image) {
+          poses.emplace_back(frame, stage.bobs().image(2));
+        }
+        if (shout == 0 && duel.host.played(4, 7, 1)) {
+          shout = frame;
+        }
+        if (duel.global(RT) != 0) {
+          talk = frame;
+        }
+      }
+
+      THEN("Three punches of 15 frames after the paste's 3, then the flex "
+           "and sample 7 of bank 4") {
+        REQUIRE(poses == std::vector<std::pair<int, int>>{{18, 81},
+                                                          {33, 71},
+                                                          {48, 81},
+                                                          {63, 71},
+                                                          {78, 81},
+                                                          {93, 74},
+                                                          {108, 81}});
+        REQUIRE(shout == 93);
+      }
+
+      THEN("The talk starts 15 frames after the shout, without a bubble "
+           "from BASIC") {
+        REQUIRE(talk == 108);
+        REQUIRE(duel.global(RT) == 1);
+        REQUIRE(stage.isTalking());
+        REQUIRE(stage.bobs().image(5) == 10);
+      }
+
+      AND_WHEN("Fire is held through the conversation") {
+        const int frames =
+            duel.runUntil([&] { return stage.isFighting(); }, 1000, JOY_FIRE);
+
+        THEN("The fight starts with the shout from bank 2") {
+          REQUIRE(frames > 0);
+          REQUIRE(duel.host.played(2, 9, 1));
+          REQUIRE(stage.machine().channelRegister(5, 7) == 80);
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("On stage 3 KONBOSS sends the boss over the railing") {
+  GIVEN("Franko fighting the third boss") {
+    Duel duel;
+    duel.global(RO) = 3;
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 1);
+    duel.reachFight();
+    REQUIRE(stage.isFighting());
+    const int playerX = stage.bobs().x(1);
+
+    WHEN("The boss dies") {
+      duel.global(RI) = 0;
+      duel.run(1);
+      const int x = stage.bobs().x(2);
+      const int y = stage.bobs().y(2);
+      duel.run(1);
+
+      THEN("He rests on 75 and RU, RS, RT measure his way to the railing") {
+        REQUIRE(stage.isAtRailing());
+        REQUIRE(stage.isFinishing());
+        REQUIRE(stage.bobs().image(2) == 75);
+        REQUIRE(duel.global(RU) == 208 - x);
+        REQUIRE(duel.global(RS) == 143 - y);
+        REQUIRE(duel.global(RT) == (std::abs(208 - x) + std::abs(143 - y)) / 2);
+        REQUIRE(duel.global(RR) == 0);
+        REQUIRE(stage.bobs().image(1) == 17);
+        REQUIRE_FALSE(stage.machine().exists(1));
+        REQUIRE_FALSE(stage.machine().exists(3));
+      }
+
+      AND_WHEN("Wait 50 is over") {
+        duel.run(48);
+        const bool before =
+            stage.bobs().isActive(5) && stage.bobs().image(5) == 93;
+        duel.run(1);
+
+        THEN("His bubble 93 shows above him") {
+          REQUIRE_FALSE(before);
+          REQUIRE(stage.bobs().x(5) == x - 32);
+          REQUIRE(stage.bobs().y(5) == y - 72);
+          REQUIRE(stage.bobs().image(5) == 93);
+        }
+
+        THEN("It stays up while fire is not pressed alone") {
+          duel.run(200, JOY_FIRE | JOY_RIGHT);
+          REQUIRE(stage.bobs().image(5) == 93);
+          REQUIRE(stage.bobs().x(2) == x);
+          REQUIRE(stage.bobs().image(2) == 75);
+        }
+
+        AND_WHEN("Fire is pressed") {
+          const int hidden = duel.runUntil(
+              [&] { return stage.bobs().image(5) == 10; }, 10, JOY_FIRE);
+          const int walk = duel.global(RT);
+
+          THEN("The boss sets off on the tick after the bubble goes") {
+            REQUIRE(hidden == 2);
+            REQUIRE(stage.machine().channelRegister(4, 0) == 1);
+            duel.run(1);
+            REQUIRE(stage.bobs().image(2) == 43);
+          }
+
+          AND_WHEN("Wait RT is over") {
+            duel.run(walk - 1);
+            const bool shown = stage.bobs().isActive(2);
+            duel.run(1);
+
+            THEN("He reached the railing, and Bob Off takes him away") {
+              REQUIRE(shown);
+              REQUIRE(stage.bobs().x(2) == 208);
+              REQUIRE(stage.bobs().y(2) == 143);
+              REQUIRE_FALSE(stage.bobs().isActive(2));
+              REQUIRE_FALSE(stage.machine().exists(4));
+            }
+
+            AND_WHEN("A frame later he is pasted onto the railing") {
+              const uint8_t wall = stage.screen().pixel(183, 60);
+              duel.run(1);
+
+              THEN("No Mask makes the stamp opaque") {
+                REQUIRE(wall != 0);
+                REQUIRE(stage.screen().pixel(183, 60) == 0);
+                REQUIRE(stage.screen().pixel(184, 60) == 82);
+              }
+
+              THEN("After the stall and Wait 100 he curses, then falls "
+                   "through 83 to 85 every 19 frames") {
+                duel.run(102);
+                REQUIRE_FALSE(duel.host.played(4, 9, 1));
+                duel.run(1);
+                REQUIRE(duel.host.played(4, 9, 1));
+                REQUIRE(stage.bobs().x(5) == 220);
+                REQUIRE(stage.bobs().y(5) == 64);
+                REQUIRE(stage.bobs().image(5) == 94);
+                REQUIRE(stage.screen().pixel(184, 60) == 82);
+                duel.run(1);
+                REQUIRE(stage.screen().pixel(184, 60) == 83);
+                duel.run(18);
+                REQUIRE(stage.screen().pixel(184, 60) == 83);
+                duel.run(1);
+                REQUIRE(stage.screen().pixel(184, 60) == 84);
+                duel.run(19);
+                REQUIRE(stage.screen().pixel(184, 60) == 85);
+                REQUIRE(stage.screen().pixel(183, 60) == 0);
+              }
+
+              THEN("The bubble goes 43 frames after the last fall, and "
+                   "Franko poses 90 frames later") {
+                duel.run(103 + 1 + 19 + 19);
+                REQUIRE(stage.screen().pixel(184, 60) == 85);
+                duel.run(42);
+                REQUIRE(stage.bobs().image(5) == 94);
+                duel.run(1);
+                REQUIRE(stage.bobs().image(5) == 10);
+                REQUIRE(stage.bobs().image(1) == 17);
+                duel.run(89);
+                REQUIRE(stage.bobs().image(1) == 17);
+                duel.run(1);
+                REQUIRE(stage.bobs().image(1) == 38);
+                duel.run(30);
+                REQUIRE(stage.bobs().image(1) == 39);
+                REQUIRE(duel.host.played(2, 3, 1));
+                duel.run(40);
+                REQUIRE(stage.bobs().image(1) == 38);
+                REQUIRE_FALSE(duel.host.played(2, 4, 1));
+                duel.run(30);
+                REQUIRE(duel.host.played(2, 4, 1));
+                REQUIRE(duel.global(RT) == 340);
+              }
+
+              THEN("The walk-off ends the stage; CONGRA's _OFF runs in the "
+                   "same frame and its Cls goes to the hand-over") {
+                const int ended = duel.runUntil(
+                    [&] {
+                      return stage.outcome() != BossStage::Outcome::Playing;
+                    },
+                    2000);
+                REQUIRE(ended == 3 + 100 + 1 + 19 + 19 + 18 + 25 + 90 + 30 +
+                                     40 + 30 + 340);
+                REQUIRE(stage.outcome() == BossStage::Outcome::BossDefeated);
+                REQUIRE(stage.bobs().x(1) == playerX + 340);
+                REQUIRE(stage.screen().pixel(184, 60) == 85);
+                REQUIRE_FALSE(stage.bobs().isActive(1));
+                REQUIRE_FALSE(stage.machine().exists(1));
+              }
+
+              THEN("CONGRA gets the last frame as shown, bobs and panel "
+                   "included") {
+                duel.runUntil(
+                    [&] {
+                      return stage.outcome() != BossStage::Outcome::Playing;
+                    },
+                    2000);
+                REQUIRE(duel.session.bossExit.has_value());
+                BossExit exit = *duel.session.bossExit;
+                REQUIRE(exit.buffer.isAutobacking());
+                exit.buffer.vbl();
+                REQUIRE(exit.buffer.shown().pixels() !=
+                        stage.screen().pixels());
+                REQUIRE(exit.palette == levelPalette(false));
+                REQUIRE(exit.displayY == 47);
+                REQUIRE(exit.offsetX == 0);
+                REQUIRE(exit.panelY == 270);
+                REQUIRE_FALSE(exit.laced);
+                REQUIRE(exit.panel.pixels() ==
+                        stage.panel()->surface().pixels());
+              }
+            }
+          }
         }
       }
     }

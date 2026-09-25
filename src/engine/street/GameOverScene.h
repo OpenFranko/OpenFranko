@@ -5,11 +5,13 @@
 #include "../effects/AmigaPalette.h"
 #include "../effects/PaletteFader.h"
 #include "Bobs.h"
+#include "DoubleBuffer.h"
 #include "IndexedSurface.h"
 #include "LoadingMock.h"
 #include "StreetStage.h"
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace openfranko {
@@ -23,10 +25,11 @@ public:
   static constexpr int HEIGHT = 256;
   static constexpr int PICTURE_WIDTH = 1008;
   static constexpr int PICTURE_HEIGHT = 256;
+  static constexpr int DISPLAY_LINE = 45;
   static constexpr int PAN_END = 680;
   static constexpr int FILES = 3;
 
-  explicit GameOverScene(StreetHost &host);
+  GameOverScene(StreetHost &host, GameSession &session);
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
@@ -43,30 +46,38 @@ private:
     Close,
     Loading,
     Open,
+    Unpacked,
+    Opened,
     Pan,
     Click,
     MusicFade,
     Hold,
+    CloseShown,
+    Closed,
     Finished
   };
   enum class Flow { Continue, Yield };
 
+  Flow wait(int frames, Step next);
+  bool holdsAtStart() const;
+  bool holdsAtEnd() const;
   void close();
+  void unpack();
   void open();
   Flow pan();
   Flow click(int16_t joystick);
   Flow musicFade();
   Flow hold();
-  void finish();
-  void redraw();
+  void closeGraveyard();
 
   StreetHost &m_host;
+  GameSession &m_session;
   LoadingMock m_loading;
   ImageBank m_images;
   BobLayer m_bobs;
   Picture m_picture;
   IndexedSurface m_screen;
-  IndexedSurface m_display;
+  std::optional<DoubleBuffer> m_buffer;
   effects::AmigaPalette m_palette;
   effects::AmigaPalette m_rainbow;
   effects::PaletteFader m_fader;
@@ -74,11 +85,19 @@ private:
 
   Step m_step = Step::Close;
   effects::AmigaColor m_border;
+  effects::AmigaColor m_copperBorder;
   bool m_shown = false;
+  bool m_copperShown = false;
   bool m_rainbowShown = false;
   bool m_animating = false;
   int m_offset = 0;
+  int m_copperOffset = 0;
+  int m_shownOffset = 0;
   int m_count = 0;
+  int m_frame = 0;
+  int m_resumeFrame = 0;
+  int m_holdStart = -1;
+  int m_holdUntil = -1;
 };
 
 } // namespace street

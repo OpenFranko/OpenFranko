@@ -24,15 +24,24 @@ public:
   const Picture *find(int number) const;
   uint16_t orientation(int number) const;
   void orient(int number, uint16_t flags);
+  void noMask(int number);
+  bool isMasked(int number) const;
 
 private:
   struct Entry {
     Picture picture;
     uint16_t orientation = 0;
     bool loaded = false;
+    bool masked = true;
   };
 
   std::vector<Entry> m_entries;
+};
+
+struct SavedArea {
+  int left = 0;
+  int top = 0;
+  IndexedSurface pixels = IndexedSurface(0, 0);
 };
 
 class BobLayer {
@@ -57,10 +66,25 @@ public:
   bool collided(int number) const;
 
   void draw(IndexedSurface &surface, ImageBank &images) const;
+  std::vector<SavedArea> drawSaving(IndexedSurface &surface,
+                                    ImageBank &images) const;
+  static void restore(IndexedSurface &surface,
+                      const std::vector<SavedArea> &saved);
   static bool paste(IndexedSurface &surface, ImageBank &images, int x, int y,
                     int image);
 
 private:
+  struct Placement {
+    int number = 0;
+    const Picture *picture = nullptr;
+    uint16_t flags = 0;
+    int left = 0;
+    int top = 0;
+  };
+
+  std::vector<Placement> placements(const IndexedSurface &surface,
+                                    const ImageBank &images) const;
+
   struct Bob {
     bool active = false;
     amal::Object object;

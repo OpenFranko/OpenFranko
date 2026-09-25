@@ -2,15 +2,22 @@
 #define ENGINE_STREET_GAMESESSION_H_
 
 #include "../amal/Machine.h"
+#include "../effects/AmigaPalette.h"
+#include "../effects/InkeyBuffer.h"
+#include "DoubleBuffer.h"
 #include "HighScoreTable.h"
 #include "IndexedSurface.h"
+#include "StageFrame.h"
 
 #include <optional>
+#include <string>
 
 namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+
+enum class SystemKey { None, Other, MusicOn, MusicOff, Pal, Ntsc, Escape };
 
 struct StreetExit {
   IndexedSurface screen;
@@ -18,6 +25,17 @@ struct StreetExit {
   int playerX = 0;
   int energyShown = 0;
   int killsShown = 0;
+  std::optional<DoubleBuffer> buffer;
+};
+
+struct BossExit {
+  DoubleBuffer buffer;
+  effects::AmigaPalette palette;
+  int displayY = 0;
+  int offsetX = 0;
+  IndexedSurface panel;
+  int panelY = PANEL_DISPLAY_Y;
+  bool laced = false;
 };
 
 struct DriveCarryOver {
@@ -31,14 +49,23 @@ struct DriveCarryOver {
 struct GameSession {
   static constexpr int FIRST_EXTRA_LIFE = 35;
 
-  amal::Registers registers{};
+  static amal::Registers freshRegisters();
+
+  amal::Registers registers = freshRegisters();
   int extraLifeKills = FIRST_EXTRA_LIFE;
   bool brutality = false;
+  bool shortLevels = false;
+  std::string textBuffer = HighScoreTable::FILE_NAME;
   int stageReached = 0;
   bool fromBonusDrive = false;
+  bool nameScreenOpen = false;
+  effects::AmigaColor border = 0x000;
+  SystemKey keyLatch = SystemKey::None;
   DriveCarryOver lastDrive;
   HighScoreTable highScores;
+  effects::InkeyBuffer keyboard;
   std::optional<StreetExit> streetExit;
+  std::optional<BossExit> bossExit;
 };
 
 } // namespace street

@@ -13,6 +13,7 @@ public:
   enum class Kind { Title, Hiscores };
 
   static constexpr int HISCORE_ROWS = 10;
+  static constexpr int UNPACK_VBLS = 1;
 
   AttractSequence(Kind kind, AmigaPalette picturePalette);
 
@@ -22,6 +23,7 @@ public:
   bool isShowing() const;
   const AmigaPalette &palette() const;
   int rowsShown() const;
+  bool isWaiting() const;
   bool isFinished() const;
 
 private:
@@ -30,9 +32,10 @@ private:
 
   Kind m_kind;
   AmigaPalette m_palette;
-  int m_frame = 0;
+  int m_frame = -UNPACK_VBLS;
   int m_rows = 0;
   bool m_showing = false;
+  bool m_waiting = false;
   bool m_finished = false;
 };
 

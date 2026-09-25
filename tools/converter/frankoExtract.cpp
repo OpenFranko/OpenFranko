@@ -15,7 +15,8 @@ int main(int argc, char **argv) {
 
   const auto inputOptional = parser.getCmdOption("-i");
   if (!inputOptional.has_value()) {
-    std::cerr << "Usage: " << argv[0] << " -i <file_or_dir> [-o <output_dir>]"
+    std::cerr << "Usage: " << argv[0]
+              << " -i <file_or_dir> [-o <output_dir>] [-e <game executable>]"
               << std::endl;
     std::cerr << "Extracts all Franko game data files to standard formats."
               << std::endl;
@@ -30,6 +31,9 @@ int main(int argc, char **argv) {
     std::cerr << "  Samples (0x0300) -> WAV" << std::endl;
     std::cerr << "  Music   (0x0400) -> S3M (ScreamTracker 3)" << std::endl;
     std::cerr << "  Screen  (0x0201) -> BMP (raw SPACK)" << std::endl;
+    std::cerr << "  Game executable (-e, or 'game' in the input directory)"
+              << std::endl;
+    std::cerr << "          -> JSON (ending credits)" << std::endl;
     return 1;
   }
 
@@ -83,6 +87,20 @@ int main(int argc, char **argv) {
                 << " errors." << std::endl;
     } else {
       errors = extractor::processFile(inputPath, outDir);
+    }
+
+    std::string executable = parser.getCmdOption("-e").value_or("");
+    const auto bundled = std::filesystem::path(inputPath) / "game";
+    if (executable.empty() && std::filesystem::is_directory(inputPath) &&
+        std::filesystem::is_regular_file(bundled)) {
+      executable = bundled.string();
+    }
+    if (executable.empty()) {
+      std::cerr << "No game executable given (-e): the ending credits were "
+                   "not extracted."
+                << std::endl;
+    } else {
+      errors += extractor::processExecutable(executable, outDir);
     }
 
     return errors > 0 ? 1 : 0;

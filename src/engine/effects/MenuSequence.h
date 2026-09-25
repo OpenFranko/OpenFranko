@@ -5,12 +5,14 @@
 #include "AmigaPalette.h"
 #include "CreditScroll.h"
 #include "GameOptions.h"
+#include "InkeyBuffer.h"
 #include "PaletteFader.h"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 
 namespace openfranko {
 namespace src {
@@ -38,22 +40,29 @@ public:
   static constexpr std::size_t BOBS = 10;
   static constexpr int ATTRACT_AFTER = 300;
 
-  MenuSequence(GameOptions &options, AmigaPalette palette);
+  MenuSequence(GameOptions &options, AmigaPalette palette,
+               InkeyBuffer &keyboard);
 
+  void setMouseButton(bool down);
   void advance(const Joystick &joystick);
   void resumeAfterAttract();
 
   const std::array<Bob, BOBS> &bobs() const;
+  const std::array<Bob, BOBS> &shownBobs() const;
   const AmigaPalette &palette() const;
+  const std::string &keysRead() const;
   bool isAttractDue() const;
+  bool isScreenShown() const;
   bool isFinished() const;
 
 private:
-  enum class Phase { Opening, Choosing, Leaving, Finished };
-  enum class Resume { Nothing, Choosing, Leaving };
+  enum class Phase { Unpacking, Opening, Choosing, Leaving, Closing, Finished };
+  enum class Resume { Nothing, Hand, Choosing, Leaving };
 
   void runScript(const Joystick &joystick);
   void choose(const Joystick &joystick);
+  void finishPass();
+  void readKeys();
   void moveHand(const Joystick &joystick);
   void activate();
   void flyIcons(std::size_t row, bool in);
@@ -66,9 +75,12 @@ private:
   AmigaPalette m_palette;
   PaletteFader m_fader;
   std::array<Bob, BOBS> m_bobs{};
+  std::array<Bob, BOBS> m_shownBobs{};
   std::array<AmalMotion, BOBS> m_motions{};
   std::array<std::optional<CreditScroll>, 3> m_credits{};
-  Phase m_phase = Phase::Opening;
+  InkeyBuffer &m_keyboard;
+  std::string m_keysRead;
+  Phase m_phase = Phase::Unpacking;
   Resume m_resume = Resume::Nothing;
   int m_frame = 0;
   int m_phaseStart = 0;
@@ -77,6 +89,9 @@ private:
   int m_column = 0;
   int m_row = 0;
   bool m_attractDue = false;
+  bool m_mouseButton = false;
+  bool m_screenShown = false;
+  bool m_busy = false;
 };
 
 } // namespace effects

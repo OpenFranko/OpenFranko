@@ -5,6 +5,8 @@
 #include "../effects/AmigaPalette.h"
 #include "../effects/GameOptions.h"
 #include "Bobs.h"
+#include "DoubleBuffer.h"
+#include "EndingCredits.h"
 #include "GameSession.h"
 #include "IndexedSurface.h"
 #include "LevelScript.h"
@@ -32,19 +34,20 @@ public:
   virtual effects::AmigaPalette loadPalette(int resource) = 0;
   virtual std::vector<Picture> loadScenery(int resource) = 0;
   virtual LevelScript loadLevelScript(int resource) = 0;
+  virtual EndingCredits loadEndingCredits() = 0;
   virtual Picture loadPanelPicture(int part) = 0;
   virtual void loadMusic(int resource) = 0;
+  virtual bool isMusicLoaded(int resource) const = 0;
   virtual void playMusic() = 0;
   virtual void stopMusic() = 0;
   virtual void setMusicVolume(int volume) = 0;
+  virtual void setMusicTempo(int tempo) = 0;
   virtual void playSample(int bank, int sample, int voices) = 0;
   virtual void playSampleAt(int bank, int sample, int voices,
                             int frequency) = 0;
   virtual void setSampleLoop(bool loop) = 0;
   virtual int random(int limit) = 0;
 };
-
-enum class SystemKey { None, MusicOn, MusicOff, Escape };
 
 struct StreetInput {
   int16_t joystick = 0;
@@ -76,10 +79,12 @@ public:
   int wavesSpawned() const;
   bool isFighting() const;
   bool isScreenShown() const;
+  bool isPanelShown() const;
 
 private:
   enum class Step {
     Start,
+    GameInitialized,
     StageMusic,
     StageScreen,
     StageShown,
@@ -99,6 +104,10 @@ private:
     AdvanceLeaveFlushed,
     AdvanceLeavePasted,
     GameOverWait,
+    GameOverScreenGone,
+    GameOverPanelClose,
+    GameOverPanelGone,
+    GameOverClosed,
     Finished
   };
 
@@ -114,12 +123,18 @@ private:
   int stage() const;
   StatusPanel::Stats stats() const;
   void stall();
+  void autoback(DoubleBuffer::Op op);
+  bool pasteStalled(int x, int y, int image);
+  void putBlock();
   Flow endOfPass() const;
   void playRouted(int request, int voices);
 
   void newGame();
   void gameInit();
   void openScreens(bool shown);
+  void test();
+  void hideScreen();
+  StageCopper registers() const;
   Flow stageInit();
   Flow stageMusic();
   Flow stageScreen();
@@ -150,9 +165,9 @@ private:
   void spawnLoaded();
   void scrollStep();
   void gameOver();
+  void closePlayScreen();
   void sys();
   void runBasic(const StreetInput &input);
-  void redraw();
 
   StreetHost &m_host;
   GameSession &m_session;
@@ -161,9 +176,10 @@ private:
   ImageBank m_images;
   BobLayer m_bobs;
   IndexedSurface m_screen;
-  IndexedSurface m_display;
+  DoubleBuffer m_buffer;
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
+  StageDisplay m_copper;
   effects::AmigaPalette m_palette;
   effects::AmigaPalette m_panelPalette;
   LevelScript m_script;
@@ -179,7 +195,6 @@ private:
   long m_resumeFrame = 0;
   long m_passFrame = 0;
   int m_index = 0;
-  SystemKey m_pendingKey = SystemKey::None;
 
   int m_energyShown = 0;
   int m_killsShown = 0;
@@ -193,6 +208,7 @@ private:
   int m_facing = 0;
   int m_screenOffsetX = 0;
   bool m_screenShown = false;
+  bool m_panelShown = true;
   bool m_escape = false;
   std::array<int, 4> m_energy{};
   std::array<int, 4> m_aggression{};

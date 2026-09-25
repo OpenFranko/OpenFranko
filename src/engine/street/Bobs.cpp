@@ -18,6 +18,13 @@ int hotX(const Picture &picture, uint16_t flags) {
                                      : picture.hotX;
 }
 
+constexpr int WORD_PIXELS = 16;
+
+int wordStart(int x) {
+  return x >= 0 ? x & ~(WORD_PIXELS - 1)
+                : -((-x + WORD_PIXELS - 1) & ~(WORD_PIXELS - 1));
+}
+
 int hotY(const Picture &picture, uint16_t flags) {
   return (flags & ImageBank::FLIP_Y) ? picture.height - picture.hotY
                                      : picture.hotY;
@@ -71,6 +78,7 @@ void ImageBank::load(int base, const std::vector<Picture> &frames) {
     entry.picture = frames[i];
     entry.orientation = 0;
     entry.loaded = frames[i].width > 0 && frames[i].height > 0;
+    entry.masked = true;
   }
 }
 
@@ -92,6 +100,16 @@ void ImageBank::orient(int number, uint16_t flags) {
     m_entries[static_cast<std::size_t>(number)].orientation =
         flags & (FLIP_X | FLIP_Y);
   }
+}
+
+void ImageBank::noMask(int number) {
+  if (find(number)) {
+    m_entries[static_cast<std::size_t>(number)].masked = false;
+  }
+}
+
+bool ImageBank::isMasked(int number) const {
+  return !find(number) || m_entries[static_cast<std::size_t>(number)].masked;
 }
 
 amal::Object &BobLayer::object(int number) {
@@ -161,7 +179,7 @@ bool BobLayer::collide(int number, const ImageBank &images, int first,
     const int image =
         static_cast<uint16_t>(bob.object.image) & ImageBank::NUMBER_MASK;
     shape.picture = images.find(image);
-    if (!shape.picture) {
+    if (!shape.picture || !images.isMasked(image)) {
       return false;
     }
     shape.orientation = images.orientation(image);
@@ -194,7 +212,9 @@ bool BobLayer::collided(int number) const {
   return m_collisions.at(static_cast<std::size_t>(number));
 }
 
-void BobLayer::draw(IndexedSurface &surface, ImageBank &images) const {
+std::vector<BobLayer::Placement>
+BobLayer::placements(const IndexedSurface &surface,
+                     const ImageBank &images) const {
   std::vector<int> order;
   for (int number = 0; number < COUNT; ++number) {
     if (m_bobs[static_cast<std::size_t>(number)].active) {
@@ -207,23 +227,65 @@ void BobLayer::draw(IndexedSurface &surface, ImageBank &images) const {
     return first.y != second.y ? first.y < second.y : first.x < second.x;
   });
 
+  std::vector<Placement> placed;
   for (int number : order) {
     const amal::Object &bob = m_bobs[static_cast<std::size_t>(number)].object;
     const uint16_t image = static_cast<uint16_t>(bob.image);
-    const int index = image & ImageBank::NUMBER_MASK;
-    const Picture *picture = images.find(index);
+    const Picture *picture = images.find(image & ImageBank::NUMBER_MASK);
     if (!picture) {
       continue;
     }
     const uint16_t flags = image & (ImageBank::FLIP_X | ImageBank::FLIP_Y);
     const int left = bob.x - hotX(*picture, flags);
     const int top = bob.y - hotY(*picture, flags);
-    if (!surface.intersects(left, top, picture->width, picture->height)) {
+    if (surface.intersects(left, top, picture->width, picture->height)) {
+      placed.push_back({number, picture, flags, left, top});
+    }
+  }
+  return placed;
+}
+
+void BobLayer::draw(IndexedSurface &surface, ImageBank &images) const {
+  for (const Placement &placed : placements(surface, images)) {
+    const int bob = placed.number;
+    const int index = static_cast<uint16_t>(
+                          m_bobs[static_cast<std::size_t>(bob)].object.image) &
+                      ImageBank::NUMBER_MASK;
+    images.orient(index, placed.flags);
+    surface.draw(*placed.picture, placed.left, placed.top,
+                 placed.flags & ImageBank::FLIP_X,
+                 placed.flags & ImageBank::FLIP_Y, !images.isMasked(index));
+  }
+}
+
+std::vector<SavedArea> BobLayer::drawSaving(IndexedSurface &surface,
+                                            ImageBank &images) const {
+  std::vector<SavedArea> saved;
+  for (const Placement &placed : placements(surface, images)) {
+    const int words = (placed.picture->width + WORD_PIXELS - 1) / WORD_PIXELS +
+                      ((placed.left & (WORD_PIXELS - 1)) != 0 ? 1 : 0);
+    const int start = wordStart(placed.left);
+    const int x1 = std::max(start, 0);
+    const int x2 = std::min(start + words * WORD_PIXELS, surface.width());
+    const int y1 = std::max(placed.top, 0);
+    const int y2 =
+        std::min(placed.top + placed.picture->height, surface.height());
+    if (x1 >= x2 || y1 >= y2) {
       continue;
     }
-    images.orient(index, flags);
-    surface.draw(*picture, left, top, flags & ImageBank::FLIP_X,
-                 flags & ImageBank::FLIP_Y);
+    SavedArea area{x1, y1, IndexedSurface(x2 - x1, y2 - y1)};
+    area.pixels.copy(surface, x1, y1, x2, y2, 0, 0);
+    saved.push_back(std::move(area));
+  }
+  draw(surface, images);
+  return saved;
+}
+
+void BobLayer::restore(IndexedSurface &surface,
+                       const std::vector<SavedArea> &saved) {
+  for (const SavedArea &area : saved) {
+    surface.copy(area.pixels, 0, 0, area.pixels.width(), area.pixels.height(),
+                 area.left, area.top);
   }
 }
 
@@ -241,7 +303,7 @@ bool BobLayer::paste(IndexedSurface &surface, ImageBank &images, int x, int y,
     return false;
   }
   surface.draw(*picture, x, y, flags & ImageBank::FLIP_X,
-               flags & ImageBank::FLIP_Y);
+               flags & ImageBank::FLIP_Y, !images.isMasked(index));
   return true;
 }
 

@@ -11,12 +11,14 @@ constexpr auto PICTURE_PATH = "assets/03C3.bmp";
 constexpr int SCREEN_ID = 0;
 constexpr int SCREEN_WIDTH = 368;
 constexpr int SCREEN_HEIGHT = 290;
+constexpr int DISPLAY_LINE = 30;
 constexpr std::size_t SCREEN_COLORS = 32;
 
-constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 70};
+constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 70, true};
 
-effects::AmigaPalette openScreen(systems::VideoSystem &videoSystem) {
-  videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, SCREEN_HEIGHT);
+effects::AmigaPalette openScreen(systems::VideoSystem &videoSystem,
+                                 const effects::VisibleRows &rows) {
+  videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, rows.count);
   videoSystem.switchScreen(SCREEN_ID);
   videoSystem.loadIndexedImage(PICTURE, PICTURE_PATH);
 
@@ -28,7 +30,10 @@ effects::AmigaPalette openScreen(systems::VideoSystem &videoSystem) {
 } // namespace
 
 MirageState::MirageState(systems::VideoSystem &videoSystem)
-    : m_videoSystem(videoSystem), m_sequence(openScreen(videoSystem), TIMINGS) {
+    : m_videoSystem(videoSystem),
+      m_rows(effects::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
+                                  videoSystem.isNtsc())),
+      m_sequence(openScreen(videoSystem, m_rows), TIMINGS) {
   m_videoSystem.setImagePalette(PICTURE, m_sequence.palette());
 }
 
@@ -45,7 +50,11 @@ std::optional<EngineStateEnum> MirageState::update() {
   if (m_sequence.advance()) {
     m_videoSystem.setImagePalette(PICTURE, m_sequence.palette());
   }
-  m_videoSystem.drawImage(PICTURE, 0, 0);
+  if (m_sequence.isShown()) {
+    m_videoSystem.drawImage(PICTURE, 0, -m_rows.first);
+  } else {
+    m_videoSystem.fillScreen(0, 0, 0);
+  }
   return std::nullopt;
 }
 

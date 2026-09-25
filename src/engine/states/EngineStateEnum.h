@@ -20,6 +20,10 @@ enum class EngineStateEnum {
   Level2,
   Level2Boss,
   Level2Car,
+  StageProtectionCheck,
+  Level3,
+  Level3Boss,
+  Ending,
   GameOver,
   HighScore,
   Continue

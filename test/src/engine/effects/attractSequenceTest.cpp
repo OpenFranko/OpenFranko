@@ -16,18 +16,26 @@ void run(AttractSequence &attract, int frames, bool touched = false) {
   }
 }
 
+void unpack(AttractSequence &attract) {
+  run(attract, AttractSequence::UNPACK_VBLS);
+}
+
 } // namespace
 
 SCENARIO("AttractSequence shows the title as the menu's attract loop does") {
   GIVEN("The title") {
     AttractSequence attract(AttractSequence::Kind::Title, HISCORE_PALETTE);
 
-    THEN("It shows at once") {
+    THEN("It shows once Unpack 8 To 1 has waited its VBL") {
+      unpack(attract);
+      REQUIRE_FALSE(attract.isShowing());
+      REQUIRE_FALSE(attract.isWaiting());
       attract.advance(false);
       REQUIRE(attract.isShowing());
     }
 
     WHEN("The joystick is touched during the first Wait 10") {
+      unpack(attract);
       run(attract, 10, true);
 
       THEN("It is ignored") { REQUIRE_FALSE(attract.isFinished()); }
@@ -40,6 +48,7 @@ SCENARIO("AttractSequence shows the title as the menu's attract loop does") {
     }
 
     WHEN("Nobody touches the joystick") {
+      unpack(attract);
       run(attract, 211);
       const bool finishedBefore = attract.isFinished();
       attract.advance(false);
@@ -57,7 +66,10 @@ SCENARIO("AttractSequence shows the hi-score table as HISHOW does") {
   GIVEN("The hi-score table") {
     AttractSequence attract(AttractSequence::Kind::Hiscores, HISCORE_PALETTE);
 
-    WHEN("The first frame passes") {
+    WHEN("Unpack 9 To 1's VBL and the first frame pass") {
+      unpack(attract);
+      REQUIRE_FALSE(attract.isShowing());
+      REQUIRE(attract.palette()[26] == 0xFFF);
       attract.advance(false);
 
       THEN("The menu still shows while the first dimming step lands") {
@@ -74,6 +86,7 @@ SCENARIO("AttractSequence shows the hi-score table as HISHOW does") {
     }
 
     WHEN("The four Fade 100 steps are done") {
+      unpack(attract);
       run(attract, 16);
 
       THEN("The picture is four steps darker and no row is drawn") {
@@ -96,6 +109,7 @@ SCENARIO("AttractSequence shows the hi-score table as HISHOW does") {
     }
 
     WHEN("The rows keep coming") {
+      unpack(attract);
       run(attract, 17 + 10 * 9);
 
       THEN("All ten are drawn, one every 10 frames") {
@@ -104,6 +118,7 @@ SCENARIO("AttractSequence shows the hi-score table as HISHOW does") {
     }
 
     WHEN("The joystick is held while the rows are drawn") {
+      unpack(attract);
       run(attract, 126, true);
 
       THEN("HISHOW cannot be interrupted") {
@@ -118,6 +133,7 @@ SCENARIO("AttractSequence shows the hi-score table as HISHOW does") {
     }
 
     WHEN("Nobody touches the joystick") {
+      unpack(attract);
       run(attract, 527);
       const bool finishedBefore = attract.isFinished();
       attract.advance(false);
@@ -126,6 +142,43 @@ SCENARIO("AttractSequence shows the hi-score table as HISHOW does") {
         REQUIRE_FALSE(finishedBefore);
         REQUIRE(attract.isFinished());
       }
+    }
+  }
+}
+
+SCENARIO("AttractSequence tells when BASIC sleeps in a Wait") {
+  GIVEN("The title") {
+    AttractSequence attract(AttractSequence::Kind::Title, HISCORE_PALETTE);
+    unpack(attract);
+    const bool waitedInUnpack = attract.isWaiting();
+    bool waitedThroughout = true;
+    for (int frame = 0; frame < 10; ++frame) {
+      attract.advance(false);
+      waitedThroughout = waitedThroughout && attract.isWaiting();
+    }
+    attract.advance(false);
+
+    THEN("Unpack's VBL is a busy wait, Wait 10 a sleep and the Timer loop "
+         "neither") {
+      REQUIRE_FALSE(waitedInUnpack);
+      REQUIRE(waitedThroughout);
+      REQUIRE_FALSE(attract.isWaiting());
+    }
+  }
+
+  GIVEN("The hi-score table") {
+    AttractSequence attract(AttractSequence::Kind::Hiscores, HISCORE_PALETTE);
+    unpack(attract);
+    bool waitedThroughout = true;
+    for (int frame = 0; frame < 126; ++frame) {
+      attract.advance(false);
+      waitedThroughout = waitedThroughout && attract.isWaiting();
+    }
+    attract.advance(false);
+
+    THEN("HISHOW and the Wait 10 after it wait and the Timer loop does not") {
+      REQUIRE(waitedThroughout);
+      REQUIRE_FALSE(attract.isWaiting());
     }
   }
 }

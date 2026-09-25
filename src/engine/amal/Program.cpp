@@ -206,47 +206,67 @@ private:
 
   bool isJoystick() const { return peek() == 'J' && isDigit(peek(1)); }
 
+  bool isNumber(std::size_t ahead) const {
+    return isDigit(peek(ahead)) || peek(ahead) == '$';
+  }
+
+  int16_t number() {
+    const bool negative = peek() == '-';
+    if (negative) {
+      ++m_position;
+    }
+    uint32_t value = 0;
+    if (peek() == '$') {
+      ++m_position;
+      while (!atEnd() && isHexDigit(peek())) {
+        const char digit = next();
+        value = value * 16 + static_cast<uint32_t>(isDigit(digit)
+                                                       ? digit - '0'
+                                                       : digit - 'A' + 10);
+      }
+    } else {
+      while (!atEnd() && isDigit(peek())) {
+        value = value * 10 + static_cast<uint32_t>(next() - '0');
+      }
+    }
+    return static_cast<int16_t>(negative ? 0u - value : value);
+  }
+
+  Term operand() {
+    Term term;
+    if (isNumber(0) || (peek() == '-' && isNumber(1))) {
+      term.value = number();
+    } else if (isJoystick()) {
+      m_position += 2;
+      term.kind = TermKind::Joystick;
+    } else {
+      term.kind = TermKind::Register;
+      term.value = reg();
+    }
+    return term;
+  }
+
+  Term binaryOperator() {
+    const char c = next();
+    if (!isOperator(c)) {
+      throw std::invalid_argument(
+          std::string("AMAL: expected an operator, got ") + c);
+    }
+    Term term;
+    term.kind = TermKind::Operator;
+    term.op = c;
+    if (c == '<' && peek() == '>') {
+      term.op = '#';
+      ++m_position;
+    }
+    return term;
+  }
+
   Expression expression(const std::string &stops) {
-    Expression expression;
-    while (!atEnd()) {
-      const char c = peek();
-      if (stops.find(c) != std::string::npos && !isJoystick()) {
-        break;
-      }
-      Term term;
-      if (isOperator(c)) {
-        term.kind = TermKind::Operator;
-        if (c == '<' && peek(1) == '>') {
-          term.op = '#';
-          m_position += 2;
-        } else {
-          term.op = c;
-          ++m_position;
-        }
-      } else if (c == '$') {
-        ++m_position;
-        uint32_t value = 0;
-        while (!atEnd() && isHexDigit(peek())) {
-          const char digit = next();
-          value = value * 16 + static_cast<uint32_t>(isDigit(digit)
-                                                         ? digit - '0'
-                                                         : digit - 'A' + 10);
-        }
-        term.value = static_cast<int16_t>(value);
-      } else if (isDigit(c)) {
-        uint32_t value = 0;
-        while (!atEnd() && isDigit(peek())) {
-          value = value * 10 + static_cast<uint32_t>(next() - '0');
-        }
-        term.value = static_cast<int16_t>(value);
-      } else if (isJoystick()) {
-        m_position += 2;
-        term.kind = TermKind::Joystick;
-      } else {
-        term.kind = TermKind::Register;
-        term.value = reg();
-      }
-      expression.push_back(term);
+    Expression expression{operand()};
+    while (!atEnd() && stops.find(peek()) == std::string::npos) {
+      expression.push_back(binaryOperator());
+      expression.push_back(operand());
     }
     return expression;
   }

@@ -21,11 +21,14 @@ public:
   VideoSystem(const VideoSystem &) = delete;
   VideoSystem &operator=(const VideoSystem &) = delete;
 
-  void createScreen(int screenId, int width, int height);
+  void createScreen(int screenId, int width, int height, int displayHeight = 0);
   void switchScreen(int screenId);
   void destroyScreen(int screenId);
   void fillScreen(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
   void sync();
+  void setNtsc(bool enabled);
+  bool isNtsc() const;
+  int refreshRate() const;
 
   void loadImage(const std::string &name, const std::string &path,
                  bool applyColorKey = false);
@@ -47,6 +50,7 @@ private:
   struct VirtualScreen {
     int id;
     int width, height;
+    int displayHeight;
     SDL_Texture *targetTexture;
   };
 
@@ -74,6 +78,7 @@ private:
   SDL_Renderer *renderer;
 
   int currentScreenId;
+  bool ntsc = false;
 };
 
 } // namespace systems

@@ -1,6 +1,8 @@
 #include "../../../../src/engine/effects/MenuSequence.h"
 #include <catch2/catch_all.hpp>
 
+#include <string>
+
 using namespace openfranko::src::engine::effects;
 
 namespace {
@@ -17,7 +19,9 @@ const Joystick DOWN{false, true, false, false, false};
 const Joystick RIGHT{false, false, false, true, false};
 const Joystick FIRE{false, false, false, false, true};
 
-constexpr int OPENING_FRAMES = 50;
+constexpr int UNPACKED = 4;
+constexpr int OPENING_FRAMES = UNPACKED + 50;
+constexpr int SCREEN_CLOSE = 4;
 
 void run(MenuSequence &menu, int frames, const Joystick &joystick = NOTHING) {
   for (int frame = 0; frame < frames; ++frame) {
@@ -29,12 +33,40 @@ const MenuSequence::Bob &bob(const MenuSequence &menu, int number) {
   return menu.bobs()[number - 1];
 }
 
+std::string type(MenuSequence &menu, InkeyBuffer &keyboard,
+                 const std::string &keys) {
+  std::string read;
+  for (const char key : keys) {
+    keyboard.press(key);
+    menu.advance(NOTHING);
+    read += menu.keysRead();
+  }
+  return read;
+}
+
+std::string readDuring(MenuSequence &menu, int frames,
+                       const Joystick &joystick = NOTHING) {
+  std::string read;
+  for (int frame = 0; frame < frames; ++frame) {
+    menu.advance(joystick);
+    read += menu.keysRead();
+  }
+  return read;
+}
+
+void clickMouse(MenuSequence &menu) {
+  menu.setMouseButton(true);
+  menu.advance(NOTHING);
+  menu.setMouseButton(false);
+}
+
 } // namespace
 
 SCENARIO("MenuSequence opens the menu as state_07 does") {
   GIVEN("A menu with the options boot sets") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
 
     THEN("The icons wait off screen and the hand points at START") {
       REQUIRE(bob(menu, 4).x == -64);
@@ -49,8 +81,18 @@ SCENARIO("MenuSequence opens the menu as state_07 does") {
       REQUIRE_FALSE(bob(menu, 1).shown);
     }
 
-    WHEN("24 frames pass") {
-      run(menu, 24);
+    THEN("Unpack 6 To 0 and Double Buffer hold the screen back four VBLs") {
+      REQUIRE_FALSE(menu.isScreenShown());
+      run(menu, UNPACKED);
+      REQUIRE_FALSE(menu.isScreenShown());
+      REQUIRE(bob(menu, 4).x == -64);
+      run(menu, 1);
+      REQUIRE(menu.isScreenShown());
+      REQUIRE(bob(menu, 4).x > -64);
+    }
+
+    WHEN("24 frames pass after the unpack") {
+      run(menu, UNPACKED + 24);
 
       THEN("The first pair has landed and the second is still flying") {
         REQUIRE(bob(menu, 4).x == 32);
@@ -59,8 +101,8 @@ SCENARIO("MenuSequence opens the menu as state_07 does") {
       }
     }
 
-    WHEN("44 frames pass") {
-      run(menu, 44);
+    WHEN("44 frames pass after the unpack") {
+      run(menu, UNPACKED + 44);
 
       THEN("All six icons are in place") {
         for (int icon = 4; icon <= 6; ++icon) {
@@ -89,7 +131,8 @@ SCENARIO("MenuSequence opens the menu as state_07 does") {
 SCENARIO("MenuSequence moves the hand and toggles the options") {
   GIVEN("An open menu") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
     run(menu, OPENING_FRAMES);
 
     WHEN("The joystick goes right") {
@@ -164,7 +207,8 @@ SCENARIO("MenuSequence moves the hand and toggles the options") {
     GameOptions options;
     options.music = false;
     options.mono = true;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
 
     THEN("Their icons show them") {
       REQUIRE(bob(menu, 5).image == 44);
@@ -177,7 +221,8 @@ SCENARIO("MenuSequence moves the hand and toggles the options") {
 SCENARIO("MenuSequence leaves through START") {
   GIVEN("An open menu with START fired") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
     run(menu, OPENING_FRAMES);
     menu.advance(FIRE);
 
@@ -207,16 +252,24 @@ SCENARIO("MenuSequence leaves through START") {
 
     WHEN("Fade 3 has had its Wait 45") {
       run(menu, 134);
-      const bool finishedBefore = menu.isFinished();
+      const bool shownBefore = menu.isScreenShown();
       menu.advance(NOTHING);
 
-      THEN("The menu closes in black") {
-        REQUIRE_FALSE(finishedBefore);
-        REQUIRE(menu.isFinished());
+      THEN("_CLOSE's copper list drops the black screen two VBLs later and "
+           "the menu is done after four") {
+        REQUIRE(shownBefore);
+        REQUIRE(menu.isScreenShown());
         REQUIRE(menu.palette() == AmigaPalette(16, 0x000));
+        run(menu, 2);
+        REQUIRE_FALSE(menu.isScreenShown());
         for (const MenuSequence::Bob &shown : menu.bobs()) {
           REQUIRE_FALSE(shown.shown);
         }
+        REQUIRE_FALSE(menu.isFinished());
+        run(menu, 1);
+        REQUIRE_FALSE(menu.isFinished());
+        run(menu, 1);
+        REQUIRE(menu.isFinished());
       }
     }
   }
@@ -225,7 +278,8 @@ SCENARIO("MenuSequence leaves through START") {
 SCENARIO("MenuSequence asks for the attract screens when left alone") {
   GIVEN("An open menu") {
     GameOptions options;
-    MenuSequence menu(options, BACKDROP_PALETTE);
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
     run(menu, OPENING_FRAMES);
 
     WHEN("300 idle frames pass after it opened") {
@@ -245,13 +299,24 @@ SCENARIO("MenuSequence asks for the attract screens when left alone") {
 
         AND_WHEN("The attract screens are over") {
           menu.resumeAfterAttract();
-          run(menu, 301);
+          run(menu, SCREEN_CLOSE + 301);
           const bool dueAgainTooEarly = menu.isAttractDue();
           menu.advance(NOTHING);
 
-          THEN("The idle count starts again from zero") {
+          THEN("Screen Close 1 holds BASIC two VBLs, then the idle count "
+               "starts again from zero") {
             REQUIRE_FALSE(dueAgainTooEarly);
             REQUIRE(menu.isAttractDue());
+          }
+        }
+
+        AND_WHEN("Screen Close 1 runs after Amal On") {
+          menu.resumeAfterAttract();
+          const int creditBefore = bob(menu, 1).y;
+          run(menu, SCREEN_CLOSE);
+
+          THEN("The credits scroll on while BASIC waits") {
+            REQUIRE(bob(menu, 1).y != creditBefore);
           }
         }
       }
@@ -261,6 +326,156 @@ SCENARIO("MenuSequence asks for the attract screens when left alone") {
       for (int i = 0; i < 5; ++i) {
         run(menu, 200);
         menu.advance(DOWN);
+      }
+
+      THEN("The attract screens never come") {
+        REQUIRE_FALSE(menu.isAttractDue());
+      }
+    }
+  }
+}
+
+SCENARIO(
+    "The double-buffered menu screen shows each frame's bobs a VBL later") {
+  GIVEN("The first icons flying in") {
+    GameOptions options;
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
+    run(menu, UNPACKED + 5);
+    const auto before = menu.bobs();
+    run(menu, 1);
+
+    THEN("The screen shows where they were a frame ago") {
+      REQUIRE(menu.bobs()[3].x != before[3].x);
+      REQUIRE(menu.shownBobs()[3].x == before[3].x);
+      REQUIRE(menu.shownBobs()[6].x == before[6].x);
+    }
+  }
+}
+
+SCENARIO("MenuSequence reads typed keys only when the keyboard gets through") {
+  GIVEN("Keys that reached AMOS's buffer on an earlier screen") {
+    GameOptions options;
+    InkeyBuffer keyboard;
+    keyboard.permit();
+    keyboard.press('C');
+    keyboard.press('E');
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
+    const std::string readInOpening = readDuring(menu, OPENING_FRAMES + 1);
+    const std::string typedAfterDisable = type(menu, keyboard, "NT");
+
+    THEN("The first loop pass reads them, but _DISABLE holds back new keys") {
+      REQUIRE(readInOpening == "CE");
+      REQUIRE(typedAfterDisable.empty());
+    }
+  }
+
+  GIVEN("Keys typed while the icons fly in") {
+    GameOptions options;
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
+    const std::string readWhileFlying = type(menu, keyboard, "CENT");
+    const std::string readInOpening = readDuring(menu, OPENING_FRAMES - 4);
+    menu.advance(NOTHING);
+
+    THEN("The opening's Waits let them through for the first loop pass") {
+      REQUIRE(readWhileFlying.empty());
+      REQUIRE(readInOpening.empty());
+      REQUIRE(menu.keysRead() == "CENT");
+    }
+  }
+
+  GIVEN("Keys typed in the open menu under Forbid") {
+    GameOptions options;
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
+    run(menu, OPENING_FRAMES + 1);
+    const std::string readWhileTyping = type(menu, keyboard, "CENT");
+
+    THEN("Inkey$ gets none of them") { REQUIRE(readWhileTyping.empty()); }
+
+    WHEN("The left mouse button is pressed") {
+      clickMouse(menu);
+      const std::string readOnClick = menu.keysRead();
+      const std::string readLater = type(menu, keyboard, "DRZE");
+
+      THEN("_ENABLE lets them through at once and later keys as they come") {
+        REQUIRE(readOnClick == "CENT");
+        REQUIRE(readLater == "DRZE");
+      }
+    }
+
+    WHEN("The hand is moved") {
+      menu.advance(RIGHT);
+      const std::string readDuringWait = readDuring(menu, 9);
+      menu.advance(NOTHING);
+
+      THEN("Its Wait 10 lets them through and they are read when it ends") {
+        REQUIRE(readDuringWait.empty());
+        REQUIRE(menu.keysRead() == "CENT");
+      }
+    }
+
+    WHEN("The joystick is still held when the hand's Wait 10 ends") {
+      menu.advance(RIGHT);
+      run(menu, 9, RIGHT);
+      menu.advance(RIGHT);
+
+      THEN("The rest of the pass reads one key before the hand moves again") {
+        REQUIRE(menu.keysRead() == "C");
+      }
+    }
+
+    WHEN("START is fired") {
+      menu.advance(FIRE);
+
+      THEN("The loop is over and they are never read") {
+        REQUIRE(readDuring(menu, 200).empty());
+      }
+    }
+  }
+
+  GIVEN("A menu whose attract screens are due") {
+    GameOptions options;
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
+    run(menu, OPENING_FRAMES + 303);
+    REQUIRE(menu.isAttractDue());
+    keyboard.press('D');
+
+    WHEN("The key comes while an attract screen sits in a Wait") {
+      keyboard.sleep();
+      menu.resumeAfterAttract();
+      const std::string readDuringClose = readDuring(menu, SCREEN_CLOSE);
+      menu.advance(NOTHING);
+
+      THEN("The menu loop reads it after Screen Close 1") {
+        REQUIRE(readDuringClose.empty());
+        REQUIRE(menu.keysRead() == "D");
+      }
+    }
+
+    WHEN("The key comes during the attract's Timer loop") {
+      menu.resumeAfterAttract();
+      menu.advance(NOTHING);
+
+      THEN("Forbid still holds it back") { REQUIRE(menu.keysRead().empty()); }
+    }
+  }
+}
+
+SCENARIO("A key read by the menu restarts the attract timer as Timer=0 does") {
+  GIVEN("An open menu with the keyboard let through") {
+    GameOptions options;
+    InkeyBuffer keyboard;
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
+    run(menu, OPENING_FRAMES + 1);
+    clickMouse(menu);
+
+    WHEN("A key is typed every 200 frames") {
+      for (int i = 0; i < 5; ++i) {
+        run(menu, 200);
+        type(menu, keyboard, "A");
       }
 
       THEN("The attract screens never come") {

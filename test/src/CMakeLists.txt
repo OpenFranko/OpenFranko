@@ -56,6 +56,13 @@ add_executable(${MENU_SEQUENCE_TEST_TARGET}
 target_link_libraries(${MENU_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${MENU_SEQUENCE_TEST_TARGET} COMMAND ${MENU_SEQUENCE_TEST_TARGET})
 
+set(INKEY_BUFFER_TEST_TARGET inkeyBufferTest)
+add_executable(${INKEY_BUFFER_TEST_TARGET}
+    engine/effects/inkeyBufferTest.cpp
+)
+target_link_libraries(${INKEY_BUFFER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${INKEY_BUFFER_TEST_TARGET} COMMAND ${INKEY_BUFFER_TEST_TARGET})
+
 set(ATTRACT_SEQUENCE_TEST_TARGET attractSequenceTest)
 add_executable(${ATTRACT_SEQUENCE_TEST_TARGET}
     engine/effects/attractSequenceTest.cpp
@@ -181,3 +188,38 @@ add_executable(${CAR_STAGE_TEST_TARGET}
 )
 target_link_libraries(${CAR_STAGE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${CAR_STAGE_TEST_TARGET} COMMAND ${CAR_STAGE_TEST_TARGET})
+
+set(ENDING_SCENE_TEST_TARGET endingSceneTest)
+add_executable(${ENDING_SCENE_TEST_TARGET}
+    engine/street/endingSceneTest.cpp
+)
+target_link_libraries(${ENDING_SCENE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${ENDING_SCENE_TEST_TARGET} COMMAND ${ENDING_SCENE_TEST_TARGET})
+
+set(DOUBLE_BUFFER_TEST_TARGET doubleBufferTest)
+add_executable(${DOUBLE_BUFFER_TEST_TARGET}
+    engine/street/doubleBufferTest.cpp
+)
+target_link_libraries(${DOUBLE_BUFFER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${DOUBLE_BUFFER_TEST_TARGET} COMMAND ${DOUBLE_BUFFER_TEST_TARGET})
+
+set(CHEAT_CODES_TEST_TARGET cheatCodesTest)
+add_executable(${CHEAT_CODES_TEST_TARGET}
+    engine/street/cheatCodesTest.cpp
+)
+target_link_libraries(${CHEAT_CODES_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${CHEAT_CODES_TEST_TARGET} COMMAND ${CHEAT_CODES_TEST_TARGET})
+
+set(STAGE_FRAME_TEST_TARGET stageFrameTest)
+add_executable(${STAGE_FRAME_TEST_TARGET}
+    engine/street/stageFrameTest.cpp
+)
+target_link_libraries(${STAGE_FRAME_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${STAGE_FRAME_TEST_TARGET} COMMAND ${STAGE_FRAME_TEST_TARGET})
+
+set(AMIGA_DISPLAY_TEST_TARGET amigaDisplayTest)
+add_executable(${AMIGA_DISPLAY_TEST_TARGET}
+    engine/effects/amigaDisplayTest.cpp
+)
+target_link_libraries(${AMIGA_DISPLAY_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${AMIGA_DISPLAY_TEST_TARGET} COMMAND ${AMIGA_DISPLAY_TEST_TARGET})

@@ -1,5 +1,7 @@
 #include "MenuSequence.h"
 
+#include "AmigaDisplay.h"
+
 #include <utility>
 #include <vector>
 
@@ -53,6 +55,9 @@ constexpr int MACH_WAIT = 40;
 constexpr int LEAVING_FADE_AT = 50;
 constexpr int LEAVING_FADE_SPEED = 3;
 constexpr int LEAVING_CLOSE_AT = 95;
+constexpr int UNPACK_VBLS = 1;
+constexpr int DOUBLE_BUFFER_VBLS = 3;
+constexpr char FIRST_TYPED = ' ';
 
 const std::vector<AmalMotion::Move> FLY_RIGHT = {{88, 16}, {8, 8}};
 const std::vector<AmalMotion::Move> FLY_LEFT = {{-88, 16}, {-8, 8}};
@@ -69,16 +74,23 @@ int iconImage(const Icon &icon, const GameOptions &options) {
 
 } // namespace
 
-MenuSequence::MenuSequence(GameOptions &options, AmigaPalette palette)
-    : m_options(options), m_palette(std::move(palette)) {
+MenuSequence::MenuSequence(GameOptions &options, AmigaPalette palette,
+                           InkeyBuffer &keyboard)
+    : m_options(options), m_palette(std::move(palette)), m_keyboard(keyboard) {
+  m_keyboard.forbid();
   for (const Icon &icon : ICONS) {
     bob(icon.bob) = {true, icon.left ? LEFT_OUTSIDE : RIGHT_OUTSIDE, icon.y,
                      iconImage(icon, m_options), false};
   }
   placeHand();
+  m_shownBobs = m_bobs;
 }
 
+void MenuSequence::setMouseButton(bool down) { m_mouseButton = down; }
+
 void MenuSequence::advance(const Joystick &joystick) {
+  m_shownBobs = m_bobs;
+  m_keysRead.clear();
   runScript(joystick);
   if (m_attractDue) {
     return;
@@ -92,6 +104,9 @@ void MenuSequence::advance(const Joystick &joystick) {
 void MenuSequence::resumeAfterAttract() {
   m_attractDue = false;
   m_timer = 0;
+  m_resume = Resume::Choosing;
+  m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+  m_busy = true;
 }
 
 const std::array<MenuSequence::Bob, MenuSequence::BOBS> &
@@ -99,27 +114,54 @@ MenuSequence::bobs() const {
   return m_bobs;
 }
 
+const std::array<MenuSequence::Bob, MenuSequence::BOBS> &
+MenuSequence::shownBobs() const {
+  return m_shownBobs;
+}
+
 const AmigaPalette &MenuSequence::palette() const { return m_palette; }
 
+const std::string &MenuSequence::keysRead() const { return m_keysRead; }
+
 bool MenuSequence::isAttractDue() const { return m_attractDue; }
+
+bool MenuSequence::isScreenShown() const { return m_screenShown; }
 
 bool MenuSequence::isFinished() const { return m_phase == Phase::Finished; }
 
 void MenuSequence::runScript(const Joystick &joystick) {
   if (m_resume != Resume::Nothing) {
     if (m_frame < m_resumeFrame) {
+      if (!m_busy) {
+        m_keyboard.sleep();
+      }
       return;
     }
+    m_busy = false;
     const Resume resume = std::exchange(m_resume, Resume::Nothing);
     m_timer = 0;
+    if (resume == Resume::Hand) {
+      finishPass();
+    }
     if (resume == Resume::Leaving) {
       m_phase = Phase::Leaving;
       m_phaseStart = m_frame;
     }
   }
 
+  if (m_phase == Phase::Unpacking) {
+    if (m_frame - m_phaseStart < UNPACK_VBLS + DOUBLE_BUFFER_VBLS) {
+      return;
+    }
+    m_screenShown = true;
+    m_phase = Phase::Opening;
+    m_phaseStart = m_frame;
+  }
+
   const int time = m_frame - m_phaseStart;
   switch (m_phase) {
+  case Phase::Unpacking:
+    break;
   case Phase::Opening:
     if (time % ICON_PAIR_EVERY == 0 && time / ICON_PAIR_EVERY < ROWS) {
       flyIcons(time / ICON_PAIR_EVERY, true);
@@ -129,6 +171,8 @@ void MenuSequence::runScript(const Joystick &joystick) {
       m_phase = Phase::Choosing;
       m_timer = 0;
       choose(joystick);
+    } else {
+      m_keyboard.sleep();
     }
     break;
   case Phase::Choosing:
@@ -143,10 +187,19 @@ void MenuSequence::runScript(const Joystick &joystick) {
                     AmigaPalette(m_palette.size(), 0));
     }
     if (time == LEAVING_CLOSE_AT) {
-      m_phase = Phase::Finished;
+      m_phase = Phase::Closing;
+      m_phaseStart = m_frame;
+    }
+    break;
+  case Phase::Closing:
+    if (time == SCREEN_CLOSE_SHOWN_VBLS) {
       for (Bob &shown : m_bobs) {
         shown.shown = false;
       }
+      m_screenShown = false;
+    }
+    if (time == SCREEN_CLOSE_VBLS) {
+      m_phase = Phase::Finished;
     }
     break;
   case Phase::Finished:
@@ -163,7 +216,26 @@ void MenuSequence::choose(const Joystick &joystick) {
     activate();
   } else if (joystick.up || joystick.down || joystick.left || joystick.right) {
     moveHand(joystick);
+  } else {
+    readKeys();
   }
+}
+
+void MenuSequence::finishPass() {
+  const std::optional<char> key = m_keyboard.inkey();
+  if (key && *key >= FIRST_TYPED) {
+    m_keysRead += *key;
+    m_timer = 0;
+  }
+  if (m_mouseButton) {
+    m_keyboard.permit();
+  }
+}
+
+void MenuSequence::readKeys() {
+  do {
+    finishPass();
+  } while (!m_keyboard.isEmpty());
 }
 
 void MenuSequence::moveHand(const Joystick &joystick) {
@@ -176,7 +248,7 @@ void MenuSequence::moveHand(const Joystick &joystick) {
   const int step = (joystick.down ? 1 : 0) - (joystick.up ? 1 : 0);
   m_row = (m_row + step + ROWS) % ROWS;
   placeHand();
-  m_resume = Resume::Choosing;
+  m_resume = Resume::Hand;
   m_resumeFrame = m_frame + HAND_MOVE_WAIT;
 }
 

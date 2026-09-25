@@ -1,5 +1,7 @@
 #include "FotoSequence.h"
 
+#include "AmigaDisplay.h"
+
 #include <utility>
 
 namespace openfranko::src::engine::effects {
@@ -10,6 +12,7 @@ constexpr AmigaColor BLACK = 0x000;
 
 constexpr int WHITE_FRAMES = 5;
 constexpr int FOTO_WAIT_PER_SPEED = 15;
+constexpr int FOTO_OPEN_VBLS = 2 * SCREEN_OPEN_VBLS;
 
 } // namespace
 
@@ -41,22 +44,37 @@ void FotoSequence::flash(std::size_t color, FlashSteps steps) {
 
 const AmigaPalette &FotoSequence::palette() const { return m_palette; }
 
+bool FotoSequence::isShown() const {
+  const int shownFrame = m_frame - 1;
+  return shownFrame >= whiteStart() &&
+         shownFrame < closeStart() + SCREEN_CLOSE_SHOWN_VBLS;
+}
+
 bool FotoSequence::isFinished() const { return m_frame >= totalFrames(); }
 
 int FotoSequence::frame() const { return m_frame; }
 
 int FotoSequence::holdStart() const {
-  return fadeInStart() + FOTO_WAIT_PER_SPEED * m_timings.fadeInSpeed;
+  return fadeInStart() + FOTO_WAIT_PER_SPEED * m_timings.fadeInSpeed +
+         SCREEN_CLOSE_VBLS;
 }
 
-int FotoSequence::fadeInStart() const { return WHITE_FRAMES; }
+int FotoSequence::whiteStart() const {
+  return FOTO_OPEN_VBLS + (m_timings.replacesScreen ? SCREEN_CLOSE_VBLS : 0);
+}
+
+int FotoSequence::fadeInStart() const { return whiteStart() + WHITE_FRAMES; }
 
 int FotoSequence::fadeOutStart() const {
   return holdStart() + m_timings.holdFrames;
 }
 
-int FotoSequence::totalFrames() const {
+int FotoSequence::closeStart() const {
   return fadeOutStart() + m_timings.fadeOutFrames;
+}
+
+int FotoSequence::totalFrames() const {
+  return closeStart() + SCREEN_CLOSE_VBLS;
 }
 
 } // namespace openfranko::src::engine::effects

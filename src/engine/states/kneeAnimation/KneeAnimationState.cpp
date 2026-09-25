@@ -1,5 +1,7 @@
 #include "KneeAnimationState.h"
 
+#include "../../effects/AmigaDisplay.h"
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -36,6 +38,10 @@ constexpr int IMAGE_COUNT = static_cast<int>(IMAGES.size());
 constexpr int SAMPLE_FRAME = SAMPLE_UNPACK * FRAMES_PER_UNPACK;
 constexpr int MUSIC_FRAME = IMAGE_COUNT * FRAMES_PER_UNPACK + MUSIC_WAIT;
 constexpr int CLOSE_FRAME = MUSIC_FRAME + TEMPO_WAIT + CLOSE_WAIT;
+constexpr int SCREENS = 2;
+constexpr int OPEN_FRAMES = SCREENS * effects::SCREEN_OPEN_VBLS;
+constexpr int GONE_FRAME = CLOSE_FRAME + effects::SCREEN_CLOSE_SHOWN_VBLS;
+constexpr int CLOSED_FRAME = CLOSE_FRAME + SCREENS * effects::SCREEN_CLOSE_VBLS;
 
 } // namespace
 
@@ -62,19 +68,22 @@ KneeAnimationState::~KneeAnimationState() {
 }
 
 std::optional<EngineStateEnum> KneeAnimationState::update() {
-  if (m_frame == CLOSE_FRAME) {
+  const int time = m_frame - OPEN_FRAMES;
+  if (time == CLOSED_FRAME) {
     return EngineStateEnum::TitleAndStory;
   }
 
-  if (m_frame == SAMPLE_FRAME) {
-    m_audioSystem.playSFX(SAMPLE);
+  if (time == SAMPLE_FRAME) {
+    m_audioSystem.playSample(SAMPLE, systems::AudioSystem::ALL_VOICES);
   }
-  if (m_frame == MUSIC_FRAME) {
+  if (time == MUSIC_FRAME) {
     m_audioSystem.playMusic();
   }
 
-  const int copied = std::min(m_frame / FRAMES_PER_UNPACK, IMAGE_COUNT);
-  if (copied == 0) {
+  const int copied = std::min(time / FRAMES_PER_UNPACK, IMAGE_COUNT);
+  if (time < 0 || time >= GONE_FRAME) {
+    m_videoSystem.fillScreen(0, 0, 0);
+  } else if (copied == 0) {
     m_videoSystem.fillScreen(BACKGROUND_GREY, BACKGROUND_GREY, BACKGROUND_GREY);
   } else {
     m_videoSystem.drawImage(IMAGES[copied - 1].name, 0, 0);

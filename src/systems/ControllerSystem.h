@@ -1,23 +1,30 @@
 #ifndef SYSTEMS_CONTROLLERSYSTEM_H_
 #define SYSTEMS_CONTROLLERSYSTEM_H_
 
+#include <SDL2/SDL.h>
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <string>
 
 namespace openfranko {
 namespace src {
 namespace systems {
 
-enum class FunctionKey { F1, F2, F3, F4, Escape };
+enum class FunctionKey { F1, F2, F3, F4, Escape, Other };
+
+enum class KeyMode { Game, FrontEnd, NameEntry };
 
 class ControllerSystem {
 public:
   void update();
+  void receiveKey(const SDL_KeyboardEvent &key);
+  void setKeyMode(KeyMode mode);
   void clearFireLatch();
   bool isFireLatched() const;
-  std::optional<char> typedLetter() const;
-  std::optional<char> typedKey() const;
+  bool isMouseButtonDown() const;
+  bool isDeleteHeld() const;
+  const std::string &typedKeys() const;
   std::optional<FunctionKey> functionKey() const;
   int16_t joystick() const;
 
@@ -32,18 +39,18 @@ public:
   ControllerStates states;
 
 private:
-  void clearStates();
-  void updateTypedLetter(const uint8_t *keys);
-  void updateTypedKey(const uint8_t *keys);
-  void updateFunctionKey(const uint8_t *keys);
+  std::optional<char> typedCharacter(SDL_Keycode keycode) const;
+  bool isJoystickKey(SDL_Scancode scancode) const;
 
+  KeyMode keyMode = KeyMode::FrontEnd;
   bool fireLatched = false;
-  std::array<bool, 26> lettersDown{};
-  std::optional<char> letter;
-  std::array<bool, 4> editingKeysDown{};
-  std::optional<char> key;
-  std::array<bool, 5> functionKeysDown{};
-  std::optional<FunctionKey> pressedFunctionKey;
+  bool mouseButtonDown = false;
+  bool deleteHeld = false;
+  std::string receivedKeys;
+  std::string typed;
+  std::array<bool, SDL_NUM_SCANCODES> typingKeys{};
+  std::optional<FunctionKey> receivedKeyEvent;
+  std::optional<FunctionKey> keyEvent;
 };
 
 } // namespace systems

@@ -16,6 +16,10 @@ constexpr int OBJECTS = 0x36;
 constexpr int GRAVEYARD = 0x3BB;
 constexpr int TUNE = 0x262;
 constexpr int OPEN_FRAME = 1 + GameOverScene::FILES * LoadingMock::FILE_FRAMES;
+constexpr int OPENED_FRAME = OPEN_FRAME + 1 + 3;
+constexpr uint32_t GREY = 0xFF555555u;
+constexpr uint32_t BLACK = 0xFF000000u;
+constexpr uint32_t RED = 0xFFFF0000u;
 constexpr int PAN_FRAMES = 545;
 constexpr int16_t JOY_FIRE = 16;
 constexpr uint8_t SILHOUETTE = 1;
@@ -69,15 +73,20 @@ public:
 
   LevelScript loadLevelScript(int) override { return LevelScript{}; }
 
+  EndingCredits loadEndingCredits() override { return {}; }
+
   Picture loadPanelPicture(int) override { return box(304, 48, 0, 0, 7); }
 
   void loadMusic(int resource) override { music.push_back(resource); }
+
+  bool isMusicLoaded(int) const override { return false; }
 
   void playMusic() override { ++musicStarts; }
 
   void stopMusic() override { ++musicStops; }
 
   void setMusicVolume(int volume) override { volumes.push_back(volume); }
+  void setMusicTempo(int) override {}
 
   void playSample(int, int, int) override {}
 
@@ -88,9 +97,16 @@ public:
   int random(int) override { return 0; }
 };
 
+GameSession afterStage() {
+  GameSession session;
+  session.border = STAGE_BORDER;
+  return session;
+}
+
 struct Graveyard {
   FakeHost host;
-  GameOverScene scene{host};
+  GameSession session = afterStage();
+  GameOverScene scene{host, session};
 
   void run(int frames, int16_t joystick = 0) {
     for (int frame = 0; frame < frames; ++frame) {
@@ -147,12 +163,37 @@ SCENARIO("Game over loads its three files while the screens are closed") {
     Graveyard graveyard;
     graveyard.run(OPEN_FRAME);
 
-    THEN("The tune plays at Mvolume 63 and the graveyard opens at offset 0") {
+    THEN("Music 1 starts, then Unpack 9 To 0 waits a VBL") {
       REQUIRE(graveyard.host.musicStarts == 1);
       REQUIRE(graveyard.host.volumes == std::vector<int>{63});
-      REQUIRE(graveyard.scene.isShown());
+      REQUIRE_FALSE(graveyard.scene.isShown());
+      graveyard.run(1);
+      REQUIRE_FALSE(graveyard.scene.isShown());
+      REQUIRE(graveyard.pixel(300, 100) == GREY);
+    }
+
+    THEN("No copper list holds the screen before View, so the stage's grey "
+         "Colour Back stays through Double Buffer's three VBLs") {
+      graveyard.run(3);
+      REQUIRE(graveyard.pixel(300, 100) == GREY);
+      REQUIRE_FALSE(graveyard.scene.isPanning());
+      graveyard.run(1);
       REQUIRE(graveyard.scene.isPanning());
       REQUIRE(graveyard.scene.offset() == 0);
+      REQUIRE_FALSE(graveyard.scene.isShown());
+      REQUIRE(graveyard.pixel(300, 100) == GREY);
+      graveyard.run(1);
+      REQUIRE(graveyard.scene.isShown());
+      REQUIRE(graveyard.pixel(300, 100) != GREY);
+    }
+  }
+
+  GIVEN("The frame the pan begins") {
+    Graveyard graveyard;
+    graveyard.run(OPENED_FRAME);
+
+    THEN("BACK[0] leaves a black Colour Back for the states after") {
+      REQUIRE(graveyard.session.border == 0x000);
     }
 
     THEN("Colour 2 is red, colour 9 dark grey and the rest black") {
@@ -163,14 +204,16 @@ SCENARIO("Game over loads its three files while the screens are closed") {
       REQUIRE(palette[9] == 0x222);
     }
 
-    THEN("The rainbow starts at line 28, so the screen's line 45 shows entry "
-         "113 and it stops after line 267") {
+    THEN("View's list goes live at the next VBL. The rainbow starts at line "
+         "28, so the screen's line 45 shows entry 113 and it stops after line "
+         "267") {
+      graveyard.run(1);
       const effects::AmigaPalette table = effects::rainbowTable(
           1000, "(8,-1,15)(16,1,15)", "", "(8,1,15)(16,-1,15)");
-      REQUIRE(graveyard.pixel(300, 0) == toArgb(table[113]));
-      REQUIRE(graveyard.pixel(300, 100) == toArgb(table[213]));
-      REQUIRE(graveyard.pixel(300, 222) == toArgb(table[335]));
-      REQUIRE(graveyard.pixel(300, 223) == 0xFF000000u);
+      REQUIRE(graveyard.pixel(360, 0) == toArgb(table[113]));
+      REQUIRE(graveyard.pixel(360, 100) == toArgb(table[213]));
+      REQUIRE(graveyard.pixel(360, 222) == toArgb(table[335]));
+      REQUIRE(graveyard.pixel(360, 223) == 0xFF000000u);
       REQUIRE(graveyard.pixel(10, 1) == 0xFF000000u);
     }
 
@@ -178,9 +221,20 @@ SCENARIO("Game over loads its three files while the screens are closed") {
       REQUIRE(graveyard.scene.bobs().x(1) == 104);
       REQUIRE(graveyard.scene.bobs().y(1) == 80);
       REQUIRE(graveyard.scene.bobs().image(1) == 6);
-      REQUIRE(graveyard.pixel(104, 80) == 0xFFFF0000u);
       REQUIRE(graveyard.scene.bobs().x(2) == 820);
       REQUIRE(graveyard.scene.bobs().y(2) == 209);
+    }
+
+    THEN("X Screen(200) ran before the first CopMake set EcWX, so BACK[0]'s "
+         "test draws the title at 200. It shows there for one frame, then "
+         "at 104") {
+      graveyard.run(1);
+      REQUIRE(graveyard.pixel(200, 80) == RED);
+      REQUIRE(graveyard.pixel(199, 80) != RED);
+      graveyard.run(1);
+      REQUIRE(graveyard.pixel(104, 80) == RED);
+      REQUIRE(graveyard.pixel(103, 80) != RED);
+      REQUIRE(graveyard.pixel(250, 80) != RED);
     }
   }
 }
@@ -188,14 +242,37 @@ SCENARIO("Game over loads its three files while the screens are closed") {
 SCENARIO("The picture pans 5 px every 4 frames under the pinned title") {
   GIVEN("The open graveyard") {
     Graveyard graveyard;
-    graveyard.run(OPEN_FRAME);
+    graveyard.run(OPENED_FRAME);
+
+    WHEN("It pans for forty frames") {
+      std::vector<int> offsets;
+      for (int frame = 0; frame < 40; ++frame) {
+        graveyard.run(1);
+        offsets.push_back(graveyard.scene.offset());
+      }
+      int left = -1;
+      for (int x = 0; x < GameOverScene::WIDTH; ++x) {
+        if (graveyard.pixel(x, 80) == RED) {
+          left = x;
+          break;
+        }
+      }
+
+      THEN("The title trails its pin by a step: the offset reaches the "
+           "screen two VBLs after Screen Offset, and X Screen places the bob "
+           "with the offset the copper already has") {
+        REQUIRE(offsets[37] - offsets[36] > 0);
+        REQUIRE(left == 104 - (offsets[37] - offsets[36]));
+      }
+    }
 
     WHEN("Three hundred frames have passed") {
       graveyard.run(300);
 
-      THEN("The offset and the title have moved together") {
+      THEN("The offset and the title have moved together, the title a step "
+           "behind") {
         REQUIRE(graveyard.scene.offset() == 375);
-        REQUIRE(graveyard.scene.bobs().x(1) == 479);
+        REQUIRE(graveyard.scene.bobs().x(1) == 104 + 373);
         REQUIRE(graveyard.pixel(104, 80) == 0xFFFF0000u);
       }
     }
@@ -215,11 +292,13 @@ SCENARIO("The picture pans 5 px every 4 frames under the pinned title") {
       }
     }
 
-    WHEN("The pan reaches 680") {
+    WHEN("The pan reaches 680 and the copper has taken it") {
       graveyard.run(PAN_FRAMES - 1);
+      const int offset = graveyard.scene.offset();
+      graveyard.run(1);
 
       THEN("The last 40 columns show the start of the next row") {
-        REQUIRE(graveyard.scene.offset() == GameOverScene::PAN_END);
+        REQUIRE(offset == GameOverScene::PAN_END);
         REQUIRE(graveyard.pixel(367, 0) == 0xFF000000u);
         REQUIRE(graveyard.pixel(367, 1) != 0xFF000000u);
         REQUIRE(graveyard.pixel(327, 0) != 0xFF000000u);
@@ -231,7 +310,7 @@ SCENARIO("The picture pans 5 px every 4 frames under the pinned title") {
 SCENARIO("KLIKER, Fade 5 and SCICH close the scene") {
   GIVEN("The pan has ended") {
     Graveyard graveyard;
-    graveyard.run(OPEN_FRAME + PAN_FRAMES - 1);
+    graveyard.run(OPENED_FRAME + PAN_FRAMES - 1);
     REQUIRE(graveyard.scene.isPanning());
 
     WHEN("Nobody touches the joystick") {
@@ -273,10 +352,26 @@ SCENARIO("KLIKER, Fade 5 and SCICH close the scene") {
           REQUIRE(graveyard.host.musicStops == 2);
         }
 
-        THEN("Wait 100 follows, then the screens close to a black border") {
-          REQUIRE(finished == 63 + 1 + 100);
+        THEN("Wait 100 follows, then _CLOSE's four VBLs end on a black "
+             "border") {
+          REQUIRE(finished == 63 + 1 + 100 + 4);
           REQUIRE_FALSE(graveyard.scene.isShown());
           REQUIRE(graveyard.pixel(300, 0) == 0xFF000000u);
+        }
+      }
+
+      AND_WHEN("It runs until the screen closes") {
+        const int closed = graveyard.runUntil(
+            [&] { return !graveyard.scene.isShown(); }, 1000);
+
+        THEN("_CLOSE's new copper list drops it two VBLs after Wait 100, "
+             "and BASIC goes on two VBLs later") {
+          REQUIRE(closed == 63 + 1 + 100 + 2);
+          REQUIRE_FALSE(graveyard.scene.isFinished());
+          graveyard.run(1);
+          REQUIRE_FALSE(graveyard.scene.isFinished());
+          graveyard.run(1);
+          REQUIRE(graveyard.scene.isFinished());
         }
       }
     }

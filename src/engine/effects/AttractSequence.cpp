@@ -45,6 +45,14 @@ void AttractSequence::advance(bool joystickTouched) {
   if (m_finished) {
     return;
   }
+  if (m_frame < 0) {
+    m_waiting = false;
+    m_showing = false;
+    ++m_frame;
+    return;
+  }
+  m_waiting =
+      m_frame < (m_kind == Kind::Title ? TITLE_INPUT_FROM : HISCORE_INPUT_FROM);
   if (m_kind == Kind::Title) {
     advanceTitle(joystickTouched);
   } else {
@@ -61,6 +69,8 @@ bool AttractSequence::isShowing() const { return m_showing; }
 const AmigaPalette &AttractSequence::palette() const { return m_palette; }
 
 int AttractSequence::rowsShown() const { return m_rows; }
+
+bool AttractSequence::isWaiting() const { return m_waiting; }
 
 bool AttractSequence::isFinished() const { return m_finished; }
 
