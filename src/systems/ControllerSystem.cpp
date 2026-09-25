@@ -1,46 +1,48 @@
 #include "ControllerSystem.h"
-#include <cstddef>
+
 #include <utility>
 
 namespace openfranko::src::systems {
 namespace {
 
-constexpr SDL_Keycode FIRST_PRINTABLE = '!';
-constexpr SDL_Keycode LAST_PRINTABLE = '~';
+constexpr char TYPED_SPACE = ' ';
 
-constexpr std::array<std::pair<SDL_Scancode, FunctionKey>, 5> FUNCTION_KEYS = {{
-    {SDL_SCANCODE_F1, FunctionKey::F1},
-    {SDL_SCANCODE_F2, FunctionKey::F2},
-    {SDL_SCANCODE_F3, FunctionKey::F3},
-    {SDL_SCANCODE_F4, FunctionKey::F4},
-    {SDL_SCANCODE_ESCAPE, FunctionKey::Escape},
-}};
+FunctionKey toFunctionKey(Key key) {
+  switch (key) {
+  case Key::F1:
+    return FunctionKey::F1;
+  case Key::F2:
+    return FunctionKey::F2;
+  case Key::F3:
+    return FunctionKey::F3;
+  case Key::F4:
+    return FunctionKey::F4;
+  case Key::Escape:
+    return FunctionKey::Escape;
+  default:
+    return FunctionKey::Other;
+  }
+}
 
 } // namespace
 
 void ControllerSystem::update() {
-  const uint8_t *keys = SDL_GetKeyboardState(nullptr);
-
   typed.swap(receivedKeys);
   receivedKeys.clear();
   keyEvent = std::exchange(receivedKeyEvent, std::nullopt);
-  mouseButtonDown =
-      (SDL_GetMouseState(nullptr, nullptr) & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
-  deleteHeld = keys[SDL_SCANCODE_DELETE] != 0;
+  mouseButtonDown = mouseButtonHeld;
+  deleteHeld = isHeld(Key::Delete);
 
   const bool letters = keyMode == KeyMode::Game;
-  const bool up = keys[SDL_SCANCODE_UP] || (letters && keys[SDL_SCANCODE_W]);
-  const bool down =
-      keys[SDL_SCANCODE_DOWN] || (letters && keys[SDL_SCANCODE_S]);
-  const bool left =
-      keys[SDL_SCANCODE_LEFT] || (letters && keys[SDL_SCANCODE_A]);
-  const bool right =
-      keys[SDL_SCANCODE_RIGHT] || (letters && keys[SDL_SCANCODE_D]);
+  const bool up = isHeld(Key::Up) || (letters && isHeld(Key::W));
+  const bool down = isHeld(Key::Down) || (letters && isHeld(Key::S));
+  const bool left = isHeld(Key::Left) || (letters && isHeld(Key::A));
+  const bool right = isHeld(Key::Right) || (letters && isHeld(Key::D));
   states.up = up && !down;
   states.down = down && !up;
   states.left = left && !right;
   states.right = right && !left;
-  states.button = keyMode != KeyMode::NameEntry && keys[SDL_SCANCODE_SPACE];
+  states.button = keyMode != KeyMode::NameEntry && isHeld(Key::Space);
 
   if (states.button && !states.up && !states.down && !states.left &&
       !states.right) {
@@ -48,30 +50,30 @@ void ControllerSystem::update() {
   }
 }
 
-void ControllerSystem::receiveKey(const SDL_KeyboardEvent &key) {
-  const auto scancode = static_cast<std::size_t>(key.keysym.scancode);
-  if (scancode >= typingKeys.size()) {
+void ControllerSystem::receiveKey(const KeyEvent &event) {
+  heldKeys[static_cast<std::size_t>(event.key)] = event.pressed;
+  if (!event.repeat && !isJoystickKey(event.key)) {
+    receivedKeyEvent = toFunctionKey(event.key);
+  }
+  if (!event.pressed) {
+    typingKeys.erase(event.code);
     return;
   }
-  if (key.repeat == 0 && !isJoystickKey(key.keysym.scancode)) {
-    receivedKeyEvent = FunctionKey::Other;
-    for (const auto &[functionScancode, function] : FUNCTION_KEYS) {
-      if (key.keysym.scancode == functionScancode) {
-        receivedKeyEvent = function;
-      }
+  const std::optional<char> character = typedCharacter(event);
+  if (!event.repeat) {
+    if (character) {
+      typingKeys.insert(event.code);
+    } else {
+      typingKeys.erase(event.code);
     }
   }
-  if (key.type == SDL_KEYUP) {
-    typingKeys[scancode] = false;
-    return;
-  }
-  const std::optional<char> character = typedCharacter(key.keysym.sym);
-  if (key.repeat == 0) {
-    typingKeys[scancode] = character.has_value();
-  }
-  if (character && typingKeys[scancode]) {
+  if (character && typingKeys.count(event.code) != 0) {
     receivedKeys += *character;
   }
+}
+
+void ControllerSystem::receiveMouseButton(bool pressed) {
+  mouseButtonHeld = pressed;
 }
 
 void ControllerSystem::setKeyMode(KeyMode mode) { keyMode = mode; }
@@ -87,51 +89,41 @@ bool ControllerSystem::isDeleteHeld() const { return deleteHeld; }
 const std::string &ControllerSystem::typedKeys() const { return typed; }
 
 std::optional<char>
-ControllerSystem::typedCharacter(SDL_Keycode keycode) const {
-  if (keyMode == KeyMode::Game) {
+ControllerSystem::typedCharacter(const KeyEvent &event) const {
+  if (keyMode == KeyMode::Game || event.character == 0) {
     return std::nullopt;
   }
-  switch (keycode) {
-  case SDLK_BACKSPACE:
-    return '\b';
-  case SDLK_RETURN:
-  case SDLK_KP_ENTER:
-    return '\r';
-  case SDLK_SPACE:
-    if (keyMode == KeyMode::NameEntry) {
-      return ' ';
-    }
+  if (event.character == TYPED_SPACE && keyMode != KeyMode::NameEntry) {
     return std::nullopt;
-  default:
-    break;
   }
-  if (keycode >= FIRST_PRINTABLE && keycode <= LAST_PRINTABLE) {
-    return static_cast<char>(keycode);
-  }
-  return std::nullopt;
+  return event.character;
 }
 
 std::optional<FunctionKey> ControllerSystem::functionKey() const {
   return keyEvent;
 }
 
-bool ControllerSystem::isJoystickKey(SDL_Scancode scancode) const {
-  switch (scancode) {
-  case SDL_SCANCODE_UP:
-  case SDL_SCANCODE_DOWN:
-  case SDL_SCANCODE_LEFT:
-  case SDL_SCANCODE_RIGHT:
+bool ControllerSystem::isJoystickKey(Key key) const {
+  switch (key) {
+  case Key::Up:
+  case Key::Down:
+  case Key::Left:
+  case Key::Right:
     return true;
-  case SDL_SCANCODE_SPACE:
+  case Key::Space:
     return keyMode != KeyMode::NameEntry;
-  case SDL_SCANCODE_W:
-  case SDL_SCANCODE_A:
-  case SDL_SCANCODE_S:
-  case SDL_SCANCODE_D:
+  case Key::W:
+  case Key::A:
+  case Key::S:
+  case Key::D:
     return keyMode == KeyMode::Game;
   default:
     return false;
   }
+}
+
+bool ControllerSystem::isHeld(Key key) const {
+  return heldKeys[static_cast<std::size_t>(key)];
 }
 
 int16_t ControllerSystem::joystick() const {

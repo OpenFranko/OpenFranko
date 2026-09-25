@@ -2,6 +2,8 @@
 #define ENGINE_STATES_WORLDSOFTWARESTATE_H_
 
 #include "../../../systems/AudioSystem.h"
+#include "../../../systems/Bitmap.h"
+#include "../../../systems/Canvas.h"
 #include "../../../systems/VideoSystem.h"
 #include "../../effects/AmigaDisplay.h"
 #include "../../effects/FotoSequence.h"
@@ -25,6 +27,8 @@ private:
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
   effects::VisibleRows m_rows;
+  systems::IndexedBitmap m_picture;
+  systems::Canvas m_screen;
   effects::FotoSequence m_sequence;
 };
 

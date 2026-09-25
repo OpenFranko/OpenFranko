@@ -4,20 +4,17 @@
 
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <string>
-#include <vector>
 
 namespace openfranko::src::engine::states::titleAndStory {
 namespace {
 
-constexpr auto TITLE = "title";
 constexpr auto TITLE_PATH = "assets/03BA.bmp";
 
-constexpr int SCREEN_ID = 0;
 constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
 constexpr std::size_t SCREEN_COLORS = 32;
+constexpr effects::AmigaColor BLACK = 0x000;
 
 constexpr int LOADING_FRAMES = 300;
 constexpr effects::FotoSequence::Timings TITLE_TIMINGS{5, LOADING_FRAMES, 3, 45,
@@ -39,7 +36,7 @@ constexpr Position PICTURE_POSITION{96, 84};
 constexpr std::array<Position, PICTURES> TEXT_POSITIONS = {
     {{0, 0}, {8, 8}, {16, 7}, {0, 7}, {24, 14}, {16, 0}, {8, 12}}};
 
-constexpr uint8_t STORY_BACKGROUND_GREY = 0x44;
+constexpr effects::AmigaColor STORY_BACKGROUND_GREY = 0x444;
 constexpr int STORY_SCREENS = 2;
 
 std::string assetPath(const std::string &resource, int index) {
@@ -48,22 +45,17 @@ std::string assetPath(const std::string &resource, int index) {
   return "assets/" + resource + "/" + file + ".bmp";
 }
 
-std::string frameName(int frame) {
-  return "storyFrame" + std::to_string(frame);
+std::vector<systems::IndexedBitmap> loadImages(const std::string &resource,
+                                               int count) {
+  std::vector<systems::IndexedBitmap> images;
+  for (int index = 0; index < count; ++index) {
+    images.push_back(systems::loadIndexedBitmap(assetPath(resource, index)));
+  }
+  return images;
 }
 
-std::string pictureName(int picture) {
-  return "storyPicture" + std::to_string(picture);
-}
-
-std::string textName(int text) { return "storyText" + std::to_string(text); }
-
-effects::AmigaPalette openScreen(systems::VideoSystem &videoSystem) {
-  videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, SCREEN_HEIGHT);
-  videoSystem.switchScreen(SCREEN_ID);
-  videoSystem.loadIndexedImage(TITLE, TITLE_PATH);
-
-  auto palette = videoSystem.getImagePalette(TITLE);
+effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
+  effects::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
@@ -74,65 +66,37 @@ bool isJoystickTouched(
          states.button;
 }
 
-void drawStory(systems::VideoSystem &videoSystem,
-               const effects::StorySequence::View &view) {
-  videoSystem.fillScreen(STORY_BACKGROUND_GREY, STORY_BACKGROUND_GREY,
-                         STORY_BACKGROUND_GREY);
-  if (view.frame) {
-    videoSystem.drawImage(frameName(*view.frame), FRAME_POSITION.x,
-                          FRAME_POSITION.y);
-  }
-  if (view.picture) {
-    videoSystem.drawImage(pictureName(*view.picture), PICTURE_POSITION.x,
-                          PICTURE_POSITION.y);
-  }
-  if (view.text) {
-    const Position &position = TEXT_POSITIONS.at(*view.text);
-    videoSystem.drawImage(textName(*view.text), position.x, position.y);
-  }
-}
-
 } // namespace
 
 TitleAndStoryState::TitleAndStoryState(
     systems::VideoSystem &videoSystem,
     systems::ControllerSystem &controllerSystem)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_title(openScreen(videoSystem), TITLE_TIMINGS),
-      m_story(PAGES, CLOSING_PICTURE) {
-  m_videoSystem.setImagePalette(TITLE, m_title.palette());
-  for (int frame = 1; frame <= ANIMATION_FRAMES; ++frame) {
-    m_videoSystem.loadImage(frameName(frame), assetPath("03BE", frame - 1));
-  }
-  for (int picture = 0; picture < PICTURES; ++picture) {
-    m_videoSystem.loadImage(pictureName(picture), assetPath("03BF", picture));
-    m_videoSystem.loadMaskedImage(textName(picture),
-                                  assetPath("03C0", picture));
-  }
-}
-
-TitleAndStoryState::~TitleAndStoryState() {
-  m_videoSystem.clearImage(TITLE);
-  for (int frame = 1; frame <= ANIMATION_FRAMES; ++frame) {
-    m_videoSystem.clearImage(frameName(frame));
-  }
-  for (int picture = 0; picture < PICTURES; ++picture) {
-    m_videoSystem.clearImage(pictureName(picture));
-    m_videoSystem.clearImage(textName(picture));
-  }
-  m_videoSystem.fillScreen(0, 0, 0);
-}
+      m_titlePicture(systems::loadIndexedBitmap(TITLE_PATH)),
+      m_frames(loadImages("03BE", ANIMATION_FRAMES)),
+      m_pictures(loadImages("03BF", PICTURES)),
+      m_texts(loadImages("03C0", PICTURES)),
+      m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
+      m_title(screenPalette(m_titlePicture), TITLE_TIMINGS),
+      m_story(PAGES, CLOSING_PICTURE) {}
 
 std::optional<EngineStateEnum> TitleAndStoryState::update() {
+  const std::optional<EngineStateEnum> next = runTitle();
+  if (!next) {
+    m_videoSystem.show(m_screen.pixels().data(), m_screen.width(),
+                       m_screen.height());
+  }
+  return next;
+}
+
+std::optional<EngineStateEnum> TitleAndStoryState::runTitle() {
   if (m_phase == Phase::Title) {
     if (!m_title.isFinished()) {
-      if (m_title.advance()) {
-        m_videoSystem.setImagePalette(TITLE, m_title.palette());
-      }
+      m_title.advance();
       if (m_title.isShown()) {
-        m_videoSystem.drawImage(TITLE, 0, 0);
+        m_screen.draw(m_titlePicture, m_title.palette(), 0, 0);
       } else {
-        m_videoSystem.fillScreen(0, 0, 0);
+        m_screen.fill(BLACK);
       }
       return std::nullopt;
     }
@@ -148,12 +112,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::update() {
 std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
   if (m_phase == Phase::StoryOpening) {
     if (m_phaseFrames < STORY_SCREENS * effects::SCREEN_OPEN_VBLS) {
-      if (m_phaseFrames == 0) {
-        m_videoSystem.fillScreen(0, 0, 0);
-      } else {
-        m_videoSystem.fillScreen(STORY_BACKGROUND_GREY, STORY_BACKGROUND_GREY,
-                                 STORY_BACKGROUND_GREY);
-      }
+      m_screen.fill(m_phaseFrames == 0 ? BLACK : STORY_BACKGROUND_GREY);
       ++m_phaseFrames;
       return std::nullopt;
     }
@@ -164,7 +123,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
     m_story.advance(m_controllerSystem.isFireLatched(),
                     isJoystickTouched(m_controllerSystem.states));
     if (!m_story.isFinished()) {
-      drawStory(m_videoSystem, m_story.view());
+      drawStory(m_story.view());
       return std::nullopt;
     }
     m_lastView = shown;
@@ -175,13 +134,30 @@ std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
     return EngineStateEnum::ProtectionCheck;
   }
   if (m_phaseFrames < effects::SCREEN_CLOSE_SHOWN_VBLS) {
-    drawStory(m_videoSystem, m_lastView);
+    drawStory(m_lastView);
   } else {
-    m_videoSystem.fillScreen(STORY_BACKGROUND_GREY, STORY_BACKGROUND_GREY,
-                             STORY_BACKGROUND_GREY);
+    m_screen.fill(STORY_BACKGROUND_GREY);
   }
   ++m_phaseFrames;
   return std::nullopt;
+}
+
+void TitleAndStoryState::drawStory(const effects::StorySequence::View &view) {
+  m_screen.fill(STORY_BACKGROUND_GREY);
+  if (view.frame) {
+    const systems::IndexedBitmap &frame = m_frames.at(*view.frame - 1);
+    m_screen.draw(frame, frame.palette, FRAME_POSITION.x, FRAME_POSITION.y);
+  }
+  if (view.picture) {
+    const systems::IndexedBitmap &picture = m_pictures.at(*view.picture);
+    m_screen.draw(picture, picture.palette, PICTURE_POSITION.x,
+                  PICTURE_POSITION.y);
+  }
+  if (view.text) {
+    const systems::IndexedBitmap &text = m_texts.at(*view.text);
+    const Position &position = TEXT_POSITIONS.at(*view.text);
+    m_screen.drawMasked(text, text.palette, position.x, position.y);
+  }
 }
 
 } // namespace openfranko::src::engine::states::titleAndStory

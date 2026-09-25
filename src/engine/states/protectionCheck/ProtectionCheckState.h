@@ -2,6 +2,8 @@
 #define ENGINE_STATES_PROTECTIONCHECKSTATE_H_
 
 #include "../../../systems/AudioSystem.h"
+#include "../../../systems/Bitmap.h"
+#include "../../../systems/Canvas.h"
 #include "../../../systems/VideoSystem.h"
 #include "../../effects/AmigaDisplay.h"
 #include "../../effects/CodeCardCheck.h"
@@ -23,7 +25,6 @@ public:
                        systems::AudioSystem &audioSystem,
                        effects::InkeyBuffer &keyboard,
                        Check check = Check::Title);
-  ~ProtectionCheckState();
 
   std::optional<EngineStateEnum> update() override;
 
@@ -37,7 +38,7 @@ private:
   void showQuestion();
   void showFailure();
   void draw();
-  void fillBorder();
+  void show();
 
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
@@ -50,6 +51,9 @@ private:
   int m_resumeFrame;
   bool m_questionShown = false;
   bool m_failureShown = false;
+  systems::Canvas m_screen;
+  systems::IndexedBitmap m_question;
+  systems::IndexedBitmap m_failure;
   effects::AmigaPalette m_questionPalette;
   effects::AmigaColor m_border;
   effects::PaletteFlasher m_flasher;

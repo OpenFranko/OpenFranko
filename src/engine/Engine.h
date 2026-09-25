@@ -3,6 +3,7 @@
 
 #include "../systems/AudioSystem.h"
 #include "../systems/ControllerSystem.h"
+#include "../systems/Platform.h"
 #include "../systems/VideoSystem.h"
 #include "effects/GameOptions.h"
 #include "states/IEngineState.h"
@@ -33,7 +34,7 @@ private:
 
   void switchState(states::EngineStateEnum nextState);
 
-  SDL_Event event;
+  systems::Platform platform;
   systems::VideoSystem videoSystem;
   systems::AudioSystem audioSystem;
   systems::ControllerSystem controllerSystem;

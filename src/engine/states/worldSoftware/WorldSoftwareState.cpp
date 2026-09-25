@@ -5,17 +5,16 @@
 namespace openfranko::src::engine::states::worldSoftware {
 namespace {
 
-constexpr auto PICTURE = "worldSoftware";
 constexpr auto PICTURE_PATH = "assets/03B6.bmp";
 
 constexpr auto SAMPLE = "worldSoftware";
 constexpr auto SAMPLE_PATH = "assets/0263/0263_sam1_13160Hz.wav";
 
-constexpr int SCREEN_ID = 0;
 constexpr int SCREEN_WIDTH = 368;
 constexpr int SCREEN_HEIGHT = 290;
 constexpr int DISPLAY_LINE = 25;
 constexpr std::size_t SCREEN_COLORS = 32;
+constexpr effects::AmigaColor BLACK = 0x000;
 
 constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 75, false};
 
@@ -25,13 +24,8 @@ const effects::FlashSteps EYES_FLASH = {
     {0xA00, 4}, {0x900, 4}, {0x800, 4}, {0x900, 4}, {0xA00, 4},
     {0xB00, 4}, {0xC00, 4}, {0xD00, 4}, {0xE00, 4}};
 
-effects::AmigaPalette openScreen(systems::VideoSystem &videoSystem,
-                                 const effects::VisibleRows &rows) {
-  videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, rows.count);
-  videoSystem.switchScreen(SCREEN_ID);
-  videoSystem.loadIndexedImage(PICTURE, PICTURE_PATH);
-
-  auto palette = videoSystem.getImagePalette(PICTURE);
+effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
+  effects::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
@@ -43,16 +37,13 @@ WorldSoftwareState::WorldSoftwareState(systems::VideoSystem &videoSystem,
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_rows(effects::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
                                   videoSystem.isNtsc())),
-      m_sequence(openScreen(videoSystem, m_rows), TIMINGS) {
-  m_videoSystem.setImagePalette(PICTURE, m_sequence.palette());
+      m_picture(systems::loadIndexedBitmap(PICTURE_PATH)),
+      m_screen(SCREEN_WIDTH, m_rows.count),
+      m_sequence(screenPalette(m_picture), TIMINGS) {
   m_audioSystem.loadSFX(SAMPLE, SAMPLE_PATH);
 }
 
-WorldSoftwareState::~WorldSoftwareState() {
-  m_audioSystem.clearSFX(SAMPLE);
-  m_videoSystem.clearImage(PICTURE);
-  m_videoSystem.fillScreen(0, 0, 0);
-}
+WorldSoftwareState::~WorldSoftwareState() { m_audioSystem.clearSFX(SAMPLE); }
 
 std::optional<EngineStateEnum> WorldSoftwareState::update() {
   if (m_sequence.isFinished()) {
@@ -64,14 +55,14 @@ std::optional<EngineStateEnum> WorldSoftwareState::update() {
     m_audioSystem.playSample(SAMPLE, systems::AudioSystem::ALL_VOICES);
   }
 
-  if (m_sequence.advance()) {
-    m_videoSystem.setImagePalette(PICTURE, m_sequence.palette());
-  }
+  m_sequence.advance();
   if (m_sequence.isShown()) {
-    m_videoSystem.drawImage(PICTURE, 0, -m_rows.first);
+    m_screen.draw(m_picture, m_sequence.palette(), 0, -m_rows.first);
   } else {
-    m_videoSystem.fillScreen(0, 0, 0);
+    m_screen.fill(BLACK);
   }
+  m_videoSystem.show(m_screen.pixels().data(), m_screen.width(),
+                     m_screen.height());
   return std::nullopt;
 }
 

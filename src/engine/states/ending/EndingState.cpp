@@ -1,12 +1,6 @@
 #include "EndingState.h"
 
 namespace openfranko::src::engine::states::ending {
-namespace {
-
-constexpr int SCREEN = 0;
-constexpr auto FRAME = "endingFrame";
-
-} // namespace
 
 EndingState::EndingState(systems::VideoSystem &videoSystem,
                          systems::AudioSystem &audioSystem,
@@ -18,18 +12,14 @@ EndingState::EndingState(systems::VideoSystem &videoSystem,
       m_rows(effects::visibleRows(m_scene.displayLine(),
                                   street::EndingScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
-  m_videoSystem.createScreen(SCREEN, street::EndingScene::WIDTH, m_rows.count);
-  m_videoSystem.switchScreen(SCREEN);
 }
-
-EndingState::~EndingState() { m_videoSystem.clearImage(FRAME); }
 
 std::optional<EngineStateEnum> EndingState::update() {
   m_scene.advance(m_controllerSystem.joystick());
   m_scene.compose(m_frame);
-  m_videoSystem.updateFrameImage(FRAME, street::EndingScene::WIDTH,
-                                 street::EndingScene::HEIGHT, m_frame);
-  m_videoSystem.drawImage(FRAME, 0, -m_rows.first);
+  m_videoSystem.show(m_frame.data() + static_cast<std::size_t>(m_rows.first) *
+                                          street::EndingScene::WIDTH,
+                     street::EndingScene::WIDTH, m_rows.count);
   if (m_scene.isFinished()) {
     return EngineStateEnum::HighScore;
   }

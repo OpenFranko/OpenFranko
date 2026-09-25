@@ -1,12 +1,6 @@
 #include "ContinueState.h"
 
 namespace openfranko::src::engine::states::continueSelect {
-namespace {
-
-constexpr int SCREEN = 0;
-constexpr auto FRAME = "continueFrame";
-
-} // namespace
 
 ContinueState::ContinueState(systems::VideoSystem &videoSystem,
                              systems::AudioSystem &audioSystem,
@@ -20,19 +14,14 @@ ContinueState::ContinueState(systems::VideoSystem &videoSystem,
                                options.ntsc),
           street::ContinueScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
-  m_videoSystem.createScreen(SCREEN, street::ContinueScene::WIDTH,
-                             m_rows.count);
-  m_videoSystem.switchScreen(SCREEN);
 }
-
-ContinueState::~ContinueState() { m_videoSystem.clearImage(FRAME); }
 
 std::optional<EngineStateEnum> ContinueState::update() {
   m_scene.advance(m_controllerSystem.joystick());
   m_scene.compose(m_frame);
-  m_videoSystem.updateFrameImage(FRAME, street::ContinueScene::WIDTH,
-                                 street::ContinueScene::HEIGHT, m_frame);
-  m_videoSystem.drawImage(FRAME, 0, -m_rows.first);
+  m_videoSystem.show(m_frame.data() + static_cast<std::size_t>(m_rows.first) *
+                                          street::ContinueScene::WIDTH,
+                     street::ContinueScene::WIDTH, m_rows.count);
 
   switch (m_scene.outcome()) {
   case street::ContinueScene::Outcome::Continue:

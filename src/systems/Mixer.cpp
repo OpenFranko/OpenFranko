@@ -1,0 +1,245 @@
+#include "Mixer.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <limits>
+#include <stdexcept>
+
+namespace openfranko::src::systems {
+namespace {
+
+constexpr int DEFAULT_MUSIC_VOLUME = 56;
+constexpr int STEREO = 2;
+constexpr int FRACTION_BITS = 32;
+constexpr double LED_FILTER_HERTZ = 3275.0;
+constexpr double BUTTERWORTH_Q = 0.7071067811865476;
+constexpr double PI = 3.14159265358979323846;
+
+bool isLeftVoice(int voice) { return voice == 0 || voice == 3; }
+
+int16_t clampSample(long value) {
+  return static_cast<int16_t>(
+      std::clamp(value, static_cast<long>(std::numeric_limits<int16_t>::min()),
+                 static_cast<long>(std::numeric_limits<int16_t>::max())));
+}
+
+} // namespace
+
+Mixer::Mixer(int outputRate)
+    : rate(outputRate), player(xmp_create_context()),
+      musicVolume(DEFAULT_MUSIC_VOLUME) {
+  if (!player) {
+    throw std::runtime_error("Mixer error: no module player");
+  }
+  const double w0 = 2.0 * PI * LED_FILTER_HERTZ / rate;
+  const double alpha = std::sin(w0) / (2.0 * BUTTERWORTH_Q);
+  const double cosine = std::cos(w0);
+  const double a0 = 1.0 + alpha;
+  lowPass = {(1.0 - cosine) / 2.0 / a0, (1.0 - cosine) / a0,
+             (1.0 - cosine) / 2.0 / a0, -2.0 * cosine / a0, (1.0 - alpha) / a0};
+}
+
+Mixer::~Mixer() {
+  stopPlayer();
+  if (moduleLoaded) {
+    xmp_release_module(player);
+  }
+  xmp_free_context(player);
+}
+
+bool Mixer::loadModule(const std::vector<char> &module) {
+  std::lock_guard<std::mutex> lock(mutex);
+  stopPlayer();
+  if (moduleLoaded) {
+    xmp_release_module(player);
+  }
+  moduleLoaded = !module.empty() && xmp_load_module_from_memory(
+                                        player, module.data(),
+                                        static_cast<long>(module.size())) == 0;
+  return moduleLoaded;
+}
+
+void Mixer::releaseModule() {
+  std::lock_guard<std::mutex> lock(mutex);
+  stopPlayer();
+  if (moduleLoaded) {
+    xmp_release_module(player);
+    moduleLoaded = false;
+  }
+}
+
+void Mixer::startModule() {
+  std::lock_guard<std::mutex> lock(mutex);
+  stopPlayer();
+  if (moduleLoaded && xmp_start_player(player, rate, 0) == 0) {
+    modulePlaying = true;
+  }
+}
+
+void Mixer::stopModule() {
+  std::lock_guard<std::mutex> lock(mutex);
+  stopPlayer();
+}
+
+bool Mixer::isModulePlaying() const {
+  std::lock_guard<std::mutex> lock(mutex);
+  return modulePlaying;
+}
+
+void Mixer::setModuleTempo(double factor) {
+  std::lock_guard<std::mutex> lock(mutex);
+  if (modulePlaying) {
+    xmp_set_tempo_factor(player, factor);
+  }
+}
+
+void Mixer::setMusicVolume(int volume) {
+  std::lock_guard<std::mutex> lock(mutex);
+  musicVolume = volume;
+}
+
+void Mixer::setFilter(bool on) {
+  std::lock_guard<std::mutex> lock(mutex);
+  filterOn = on;
+}
+
+void Mixer::play(const Sound &sound, int voiceMask, int frequency, bool loop) {
+  std::lock_guard<std::mutex> lock(mutex);
+  const int playRate = frequency > 0 ? frequency : sound.rate;
+  for (int voice = 0; voice < VOICES; ++voice) {
+    if ((voiceMask & (1 << voice)) == 0) {
+      continue;
+    }
+    Voice &target = voices[static_cast<std::size_t>(voice)];
+    target = Voice{};
+    if (!sound.frames.empty() && playRate > 0) {
+      target.sound = &sound;
+      target.frequency = frequency;
+      target.step = (static_cast<uint64_t>(playRate) << FRACTION_BITS) /
+                    static_cast<uint64_t>(rate);
+      target.loop = loop;
+    }
+  }
+  if ((voiceMask & ALL_VOICES) == ALL_VOICES) {
+    silencing = Playing{&sound, frequency};
+  }
+}
+
+void Mixer::endLoops() {
+  std::lock_guard<std::mutex> lock(mutex);
+  for (Voice &voice : voices) {
+    voice.loop = false;
+  }
+}
+
+void Mixer::stop(const Sound &sound) {
+  std::lock_guard<std::mutex> lock(mutex);
+  for (Voice &voice : voices) {
+    if (voice.sound == &sound) {
+      voice = Voice{};
+    }
+  }
+  if (silencing && silencing->sound == &sound) {
+    silencing.reset();
+  }
+}
+
+void Mixer::stopAll() {
+  std::lock_guard<std::mutex> lock(mutex);
+  voices.fill(Voice{});
+}
+
+void Mixer::update() {
+  std::lock_guard<std::mutex> lock(mutex);
+  if (silencing && !isSounding(*silencing)) {
+    silencing.reset();
+  }
+}
+
+bool Mixer::isPlaying(int voice) const {
+  std::lock_guard<std::mutex> lock(mutex);
+  return voices.at(static_cast<std::size_t>(voice)).sound != nullptr;
+}
+
+bool Mixer::isMusicSilenced() const {
+  std::lock_guard<std::mutex> lock(mutex);
+  return silencing.has_value();
+}
+
+void Mixer::render(int16_t *stereo, int frames) {
+  std::lock_guard<std::mutex> lock(mutex);
+  const std::size_t samples = static_cast<std::size_t>(frames) * STEREO;
+  musicBuffer.assign(samples, 0);
+  if (modulePlaying &&
+      xmp_play_buffer(player, musicBuffer.data(),
+                      static_cast<int>(samples * sizeof(int16_t)), 0) < 0) {
+    std::fill(musicBuffer.begin(), musicBuffer.end(), 0);
+  }
+
+  const int musicLevel = silencing ? 0 : musicVolume;
+  for (std::size_t frame = 0; frame < static_cast<std::size_t>(frames);
+       ++frame) {
+    int16_t *out = stereo + frame * STEREO;
+    for (std::size_t channel = 0; channel < STEREO; ++channel) {
+      out[channel] = clampSample(musicBuffer[frame * STEREO + channel] *
+                                 musicLevel / MAX_VOLUME);
+    }
+    for (int voice = 0; voice < VOICES; ++voice) {
+      Voice &playing = voices[static_cast<std::size_t>(voice)];
+      if (!playing.sound) {
+        continue;
+      }
+      const int sample = nextSample(playing) * SAMPLE_VOLUME / MAX_VOLUME;
+      int16_t &side = out[isLeftVoice(voice) ? 0 : 1];
+      side = clampSample(side + sample);
+    }
+  }
+  filter(stereo, frames);
+}
+
+void Mixer::stopPlayer() {
+  if (modulePlaying) {
+    xmp_end_player(player);
+    modulePlaying = false;
+  }
+}
+
+bool Mixer::isSounding(const Playing &playing) const {
+  return std::any_of(voices.begin(), voices.end(), [&](const Voice &voice) {
+    return voice.sound == playing.sound && voice.frequency == playing.frequency;
+  });
+}
+
+int Mixer::nextSample(Voice &voice) {
+  const std::vector<int16_t> &frames = voice.sound->frames;
+  const int sample =
+      frames[static_cast<std::size_t>(voice.position >> FRACTION_BITS)];
+  voice.position += voice.step;
+  const uint64_t end = static_cast<uint64_t>(frames.size()) << FRACTION_BITS;
+  if (voice.position >= end) {
+    if (voice.loop) {
+      voice.position %= end;
+    } else {
+      voice = Voice{};
+    }
+  }
+  return sample;
+}
+
+void Mixer::filter(int16_t *stereo, int frames) {
+  const std::size_t samples = static_cast<std::size_t>(frames) * STEREO;
+  for (std::size_t i = 0; i < samples; ++i) {
+    std::array<double, 4> &history = filterHistory[i % STEREO];
+    const double input = stereo[i];
+    const double output = lowPass.b0 * input + lowPass.b1 * history[0] +
+                          lowPass.b2 * history[1] - lowPass.a1 * history[2] -
+                          lowPass.a2 * history[3];
+    history = {input, history[0], output, history[2]};
+    if (filterOn) {
+      stereo[i] = clampSample(std::lround(output));
+    }
+  }
+}
+
+} // namespace openfranko::src::systems

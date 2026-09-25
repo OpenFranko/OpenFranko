@@ -10,6 +10,7 @@
 #include "../IEngineState.h"
 #include "../level1/EngineStreetHost.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -24,7 +25,6 @@ public:
   HighScoreState(systems::VideoSystem &videoSystem,
                  systems::AudioSystem &audioSystem,
                  effects::GameOptions &options, street::GameSession &session);
-  ~HighScoreState();
 
   std::optional<EngineStateEnum> update() override;
 

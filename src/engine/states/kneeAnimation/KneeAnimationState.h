@@ -2,9 +2,13 @@
 #define ENGINE_STATES_KNEEANIMATIONSTATE_H_
 
 #include "../../../systems/AudioSystem.h"
+#include "../../../systems/Bitmap.h"
+#include "../../../systems/Canvas.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
 #include "../IEngineState.h"
+
+#include <vector>
 
 namespace openfranko {
 namespace src {
@@ -24,6 +28,8 @@ public:
 private:
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
+  std::vector<systems::IndexedBitmap> m_images;
+  systems::Canvas m_screen;
   int m_frame = 0;
 };
 

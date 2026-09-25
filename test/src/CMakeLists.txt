@@ -223,3 +223,38 @@ add_executable(${AMIGA_DISPLAY_TEST_TARGET}
 )
 target_link_libraries(${AMIGA_DISPLAY_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${AMIGA_DISPLAY_TEST_TARGET} COMMAND ${AMIGA_DISPLAY_TEST_TARGET})
+
+set(BITMAP_TEST_TARGET bitmapTest)
+add_executable(${BITMAP_TEST_TARGET}
+    systems/bitmapTest.cpp
+)
+target_link_libraries(${BITMAP_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Graphics)
+add_test(NAME ${BITMAP_TEST_TARGET} COMMAND ${BITMAP_TEST_TARGET})
+
+set(CANVAS_TEST_TARGET canvasTest)
+add_executable(${CANVAS_TEST_TARGET}
+    systems/canvasTest.cpp
+)
+target_link_libraries(${CANVAS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Graphics)
+add_test(NAME ${CANVAS_TEST_TARGET} COMMAND ${CANVAS_TEST_TARGET})
+
+set(CONTROLLER_SYSTEM_TEST_TARGET controllerSystemTest)
+add_executable(${CONTROLLER_SYSTEM_TEST_TARGET}
+    systems/controllerSystemTest.cpp
+)
+target_link_libraries(${CONTROLLER_SYSTEM_TEST_TARGET} PRIVATE Catch2::Catch2WithMain ControllerSystem)
+add_test(NAME ${CONTROLLER_SYSTEM_TEST_TARGET} COMMAND ${CONTROLLER_SYSTEM_TEST_TARGET})
+
+set(WAVE_TEST_TARGET waveTest)
+add_executable(${WAVE_TEST_TARGET}
+    systems/waveTest.cpp
+)
+target_link_libraries(${WAVE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Mixer)
+add_test(NAME ${WAVE_TEST_TARGET} COMMAND ${WAVE_TEST_TARGET})
+
+set(MIXER_TEST_TARGET mixerTest)
+add_executable(${MIXER_TEST_TARGET}
+    systems/mixerTest.cpp
+)
+target_link_libraries(${MIXER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Mixer)
+add_test(NAME ${MIXER_TEST_TARGET} COMMAND ${MIXER_TEST_TARGET})

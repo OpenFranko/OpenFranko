@@ -2,29 +2,22 @@
 
 #include <array>
 #include <cstddef>
-#include <string>
 
 namespace openfranko::src::engine::states::characterSelection {
 namespace {
 
-constexpr auto PICTURE = "characterPicture";
 constexpr auto PICTURE_PATH = "assets/03B9.bmp";
 
-constexpr int SCREEN_ID = 0;
 constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
 constexpr int DISPLAY_LINE = 40;
 constexpr std::size_t SCREEN_COLORS = 32;
 
-struct Sprite {
-  int image;
-  const char *path;
-};
-
-constexpr std::array<Sprite, 3> SPRITES = {{
-    {1, "assets/0035/0035_000.bmp"},
-    {2, "assets/0035/0035_001.bmp"},
-    {3, "assets/0035/0035_002.bmp"},
+constexpr int FIRST_SPRITE_IMAGE = 1;
+constexpr std::array<const char *, 3> SPRITE_PATHS = {{
+    "assets/0035/0035_000.bmp",
+    "assets/0035/0035_001.bmp",
+    "assets/0035/0035_002.bmp",
 }};
 
 struct Voice {
@@ -44,8 +37,18 @@ constexpr int RO = 14;
 constexpr int SECOND_STAGE = 2;
 constexpr int THIRD_STAGE = 3;
 
-std::string spriteName(int image) {
-  return "characterSprite" + std::to_string(image);
+effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
+  effects::AmigaPalette palette = picture.palette;
+  palette.resize(SCREEN_COLORS);
+  return palette;
+}
+
+std::vector<systems::IndexedBitmap> loadSprites() {
+  std::vector<systems::IndexedBitmap> sprites;
+  for (const char *path : SPRITE_PATHS) {
+    sprites.push_back(systems::loadIndexedBitmap(path));
+  }
+  return sprites;
 }
 
 effects::CharacterSelection::Joystick
@@ -64,18 +67,11 @@ CharacterSelectionState::CharacterSelectionState(
       m_selection(options, session.nameScreenOpen ? 1 : 0),
       m_rows(
           effects::visibleRows(effects::pictureLine(DISPLAY_LINE, options.ntsc),
-                               SCREEN_HEIGHT, options.ntsc)) {
+                               SCREEN_HEIGHT, options.ntsc)),
+      m_picture(systems::loadIndexedBitmap(PICTURE_PATH)),
+      m_screenPalette(screenPalette(m_picture)), m_sprites(loadSprites()),
+      m_screen(SCREEN_WIDTH, m_rows.count) {
   m_videoSystem.setNtsc(options.ntsc);
-  m_videoSystem.createScreen(SCREEN_ID, SCREEN_WIDTH, m_rows.count);
-  m_videoSystem.switchScreen(SCREEN_ID);
-  m_videoSystem.loadIndexedImage(PICTURE, PICTURE_PATH);
-  auto palette = m_videoSystem.getImagePalette(PICTURE);
-  palette.resize(SCREEN_COLORS);
-  m_pictureBack = palette[0];
-  for (const Sprite &sprite : SPRITES) {
-    m_videoSystem.loadMaskedImage(spriteName(sprite.image), sprite.path);
-    m_videoSystem.setImagePalette(spriteName(sprite.image), palette);
-  }
   for (const Voice &voice : VOICES) {
     m_audioSystem.loadSFX(voice.name, voice.path);
   }
@@ -85,11 +81,6 @@ CharacterSelectionState::~CharacterSelectionState() {
   for (const Voice &voice : VOICES) {
     m_audioSystem.clearSFX(voice.name);
   }
-  m_videoSystem.clearImage(PICTURE);
-  for (const Sprite &sprite : SPRITES) {
-    m_videoSystem.clearImage(spriteName(sprite.image));
-  }
-  m_videoSystem.fillScreen(0, 0, 0);
 }
 
 std::optional<EngineStateEnum> CharacterSelectionState::update() {
@@ -100,7 +91,7 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
   const bool shown = m_selection.isScreenShown();
   m_selection.advance(joystickFrom(m_controllerSystem.states));
   if (!shown && m_selection.isScreenShown()) {
-    m_session.border = m_pictureBack;
+    m_session.border = m_screenPalette[0];
   }
 
   if (const auto sample = m_selection.sample()) {
@@ -119,7 +110,6 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
 
   if (m_selection.isFinished()) {
     m_session.nameScreenOpen = false;
-    m_videoSystem.fillScreen(0, 0, 0);
     return firstStreet();
   }
   draw();
@@ -139,19 +129,22 @@ EngineStateEnum CharacterSelectionState::firstStreet() const {
 
 void CharacterSelectionState::draw() {
   if (!m_selection.isScreenShown()) {
-    const effects::Rgb border = effects::toRgb(m_session.border);
-    m_videoSystem.fillScreen(border.r, border.g, border.b);
-    return;
-  }
-  m_videoSystem.drawImage(PICTURE, 0, -m_rows.first);
-  for (const effects::CharacterSelection::Bob *bob :
-       {&m_selection.face(), &m_selection.hand()}) {
-    if (bob->shown && bob->image != HIDDEN_IMAGE) {
-      m_videoSystem.drawImage(
-          spriteName(bob->image), bob->x, bob->y - m_rows.first,
-          bob->flipped ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+    m_screen.fill(m_session.border);
+  } else {
+    m_screen.draw(m_picture, m_picture.palette, 0, -m_rows.first);
+    for (const effects::CharacterSelection::Bob *bob :
+         {&m_selection.face(), &m_selection.hand()}) {
+      const int sprite = bob->image - FIRST_SPRITE_IMAGE;
+      if (bob->shown && bob->image != HIDDEN_IMAGE && sprite >= 0 &&
+          sprite < static_cast<int>(m_sprites.size())) {
+        m_screen.drawMasked(m_sprites[static_cast<std::size_t>(sprite)],
+                            m_screenPalette, bob->x, bob->y - m_rows.first,
+                            bob->flipped);
+      }
     }
   }
+  m_videoSystem.show(m_screen.pixels().data(), m_screen.width(),
+                     m_screen.height());
 }
 
 } // namespace openfranko::src::engine::states::characterSelection

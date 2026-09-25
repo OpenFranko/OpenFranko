@@ -25,7 +25,6 @@ public:
                  systems::AudioSystem &audioSystem,
                  systems::ControllerSystem &controllerSystem,
                  effects::GameOptions &options, street::GameSession &session);
-  ~Level2CarState();
 
   std::optional<EngineStateEnum> update() override;
 
