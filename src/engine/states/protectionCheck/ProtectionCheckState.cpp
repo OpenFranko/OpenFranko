@@ -31,6 +31,7 @@ constexpr int QUESTION_SCREEN_HEIGHT = 200;
 constexpr int FAILURE_SCREEN_ID = 0;
 constexpr int FAILURE_SCREEN_WIDTH = 320;
 constexpr int FAILURE_SCREEN_HEIGHT = 256;
+constexpr int FAILURE_DISPLAY_LINE = 50;
 
 constexpr int STAGE_CHECK_FILES = 2;
 constexpr int UNPACK_VBLS = 1;
@@ -171,7 +172,7 @@ bool ProtectionCheckState::takeAnswer() {
 
 void ProtectionCheckState::draw() {
   if (m_failureShown) {
-    m_videoSystem.drawImage(FAILURE, 0, 0);
+    m_videoSystem.drawImage(FAILURE, 0, -m_failureTop);
   } else if (m_questionShown) {
     m_videoSystem.drawImage(QUESTION, 0, 0);
   } else if (m_kind == Check::Stage3) {
@@ -195,8 +196,13 @@ void ProtectionCheckState::showQuestion() {
 }
 
 void ProtectionCheckState::showFailure() {
+  const bool ntsc = m_videoSystem.isNtsc();
+  const effects::VisibleRows rows =
+      effects::visibleRows(effects::pictureLine(FAILURE_DISPLAY_LINE, ntsc),
+                           FAILURE_SCREEN_HEIGHT, ntsc);
+  m_failureTop = rows.first;
   m_videoSystem.createScreen(FAILURE_SCREEN_ID, FAILURE_SCREEN_WIDTH,
-                             FAILURE_SCREEN_HEIGHT);
+                             rows.count);
   m_videoSystem.switchScreen(FAILURE_SCREEN_ID);
   m_videoSystem.loadImage(FAILURE, FAILURE_PATH);
 }

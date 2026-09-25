@@ -4,6 +4,7 @@
 #include "../../../systems/AudioSystem.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
+#include "../../effects/AmigaDisplay.h"
 #include "../../effects/CodeCardCheck.h"
 #include "../IEngineState.h"
 
@@ -50,6 +51,7 @@ private:
   int m_resumeFrame;
   bool m_questionShown = false;
   bool m_failureShown = false;
+  int m_failureTop = 0;
 };
 
 } // namespace protectionCheck
