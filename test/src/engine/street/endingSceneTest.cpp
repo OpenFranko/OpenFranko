@@ -211,6 +211,12 @@ struct Ending {
   }
 
   int panelPixel(int x, int y) const { return scene.panel()->pixel(x, y); }
+
+  bool stillBobAt(int x, int y) const {
+    const effects::AmigaPalette &colors = scene.palette(0);
+    return pixel(x, y) !=
+           toArgb(colors[scene.screen(0).pixel(x, y) & (colors.size() - 1)]);
+  }
 };
 
 } // namespace
@@ -440,6 +446,35 @@ SCENARIO("FOTO fades the still in from white and holds it for KLIKER") {
   }
 }
 
+SCENARIO("Bobs on the still are drawn at AMOS's test points") {
+  GIVEN("The still up after FOTO") {
+    Ending ending;
+    EndingScene &scene = ending.scene;
+    ending.run(TEXT_BOX_SHOWN);
+
+    THEN("Bob 1 waits out Screen Open 1's VBL and is drawn at KLIKER's "
+         "call") {
+      REQUIRE(scene.bobs().isActive(1));
+      REQUIRE_FALSE(ending.stillBobAt(41, 81));
+      ending.run(1);
+      REQUIRE(ending.stillBobAt(41, 81));
+    }
+
+    WHEN("The joystick dismisses the text box") {
+      ending.run(100);
+      ending.run(1, JOY_RIGHT);
+      ending.run(15);
+
+      THEN("_OFF only marks it, and Wait 20's first VBL erases it") {
+        REQUIRE_FALSE(scene.bobs().isActive(1));
+        REQUIRE(ending.stillBobAt(41, 81));
+        ending.run(1);
+        REQUIRE_FALSE(ending.stillBobAt(41, 81));
+      }
+    }
+  }
+}
+
 SCENARIO("Franko walks away into the light, one image per 22 frames") {
   GIVEN("The text box dismissed") {
     Ending ending;
@@ -471,6 +506,15 @@ SCENARIO("Franko walks away into the light, one image per 22 frames") {
         REQUIRE(scene.bobs().x(2) == 142);
         REQUIRE(scene.bobs().y(2) == 148);
         REQUIRE(scene.bobs().image(2) == 3);
+      }
+
+      THEN("Bob 2 is first drawn at the test point after the next VBL, "
+           "already a line lower from its first AMAL step") {
+        REQUIRE_FALSE(ending.stillBobAt(143, 150));
+        ending.run(1);
+        REQUIRE(scene.bobs().y(2) == 149);
+        REQUIRE_FALSE(ending.stillBobAt(143, 148));
+        REQUIRE(ending.stillBobAt(143, 149));
       }
 
       AND_WHEN("The walk plays out") {

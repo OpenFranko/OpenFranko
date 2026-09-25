@@ -874,12 +874,35 @@ SCENARIO("F4 and F3 switch the display as SYS does") {
 
     WHEN("F4 is pressed") {
       street.run(1, 0, SystemKey::Ntsc);
+      for (int frame = 0; frame < 20 && !street.options.ntsc; ++frame) {
+        street.run(1);
+      }
+      std::vector<uint32_t> sysFrame;
+      stage.compose(sysFrame);
+      street.run(1);
+      std::vector<uint32_t> beamFrame;
+      stage.compose(beamFrame);
+      street.run(1);
       std::vector<uint32_t> frame;
       stage.compose(frame);
 
-      THEN("SYS turns NTSC on and moves both screens up 40 lines, so the "
-           "rows above line 26 are lost") {
-        REQUIRE(street.options.ntsc);
+      THEN("The frame SYS pokes BEAMCON0 in is still PAL") {
+        REQUIRE(sysFrame[18 * 304] == pal[18 * 304]);
+        REQUIRE(sysFrame[223 * 304] == pal[223 * 304]);
+      }
+
+      THEN("The next frame is NTSC, with both screens still on their PAL "
+           "lines: the play screen starts on line 47 and the panel is below "
+           "the raster") {
+        REQUIRE(beamFrame[18 * 304] == 0xFF000000u);
+        REQUIRE(beamFrame[19 * 304] == 0xFF555555u);
+        REQUIRE(beamFrame[40 * 304] == pal[0]);
+        REQUIRE(beamFrame[254 * 304] == pal[214 * 304]);
+      }
+
+      THEN("Screen Display's new lines go live a VBL after the next test "
+           "point: both screens move up 40 lines, so the rows above line 26 "
+           "are lost") {
         REQUIRE(frame[18 * 304] == 0xFF000000u);
         REQUIRE(frame[19 * 304] == pal[19 * 304]);
         REQUIRE(frame[222 * 304] == 0xFF555555u);
@@ -894,10 +917,19 @@ SCENARIO("F4 and F3 switch the display as SYS does") {
 
       AND_WHEN("F3 is pressed") {
         street.run(1, 0, SystemKey::Pal);
+        for (int frame = 0; frame < 20 && street.options.ntsc; ++frame) {
+          street.run(1);
+        }
+        street.run(1);
+        stage.compose(beamFrame);
+        street.run(1);
         stage.compose(frame);
 
-        THEN("The PAL layout is back") {
+        THEN("PAL's beam first shows the screens on their NTSC lines, then "
+             "the PAL layout is back") {
           REQUIRE_FALSE(street.options.ntsc);
+          REQUIRE(beamFrame[0] == pal[40 * 304]);
+          REQUIRE(beamFrame[183 * 304] == pal[223 * 304]);
           REQUIRE(frame[18 * 304] == pal[18 * 304]);
           REQUIRE(frame[222 * 304] == pal[222 * 304]);
           REQUIRE(frame[223 * 304] == pal[223 * 304]);

@@ -84,8 +84,7 @@ StreetStage::StreetStage(StreetHost &host, GameSession &session,
                       static_cast<int16_t>(playDisplayY(stageLayout(options))),
                       0},
       m_palette(levelPalette(false)), m_panelPalette(panelPalette()) {
-  m_copperDisplay = m_screenDisplay;
-  m_liveDisplay = m_screenDisplay;
+  m_copper.reset(registers());
   m_session.border = STAGE_BORDER;
 }
 
@@ -98,8 +97,7 @@ void StreetStage::advance(const StreetInput &input) {
     m_pendingKey = input.key;
   }
   m_buffer.vbl();
-  m_liveShown = m_copperShown;
-  m_liveDisplay = m_copperDisplay;
+  m_copper.vbl(m_options.ntsc);
   m_machine.setJoystick(input.joystick);
   m_machine.tick();
   if (m_buffer.isAutobacking()) {
@@ -115,22 +113,26 @@ void StreetStage::advance(const StreetInput &input) {
 
 void StreetStage::test() {
   if (m_buffer.test(m_bobs, m_images)) {
-    m_copperShown = m_screenShown;
-    m_copperDisplay = m_screenDisplay;
+    m_copper.rebuild(registers());
   }
 }
 
 void StreetStage::hideScreen() {
   m_screenShown = false;
-  m_copperShown = false;
-  m_liveShown = false;
+  m_copper.hide();
+}
+
+StageCopper StreetStage::registers() const {
+  return {m_screenShown, m_screenDisplay, m_options.ntsc};
 }
 
 void StreetStage::compose(std::vector<uint32_t> &frame) const {
-  composeFrame(frame, m_liveShown ? &m_buffer.shown() : nullptr, m_palette,
-               m_liveDisplay, m_screenOffsetX,
-               m_panelShown ? m_panel.get() : nullptr, m_panelPalette,
-               stageLayout(m_options));
+  const StageCopper &live = m_copper.live();
+  composeFrame(frame, live.screenShown ? &m_buffer.shown() : nullptr, m_palette,
+               live.screenDisplay, m_screenOffsetX,
+               m_panelShown ? m_panel.get() : nullptr,
+               m_copper.panelY(m_options.tallScreen), m_panelPalette,
+               m_copper.window(m_options.tallScreen));
 }
 
 StreetStage::Outcome StreetStage::outcome() const { return m_outcome; }
@@ -151,7 +153,7 @@ int StreetStage::columnsWalked() const { return m_columnsWalked; }
 
 int StreetStage::wavesSpawned() const { return m_wavesSpawned; }
 
-bool StreetStage::isScreenShown() const { return m_liveShown; }
+bool StreetStage::isScreenShown() const { return m_copper.live().screenShown; }
 
 bool StreetStage::isFighting() const {
   return m_step == Step::Referee || m_step == Step::RefereeCorpseStamped ||
@@ -237,8 +239,7 @@ void StreetStage::openScreens(bool shown) {
   m_palette = levelPalette(m_options.mono);
   m_panelPalette = panelPalette();
   m_screenShown = shown;
-  m_copperShown = shown;
-  m_liveShown = shown;
+  m_copper.reset(registers());
   m_screen.fill(0);
   m_buffer = DoubleBuffer(m_screen);
   m_panel =
@@ -915,8 +916,6 @@ void StreetStage::sys() {
   case SystemKey::Pal:
   case SystemKey::Ntsc:
     switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
-    m_copperDisplay = m_screenDisplay;
-    m_liveDisplay = m_screenDisplay;
     break;
   case SystemKey::Escape:
     global(RN) = 0;

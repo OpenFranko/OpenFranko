@@ -328,6 +328,38 @@ SCENARIO("The boss stage keeps the display lines state 09 and SYS set") {
     }
   }
 
+  GIVEN("A PAL approach under way") {
+    Duel duel;
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 20);
+
+    WHEN("F4 is pressed") {
+      duel.run(1, 0, SystemKey::Ntsc);
+      for (int frame = 0; frame < 20 && !duel.options.ntsc; ++frame) {
+        duel.run(1);
+      }
+      std::vector<uint32_t> sysFrame;
+      stage.compose(sysFrame);
+      duel.run(1);
+      std::vector<uint32_t> beamFrame;
+      stage.compose(beamFrame);
+      duel.run(1);
+      std::vector<uint32_t> frame;
+      stage.compose(frame);
+
+      THEN("SYS's frame is PAL, the next has the NTSC beam over the PAL "
+           "lines, and a VBL later the screens are on their NTSC lines") {
+        REQUIRE(duel.options.ntsc);
+        REQUIRE(sysFrame[18 * 304] != 0xFF000000u);
+        REQUIRE(beamFrame[18 * 304] == 0xFF000000u);
+        REQUIRE(beamFrame[19 * 304] == 0xFF555555u);
+        REQUIRE(beamFrame[40 * 304] == sysFrame[0]);
+        REQUIRE(frame[18 * 304] == 0xFF000000u);
+        REQUIRE(frame[19 * 304] == sysFrame[19 * 304]);
+      }
+    }
+  }
+
   GIVEN("320x512 chosen") {
     Duel duel;
     duel.options.tallScreen = true;

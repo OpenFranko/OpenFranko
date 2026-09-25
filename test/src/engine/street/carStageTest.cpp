@@ -701,12 +701,32 @@ SCENARIO("F4 and F3 switch the display during the drive as SYS does") {
 
     WHEN("F4 is pressed") {
       drive.run(1, 0, SystemKey::Ntsc);
-      drive.runPasses(1);
+      for (int frame = 0; frame < 20 && !drive.options.ntsc; ++frame) {
+        drive.run(1);
+      }
+      std::vector<uint32_t> sysFrame;
+      stage.compose(sysFrame);
+      drive.run(1);
+      std::vector<uint32_t> beamFrame;
+      stage.compose(beamFrame);
+      drive.run(1);
       std::vector<uint32_t> frame;
       stage.compose(frame);
 
-      THEN("Screen 0 and the panel move up 40 lines") {
-        REQUIRE(drive.options.ntsc);
+      THEN("The frame SYS pokes BEAMCON0 in is still PAL") {
+        REQUIRE(sysFrame[18 * 304] == pal[18 * 304]);
+        REQUIRE(sysFrame[223 * 304] == pal[223 * 304]);
+      }
+
+      THEN("The next frame is NTSC, with both screens still on their PAL "
+           "lines: the play screen runs to line 261, the panel is below it") {
+        REQUIRE(beamFrame[18 * 304] == 0xFF000000u);
+        REQUIRE(beamFrame[222 * 304] == frame[182 * 304]);
+        REQUIRE(beamFrame[223 * 304] == frame[183 * 304]);
+      }
+
+      THEN("Screen Display's new lines go live a VBL after the next test "
+           "point: screen 0 and the panel move up 40 lines") {
         REQUIRE(frame[18 * 304] == 0xFF000000u);
         REQUIRE(frame[222 * 304] == 0xFF555555u);
         REQUIRE(frame[223 * 304] == pal[223 * 304]);
@@ -714,12 +734,16 @@ SCENARIO("F4 and F3 switch the display during the drive as SYS does") {
 
       AND_WHEN("F3 is pressed") {
         drive.run(1, 0, SystemKey::Pal);
-        drive.runPasses(1);
+        for (int frame = 0; frame < 20 && drive.options.ntsc; ++frame) {
+          drive.run(1);
+        }
+        drive.run(2);
         stage.compose(frame);
 
         THEN("PAL is back") {
           REQUIRE_FALSE(drive.options.ntsc);
-          REQUIRE(frame[18 * 304] != 0xFF000000u);
+          REQUIRE(frame[18 * 304] == pal[18 * 304]);
+          REQUIRE(frame[223 * 304] == pal[223 * 304]);
         }
       }
     }

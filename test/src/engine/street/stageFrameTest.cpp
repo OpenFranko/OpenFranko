@@ -60,8 +60,8 @@ struct Stage {
 
   std::vector<uint32_t> compose() const {
     std::vector<uint32_t> frame;
-    composeFrame(frame, &play, GREYS, display, 0, &panel, panelPalette(),
-                 layout);
+    composeFrame(frame, &play, GREYS, display, 0, &panel, panelDisplayY(layout),
+                 panelPalette(), layout);
     return frame;
   }
 };
@@ -175,6 +175,53 @@ SCENARIO("composeFrame shows the screens where the display puts them") {
     THEN("The laced screen moves 16 rows") {
       REQUIRE(at(frame, 135) == BORDER);
       REQUIRE(at(frame, 136) == playRow(0));
+    }
+  }
+}
+
+SCENARIO("StageDisplay shows copper changes a VBL after the list is built") {
+  GIVEN("A PAL display with the play screen up") {
+    StageDisplay display;
+    const StageCopper pal{true, {DISPLAY_X, 47, 0}, false};
+    const StageCopper ntsc{true, {DISPLAY_X, 7, 0}, true};
+    display.reset(pal);
+
+    WHEN("SYS pokes BEAMCON0 and the next VBL comes") {
+      display.vbl(true);
+
+      THEN("The beam is NTSC, but both screens keep their PAL lines") {
+        REQUIRE(display.window(false).ntsc);
+        REQUIRE(display.live().screenDisplay.y == 47);
+        REQUIRE(display.panelY(false) == 270);
+      }
+
+      AND_WHEN("A test point builds the list with SYS's Screen Display") {
+        display.rebuild(ntsc);
+
+        THEN("Nothing moves before the next VBL") {
+          REQUIRE(display.live().screenDisplay.y == 47);
+          REQUIRE(display.panelY(false) == 270);
+        }
+
+        AND_WHEN("The VBL comes") {
+          display.vbl(true);
+
+          THEN("Both screens are on their NTSC lines") {
+            REQUIRE(display.live().screenDisplay.y == 7);
+            REQUIRE(display.panelY(false) == 230);
+          }
+        }
+      }
+    }
+
+    WHEN("A close drops the screen") {
+      display.hide();
+
+      THEN("It goes at once and stays gone after the VBL") {
+        REQUIRE_FALSE(display.live().screenShown);
+        display.vbl(false);
+        REQUIRE_FALSE(display.live().screenShown);
+      }
     }
   }
 }

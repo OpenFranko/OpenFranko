@@ -124,6 +124,7 @@ private:
                   effects::AmigaPalette palette);
   void closeScreen(int number);
   void redraw();
+  void stillTest();
 
   StreetHost &m_host;
   GameSession &m_session;
@@ -134,6 +135,8 @@ private:
   BobLayer m_bobs;
   std::array<Screen, 2> m_screens;
   IndexedSurface m_display;
+  BobLayer m_stillBobs;
+  bool m_stillVbl = false;
   std::optional<DoubleBuffer> m_dancerBuffer;
   int m_bobScreen = 0;
   std::optional<BossExit> m_stage;

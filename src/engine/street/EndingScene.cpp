@@ -114,14 +114,21 @@ void EndingScene::advance(int16_t joystick) {
     m_screens[1].hidden = false;
     m_dancerCopper = false;
   }
+  m_stillVbl = true;
   m_machine.tick();
   m_fader.tick(m_screens[0].palette);
-  if (m_dancerBuffer && !holdsAtStart()) {
-    m_dancerBuffer->test(m_bobs, m_images);
+  if (!holdsAtStart()) {
+    stillTest();
+    if (m_dancerBuffer) {
+      m_dancerBuffer->test(m_bobs, m_images);
+    }
   }
   runBasic(joystick);
-  if (m_dancerBuffer && !holdsAtEnd()) {
-    m_dancerBuffer->test(m_bobs, m_images);
+  if (!holdsAtEnd()) {
+    stillTest();
+    if (m_dancerBuffer) {
+      m_dancerBuffer->test(m_bobs, m_images);
+    }
   }
   redraw();
   ++m_frame;
@@ -622,7 +629,14 @@ void EndingScene::redraw() {
     return;
   }
   m_display = screen.surface;
-  m_bobs.draw(m_display, m_images);
+  m_stillBobs.draw(m_display, m_images);
+}
+
+void EndingScene::stillTest() {
+  if (m_stillVbl) {
+    m_stillVbl = false;
+    m_stillBobs = m_bobs;
+  }
 }
 
 } // namespace openfranko::src::engine::street

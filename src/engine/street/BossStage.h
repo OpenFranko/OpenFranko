@@ -152,6 +152,8 @@ private:
   void scrollStep();
   void gameOver();
   void closePlayScreen();
+  void test();
+  StageCopper registers() const;
   void sys();
   void runBasic(const StreetInput &input);
 
@@ -165,6 +167,7 @@ private:
   DoubleBuffer m_buffer;
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
+  StageDisplay m_copper;
   effects::AmigaPalette m_palette;
   effects::AmigaPalette m_panelPalette;
   std::vector<Picture> m_columns;

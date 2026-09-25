@@ -118,6 +118,8 @@ private:
   void gameOver();
   Flow closePlayScreen();
   void sys();
+  void test();
+  StageCopper registers() const;
   void runBasic(const StreetInput &input);
 
   StreetHost &m_host;
@@ -133,6 +135,7 @@ private:
   Picture m_backdrop;
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
+  StageDisplay m_copper;
   effects::AmigaPalette m_palette;
   effects::AmigaPalette m_panelPalette;
   LoadingMock m_loading;

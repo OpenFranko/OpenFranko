@@ -136,6 +136,7 @@ private:
   void openScreens(bool shown);
   void test();
   void hideScreen();
+  StageCopper registers() const;
   Flow stageInit();
   Flow stageMusic();
   Flow stageScreen();
@@ -180,8 +181,7 @@ private:
   DoubleBuffer m_buffer;
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
-  amal::Object m_copperDisplay;
-  amal::Object m_liveDisplay;
+  StageDisplay m_copper;
   effects::AmigaPalette m_palette;
   effects::AmigaPalette m_panelPalette;
   LevelScript m_script;
@@ -211,8 +211,6 @@ private:
   int m_facing = 0;
   int m_screenOffsetX = 0;
   bool m_screenShown = false;
-  bool m_copperShown = false;
-  bool m_liveShown = false;
   bool m_panelShown = true;
   bool m_escape = false;
   std::array<int, 4> m_energy{};

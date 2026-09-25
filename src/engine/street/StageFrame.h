@@ -27,6 +27,29 @@ struct StageLayout {
   bool laced = false;
 };
 
+struct StageCopper {
+  bool screenShown = false;
+  amal::Object screenDisplay;
+  bool ntsc = false;
+};
+
+class StageDisplay {
+public:
+  void reset(const StageCopper &registers);
+  void vbl(bool ntsc);
+  void rebuild(const StageCopper &registers);
+  void hide();
+
+  const StageCopper &live() const;
+  StageLayout window(bool laced) const;
+  int panelY(bool laced) const;
+
+private:
+  StageCopper m_built;
+  StageCopper m_live;
+  bool m_beamNtsc = false;
+};
+
 StageLayout stageLayout(const effects::GameOptions &options);
 int playDisplayY(const StageLayout &layout);
 int panelDisplayY(const StageLayout &layout);
@@ -43,9 +66,9 @@ const effects::AmigaPalette &panelPalette();
 void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,
-                  const StatusPanel *panel,
+                  const StatusPanel *panel, int panelY,
                   const effects::AmigaPalette &panelColors,
-                  const StageLayout &layout);
+                  const StageLayout &window);
 
 } // namespace street
 } // namespace engine

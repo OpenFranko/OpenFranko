@@ -135,6 +135,7 @@ BossStage::BossStage(StreetHost &host, GameSession &session,
                       static_cast<int16_t>(playDisplayY(stageLayout(options))),
                       0},
       m_palette(levelPalette(options.mono)), m_panelPalette(panelPalette()) {
+  m_copper.reset(registers());
   m_session.border = STAGE_BORDER;
 }
 
@@ -147,24 +148,37 @@ void BossStage::advance(const StreetInput &input) {
     m_pendingKey = input.key;
   }
   m_buffer.vbl();
+  m_copper.vbl(m_options.ntsc);
   m_machine.setJoystick(input.joystick);
   m_machine.tick();
   if (m_buffer.isAutobacking()) {
     m_buffer.autobackStep(m_bobs, m_images);
   } else {
-    m_buffer.test(m_bobs, m_images);
+    test();
   }
   runBasic(input);
   if (!m_buffer.isAutobacking()) {
-    m_buffer.test(m_bobs, m_images);
+    test();
   }
 }
 
+void BossStage::test() {
+  if (m_buffer.test(m_bobs, m_images)) {
+    m_copper.rebuild(registers());
+  }
+}
+
+StageCopper BossStage::registers() const {
+  return {m_screenShown, m_screenDisplay, m_options.ntsc};
+}
+
 void BossStage::compose(std::vector<uint32_t> &frame) const {
-  composeFrame(frame, m_screenShown ? &m_buffer.shown() : nullptr, m_palette,
-               m_screenDisplay, m_screenOffsetX,
-               m_panelShown ? m_panel.get() : nullptr, m_panelPalette,
-               stageLayout(m_options));
+  const StageCopper &live = m_copper.live();
+  composeFrame(frame, live.screenShown ? &m_buffer.shown() : nullptr, m_palette,
+               live.screenDisplay, m_screenOffsetX,
+               m_panelShown ? m_panel.get() : nullptr,
+               m_copper.panelY(m_options.tallScreen), m_panelPalette,
+               m_copper.window(m_options.tallScreen));
 }
 
 BossStage::Outcome BossStage::outcome() const { return m_outcome; }
@@ -177,7 +191,7 @@ const IndexedSurface &BossStage::display() const { return m_buffer.shown(); }
 
 const StatusPanel *BossStage::panel() const { return m_panel.get(); }
 
-bool BossStage::isScreenShown() const { return m_screenShown; }
+bool BossStage::isScreenShown() const { return m_copper.live().screenShown; }
 
 bool BossStage::isPanelShown() const { return m_panelShown; }
 
@@ -1077,6 +1091,7 @@ void BossStage::runBasic(const StreetInput &input) {
       break;
     case Step::GameOverScreenGone:
       m_screenShown = false;
+      m_copper.hide();
       m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::GameOverPanelClose;
       flow = Flow::Yield;

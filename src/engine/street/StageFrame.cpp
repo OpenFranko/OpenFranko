@@ -74,22 +74,51 @@ const effects::AmigaPalette &levelPalette(bool mono) {
 
 const effects::AmigaPalette &panelPalette() { return PANEL_PALETTE; }
 
+void StageDisplay::reset(const StageCopper &registers) {
+  m_built = registers;
+  m_live = registers;
+  m_beamNtsc = registers.ntsc;
+}
+
+void StageDisplay::vbl(bool ntsc) {
+  m_live = m_built;
+  m_beamNtsc = ntsc;
+}
+
+void StageDisplay::rebuild(const StageCopper &registers) {
+  m_built = registers;
+}
+
+void StageDisplay::hide() {
+  m_built.screenShown = false;
+  m_live.screenShown = false;
+}
+
+const StageCopper &StageDisplay::live() const { return m_live; }
+
+StageLayout StageDisplay::window(bool laced) const {
+  return {m_beamNtsc, laced};
+}
+
+int StageDisplay::panelY(bool laced) const {
+  return panelDisplayY({m_live.ntsc, laced});
+}
+
 void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,
-                  const StatusPanel *panel,
+                  const StatusPanel *panel, int panelY,
                   const effects::AmigaPalette &panelColors,
-                  const StageLayout &layout) {
-  const int rows = frameRows(layout);
-  const int perLine = rowsPerLine(layout);
-  const int top = frameTop(layout);
+                  const StageLayout &window) {
+  const int rows = frameRows(window);
+  const int perLine = rowsPerLine(window);
+  const int top = frameTop(window);
   frame.assign(static_cast<std::size_t>(FRAME_WIDTH * rows),
                toArgb(STAGE_BORDER));
   if (!panel) {
     return;
   }
   const IndexedSurface &panelSurface = panel->surface();
-  const int panelTop = panelDisplayY(layout);
   for (int row = 0; row < rows; ++row) {
     uint32_t *line = frame.data() + row * FRAME_WIDTH;
     const int beam = top + row / perLine;
@@ -97,7 +126,7 @@ void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
       std::fill(line, line + FRAME_WIDTH, BLANK);
       continue;
     }
-    const int panelRow = beam - panelTop;
+    const int panelRow = beam - panelY;
     if (panelRow >= 0 && panelRow < StatusPanel::VISIBLE_HEIGHT) {
       for (int x = 0; x < FRAME_WIDTH; ++x) {
         line[x] = toArgb(panelColors[panelSurface.pixel(x, panelRow)]);
