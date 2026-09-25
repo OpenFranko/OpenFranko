@@ -6,6 +6,7 @@ project(${PROJECT_NAME})
 
 option(BUILD_TESTS "Build tests" OFF)
 option(BUILD_TOOLS "Build tools" OFF)
+option(SKIP_COPY_PROTECTION "Skip the code card checks" OFF)
 
 include(FindPkgConfig)
 include(GNUInstallDirs)
@@ -27,8 +28,11 @@ endif()
 
 add_subdirectory(src)
 
-if (BUILD_TOOLS)
+if (BUILD_TOOLS OR BUILD_TESTS)
     add_subdirectory(lib)
+endif()
+
+if (BUILD_TOOLS)
     add_subdirectory(tools)
 endif()
 
