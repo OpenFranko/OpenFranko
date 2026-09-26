@@ -304,3 +304,52 @@ SCENARIO("Tempo holds until the tune's own tempo command comes round again") {
     }
   }
 }
+
+SCENARIO("Tempo set before the tune's first row has sounded still holds") {
+  GIVEN("A tune whose first row sets tempo 20, not yet rendered") {
+    Mixer mixer(MODULE_RATE);
+    REQUIRE(mixer.loadModule(tempoModule()));
+    mixer.startModule();
+    mixer.setModuleTempo(1.0);
+
+    WHEN("Tempo 14 is set at once") {
+      mixer.overrideModuleTempo(14);
+
+      THEN("The first row's own command does not change the pace") {
+        renderSeconds(mixer, 8.5);
+        REQUIRE(mixer.isModuleTempoOverridden());
+        renderSeconds(mixer, 1.0);
+        REQUIRE_FALSE(mixer.isModuleTempoOverridden());
+      }
+    }
+  }
+}
+
+SCENARIO("A tune can be played once instead of looping") {
+  GIVEN("The 6.4 s tune") {
+    Mixer mixer(MODULE_RATE);
+    REQUIRE(mixer.loadModule(tempoModule()));
+
+    WHEN("It is started to play once") {
+      mixer.startModule(false);
+      mixer.setModuleTempo(1.0);
+
+      THEN("It plays to its end and then stops") {
+        renderSeconds(mixer, 6.2);
+        REQUIRE(mixer.isModulePlaying());
+        renderSeconds(mixer, 0.4);
+        REQUIRE_FALSE(mixer.isModulePlaying());
+      }
+    }
+
+    WHEN("It is started as usual") {
+      mixer.startModule();
+      mixer.setModuleTempo(1.0);
+
+      THEN("It keeps looping") {
+        renderSeconds(mixer, 13.0);
+        REQUIRE(mixer.isModulePlaying());
+      }
+    }
+  }
+}

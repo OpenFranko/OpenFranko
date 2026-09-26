@@ -63,11 +63,9 @@ void AudioSystem::clearSFX(const std::string &name) {
   output->sounds.erase(sound);
 }
 
-void AudioSystem::playMusic() {
-  output->tempoScale = 1.0;
-  output->mixer.startModule();
-  applyTempo();
-}
+void AudioSystem::playMusic() { startMusic(true); }
+
+void AudioSystem::playMusicOnce() { startMusic(false); }
 
 void AudioSystem::stopMusic() { output->mixer.stopModule(); }
 
@@ -120,6 +118,12 @@ void AudioSystem::setSampleLooping(bool looping) {
 void AudioSystem::stopSFX() { output->mixer.stopAll(); }
 
 void AudioSystem::update() { output->mixer.update(); }
+
+void AudioSystem::startMusic(bool looping) {
+  output->tempoScale = 1.0;
+  output->mixer.startModule(looping);
+  applyTempo();
+}
 
 void AudioSystem::applyTempo() {
   output->mixer.setModuleTempo(static_cast<double>(PAL_VBL_RATE) /

@@ -153,9 +153,10 @@ void Mixer::releaseModule() {
   tempoRows.clear();
 }
 
-void Mixer::startModule() {
+void Mixer::startModule(bool looping) {
   std::lock_guard<std::mutex> lock(mutex);
   stopPlayer();
+  moduleLoops = looping ? 0 : 1;
   if (moduleLoaded && xmp_start_player(module->player, rate, 0) == 0) {
     modulePlaying = true;
   }
@@ -269,8 +270,8 @@ void Mixer::render(int16_t *stereo, int frames) {
   std::lock_guard<std::mutex> lock(mutex);
   const std::size_t samples = static_cast<std::size_t>(frames) * STEREO;
   musicBuffer.assign(samples, 0);
-  if (modulePlaying && !playModule(samples)) {
-    std::fill(musicBuffer.begin(), musicBuffer.end(), 0);
+  if (modulePlaying && !playModule(samples) && moduleLoops > 0) {
+    stopPlayer();
   }
 
   const int musicLevel = silencing ? 0 : musicVolume;
@@ -309,10 +310,10 @@ void Mixer::applyModuleTempo() {
   }
   double factor = moduleTempoFactor;
   if (tempoOverride > 0) {
-    xmp_frame_info info;
-    xmp_get_frame_info(module->player, &info);
-    if (info.speed > 0 && info.bpm > 0) {
-      factor *= AMOS_TEMPO_PER_BPM * info.bpm / (info.speed * tempoOverride);
+    overrideTiming = moduleTiming();
+    const auto [speed, bpm] = overrideTiming;
+    if (speed > 0 && bpm > 0) {
+      factor *= AMOS_TEMPO_PER_BPM * bpm / (speed * tempoOverride);
     }
   }
   xmp_set_tempo_factor(module->player, factor);
@@ -324,15 +325,24 @@ Mixer::RowPosition Mixer::modulePosition() const {
   return {info.pattern, info.row};
 }
 
+Mixer::ModuleTiming Mixer::moduleTiming() const {
+  xmp_frame_info info;
+  xmp_get_frame_info(module->player, &info);
+  return {info.speed, info.bpm};
+}
+
 bool Mixer::playModule(std::size_t samples) {
-  if (tempoOverride == 0) {
-    return xmp_play_buffer(module->player, musicBuffer.data(),
-                           static_cast<int>(samples * sizeof(int16_t)), 0) >= 0;
-  }
-  for (std::size_t done = 0; done < samples; done += TRACKED_SAMPLES) {
-    const std::size_t chunk = std::min(TRACKED_SAMPLES, samples - done);
+  const std::size_t step = tempoOverride == 0 ? samples : TRACKED_SAMPLES;
+  for (std::size_t done = 0; done < samples; done += step) {
+    const std::size_t chunk = std::min(step, samples - done);
     if (xmp_play_buffer(module->player, musicBuffer.data() + done,
-                        static_cast<int>(chunk * sizeof(int16_t)), 0) < 0) {
+                        static_cast<int>(chunk * sizeof(int16_t)),
+                        moduleLoops) < 0) {
+      std::fill(musicBuffer.begin() + static_cast<std::ptrdiff_t>(done),
+                musicBuffer.end(), 0);
+      return false;
+    }
+    if (hasModuleEnded()) {
       return false;
     }
     followModuleTempo();
@@ -340,17 +350,29 @@ bool Mixer::playModule(std::size_t samples) {
   return true;
 }
 
+bool Mixer::hasModuleEnded() const {
+  if (moduleLoops == 0) {
+    return false;
+  }
+  xmp_frame_info info;
+  xmp_get_frame_info(module->player, &info);
+  return info.loop_count >= moduleLoops;
+}
+
 void Mixer::followModuleTempo() {
   if (tempoOverride == 0) {
     return;
   }
   const RowPosition position = modulePosition();
-  if (position == overridePosition) {
-    return;
+  if (position != overridePosition) {
+    overridePosition = position;
+    if (tempoRows.count(position) > 0) {
+      tempoOverride = 0;
+      applyModuleTempo();
+      return;
+    }
   }
-  overridePosition = position;
-  if (tempoRows.count(position) > 0) {
-    tempoOverride = 0;
+  if (moduleTiming() != overrideTiming) {
     applyModuleTempo();
   }
 }

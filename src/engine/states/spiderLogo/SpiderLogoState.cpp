@@ -132,7 +132,7 @@ void SpiderLogoState::walk() {
     m_machine.create(BOB_CHANNEL, WALK_PROGRAM);
     m_machine.startAll();
     m_timer = 0;
-    m_audioSystem.playMusic();
+    m_audioSystem.playMusicOnce();
     showBlack(m_walkScreen, true);
     return;
   }

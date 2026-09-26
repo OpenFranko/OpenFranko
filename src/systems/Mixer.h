@@ -31,7 +31,7 @@ public:
 
   bool loadModule(const std::vector<char> &data);
   void releaseModule();
-  void startModule();
+  void startModule(bool looping = true);
   void stopModule();
   bool isModulePlaying() const;
   void setModuleTempo(double factor);
@@ -67,6 +67,7 @@ private:
   struct Module;
 
   using RowPosition = std::pair<int, int>;
+  using ModuleTiming = std::pair<int, int>;
 
   struct Biquad {
     double b0 = 0.0;
@@ -79,7 +80,9 @@ private:
   void stopPlayer();
   void applyModuleTempo();
   RowPosition modulePosition() const;
+  ModuleTiming moduleTiming() const;
   bool playModule(std::size_t samples);
+  bool hasModuleEnded() const;
   void followModuleTempo();
   bool isSounding(const Playing &playing) const;
   int nextSample(Voice &voice);
@@ -90,9 +93,11 @@ private:
   std::unique_ptr<Module> module;
   bool moduleLoaded = false;
   bool modulePlaying = false;
+  int moduleLoops = 0;
   double moduleTempoFactor = 1.0;
   int tempoOverride = 0;
   RowPosition overridePosition{-1, -1};
+  ModuleTiming overrideTiming{0, 0};
   std::set<RowPosition> tempoRows;
   int musicVolume;
   std::vector<int16_t> musicBuffer;
