@@ -4,9 +4,9 @@
 
 namespace openfranko::lib::converter::codeCards {
 
-CodeCards parse(const std::vector<uint8_t> &decompressedData) {
-  const size_t end = consts::FIRST_CARD_OFFSET +
-                     consts::CARD_COUNT * consts::CARD_SIZE * consts::CARD_SIZE;
+CodeCards parse(const std::vector<uint8_t> &decompressedData, size_t cardSize) {
+  const size_t end =
+      consts::FIRST_CARD_OFFSET + consts::CARD_COUNT * cardSize * cardSize;
   if (decompressedData.size() < end) {
     throw std::runtime_error("Data too small for the code cards");
   }
@@ -14,6 +14,7 @@ CodeCards parse(const std::vector<uint8_t> &decompressedData) {
   CodeCards cards;
   size_t pos = consts::FIRST_CARD_OFFSET;
   for (auto &card : cards) {
+    card.rows.assign(cardSize, std::vector<uint8_t>(cardSize));
     for (auto &row : card.rows) {
       for (auto &cell : row) {
         cell = decompressedData[pos++];
@@ -45,12 +46,13 @@ std::vector<uint8_t> toJson(const CodeCards &cards) {
     out += "    {\n";
     out += "      \"card\": " + std::to_string(n + 1) + ",\n";
     out += "      \"rows\": [\n";
-    for (size_t y = 0; y < consts::CARD_SIZE; ++y) {
+    const auto &rows = cards[n].rows;
+    for (size_t y = 0; y < rows.size(); ++y) {
       out += "        \"";
-      for (uint8_t cell : cards[n].rows[y]) {
+      for (uint8_t cell : rows[y]) {
         out += static_cast<char>('A' + cell);
       }
-      out += (y + 1 < consts::CARD_SIZE) ? "\",\n" : "\"\n";
+      out += (y + 1 < rows.size()) ? "\",\n" : "\"\n";
     }
     out += "      ]\n";
     out += (n + 1 < cards.size()) ? "    },\n" : "    }\n";

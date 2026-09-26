@@ -51,6 +51,8 @@ constexpr int FULL_ENERGY = 64;
 constexpr int EXTRA_LIFE_STEP = 40;
 constexpr int SHORT_LEVEL_LENGTH = 32;
 constexpr int STREET_MUSIC_VOLUME = 30;
+constexpr int PLAYER_CHANNEL = 1;
+constexpr int16_t CHEAT_LIVES = 12;
 constexpr int OPENING_SHOUT = 12;
 constexpr int ALL_VOICES = 15;
 constexpr int PRIORITY_VOICE = 1;
@@ -97,6 +99,7 @@ void StreetStage::advance(const StreetInput &input) {
   if (input.key != SystemKey::None) {
     m_session.keyLatch = input.key;
   }
+  m_mouseButton = input.mouseButton;
   m_buffer.vbl();
   m_copper.vbl(m_options.ntsc);
   m_machine.setJoystick(input.joystick);
@@ -247,9 +250,9 @@ void StreetStage::openScreens(bool shown) {
   m_copper.reset(registers());
   m_screen.fill(0);
   m_buffer = DoubleBuffer(m_screen);
-  m_panel =
-      std::make_unique<StatusPanel>(m_host.loadPanelPicture(LOADING_STRIP),
-                                    m_host.loadPanelPicture(PANEL_ARTWORK));
+  m_panel = std::make_unique<StatusPanel>(
+      m_host.loadPanelPicture(LOADING_STRIP),
+      m_host.loadPanelPicture(PANEL_ARTWORK), m_session.version);
 }
 
 StreetStage::Flow StreetStage::stageInit() {
@@ -314,7 +317,7 @@ void StreetStage::stageShown() {
     m_bobs.set(bob, 460, STREET_Y, 44);
   }
   for (int channel = 4; channel <= 9; ++channel) {
-    m_machine.create(channel, amal::actors::idle());
+    m_machine.create(channel, amal::actors::idle(m_session.version));
   }
 }
 
@@ -354,13 +357,15 @@ void StreetStage::streetSetup() {
   m_machine.bind(INDICATOR_CHANNEL, &m_bobs.object(INDICATOR));
 
   m_machine.bind(SCREEN_SHAKE_CHANNEL, &m_screenDisplay);
-  m_machine.create(SCREEN_SHAKE_CHANNEL, amal::actors::screenShake());
-  const auto player = amal::actors::streetPlayer(stage());
+  m_machine.create(SCREEN_SHAKE_CHANNEL,
+                   amal::actors::screenShake(m_session.version));
+  const auto player = amal::actors::streetPlayer(stage(), m_session.version);
   m_machine.create(1, player.locomotion);
   m_machine.create(2, player.damage);
   m_machine.create(3, player.clamp);
   m_machine.create(PLAYER_BLOOD_CHANNEL, amal::actors::playerBlood());
-  m_machine.create(ENEMY_BLOOD_CHANNEL, amal::actors::enemyBlood());
+  m_machine.create(ENEMY_BLOOD_CHANNEL,
+                   amal::actors::enemyBlood(m_session.version));
   m_machine.startAll();
 
   m_panel->score(stats());
@@ -636,16 +641,22 @@ StreetStage::Flow StreetStage::refereeBlood() {
       m_step = Step::RefereeBloodStamped;
       return Flow::Yield;
     }
-    m_bobs.setImage(i, HIDDEN_IMAGE);
+    hidePastedBlood(i);
   }
   return refereeTail();
 }
 
 StreetStage::Flow StreetStage::refereeBloodStamped() {
-  m_bobs.setImage(m_index, HIDDEN_IMAGE);
+  hidePastedBlood(m_index);
   ++m_index;
   m_step = Step::Referee;
   return refereeBlood();
+}
+
+void StreetStage::hidePastedBlood(int bob) {
+  if (m_session.version == GameVersion::V10) {
+    m_bobs.setImage(bob, HIDDEN_IMAGE);
+  }
 }
 
 StreetStage::Flow StreetStage::refereeTail() {
@@ -860,8 +871,8 @@ void StreetStage::spawnLoaded() {
     m_machine.bind(j * 2 + 1, &m_bobs.object(j));
     if (enemy.spriteSet == EnemySlot::EMPTY) {
       m_bobs.set(j, 1000, 300, HIDDEN_IMAGE);
-      m_machine.create(j * 2, amal::actors::idle());
-      m_machine.create(j * 2 + 1, amal::actors::idle());
+      m_machine.create(j * 2, amal::actors::idle(m_session.version));
+      m_machine.create(j * 2 + 1, amal::actors::idle(m_session.version));
       global(RI) = word(global(RI) - 1);
       continue;
     }
@@ -870,7 +881,8 @@ void StreetStage::spawnLoaded() {
     m_bobs.set(j, enemy.x, enemy.y, HIDDEN_IMAGE);
     const int base = 0 - 25 * amosBool(m_resident[2] == enemy.spriteSet) -
                      50 * amosBool(m_resident[3] == enemy.spriteSet);
-    const auto programs = amal::actors::enemy(base, enemy.type);
+    const auto programs =
+        amal::actors::enemy(base, enemy.type, m_session.version);
     m_machine.create(j * 2, programs.walk);
     m_machine.create(j * 2 + 1, programs.damage);
   }
@@ -892,13 +904,17 @@ void StreetStage::scrollStep() {
 void StreetStage::gameOver() {
   m_session.stageReached = global(RO);
   global(RO) = -1;
-  if (m_escape) {
+  if (quitsToHighScores()) {
     global(RN) = 0;
     closePlayScreen();
     return;
   }
   m_resumeFrame = m_frame + GAME_OVER_WAIT;
   m_step = Step::GameOverWait;
+}
+
+bool StreetStage::quitsToHighScores() const {
+  return m_escape && m_session.version == GameVersion::V10;
 }
 
 void StreetStage::closePlayScreen() {
@@ -921,6 +937,10 @@ void StreetStage::sys() {
   case SystemKey::Ntsc:
     switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
     break;
+  case SystemKey::Lives:
+    global(RG) = CHEAT_LIVES;
+    m_panel->score(stats());
+    break;
   case SystemKey::Escape:
     global(RN) = 0;
     m_escape = true;
@@ -929,6 +949,11 @@ void StreetStage::sys() {
   case SystemKey::None:
   case SystemKey::Other:
     break;
+  }
+  if (m_mouseButton && global(RI) > 0) {
+    global(RN) = static_cast<int16_t>(global(RN) + global(RI));
+    global(RI) = 0;
+    m_machine.start(PLAYER_CHANNEL);
   }
 }
 
@@ -1017,6 +1042,16 @@ void StreetStage::runBasic(const StreetInput &input) {
       flow = advanceLeavePasted();
       break;
     case Step::GameOverWait:
+      if (m_session.version == GameVersion::V12) {
+        m_bobs.offAll();
+        autoback([](IndexedSurface &surface) { surface.fill(0); });
+        m_step = Step::GameOverCleared;
+      } else {
+        closePlayScreen();
+      }
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverCleared:
       closePlayScreen();
       flow = Flow::Yield;
       break;
@@ -1038,7 +1073,7 @@ void StreetStage::runBasic(const StreetInput &input) {
       flow = Flow::Yield;
       break;
     case Step::GameOverClosed:
-      m_outcome = m_escape ? Outcome::Quit : Outcome::GameOver;
+      m_outcome = quitsToHighScores() ? Outcome::Quit : Outcome::GameOver;
       m_step = Step::Finished;
       flow = Flow::Yield;
       break;

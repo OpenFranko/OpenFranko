@@ -39,6 +39,7 @@ constexpr int RAINBOW_LINES = 240;
 constexpr int PAN_STEP_PIXELS = 5;
 constexpr int PAN_STEP_FRAMES = 4;
 constexpr int CLICK_FRAMES = 400;
+constexpr int16_t CLICK_FIRE = 16;
 constexpr int UNPACK_VBLS = 1;
 constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr int FADE_SPEED = 5;
@@ -255,7 +256,10 @@ GameOverScene::Flow GameOverScene::pan() {
 
 GameOverScene::Flow GameOverScene::click(int16_t joystick) {
   ++m_count;
-  if (m_count <= CLICK_FRAMES && joystick <= 0) {
+  const bool pressed = m_session.version == GameVersion::V12
+                           ? (joystick & CLICK_FIRE) != 0
+                           : joystick > 0;
+  if (m_count <= CLICK_FRAMES && !pressed) {
     return Flow::Yield;
   }
   m_fader.start(m_palette, FADE_SPEED,

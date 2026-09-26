@@ -57,8 +57,16 @@ constexpr std::array<uint16_t, 16> HUD = {
 
 constexpr std::array<uint16_t, 2> BW_MAGENTA = {0xF0F, 0x000};
 
+constexpr std::array<uint16_t, 16> WORLD_SOFTWARE = {
+    0x000, 0x600, 0x333, 0x550, 0x444, 0x770, 0x008, 0x009,
+    0x00A, 0x00B, 0x00C, 0x00D, 0x222, 0x003, 0xFFF, 0xFFF};
+
 inline std::vector<uint16_t> selectPalette(const std::string &fileId) {
-  const std::string_view id(fileId);
+  if (fileId == gameData::version12::fileIds::WORLD_SOFTWARE_PALETTE) {
+    return {WORLD_SOFTWARE.begin(), WORLD_SOFTWARE.end()};
+  }
+
+  const std::string_view id = gameData::version10Id(fileId);
 
   if (id == gameData::fileIds::SUNSET_PALETTE) {
     return {SUNSET.begin(), SUNSET.end()};

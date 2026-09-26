@@ -1,7 +1,5 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "frankoResourceExtractor.h"
-#include <algorithm>
-#include <cctype>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -20,14 +18,18 @@ int main(int argc, char **argv) {
               << std::endl;
     std::cerr << "Extracts all Franko game data files to standard formats."
               << std::endl;
+    std::cerr << "Reads version 1.0 files (0000-03C3) and version 1.2 files "
+                 "(m1-m11, p0-p85, s0-s255, t11-t40)."
+              << std::endl;
     std::cerr << "  Sprites (0x0000) -> sheet BMP + embedded WAV samples"
               << std::endl;
     std::cerr << "  Icons   (0x0200) -> BMP (screens, tiles, bitmaps)"
               << std::endl;
-    std::cerr << "  Levels  (0x0200) -> JSON (level scripts 0385-0387)"
+    std::cerr << "  Levels  (0x0200) -> JSON (level scripts 0385-0387, p1-p3)"
               << std::endl;
-    std::cerr << "  Codes   (0x0200) -> JSON (copy protection cards in 0384)"
-              << std::endl;
+    std::cerr
+        << "  Codes   (0x0200) -> JSON (copy protection cards in 0384, p0)"
+        << std::endl;
     std::cerr << "  Samples (0x0300) -> WAV" << std::endl;
     std::cerr << "  Music   (0x0400) -> S3M (ScreamTracker 3)" << std::endl;
     std::cerr << "  Screen  (0x0201) -> BMP (raw SPACK)" << std::endl;
@@ -50,25 +52,7 @@ int main(int argc, char **argv) {
     int errors = 0;
 
     if (std::filesystem::is_directory(inputPath)) {
-      std::vector<std::string> files;
-      for (const auto &entry : std::filesystem::directory_iterator(inputPath)) {
-        if (entry.is_regular_file()) {
-          std::string name = entry.path().filename().string();
-          if (name.size() == 4) {
-            bool isHex = true;
-            for (char c : name) {
-              if (!std::isxdigit(static_cast<unsigned char>(c))) {
-                isHex = false;
-                break;
-              }
-            }
-            if (isHex) {
-              files.push_back(entry.path().string());
-            }
-          }
-        }
-      }
-      std::sort(files.begin(), files.end());
+      const std::vector<std::string> files = extractor::dataFiles(inputPath);
 
       int missing = extractor::validateDirectory(inputPath);
       if (missing > 0) {

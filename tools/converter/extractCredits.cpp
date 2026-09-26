@@ -12,8 +12,10 @@ int main(int argc, char **argv) {
   const auto inputOptional = parser.getCmdOption("-i");
   if (!inputOptional.has_value()) {
     std::cerr << "Usage: " << argv[0]
-              << " -i <game executable> [-o <credits.json>]" << std::endl;
-    std::cerr << "Extracts the ending credits from the compiled Franko game."
+              << " -i <game executable> [-o <credits.json>] [-t <intro.json>]"
+              << std::endl;
+    std::cerr << "Extracts the ending credits from the compiled Franko game, "
+                 "and with -t the intro texts of version 1.2."
               << std::endl;
     return 1;
   }
@@ -33,6 +35,13 @@ int main(int argc, char **argv) {
     filesystem::writeFile::writeFile(outputPath, json);
     std::cerr << "Wrote " << outputPath << " (" << json.size() << " bytes)"
               << std::endl;
+    if (const auto introPath = parser.getCmdOption("-t")) {
+      const auto intro = converter::endingCredits::extractIntro(executable);
+      const auto introJson = converter::endingCredits::toJson(intro);
+      filesystem::writeFile::writeFile(*introPath, introJson);
+      std::cerr << "Intro texts: " << intro.size() << " pages -> " << *introPath
+                << std::endl;
+    }
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return 1;

@@ -1,7 +1,10 @@
 #include "spriteSheet.h"
 #include "../../bmpWriter/bmpWriter.h"
 #include "../../helpers/helpers.h"
+#include "../amosCompact/Consts.h"
 #include "../shared/decodeImage.h"
+#include "../shared/headers.h"
+#include <algorithm>
 #include <stdexcept>
 #include <string_view>
 
@@ -16,8 +19,11 @@ static constexpr size_t BMP_HOTSPOT_X_OFFSET = 6;
 static constexpr size_t BMP_HOTSPOT_Y_OFFSET = 8;
 static constexpr size_t BMP_PALETTE_OFFSET = 54;
 
-static constexpr int SUNSET_FONT_FIRST_SPRITE = 43;
-static constexpr int SUNSET_FONT_LAST_SPRITE = 100;
+static constexpr int FONT_FIRST_SPRITE = 43;
+static constexpr int FONT_LAST_SPRITE = 100;
+
+static constexpr int LOGO_REFLECTION_FIRST_SPRITE = 4;
+static constexpr int LOGO_REFLECTION_LAST_SPRITE = 9;
 
 static void setBmpPaletteEntry(std::vector<uint8_t> &bmp, int index, uint8_t r,
                                uint8_t g, uint8_t b) {
@@ -189,14 +195,48 @@ convertToIndividual(const std::vector<uint8_t> &data,
 
 void applySpritePaletteFixes(const std::string &fileId,
                              std::vector<ConvertedSprite> &sprites) {
-  if (std::string_view(fileId) != gameData::fileIds::SUNSET_PALETTE) {
+  if (gameData::version10Id(fileId) != gameData::fileIds::SUNSET_PALETTE &&
+      fileId != gameData::version12::fileIds::WORLD_SOFTWARE_PALETTE) {
     return;
   }
-  for (int i = SUNSET_FONT_FIRST_SPRITE;
-       i <= SUNSET_FONT_LAST_SPRITE && i < static_cast<int>(sprites.size());
-       i++) {
+  for (int i = FONT_FIRST_SPRITE;
+       i <= FONT_LAST_SPRITE && i < static_cast<int>(sprites.size()); i++) {
     setBmpPaletteEntry(sprites[i].bmpData, 1, 0xFF, 0xFF, 0xFF);
     setBmpPaletteEntry(sprites[i].bmpData, 2, 0xAA, 0xAA, 0xAA);
+  }
+}
+
+std::string_view paletteScreen(const std::string &fileId) {
+  return fileId == gameData::version12::fileIds::WORLD_SOFTWARE_PALETTE
+             ? gameData::version12::fileIds::WORLD_SOFTWARE_LOGO
+             : std::string_view();
+}
+
+void applyScreenPalette(const std::string &fileId,
+                        const std::vector<uint8_t> &screen,
+                        std::vector<ConvertedSprite> &sprites) {
+  if (paletteScreen(fileId).empty()) {
+    return;
+  }
+  if (screen.size() < amosCompact::consts::SPACK_HEADER_SIZE ||
+      helpers::BigEndianReader(screen).readUint32(0) !=
+          amosCompact::consts::SPACK_SCREEN_HEADER) {
+    throw std::runtime_error("Not a packed screen");
+  }
+  const auto header = headers::parseSPACKHeader(screen);
+  const int colours =
+      std::min<int>(header.numberOfColors,
+                    static_cast<int>(amosCompact::consts::SPACK_PALETTE_SIZE));
+  for (int i = LOGO_REFLECTION_FIRST_SPRITE;
+       i <= LOGO_REFLECTION_LAST_SPRITE && i < static_cast<int>(sprites.size());
+       i++) {
+    for (int colour = 0; colour < colours; colour++) {
+      const uint16_t amiga = header.amigaPalette[colour];
+      setBmpPaletteEntry(sprites[i].bmpData, colour,
+                         static_cast<uint8_t>(((amiga >> 8) & 0xF) * 17),
+                         static_cast<uint8_t>(((amiga >> 4) & 0xF) * 17),
+                         static_cast<uint8_t>((amiga & 0xF) * 17));
+    }
   }
 }
 

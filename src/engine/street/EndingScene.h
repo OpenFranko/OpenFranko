@@ -108,7 +108,7 @@ private:
   bool holdsAtStart() const;
   bool holdsAtEnd() const;
   void stageFrame();
-  bool kliker(int16_t joystick);
+  bool kliker(int16_t joystick, int frames);
   void runBasic(int16_t joystick);
   void start();
   void era();

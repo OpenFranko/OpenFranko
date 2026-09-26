@@ -127,3 +127,42 @@ SCENARIO("toJson writes the cards as rows of color letters") {
     }
   }
 }
+
+SCENARIO("parse reads the 5x5 cards of version 1.2") {
+  GIVEN("Two 5x5 cards after a 10-byte prefix") {
+    std::vector<uint8_t> data(10, 0xEE);
+    for (size_t i = 0; i < 50; i++) {
+      data.push_back(static_cast<uint8_t>(i % 11));
+    }
+
+    WHEN("parse is called with the 1.2 card size") {
+      auto cards = parse(data, consts::VERSION12_CARD_SIZE);
+
+      THEN("Card 1 starts at byte 10 and card 2 at byte 35") {
+        REQUIRE(cards[0].rows.size() == 5);
+        REQUIRE(cards[0].rows[0].size() == 5);
+        REQUIRE(cards[0].rows[1][0] == 5);
+        REQUIRE(cards[0].rows[4][4] == 24 % 11);
+        REQUIRE(cards[1].rows[0][0] == 25 % 11);
+        REQUIRE(cards[1].rows[4][4] == 49 % 11);
+      }
+
+      THEN("toJson writes five letters per row") {
+        auto json = toJson(cards);
+        const std::string text(json.begin(), json.end());
+        REQUIRE(text.find("\"ABCDE\",\n        \"FGHIJ\"") !=
+                std::string::npos);
+        REQUIRE(text.find("\"ABCDEFGHIJ\"") == std::string::npos);
+      }
+    }
+
+    WHEN("The data is one byte short of the end of card 2") {
+      data.pop_back();
+
+      THEN("parse throws a runtime_error") {
+        REQUIRE_THROWS_AS(parse(data, consts::VERSION12_CARD_SIZE),
+                          std::runtime_error);
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstring>
 #include <limits>
 #include <stdexcept>
 #include <xmp.h>
@@ -19,7 +20,72 @@ constexpr double LED_FILTER_HERTZ = 3275.0;
 constexpr double BUTTERWORTH_Q = 0.7071067811865476;
 constexpr double PI = 3.14159265358979323846;
 
+constexpr double AMOS_TEMPO_PER_BPM = 4.0 / 5.0;
+constexpr std::size_t TRACKED_SAMPLES = 256 * STEREO;
+
+constexpr std::size_t S3M_ORDER_COUNT = 0x20;
+constexpr std::size_t S3M_INSTRUMENT_COUNT = 0x22;
+constexpr std::size_t S3M_PATTERN_COUNT = 0x24;
+constexpr std::size_t S3M_MAGIC = 0x2C;
+constexpr std::size_t S3M_ORDERS = 0x60;
+constexpr std::size_t S3M_PARAGRAPH = 16;
+constexpr std::size_t S3M_LENGTH_SIZE = 2;
+constexpr int S3M_ROWS = 64;
+constexpr uint8_t S3M_NOTE = 0x20;
+constexpr uint8_t S3M_VOLUME = 0x40;
+constexpr uint8_t S3M_COMMAND = 0x80;
+constexpr uint8_t S3M_SET_SPEED = 1;
+constexpr uint8_t S3M_SET_TEMPO = 20;
+
 bool isLeftVoice(int voice) { return voice == 0 || voice == 3; }
+
+std::set<std::pair<int, int>> s3mTempoRows(const std::vector<char> &data) {
+  const auto byteAt = [&data](std::size_t at) -> std::size_t {
+    return at < data.size() ? static_cast<uint8_t>(data[at]) : 0;
+  };
+  const auto wordAt = [&byteAt](std::size_t at) {
+    return byteAt(at) | byteAt(at + 1) << 8;
+  };
+  std::set<std::pair<int, int>> rows;
+  if (data.size() < S3M_ORDERS ||
+      std::memcmp(data.data() + S3M_MAGIC, "SCRM", 4) != 0) {
+    return rows;
+  }
+  const std::size_t pointers = S3M_ORDERS + wordAt(S3M_ORDER_COUNT) +
+                               S3M_LENGTH_SIZE * wordAt(S3M_INSTRUMENT_COUNT);
+  const std::size_t patterns = wordAt(S3M_PATTERN_COUNT);
+  for (std::size_t pattern = 0; pattern < patterns; ++pattern) {
+    const std::size_t start =
+        wordAt(pointers + S3M_LENGTH_SIZE * pattern) * S3M_PARAGRAPH;
+    if (start == 0) {
+      continue;
+    }
+    const std::size_t end = std::min(data.size(), start + wordAt(start));
+    std::size_t at = start + S3M_LENGTH_SIZE;
+    int row = 0;
+    while (row < S3M_ROWS && at < end) {
+      const std::size_t what = byteAt(at++);
+      if (what == 0) {
+        ++row;
+        continue;
+      }
+      if (what & S3M_NOTE) {
+        at += 2;
+      }
+      if (what & S3M_VOLUME) {
+        ++at;
+      }
+      if (what & S3M_COMMAND) {
+        const std::size_t command = byteAt(at);
+        if (command == S3M_SET_SPEED || command == S3M_SET_TEMPO) {
+          rows.insert({static_cast<int>(pattern), row});
+        }
+        at += 2;
+      }
+    }
+  }
+  return rows;
+}
 
 int16_t clampSample(long value) {
   return static_cast<int16_t>(
@@ -73,6 +139,7 @@ bool Mixer::loadModule(const std::vector<char> &data) {
   moduleLoaded = !data.empty() && xmp_load_module_from_memory(
                                       module->player, data.data(),
                                       static_cast<long>(data.size())) == 0;
+  tempoRows = moduleLoaded ? s3mTempoRows(data) : std::set<RowPosition>{};
   return moduleLoaded;
 }
 
@@ -83,11 +150,13 @@ void Mixer::releaseModule() {
     xmp_release_module(module->player);
     moduleLoaded = false;
   }
+  tempoRows.clear();
 }
 
-void Mixer::startModule() {
+void Mixer::startModule(bool looping) {
   std::lock_guard<std::mutex> lock(mutex);
   stopPlayer();
+  moduleLoops = looping ? 0 : 1;
   if (moduleLoaded && xmp_start_player(module->player, rate, 0) == 0) {
     modulePlaying = true;
   }
@@ -105,9 +174,23 @@ bool Mixer::isModulePlaying() const {
 
 void Mixer::setModuleTempo(double factor) {
   std::lock_guard<std::mutex> lock(mutex);
-  if (modulePlaying) {
-    xmp_set_tempo_factor(module->player, factor);
+  moduleTempoFactor = factor;
+  applyModuleTempo();
+}
+
+void Mixer::overrideModuleTempo(int tempo) {
+  std::lock_guard<std::mutex> lock(mutex);
+  if (!modulePlaying || tempo <= 0) {
+    return;
   }
+  tempoOverride = tempo;
+  overridePosition = modulePosition();
+  applyModuleTempo();
+}
+
+bool Mixer::isModuleTempoOverridden() const {
+  std::lock_guard<std::mutex> lock(mutex);
+  return tempoOverride > 0;
 }
 
 void Mixer::setMusicVolume(int volume) {
@@ -187,10 +270,8 @@ void Mixer::render(int16_t *stereo, int frames) {
   std::lock_guard<std::mutex> lock(mutex);
   const std::size_t samples = static_cast<std::size_t>(frames) * STEREO;
   musicBuffer.assign(samples, 0);
-  if (modulePlaying &&
-      xmp_play_buffer(module->player, musicBuffer.data(),
-                      static_cast<int>(samples * sizeof(int16_t)), 0) < 0) {
-    std::fill(musicBuffer.begin(), musicBuffer.end(), 0);
+  if (modulePlaying && !playModule(samples) && moduleLoops > 0) {
+    stopPlayer();
   }
 
   const int musicLevel = silencing ? 0 : musicVolume;
@@ -216,9 +297,83 @@ void Mixer::render(int16_t *stereo, int frames) {
 }
 
 void Mixer::stopPlayer() {
+  tempoOverride = 0;
   if (modulePlaying) {
     xmp_end_player(module->player);
     modulePlaying = false;
+  }
+}
+
+void Mixer::applyModuleTempo() {
+  if (!modulePlaying) {
+    return;
+  }
+  double factor = moduleTempoFactor;
+  if (tempoOverride > 0) {
+    overrideTiming = moduleTiming();
+    const auto [speed, bpm] = overrideTiming;
+    if (speed > 0 && bpm > 0) {
+      factor *= AMOS_TEMPO_PER_BPM * bpm / (speed * tempoOverride);
+    }
+  }
+  xmp_set_tempo_factor(module->player, factor);
+}
+
+Mixer::RowPosition Mixer::modulePosition() const {
+  xmp_frame_info info;
+  xmp_get_frame_info(module->player, &info);
+  return {info.pattern, info.row};
+}
+
+Mixer::ModuleTiming Mixer::moduleTiming() const {
+  xmp_frame_info info;
+  xmp_get_frame_info(module->player, &info);
+  return {info.speed, info.bpm};
+}
+
+bool Mixer::playModule(std::size_t samples) {
+  const std::size_t step = tempoOverride == 0 ? samples : TRACKED_SAMPLES;
+  for (std::size_t done = 0; done < samples; done += step) {
+    const std::size_t chunk = std::min(step, samples - done);
+    if (xmp_play_buffer(module->player, musicBuffer.data() + done,
+                        static_cast<int>(chunk * sizeof(int16_t)),
+                        moduleLoops) < 0) {
+      std::fill(musicBuffer.begin() + static_cast<std::ptrdiff_t>(done),
+                musicBuffer.end(), 0);
+      return false;
+    }
+    if (hasModuleEnded()) {
+      return false;
+    }
+    followModuleTempo();
+  }
+  return true;
+}
+
+bool Mixer::hasModuleEnded() const {
+  if (moduleLoops == 0) {
+    return false;
+  }
+  xmp_frame_info info;
+  xmp_get_frame_info(module->player, &info);
+  return info.loop_count >= moduleLoops;
+}
+
+void Mixer::followModuleTempo() {
+  if (tempoOverride == 0) {
+    return;
+  }
+  const RowPosition position = modulePosition();
+  if (position != overridePosition) {
+    overridePosition = position;
+    if (tempoRows.count(position) > 0) {
+      tempoOverride = 0;
+      applyModuleTempo();
+      return;
+    }
+  }
+  if (moduleTiming() != overrideTiming) {
+    applyModuleTempo();
   }
 }
 

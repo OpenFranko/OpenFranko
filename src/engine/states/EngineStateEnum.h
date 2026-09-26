@@ -8,6 +8,9 @@ namespace states {
 
 enum class EngineStateEnum {
   Mirage,
+  SpiderLogo,
+  Adverts,
+  Presents,
   WorldSoftware,
   KneeAnimation,
   TitleAndStory,

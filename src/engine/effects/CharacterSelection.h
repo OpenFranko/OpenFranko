@@ -1,6 +1,7 @@
 #ifndef ENGINE_EFFECTS_CHARACTERSELECTION_H_
 #define ENGINE_EFFECTS_CHARACTERSELECTION_H_
 
+#include "../GameVersion.h"
 #include "AmalAnim.h"
 #include "AmalMotion.h"
 #include "GameOptions.h"
@@ -29,7 +30,8 @@ public:
     bool flipped = false;
   };
 
-  explicit CharacterSelection(GameOptions &options, int otherScreens = 0);
+  explicit CharacterSelection(GameOptions &options, int otherScreens = 0,
+                              GameVersion version = GameVersion::V10);
 
   void advance(const Joystick &joystick);
 
@@ -47,6 +49,7 @@ private:
   void close(int time);
 
   GameOptions &m_options;
+  GameVersion m_version;
   Bob m_hand;
   Bob m_face;
   AmalMotion m_handMotion;

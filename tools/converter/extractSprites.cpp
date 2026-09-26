@@ -1,7 +1,6 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
-#include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
 #include <cstdio>
@@ -19,7 +18,7 @@ int main(int argc, char **argv) {
               << " -i <input_file> [-o <output_dir>] [-p <palette>]"
               << std::endl;
     std::cerr << "Extracts individual sprites from a Franko sprite bank (type "
-                 "0x0000)."
+                 "0x0000, or a version 1.2 s file)."
               << std::endl;
     std::cerr << "Palettes: level (default), sunset, story, menu, menu35, "
                  "cemetery"
@@ -39,15 +38,16 @@ int main(int argc, char **argv) {
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
-    std::string fileId = converter::fileContainer::fileIdToHex(
-        converter::fileContainer::parseFooter(raw).fileId);
+    auto resource = converter::fileContainer::unpack(
+        std::filesystem::path(inputPath).filename().string(), raw);
+    const std::string &fileId = resource.fileId;
 
     auto palette =
         paletteOptional.has_value()
             ? converter::spriteSheet::palettes::byName(paletteOptional.value())
             : converter::spriteSheet::selectPalette(fileId);
 
-    auto dec = decompressor::backwardLZ77::decompress(raw);
+    const auto &dec = resource.data;
     std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
 
     auto header = converter::spriteSheet::parseHeader(dec);
@@ -59,6 +59,20 @@ int main(int argc, char **argv) {
     auto sprites = converter::spriteSheet::convertToIndividual(dec, palette);
     if (!paletteOptional.has_value()) {
       converter::spriteSheet::applySpritePaletteFixes(fileId, sprites);
+      const std::string screen(converter::spriteSheet::paletteScreen(fileId));
+      if (!screen.empty()) {
+        const auto screenPath =
+            std::filesystem::path(inputPath).parent_path() / screen;
+        try {
+          const auto bank = converter::fileContainer::unpack(
+              screen, filesystem::readFile::readFile(screenPath.string()));
+          converter::spriteSheet::applyScreenPalette(fileId, bank.data,
+                                                     sprites);
+        } catch (const std::exception &e) {
+          std::cerr << e.what() << ": the sprites shown on " << screen
+                    << " keep the bank's palette" << std::endl;
+        }
+      }
     }
     int written = 0;
     for (int i = 0; i < static_cast<int>(sprites.size()); i++) {

@@ -33,6 +33,8 @@ constexpr int STAGE_WIDTH = 304;
 constexpr int AUTOBACK_VBLS = 3;
 constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr int KLIKER_FRAMES = 2000;
+constexpr int VERSION12_FINAL_KLIKER_FRAMES = 10000;
+constexpr int16_t KLIKER_FIRE = 16;
 
 constexpr int STILL_TOP = 50;
 constexpr int STILL_HEIGHT = 256;
@@ -283,8 +285,11 @@ EndingScene::Flow EndingScene::wait(int frames, Step next) {
   return Flow::Yield;
 }
 
-bool EndingScene::kliker(int16_t joystick) {
-  if (++m_count <= KLIKER_FRAMES && joystick <= 0) {
+bool EndingScene::kliker(int16_t joystick, int frames) {
+  const bool pressed = m_session.version == GameVersion::V12
+                           ? (joystick & KLIKER_FIRE) != 0
+                           : joystick > 0;
+  if (++m_count <= frames && !pressed) {
     return false;
   }
   m_count = 0;
@@ -347,7 +352,8 @@ void EndingScene::runBasic(int16_t joystick) {
       m_step = Step::StillKliker;
       break;
     case Step::StillKliker:
-      flow = kliker(joystick) ? wait(STILL_HOLD, Step::StillOff) : Flow::Yield;
+      flow = kliker(joystick, KLIKER_FRAMES) ? wait(STILL_HOLD, Step::StillOff)
+                                             : Flow::Yield;
       break;
     case Step::StillOff:
       off();
@@ -372,7 +378,7 @@ void EndingScene::runBasic(int16_t joystick) {
       m_step = Step::FarewellKliker;
       break;
     case Step::FarewellKliker:
-      if (!kliker(joystick)) {
+      if (!kliker(joystick, KLIKER_FRAMES)) {
         flow = Flow::Yield;
         break;
       }
@@ -434,7 +440,9 @@ void EndingScene::runBasic(int16_t joystick) {
                    : Step::FinalKliker;
       break;
     case Step::FinalKliker:
-      if (!kliker(joystick)) {
+      if (!kliker(joystick, m_session.version == GameVersion::V12
+                                ? VERSION12_FINAL_KLIKER_FRAMES
+                                : KLIKER_FRAMES)) {
         flow = Flow::Yield;
         break;
       }
@@ -482,7 +490,8 @@ void EndingScene::start() {
 void EndingScene::era() {
   m_credits = m_host.loadEndingCredits();
   m_panel = std::make_unique<StatusPanel>(
-      m_host.loadPanelPicture(StreetStage::LOADING_STRIP), Picture{});
+      m_host.loadPanelPicture(StreetStage::LOADING_STRIP), Picture{},
+      m_session.version);
   m_host.stopMusic();
   m_images.clear();
   m_parked.clear();

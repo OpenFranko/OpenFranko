@@ -22,6 +22,12 @@ constexpr std::array<RegisterCheat, 3> LIVES = {{
     {"DOMAN", 9},
 }};
 
+constexpr std::array<RegisterCheat, 3> VERSION12_LIVES = {{
+    {"TAVRIA", 10000},
+    {"MUTANT", 12},
+    {"CEAT", 6},
+}};
+
 constexpr std::array<RegisterCheat, 2> STAGES = {{
     {"CENT", 1},
     {"DRZE", 2},
@@ -53,7 +59,8 @@ void typeCheatKey(std::string &text, char key) {
 
 void applyCheatCodes(GameSession &session) {
   const std::string &text = session.textBuffer;
-  for (const RegisterCheat &cheat : LIVES) {
+  const bool version12 = session.version == GameVersion::V12;
+  for (const RegisterCheat &cheat : version12 ? VERSION12_LIVES : LIVES) {
     if (contains(text, cheat.word)) {
       session.registers[RG] = cheat.value;
     }
@@ -64,7 +71,7 @@ void applyCheatCodes(GameSession &session) {
       session.registers[RO] = cheat.value;
     }
   }
-  if (contains(text, BRUTALITY)) {
+  if (!version12 && contains(text, BRUTALITY)) {
     session.brutality = true;
   }
 }

@@ -95,6 +95,7 @@ private:
     RailingDone,
     Cleared,
     GameOverWait,
+    GameOverCleared,
     GameOverScreenGone,
     GameOverPanelClose,
     GameOverPanelGone,
@@ -152,6 +153,7 @@ private:
   Flow finishCleanUp();
   void scrollStep();
   void gameOver();
+  bool quitsToHighScores() const;
   void closePlayScreen();
   void test();
   StageCopper registers() const;
@@ -192,6 +194,7 @@ private:
   int m_facing = 0;
   int m_screenOffsetX = 0;
   bool m_escape = false;
+  bool m_mouseButton = false;
   bool m_screenShown = true;
   bool m_panelShown = true;
 };

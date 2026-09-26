@@ -1,7 +1,6 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "../../lib/converter/bitmapExtractor/bitmapExtractor.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
-#include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
 #include <filesystem>
@@ -17,7 +16,7 @@ int main(int argc, char **argv) {
     std::cerr << "Usage: " << argv[0] << " -i <input_file> [-o <output_dir>]"
               << std::endl;
     std::cerr << "Extracts bitmaps from a Franko icon/bitmap file (type "
-                 "0x0200)."
+                 "0x0200, or a version 1.2 p or t file)."
               << std::endl;
     std::cerr << "Handles screens, tiles, and multi-bitmap files." << std::endl;
     return 1;
@@ -33,10 +32,11 @@ int main(int argc, char **argv) {
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
-    std::string fileId = converter::fileContainer::fileIdToHex(
-        converter::fileContainer::parseFooter(raw).fileId);
+    auto resource = converter::fileContainer::unpack(
+        std::filesystem::path(inputPath).filename().string(), raw);
+    const std::string &fileId = resource.fileId;
 
-    auto dec = decompressor::backwardLZ77::decompress(raw);
+    const auto &dec = resource.data;
     std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
 
     std::filesystem::create_directories(outDir);

@@ -3,6 +3,7 @@
 
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
+#include "../../GameVersion.h"
 #include "../../effects/GameOptions.h"
 #include "../../street/StreetStage.h"
 
@@ -12,8 +13,8 @@ namespace engine {
 namespace states {
 namespace level1 {
 
-street::StreetInput
-readStreetInput(const systems::ControllerSystem &controller);
+street::StreetInput readStreetInput(const systems::ControllerSystem &controller,
+                                    GameVersion version);
 void showStageFrame(systems::VideoSystem &videoSystem,
                     const systems::Display &frame,
                     const effects::GameOptions &options);

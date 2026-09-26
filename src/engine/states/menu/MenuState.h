@@ -60,6 +60,7 @@ private:
       effects::AttractSequence::Kind::Title;
   int m_attractTop = 0;
   int m_attractClosing = 0;
+  int m_musicWait = 0;
 };
 
 } // namespace menu

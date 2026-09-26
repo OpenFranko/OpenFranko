@@ -10,11 +10,12 @@ Level3BossState::Level3BossState(systems::VideoSystem &videoSystem,
                                  effects::GameOptions &options,
                                  street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_options(options), m_host(audioSystem),
+      m_options(options), m_host(audioSystem, session.version),
       m_stage(m_host, session, options) {}
 
 std::optional<EngineStateEnum> Level3BossState::update() {
-  m_stage.advance(level1::readStreetInput(m_controllerSystem));
+  m_stage.advance(
+      level1::readStreetInput(m_controllerSystem, m_host.version()));
   level1::showStageFrame(m_videoSystem, m_stage.output(), m_options);
 
   switch (m_stage.outcome()) {

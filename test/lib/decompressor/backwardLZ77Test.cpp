@@ -224,3 +224,48 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     }
   }
 }
+
+SCENARIO("decompressStream unpacks a stream that has no file footer") {
+  GIVEN("The 5-byte literal run without its 8-byte footer") {
+    std::vector<uint8_t> stream = {
+        0xF2, 0x32, 0x32, 0xA2, 0x00, 0x00, 0x22, 0x44,
+        0xF2, 0x32, 0x10, 0xE6, 0x00, 0x00, 0x00, 0x05,
+    };
+
+    WHEN("Decompressing the stream") {
+      const auto decompressedData = decompressStream(stream);
+
+      THEN("It gives the same bytes as the file with its footer") {
+        std::vector<uint8_t> expected = {0x4F, 0x4C, 0x4C, 0x45, 0x48};
+        REQUIRE(decompressedData == expected);
+      }
+    }
+  }
+
+  GIVEN("A stream of literals that is longer than the data it unpacks to") {
+    std::vector<uint8_t> stream = {
+        0x00, 0x02, 0x08, 0x08, 0x58, 0x44, 0x54, 0x4C, 0x5C, 0x42, 0x52, 0x5C,
+        0x00, 0x00, 0x00, 0x01, 0x04, 0x04, 0x0E, 0x19, 0x00, 0x00, 0x00, 0x09,
+    };
+
+    WHEN("Decompressing the stream") {
+      const auto decompressedData = decompressStream(stream);
+
+      THEN("Every word is read as stored, before the output overlaps it") {
+        std::vector<uint8_t> expected = {0x41, 0x42, 0x43, 0x44, 0x45,
+                                         0x46, 0x47, 0x48, 0x49};
+        REQUIRE(decompressedData == expected);
+      }
+    }
+  }
+
+  GIVEN("A stream shorter than its 12-byte trailer") {
+    std::vector<uint8_t> stream(11, 0x00);
+
+    WHEN("Attempting to decompress") {
+      THEN("It should throw a runtime error") {
+        REQUIRE_THROWS_AS(decompressStream(stream), std::runtime_error);
+      }
+    }
+  }
+}

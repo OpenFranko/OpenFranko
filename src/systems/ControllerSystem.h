@@ -32,6 +32,7 @@ enum class Key {
   F2,
   F3,
   F4,
+  F9,
   Escape
 };
 
@@ -53,6 +54,7 @@ public:
   bool isFireLatched() const;
   bool isMouseButtonDown() const;
   bool isDeleteHeld() const;
+  bool isKeyHeld(Key key) const;
   const std::string &typedKeys() const;
   std::optional<FunctionKey> functionKey() const;
   int16_t joystick() const;

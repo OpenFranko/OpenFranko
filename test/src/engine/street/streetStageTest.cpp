@@ -1099,3 +1099,39 @@ SCENARIO("A wave's missing sprite set loads with the player stamped down") {
     }
   }
 }
+
+SCENARIO("1.2 clears the play area before its game over closes the screens") {
+  const auto framesUntilScreenGone = [](GameVersion version, bool &cleared) {
+    Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
+    street.session.version = version;
+    StreetStage &stage = street.start();
+    street.run(OPENING_FRAMES + 1);
+    street.runUntil([&] { return stage.wavesSpawned() == 1; }, 400, JOY_RIGHT);
+    street.global(RG) = -2;
+    const int frames =
+        street.runUntil([&] { return !stage.isScreenShown(); }, 400);
+    const std::vector<uint8_t> &pixels = stage.screen().pixels();
+    cleared = std::all_of(pixels.begin(), pixels.end(),
+                          [](uint8_t pixel) { return pixel == 0; });
+    return frames;
+  };
+
+  GIVEN("The last life lost in 1.0 and in 1.2") {
+    bool version10Cleared = false;
+    bool version12Cleared = false;
+    const int version10 =
+        framesUntilScreenGone(GameVersion::V10, version10Cleared);
+    const int version12 =
+        framesUntilScreenGone(GameVersion::V12, version12Cleared);
+
+    THEN("1.2's _OFF and Cls 0 hold the close back by Cls's three VBLs") {
+      REQUIRE(version10 > 200);
+      REQUIRE(version12 == version10 + 3);
+    }
+
+    THEN("Only 1.2 blanks the play area first") {
+      REQUIRE_FALSE(version10Cleared);
+      REQUIRE(version12Cleared);
+    }
+  }
+}

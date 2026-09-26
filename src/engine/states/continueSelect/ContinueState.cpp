@@ -8,7 +8,7 @@ ContinueState::ContinueState(systems::VideoSystem &videoSystem,
                              const effects::GameOptions &options,
                              street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_host(audioSystem), m_scene(m_host, session),
+      m_host(audioSystem, session.version), m_scene(m_host, session),
       m_rows(effects::visibleRows(
           effects::pictureLine(street::ContinueScene::DISPLAY_LINE,
                                options.ntsc),

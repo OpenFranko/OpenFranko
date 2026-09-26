@@ -1,6 +1,7 @@
 #ifndef ENGINE_STREET_STATUSPANEL_H_
 #define ENGINE_STREET_STATUSPANEL_H_
 
+#include "../GameVersion.h"
 #include "IndexedSurface.h"
 
 namespace openfranko {
@@ -21,7 +22,8 @@ public:
     int lives = 0;
   };
 
-  StatusPanel(Picture loadingStrip, Picture artwork);
+  StatusPanel(Picture loadingStrip, Picture artwork,
+              GameVersion version = GameVersion::V10);
 
   void showLoading();
   void showWaiting();
@@ -35,6 +37,7 @@ public:
 private:
   Picture m_loadingStrip;
   Picture m_artwork;
+  int m_livesDigitX;
   IndexedSurface m_surface;
 };
 

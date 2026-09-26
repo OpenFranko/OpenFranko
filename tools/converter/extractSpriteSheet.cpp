@@ -1,7 +1,6 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
-#include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
 #include <filesystem>
@@ -30,8 +29,10 @@ int main(int argc, char **argv) {
 
   try {
     auto compressedData = filesystem::readFile::readFile(inputFilePath);
-    std::string fileId = converter::fileContainer::fileIdToHex(
-        converter::fileContainer::parseFooter(compressedData).fileId);
+    auto resource = converter::fileContainer::unpack(
+        std::filesystem::path(inputFilePath).filename().string(),
+        compressedData);
+    const std::string &fileId = resource.fileId;
 
     std::string outputFilePath = outputOptional.value_or(fileId + "_sheet.bmp");
     auto palette =
@@ -41,8 +42,7 @@ int main(int argc, char **argv) {
 
     std::cerr << "Decompressing " << inputFilePath << " (" << compressedData.size()
               << " bytes)..." << std::endl;
-    auto decompressedData =
-        decompressor::backwardLZ77::decompress(compressedData);
+    const auto &decompressedData = resource.data;
     std::cerr << "Decompressed to " << decompressedData.size() << " bytes"
               << std::endl;
 

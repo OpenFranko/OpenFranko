@@ -23,6 +23,7 @@ struct Page {
 std::vector<std::vector<uint8_t>>
 readHunks(const std::vector<uint8_t> &executable);
 std::vector<Page> extract(const std::vector<uint8_t> &executable);
+std::vector<Page> extractIntro(const std::vector<uint8_t> &executable);
 std::vector<uint8_t> toJson(const std::vector<Page> &pages);
 
 } // namespace endingCredits

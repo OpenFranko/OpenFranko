@@ -1,7 +1,7 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "../../lib/converter/audioExtractor/audioExtractor.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
-#include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
+#include "../../lib/converter/gameData/gameData.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
 #include <filesystem>
@@ -19,10 +19,10 @@ int main(int argc, char **argv) {
     std::cerr << "Extracts audio samples from a Franko data file to WAV."
               << std::endl;
     std::cerr << "  -m embedded   treat input as a sprite bank with embedded "
-                 "samples (type 0x0000)"
+                 "samples (type 0x0000, version 1.2 s files; default for them)"
               << std::endl;
     std::cerr << "  -m standalone treat input as a standalone sample bank "
-                 "(type 0x0300, default)"
+                 "(type 0x0300, default for other files)"
               << std::endl;
     return 1;
   }
@@ -35,16 +35,21 @@ int main(int argc, char **argv) {
     outDir = outputOptional.value();
 
   const auto modeOptional = parser.getCmdOption("-m");
-  bool embedded = modeOptional.has_value() && modeOptional.value() == "embedded";
 
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
-    std::string fileId = converter::fileContainer::fileIdToHex(
-        converter::fileContainer::parseFooter(raw).fileId);
+    auto resource = converter::fileContainer::unpack(
+        std::filesystem::path(inputPath).filename().string(), raw);
+    const std::string &fileId = resource.fileId;
 
-    auto dec = decompressor::backwardLZ77::decompress(raw);
+    const auto &dec = resource.data;
     std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
+
+    const bool embedded = modeOptional.has_value()
+                              ? modeOptional.value() == "embedded"
+                              : resource.resourceType ==
+                                    converter::gameData::resourceTypes::SPRITES;
 
     std::filesystem::create_directories(outDir);
 

@@ -30,7 +30,8 @@ public:
   static constexpr int PAUSE_FRAMES = 10;
   static constexpr int READING_FRAMES = 2000;
 
-  StorySequence(std::vector<Page> animatedPages, int closingPicture);
+  StorySequence(std::vector<Page> animatedPages, int closingPicture,
+                int framesPerAnimationFrame = FRAMES_PER_ANIMATION_FRAME);
 
   void advance(bool skipLatched, bool joystickTouched);
 
@@ -43,6 +44,7 @@ private:
   void finish();
 
   std::vector<Page> m_pages;
+  int m_framesPerAnimationFrame;
   std::size_t m_page = 0;
   int m_time = 0;
   View m_view;

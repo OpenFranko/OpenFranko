@@ -24,9 +24,11 @@ public:
   void loadSFX(const std::string &name, const std::string &path);
   void clearSFX(const std::string &name);
   void playMusic();
+  void playMusicOnce();
   void stopMusic();
   void setMusicVolume(int volume);
   void setMusicTempoScale(double scale);
+  void setMusicTempo(int tempo);
   void setVblRate(int hertz);
   void setLowPassFilter(bool on);
   void playSample(const std::string &name, int voiceMask);
@@ -38,6 +40,7 @@ public:
 private:
   struct Output;
 
+  void startMusic(bool looping);
   void applyTempo();
 
   std::unique_ptr<Output> output;

@@ -9,6 +9,8 @@ namespace {
 
 constexpr const char *SEED_NAME = "XPSME TPGUXBSF ";
 constexpr int SEED_SHIFT = 66;
+constexpr const char *VERSION12_SEED_NAME = "NO NAMED HERO  ";
+constexpr int VERSION12_SEED_SHIFT = 65;
 constexpr int LETTER_BASE = 'A';
 constexpr uint8_t BLANK = 0xFF;
 constexpr int ROTATION = 6;
@@ -43,11 +45,15 @@ HighScoreTable::Bytes rotateLongs(HighScoreTable::Bytes bytes, bool left) {
 
 } // namespace
 
-HighScoreTable::HighScoreTable() {
+HighScoreTable::HighScoreTable() : HighScoreTable(GameVersion::V10) {}
+
+HighScoreTable::HighScoreTable(GameVersion version) {
+  const bool version12 = version == GameVersion::V12;
+  const char *seed = version12 ? VERSION12_SEED_NAME : SEED_NAME;
+  const int shift = version12 ? VERSION12_SEED_SHIFT : SEED_SHIFT;
   for (int row = 0; row < ROWS; ++row) {
     for (int column = 0; column < NAME_LENGTH; ++column) {
-      m_bytes[offset(row, column)] =
-          static_cast<uint8_t>(SEED_NAME[column] - SEED_SHIFT);
+      m_bytes[offset(row, column)] = static_cast<uint8_t>(seed[column] - shift);
     }
     m_bytes[offset(row, NAME_LENGTH)] = 0;
   }

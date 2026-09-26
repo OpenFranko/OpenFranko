@@ -1,6 +1,7 @@
 #ifndef ENGINE_EFFECTS_MENUSEQUENCE_H_
 #define ENGINE_EFFECTS_MENUSEQUENCE_H_
 
+#include "../GameVersion.h"
 #include "AmalMotion.h"
 #include "AmigaPalette.h"
 #include "CreditScroll.h"
@@ -41,7 +42,7 @@ public:
   static constexpr int ATTRACT_AFTER = 300;
 
   MenuSequence(GameOptions &options, AmigaPalette palette,
-               InkeyBuffer &keyboard);
+               InkeyBuffer &keyboard, GameVersion version = GameVersion::V10);
 
   void setMouseButton(bool down);
   void advance(const Joystick &joystick);
@@ -61,6 +62,7 @@ private:
 
   void runScript(const Joystick &joystick);
   void choose(const Joystick &joystick);
+  void chooseInTurn(const Joystick &joystick);
   void finishPass();
   void readKeys();
   void moveHand(const Joystick &joystick);
@@ -72,6 +74,7 @@ private:
   Bob &bob(int number);
 
   GameOptions &m_options;
+  GameVersion m_version;
   AmigaPalette m_palette;
   PaletteFader m_fader;
   std::array<Bob, BOBS> m_bobs{};
@@ -88,6 +91,7 @@ private:
   int m_timer = 0;
   int m_column = 0;
   int m_row = 0;
+  int m_direction = 0;
   bool m_attractDue = false;
   bool m_mouseButton = false;
   bool m_screenShown = false;

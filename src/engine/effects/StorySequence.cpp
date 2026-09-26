@@ -14,8 +14,9 @@ int frameCount(const StorySequence::Page &page) {
 } // namespace
 
 StorySequence::StorySequence(std::vector<Page> animatedPages,
-                             int closingPicture)
-    : m_pages(std::move(animatedPages)) {
+                             int closingPicture, int framesPerAnimationFrame)
+    : m_pages(std::move(animatedPages)),
+      m_framesPerAnimationFrame(framesPerAnimationFrame) {
   m_pages.push_back({0, NO_FRAMES, closingPicture});
 }
 
@@ -32,15 +33,15 @@ bool StorySequence::isFinished() const { return m_finished; }
 void StorySequence::step(bool skipLatched, bool joystickTouched) {
   const Page &page = m_pages[m_page];
   const int time = m_time++;
-  const int animationEnd = FRAMES_PER_ANIMATION_FRAME * frameCount(page);
+  const int animationEnd = m_framesPerAnimationFrame * frameCount(page);
 
-  if (time <= animationEnd && time % FRAMES_PER_ANIMATION_FRAME == 0) {
+  if (time <= animationEnd && time % m_framesPerAnimationFrame == 0) {
     if (skipLatched) {
       finish();
       return;
     }
     if (time < animationEnd) {
-      m_view.frame = page.firstFrame + time / FRAMES_PER_ANIMATION_FRAME;
+      m_view.frame = page.firstFrame + time / m_framesPerAnimationFrame;
     }
   }
 

@@ -8,7 +8,8 @@ EndingState::EndingState(systems::VideoSystem &videoSystem,
                          const effects::GameOptions &options,
                          street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_host(audioSystem), m_scene(m_host, session, options.ntsc),
+      m_host(audioSystem, session.version),
+      m_scene(m_host, session, options.ntsc),
       m_rows(effects::visibleRows(m_scene.displayLine(),
                                   street::EndingScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);

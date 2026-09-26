@@ -1,6 +1,7 @@
 #ifndef ENGINE_STREET_GAMESESSION_H_
 #define ENGINE_STREET_GAMESESSION_H_
 
+#include "../GameVersion.h"
 #include "../amal/Machine.h"
 #include "../effects/AmigaPalette.h"
 #include "../effects/InkeyBuffer.h"
@@ -17,7 +18,16 @@ namespace src {
 namespace engine {
 namespace street {
 
-enum class SystemKey { None, Other, MusicOn, MusicOff, Pal, Ntsc, Escape };
+enum class SystemKey {
+  None,
+  Other,
+  MusicOn,
+  MusicOff,
+  Pal,
+  Ntsc,
+  Lives,
+  Escape
+};
 
 struct StreetExit {
   IndexedSurface screen;
@@ -51,6 +61,7 @@ struct GameSession {
 
   static amal::Registers freshRegisters();
 
+  GameVersion version = GameVersion::V10;
   amal::Registers registers = freshRegisters();
   int extraLifeKills = FIRST_EXTRA_LIFE;
   bool brutality = false;

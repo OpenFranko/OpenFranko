@@ -9,11 +9,11 @@
 #include "../../lib/converter/gameData/gameData.h"
 #include "../../lib/converter/levelScript/levelScript.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
-#include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
 #include "../../lib/helpers/helpers.h"
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
@@ -40,7 +40,64 @@ std::vector<uint8_t> embeddedSamBank(const std::vector<uint8_t> &data) {
 bool isLevelFile(const std::string &fileId) {
   const auto &levelFiles = lib::converter::gameData::fileIds::LEVEL_FILES;
   return std::find(levelFiles.begin(), levelFiles.end(),
-                   std::string_view(fileId)) != levelFiles.end();
+                   lib::converter::gameData::version10Id(fileId)) !=
+         levelFiles.end();
+}
+
+bool isVersion12(const std::string &fileId) {
+  return lib::converter::gameData::version12::find(fileId) != nullptr;
+}
+
+bool holdsVersion12(const std::string &dirPath) {
+  namespace gameData = lib::converter::gameData;
+  const auto present = [&dirPath](std::string_view name) {
+    return std::filesystem::exists(std::filesystem::path(dirPath) /
+                                   std::string(name));
+  };
+  const auto version10Files =
+      std::count_if(gameData::fileIds::EXPECTED_FILES.begin(),
+                    gameData::fileIds::EXPECTED_FILES.end(), present);
+  const auto version12Files = std::count_if(
+      gameData::version12::FILES.begin(), gameData::version12::FILES.end(),
+      [&present](const auto &file) { return present(file.name); });
+  return version12Files > version10Files;
+}
+
+std::vector<std::string_view> expectedFiles(const std::string &dirPath) {
+  namespace gameData = lib::converter::gameData;
+  if (!holdsVersion12(dirPath)) {
+    return {gameData::fileIds::EXPECTED_FILES.begin(),
+            gameData::fileIds::EXPECTED_FILES.end()};
+  }
+  std::vector<std::string_view> names;
+  for (const auto &file : gameData::version12::FILES) {
+    names.push_back(file.name);
+  }
+  return names;
+}
+
+bool isHexName(const std::string &name) {
+  return name.size() == 4 && std::all_of(name.begin(), name.end(), [](char c) {
+           return std::isxdigit(static_cast<unsigned char>(c)) != 0;
+         });
+}
+
+void applyScreenPalette(
+    const std::string &inputPath, const std::string &fileId,
+    std::vector<lib::converter::spriteSheet::ConvertedSprite> &sprites) {
+  const std::string screen(lib::converter::spriteSheet::paletteScreen(fileId));
+  if (screen.empty()) {
+    return;
+  }
+  const auto path = std::filesystem::path(inputPath).parent_path() / screen;
+  try {
+    const auto bank = lib::converter::fileContainer::unpack(
+        screen, lib::filesystem::readFile::readFile(path.string()));
+    lib::converter::spriteSheet::applyScreenPalette(fileId, bank.data, sprites);
+  } catch (const std::exception &e) {
+    std::cerr << "  " << e.what() << ": the sprites shown on " << screen
+              << " keep the bank's palette" << std::endl;
+  }
 }
 
 struct OutputFile {
@@ -68,9 +125,30 @@ void writeOutputs(const std::string &outDir, const std::string &fileId,
 
 } // namespace
 
+std::vector<std::string> dataFiles(const std::string &dirPath) {
+  std::vector<std::string> files;
+  if (holdsVersion12(dirPath)) {
+    for (const auto &file : lib::converter::gameData::version12::FILES) {
+      const auto path = std::filesystem::path(dirPath) / std::string(file.name);
+      if (std::filesystem::is_regular_file(path)) {
+        files.push_back(path.string());
+      }
+    }
+    return files;
+  }
+  for (const auto &entry : std::filesystem::directory_iterator(dirPath)) {
+    if (entry.is_regular_file() &&
+        isHexName(entry.path().filename().string())) {
+      files.push_back(entry.path().string());
+    }
+  }
+  std::sort(files.begin(), files.end());
+  return files;
+}
+
 int validateDirectory(const std::string &dirPath) {
   int missing = 0;
-  for (const auto name : lib::converter::gameData::fileIds::EXPECTED_FILES) {
+  for (const auto name : expectedFiles(dirPath)) {
     std::string path = dirPath + "/" + std::string(name);
     if (!std::filesystem::exists(path)) {
       std::cerr << "Missing file: " << path << std::endl;
@@ -84,20 +162,29 @@ namespace {
 
 int extractFile(const std::string &inputPath, const std::string &outDir) {
   auto rawData = lib::filesystem::readFile::readFile(inputPath);
-  auto info = lib::converter::fileContainer::parseFooter(rawData);
-  std::string fileId = lib::converter::fileContainer::fileIdToHex(info.fileId);
+  lib::converter::fileContainer::Resource resource;
+  try {
+    resource = lib::converter::fileContainer::unpack(
+        std::filesystem::path(inputPath).filename().string(), rawData);
+  } catch (const std::exception &e) {
+    std::cerr << inputPath << ": unpack error: " << e.what() << std::endl;
+    return 1;
+  }
+  const std::string &fileId = resource.fileId;
+  const std::vector<uint8_t> &dec = resource.data;
 
   std::cerr << fileId << " ["
-            << lib::converter::gameData::resourceTypes::name(info.resourceType)
+            << lib::converter::gameData::resourceTypes::name(
+                   resource.resourceType)
             << "] " << rawData.size() << " bytes" << std::endl;
 
   std::vector<OutputFile> outputs;
   bool failed = false;
 
-  if (info.resourceType ==
+  if (resource.resourceType ==
       lib::converter::gameData::resourceTypes::SCREEN_PACKAGE) {
     try {
-      auto bmpData = lib::converter::amosCompact::decompress(rawData);
+      auto bmpData = lib::converter::amosCompact::decompress(dec);
       outputs.push_back({fileId + ".bmp", std::move(bmpData)});
     } catch (const std::exception &e) {
       std::cerr << "  SPACK error: " << e.what() << std::endl;
@@ -107,23 +194,16 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
     return failed ? 1 : 0;
   }
 
-  std::vector<uint8_t> dec;
-  try {
-    dec = lib::decompressor::backwardLZ77::decompress(rawData);
-  } catch (const std::exception &e) {
-    std::cerr << "  LZ77 error: " << e.what() << std::endl;
-    return 1;
-  }
-
   std::cerr << "  decompressed: " << dec.size() << " bytes" << std::endl;
 
-  switch (info.resourceType) {
+  switch (resource.resourceType) {
   case lib::converter::gameData::resourceTypes::SPRITES: {
     try {
       auto palette = lib::converter::spriteSheet::selectPalette(fileId);
       auto sprites =
           lib::converter::spriteSheet::convertToIndividual(dec, palette);
       lib::converter::spriteSheet::applySpritePaletteFixes(fileId, sprites);
+      applyScreenPalette(inputPath, fileId, sprites);
       std::vector<int> skipped;
       int idx = 0;
       for (auto &sprite : sprites) {
@@ -202,23 +282,28 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
       std::cerr << "  bitmap error: " << e.what() << std::endl;
       failed = true;
     }
-    if (std::string_view(fileId) ==
+    if (lib::converter::gameData::version10Id(fileId) ==
         lib::converter::gameData::fileIds::CODE_CARDS) {
+      namespace codeCards = lib::converter::codeCards;
+      const size_t cardSize = isVersion12(fileId)
+                                  ? codeCards::consts::VERSION12_CARD_SIZE
+                                  : codeCards::consts::CARD_SIZE;
       try {
-        auto cards = lib::converter::codeCards::parse(dec);
-        outputs.push_back({fileId + "_codecards.json",
-                           lib::converter::codeCards::toJson(cards)});
+        auto codes = codeCards::parse(dec, cardSize);
+        outputs.push_back(
+            {fileId + "_codecards.json", codeCards::toJson(codes)});
       } catch (const std::exception &e) {
         std::cerr << "  code cards error: " << e.what() << std::endl;
         failed = true;
       }
-    }
-    namespace cards = lib::converter::gameData::protectionCards;
-    if (fileId == cards::FILE_ID && dec.size() >= cards::OFFSET + cards::SIZE) {
-      outputs.push_back(
-          {fileId + "_cards.bin",
-           std::vector<uint8_t>(dec.begin() + cards::OFFSET,
-                                dec.begin() + cards::OFFSET + cards::SIZE)});
+      const size_t start = codeCards::consts::FIRST_CARD_OFFSET;
+      const size_t end =
+          start + codeCards::consts::CARD_COUNT * cardSize * cardSize;
+      if (dec.size() >= end) {
+        outputs.push_back(
+            {fileId + "_cards.bin",
+             std::vector<uint8_t>(dec.begin() + start, dec.begin() + end)});
+      }
     }
     break;
   }
@@ -253,8 +338,8 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
   }
 
   default:
-    std::cerr << "  unknown resource type 0x" << std::hex << info.resourceType
-              << std::dec << std::endl;
+    std::cerr << "  unknown resource type 0x" << std::hex
+              << resource.resourceType << std::dec << std::endl;
     break;
   }
 
@@ -275,14 +360,24 @@ int processFile(const std::string &inputPath, const std::string &outDir) {
 
 int processExecutable(const std::string &inputPath, const std::string &outDir) {
   try {
-    const auto pages = lib::converter::endingCredits::extract(
-        lib::filesystem::readFile::readFile(inputPath));
+    namespace endingCredits = lib::converter::endingCredits;
+    const auto executable = lib::filesystem::readFile::readFile(inputPath);
+    const auto pages = endingCredits::extract(executable);
     const std::string outputPath =
         (std::filesystem::path(outDir) / "credits.json").string();
-    lib::filesystem::writeFile::writeFile(
-        outputPath, lib::converter::endingCredits::toJson(pages));
+    lib::filesystem::writeFile::writeFile(outputPath,
+                                          endingCredits::toJson(pages));
     std::cerr << inputPath << ": ending credits, " << pages.size()
               << " pages -> " << outputPath << std::endl;
+    const auto intro = endingCredits::extractIntro(executable);
+    if (!intro.empty()) {
+      const std::string introPath =
+          (std::filesystem::path(outDir) / "intro.json").string();
+      lib::filesystem::writeFile::writeFile(introPath,
+                                            endingCredits::toJson(intro));
+      std::cerr << inputPath << ": intro texts, " << intro.size()
+                << " pages -> " << introPath << std::endl;
+    }
     return 0;
   } catch (const std::exception &e) {
     std::cerr << inputPath << ": " << e.what() << std::endl;

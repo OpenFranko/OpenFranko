@@ -1,6 +1,8 @@
 #ifndef ENGINE_STREET_HIGHSCORETABLE_H_
 #define ENGINE_STREET_HIGHSCORETABLE_H_
 
+#include "../GameVersion.h"
+
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -24,6 +26,7 @@ public:
   using Bytes = std::array<uint8_t, SIZE>;
 
   HighScoreTable();
+  explicit HighScoreTable(GameVersion version);
 
   static HighScoreTable fromFile(const Bytes &file);
   Bytes toFile() const;

@@ -1,6 +1,8 @@
 #ifndef ENGINE_AMAL_ACTORS_H_
 #define ENGINE_AMAL_ACTORS_H_
 
+#include "../GameVersion.h"
+
 #include <string>
 
 namespace openfranko {
@@ -29,11 +31,12 @@ int amosBool(bool condition);
 std::string hex(int value);
 
 std::string playerBlood();
-std::string enemyBlood();
-std::string screenShake();
-PlayerPrograms streetPlayer(int stage);
-EnemyPrograms enemy(int imageBase, int type);
-std::string idle();
+std::string enemyBlood(GameVersion version = GameVersion::V10);
+std::string screenShake(GameVersion version = GameVersion::V10);
+PlayerPrograms streetPlayer(int stage, GameVersion version = GameVersion::V10);
+EnemyPrograms enemy(int imageBase, int type,
+                    GameVersion version = GameVersion::V10);
+std::string idle(GameVersion version = GameVersion::V10);
 std::string indicatorArrow(int facing);
 PlayerPrograms bossPlayer(int stage);
 EnemyPrograms boss(int stage);
