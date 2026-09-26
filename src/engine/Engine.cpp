@@ -1,4 +1,6 @@
 #include "Engine.h"
+#include "assets/Assets.h"
+#include "states/adverts/AdvertsState.h"
 #include "states/characterSelection/CharacterSelectionState.h"
 #include "states/continueSelect/ContinueState.h"
 #include "states/ending/EndingState.h"
@@ -15,7 +17,9 @@
 #include "states/level3/Level3State.h"
 #include "states/menu/MenuState.h"
 #include "states/mirage/MirageState.h"
+#include "states/presents/PresentsState.h"
 #include "states/protectionCheck/ProtectionCheckState.h"
+#include "states/spiderLogo/SpiderLogoState.h"
 #include "states/titleAndStory/TitleAndStoryState.h"
 #include "states/worldSoftware/WorldSoftwareState.h"
 
@@ -40,6 +44,9 @@ systems::KeyMode keyMode(states::EngineStateEnum state) {
   case states::EngineStateEnum::HighScore:
     return systems::KeyMode::NameEntry;
   case states::EngineStateEnum::Mirage:
+  case states::EngineStateEnum::SpiderLogo:
+  case states::EngineStateEnum::Adverts:
+  case states::EngineStateEnum::Presents:
   case states::EngineStateEnum::WorldSoftware:
   case states::EngineStateEnum::KneeAnimation:
   case states::EngineStateEnum::TitleAndStory:
@@ -63,9 +70,10 @@ Engine::Engine()
 Engine::Engine(states::EngineStateEnum firstState,
                street::GameSession startingSession)
     : session(std::move(startingSession)), running(true) {
+  session.version = assets::detectVersion();
   session.highScores =
       street::readHighScoreFile(street::HighScoreTable::FILE_NAME)
-          .value_or(street::HighScoreTable());
+          .value_or(street::HighScoreTable(session.version));
   switchState(firstState);
 }
 
@@ -89,7 +97,25 @@ void Engine::updateState() {
   }
 }
 
+states::EngineStateEnum
+Engine::versionState(states::EngineStateEnum state) const {
+  if (session.version != GameVersion::V12) {
+    return state;
+  }
+  switch (state) {
+  case states::EngineStateEnum::Mirage:
+    return states::EngineStateEnum::SpiderLogo;
+  case states::EngineStateEnum::ProtectionCheck:
+    return states::EngineStateEnum::HighScore;
+  case states::EngineStateEnum::StageProtectionCheck:
+    return states::EngineStateEnum::Level3;
+  default:
+    return state;
+  }
+}
+
 void Engine::switchState(states::EngineStateEnum nextState) {
+  nextState = versionState(nextState);
 #ifdef SKIP_COPY_PROTECTION
   if (nextState == states::EngineStateEnum::ProtectionCheck) {
     nextState = states::EngineStateEnum::HighScore;
@@ -109,17 +135,29 @@ void Engine::switchState(states::EngineStateEnum nextState) {
   case states::EngineStateEnum::Mirage:
     currentState = std::make_unique<states::mirage::MirageState>(videoSystem);
     break;
+  case states::EngineStateEnum::SpiderLogo:
+    currentState = std::make_unique<states::spiderLogo::SpiderLogoState>(
+        videoSystem, audioSystem);
+    break;
+  case states::EngineStateEnum::Adverts:
+    currentState = std::make_unique<states::adverts::AdvertsState>(
+        videoSystem, controllerSystem);
+    break;
+  case states::EngineStateEnum::Presents:
+    currentState = std::make_unique<states::presents::PresentsState>(
+        videoSystem, audioSystem, controllerSystem);
+    break;
   case states::EngineStateEnum::WorldSoftware:
     currentState = std::make_unique<states::worldSoftware::WorldSoftwareState>(
         videoSystem, audioSystem);
     break;
   case states::EngineStateEnum::KneeAnimation:
     currentState = std::make_unique<states::kneeAnimation::KneeAnimationState>(
-        videoSystem, audioSystem, controllerSystem);
+        videoSystem, audioSystem, controllerSystem, session.version);
     break;
   case states::EngineStateEnum::TitleAndStory:
     currentState = std::make_unique<states::titleAndStory::TitleAndStoryState>(
-        videoSystem, controllerSystem);
+        videoSystem, audioSystem, controllerSystem, session.version);
     break;
   case states::EngineStateEnum::ProtectionCheck:
     currentState =
@@ -195,7 +233,7 @@ void Engine::switchState(states::EngineStateEnum nextState) {
 void Engine::update() {
   controllerSystem.update();
   if (booting && controllerSystem.isDeleteHeld()) {
-    session.highScores = street::HighScoreTable();
+    session.highScores = street::HighScoreTable(session.version);
   }
   for (const char key : controllerSystem.typedKeys()) {
     session.keyboard.press(key);

@@ -14,6 +14,7 @@ namespace {
 constexpr uint32_t FONT = 0x0200;
 constexpr uint32_t BEAT = 0x0300;
 constexpr uint32_t OTHER = 0x0400;
+constexpr uint32_t BLYSK = 0x0500;
 constexpr std::size_t STRINGS = 0x0800;
 constexpr std::size_t CODE_SIZE = 0x1000;
 
@@ -58,6 +59,12 @@ public:
       m_code[at++] = static_cast<uint8_t>(value >> 8);
       m_code[at++] = static_cast<uint8_t>(value);
     }
+  }
+
+  void blysk() {
+    word(0x4EB9);
+    word(static_cast<uint16_t>(BLYSK >> 16));
+    word(static_cast<uint16_t>(BLYSK));
   }
 
   void decoy(const std::string &value) {
@@ -222,6 +229,55 @@ SCENARIO("The ending credits are read from the compiled program's calls") {
       empty.other(3);
       REQUIRE_THROWS_AS(credits::extract(empty.executable()),
                         std::runtime_error);
+    }
+  }
+}
+
+SCENARIO("The 1.2 intro texts are the FONT lines closed by a bare BLYSK") {
+  GIVEN("A 1.2 program with two intro pages before its ending credits") {
+    Program program;
+    program.fontAdds(8);
+    program.line("AB", 0);
+    program.line("CD", 32);
+    program.blysk();
+    program.line("EF", 16);
+    program.blysk();
+    program.other(1);
+    program.line("GH", 0);
+    program.beat(0);
+    program.line("IJ", 8);
+    program.beat(10);
+    const auto intro = credits::extractIntro(program.executable());
+
+    THEN("Each bare BLYSK call closes a page, in the 1.0 text encoding") {
+      REQUIRE(intro.size() == 2);
+      REQUIRE(intro[0].lines.size() == 2);
+      REQUIRE(intro[0].lines[0].text == "CD");
+      REQUIRE(intro[0].lines[0].y == 0);
+      REQUIRE(intro[0].lines[1].text == "EF");
+      REQUIRE(intro[0].lines[1].y == 32);
+      REQUIRE(intro[1].lines.size() == 1);
+      REQUIRE(intro[1].lines[0].text == "GH");
+      REQUIRE(intro[1].lines[0].y == 16);
+    }
+
+    THEN("The ending credits still skip the intro pages") {
+      const auto pages = credits::extract(program.executable());
+      REQUIRE(pages.size() == 2);
+      REQUIRE(pages[0].lines.size() == 1);
+      REQUIRE(pages[0].lines[0].text == "IJ");
+      REQUIRE(pages[1].lines[0].text == "KL");
+      REQUIRE(pages[1].beat == 10);
+    }
+  }
+
+  GIVEN("A 1.0 program, whose intro has no FONT pages") {
+    Program program;
+    program.line("AB", 16);
+    program.beat(0);
+
+    THEN("No intro pages are found") {
+      REQUIRE(credits::extractIntro(program.executable()).empty());
     }
   }
 }

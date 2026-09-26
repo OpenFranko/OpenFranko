@@ -84,6 +84,8 @@ bool ControllerSystem::isFireLatched() const { return fireLatched; }
 
 bool ControllerSystem::isMouseButtonDown() const { return mouseButtonDown; }
 
+bool ControllerSystem::isKeyHeld(Key key) const { return isHeld(key); }
+
 bool ControllerSystem::isDeleteHeld() const { return deleteHeld; }
 
 const std::string &ControllerSystem::typedKeys() const { return typed; }

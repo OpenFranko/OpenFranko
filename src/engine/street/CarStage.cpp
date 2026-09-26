@@ -16,6 +16,7 @@ using amal::actors::amosBool;
 
 constexpr int RF = 5;
 constexpr int RG = 6;
+constexpr int RI = 8;
 constexpr int RN = 13;
 constexpr int RO = 14;
 constexpr int RT = 19;
@@ -92,6 +93,8 @@ constexpr int ENGINE_VOICE = 8;
 constexpr int ENGINE_PITCH = 5000;
 constexpr int ENGINE_PITCH_STEP = 200;
 
+constexpr int PLAYER_CHANNEL = 1;
+constexpr int16_t CHEAT_LIVES = 12;
 constexpr int16_t JOY_UP = 1;
 constexpr int16_t JOY_DOWN = 2;
 constexpr int16_t JOY_LEFT = 4;
@@ -127,7 +130,7 @@ CarStage::CarStage(StreetHost &host, GameSession &session,
       m_buffer(m_screen), m_road(0, 0), m_strip(0, 0),
       m_panel(std::make_unique<StatusPanel>(
           host.loadPanelPicture(StreetStage::LOADING_STRIP),
-          host.loadPanelPicture(StreetStage::PANEL_ARTWORK))),
+          host.loadPanelPicture(StreetStage::PANEL_ARTWORK), session.version)),
       m_screenDisplay{DISPLAY_X,
                       static_cast<int16_t>(playDisplayY(stageLayout(options))),
                       0},
@@ -146,6 +149,7 @@ void CarStage::advance(const StreetInput &input) {
   if (input.key != SystemKey::None) {
     m_session.keyLatch = input.key;
   }
+  m_mouseButton = input.mouseButton;
   m_buffer.vbl();
   m_copper.vbl(m_options.ntsc);
   m_machine.tick();
@@ -284,7 +288,15 @@ void CarStage::gainEnergy(int amount) {
 
 void CarStage::clearScreen() {
   autoback([](IndexedSurface &surface) { surface.fill(0); },
-           Step::PasswordText);
+           m_session.version == GameVersion::V12 ? Step::HideForLoading
+                                                 : Step::PasswordText);
+}
+
+void CarStage::hideForLoading() {
+  m_screenOffsetX = 0;
+  m_screenShown = false;
+  m_copper.hide();
+  m_step = Step::Era;
 }
 
 void CarStage::password() {
@@ -330,6 +342,7 @@ void CarStage::openStrip() {
 }
 
 void CarStage::startDrive() {
+  m_screenShown = true;
   m_screen.copy(m_strip, 0, 0, VISIBLE_WIDTH, SCREEN_HEIGHT, 0, 0);
   m_buffer.logic().copy(m_strip, 0, 0, VISIBLE_WIDTH, SCREEN_HEIGHT, 0, 0);
   for (int channel = 1; channel <= PEDESTRIANS; ++channel) {
@@ -587,10 +600,14 @@ CarStage::Flow CarStage::leave() {
                   Step::Cleared);
 }
 
+bool CarStage::quitsToHighScores() const {
+  return m_escape && m_session.version == GameVersion::V10;
+}
+
 void CarStage::gameOver() {
   m_session.stageReached = global(RO);
   global(RO) = -1;
-  if (m_escape) {
+  if (quitsToHighScores()) {
     global(RN) = 0;
     closePlayScreen();
     return;
@@ -608,10 +625,19 @@ void CarStage::sys() {
   if (key == SystemKey::Pal || key == SystemKey::Ntsc) {
     switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
   }
+  if (key == SystemKey::Lives) {
+    global(RG) = CHEAT_LIVES;
+    m_panel->score(stats());
+  }
   if (key == SystemKey::Escape) {
     global(RN) = 0;
     m_escape = true;
     m_machine.freezeAll();
+  }
+  if (m_mouseButton && global(RI) > 0) {
+    global(RN) = static_cast<int16_t>(global(RN) + global(RI));
+    global(RI) = 0;
+    m_machine.start(PLAYER_CHANNEL);
   }
 }
 
@@ -626,6 +652,9 @@ void CarStage::runBasic(const StreetInput &input) {
     case Step::PasswordText:
       password();
       flow = Flow::Yield;
+      break;
+    case Step::HideForLoading:
+      hideForLoading();
       break;
     case Step::Kliker:
       ++m_waited;
@@ -684,6 +713,15 @@ void CarStage::runBasic(const StreetInput &input) {
       flow = Flow::Yield;
       break;
     case Step::GameOverWait:
+      if (m_session.version == GameVersion::V12) {
+        m_bobs.offAll();
+        flow = autoback([](IndexedSurface &surface) { surface.fill(0); },
+                        Step::GameOverCleared);
+      } else {
+        flow = closePlayScreen();
+      }
+      break;
+    case Step::GameOverCleared:
       flow = closePlayScreen();
       break;
     case Step::GameOverScreenGone:
@@ -699,7 +737,7 @@ void CarStage::runBasic(const StreetInput &input) {
       flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverClosed);
       break;
     case Step::GameOverClosed:
-      m_outcome = m_escape ? Outcome::Quit : Outcome::GameOver;
+      m_outcome = quitsToHighScores() ? Outcome::Quit : Outcome::GameOver;
       m_step = Step::Finished;
       flow = Flow::Yield;
       break;

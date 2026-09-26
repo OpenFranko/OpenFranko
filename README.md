@@ -88,8 +88,12 @@ double-click it.
 
 it's a tool to extract graphics/sounds/music/levels from original franko game data.
 
-Versions 1.0 and 1.2 are supported. The game itself runs on the files extracted
-from version 1.0; the 1.2 files are extracted under their own names.
+Versions 1.0 and 1.2 are supported. The 1.2 files are extracted under their
+own names, and the game runs on either extraction: when `assets` holds the 1.2
+files (it has `p0/p0.bmp`), OpenFranko plays version 1.2, with its spider logo,
+advert slideshow, intro texts, cheats and other changes. The 1.2 intro texts
+come from the game executable, like the ending credits; without `intro.json`
+the intro skips them.
 
 Usage:
 
@@ -126,3 +130,4 @@ Data will be extracted as:
 - Level scripts (enemy waves) as JSON files (.json)
 - Copy protection code cards as a JSON file (0384_codecards.json, p0_codecards.json for 1.2)
 - Ending credits as a JSON file (credits.json), from the game executable
+- Intro texts of version 1.2 as a JSON file (intro.json), from the game executable

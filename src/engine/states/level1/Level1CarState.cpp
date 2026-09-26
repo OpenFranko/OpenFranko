@@ -10,11 +10,11 @@ Level1CarState::Level1CarState(systems::VideoSystem &videoSystem,
                                effects::GameOptions &options,
                                street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_options(options), m_host(audioSystem),
+      m_options(options), m_host(audioSystem, session.version),
       m_stage(m_host, session, options) {}
 
 std::optional<EngineStateEnum> Level1CarState::update() {
-  m_stage.advance(readStreetInput(m_controllerSystem));
+  m_stage.advance(readStreetInput(m_controllerSystem, m_host.version()));
   showStageFrame(m_videoSystem, m_stage.output(), m_options);
 
   switch (m_stage.outcome()) {

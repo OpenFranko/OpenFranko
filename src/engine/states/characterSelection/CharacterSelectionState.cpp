@@ -1,12 +1,16 @@
 #include "CharacterSelectionState.h"
 
+#include "../../assets/Assets.h"
+
 #include <array>
 #include <cstddef>
 
 namespace openfranko::src::engine::states::characterSelection {
 namespace {
 
-constexpr auto PICTURE_PATH = "assets/03B9.bmp";
+constexpr int PICTURE = 0x3B9;
+constexpr int SPRITE_SET = 0x35;
+constexpr int SPRITES = 3;
 
 constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
@@ -14,21 +18,15 @@ constexpr int DISPLAY_LINE = 40;
 constexpr std::size_t SCREEN_COLORS = 32;
 
 constexpr int FIRST_SPRITE_IMAGE = 1;
-constexpr std::array<const char *, 3> SPRITE_PATHS = {{
-    "assets/0035/0035_000.bmp",
-    "assets/0035/0035_001.bmp",
-    "assets/0035/0035_002.bmp",
-}};
 
 struct Voice {
   int sample;
   const char *name;
-  const char *path;
 };
 
 constexpr std::array<Voice, 2> VOICES = {{
-    {1, "characterFranko", "assets/0035/0035_sam1_6063Hz.wav"},
-    {2, "characterAlex", "assets/0035/0035_sam2_6563Hz.wav"},
+    {1, "characterFranko"},
+    {2, "characterAlex"},
 }};
 
 constexpr int HIDDEN_IMAGE = 0;
@@ -43,10 +41,12 @@ effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
   return palette;
 }
 
-std::vector<systems::IndexedBitmap> loadSprites() {
+std::vector<systems::IndexedBitmap> loadSprites(GameVersion version) {
+  const std::string name = assets::resourceName(SPRITE_SET, version);
   std::vector<systems::IndexedBitmap> sprites;
-  for (const char *path : SPRITE_PATHS) {
-    sprites.push_back(systems::loadIndexedBitmap(path));
+  for (int index = 0; index < SPRITES; ++index) {
+    sprites.push_back(
+        systems::loadIndexedBitmap(assets::imagePath(name, index)));
   }
   return sprites;
 }
@@ -64,16 +64,19 @@ CharacterSelectionState::CharacterSelectionState(
     street::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_session(session),
-      m_selection(options, session.nameScreenOpen ? 1 : 0),
+      m_selection(options, session.nameScreenOpen ? 1 : 0, session.version),
       m_rows(
           effects::visibleRows(effects::pictureLine(DISPLAY_LINE, options.ntsc),
                                SCREEN_HEIGHT, options.ntsc)),
-      m_picture(systems::loadIndexedBitmap(PICTURE_PATH)),
-      m_screenPalette(screenPalette(m_picture)), m_sprites(loadSprites()),
+      m_picture(systems::loadIndexedBitmap(
+          assets::picturePath(assets::resourceName(PICTURE, session.version)))),
+      m_screenPalette(screenPalette(m_picture)),
+      m_sprites(loadSprites(session.version)),
       m_screen(SCREEN_WIDTH, m_rows.count) {
   m_videoSystem.setNtsc(options.ntsc);
+  const std::string voices = assets::resourceName(SPRITE_SET, session.version);
   for (const Voice &voice : VOICES) {
-    m_audioSystem.loadSFX(voice.name, voice.path);
+    m_audioSystem.loadSFX(voice.name, assets::samplePath(voices, voice.sample));
   }
 }
 

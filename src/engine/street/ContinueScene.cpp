@@ -13,6 +13,7 @@ namespace openfranko::src::engine::street {
 namespace {
 
 constexpr int RO = 14;
+constexpr int RQ = 16;
 
 constexpr int LETTER_SET = 0x35;
 constexpr int FIRST_IMAGE = 1;
@@ -25,6 +26,8 @@ constexpr int RIGHT_X = 268;
 constexpr int HAND_Y = 124;
 constexpr int WAGGLE_REGISTER = 1;
 constexpr int MACH_WAIT = 40;
+constexpr int VOICE_BANK = 10;
+constexpr int ALL_VOICES = 0xF;
 
 constexpr int16_t JOY_LEFT = 4;
 constexpr int16_t JOY_RIGHT = 8;
@@ -47,9 +50,12 @@ effects::AmigaPalette continuePalette() {
 } // namespace
 
 ContinueScene::ContinueScene(StreetHost &host, GameSession &session)
-    : m_session(session), m_machine(session.registers), m_screen(WIDTH, HEIGHT),
-      m_display(WIDTH, HEIGHT), m_palette(COLORS, BLACK) {
-  m_images.load(FIRST_IMAGE, host.loadSpriteSet(LETTER_SET, 0));
+    : m_host(host), m_session(session), m_machine(session.registers),
+      m_screen(WIDTH, HEIGHT), m_display(WIDTH, HEIGHT),
+      m_palette(COLORS, BLACK) {
+  const bool voices = session.version == GameVersion::V12;
+  m_images.load(FIRST_IMAGE,
+                host.loadSpriteSet(LETTER_SET, voices ? VOICE_BANK : 0));
 }
 
 void ContinueScene::advance(int16_t joystick) {
@@ -162,6 +168,9 @@ ContinueScene::Flow ContinueScene::choose(int16_t joystick) {
 }
 
 void ContinueScene::close() {
+  if (m_session.version == GameVersion::V12) {
+    m_host.playSample(VOICE_BANK, m_session.registers[RQ] + 1, ALL_VOICES);
+  }
   m_machine.destroyAll();
   m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
   m_step = Step::Gone;
@@ -170,6 +179,9 @@ void ContinueScene::close() {
 void ContinueScene::leave() {
   if (m_continue) {
     --m_session.stageReached;
+    if (m_session.version == GameVersion::V12) {
+      m_session.stageReached = 0;
+    }
     m_session.registers[RO] = static_cast<int16_t>(m_session.stageReached);
     m_outcome = Outcome::Continue;
   } else {

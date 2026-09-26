@@ -18,11 +18,16 @@ constexpr int BAR_TOP = 13;
 constexpr int BAR_BOTTOM = 15;
 constexpr int GLYPH_TOP = 32;
 constexpr int DIGIT_BOTTOM = 39;
+constexpr int LIVES_DIGIT_X = 28;
+constexpr int VERSION12_LIVES_DIGIT_X = 31;
 
 } // namespace
 
-StatusPanel::StatusPanel(Picture loadingStrip, Picture artwork)
+StatusPanel::StatusPanel(Picture loadingStrip, Picture artwork,
+                         GameVersion version)
     : m_loadingStrip(std::move(loadingStrip)), m_artwork(std::move(artwork)),
+      m_livesDigitX(version == GameVersion::V12 ? VERSION12_LIVES_DIGIT_X
+                                                : LIVES_DIGIT_X),
       m_surface(WIDTH, HEIGHT) {}
 
 void StatusPanel::showLoading() { m_surface.unpack(m_loadingStrip, 0, 0); }
@@ -43,7 +48,7 @@ void StatusPanel::score(const Stats &stats) {
   if (stats.lives > 3) {
     const int digit = std::min(stats.lives, 9);
     m_surface.copy(m_surface, 8 * digit, GLYPH_TOP, 7 + 8 * digit, DIGIT_BOTTOM,
-                   28, 19);
+                   m_livesDigitX, 19);
   }
 }
 

@@ -210,6 +210,11 @@ void HighScoreScene::reset() {
   const int16_t kills = registers[RN];
   registers = GameSession::freshRegisters();
   registers[RN] = kills;
+  if (m_session.version == GameVersion::V12) {
+    m_host.stopMusic();
+    queuePictures();
+    return;
+  }
   if (m_host.isMusicLoaded(MENU_TUNE)) {
     queuePictures();
     return;

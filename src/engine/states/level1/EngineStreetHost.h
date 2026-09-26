@@ -2,6 +2,7 @@
 #define ENGINE_STATES_ENGINESTREETHOST_H_
 
 #include "../../../systems/AudioSystem.h"
+#include "../../GameVersion.h"
 #include "../../street/StreetStage.h"
 
 #include <map>
@@ -17,8 +18,8 @@ namespace level1 {
 
 class EngineStreetHost : public street::StreetHost {
 public:
-  explicit EngineStreetHost(systems::AudioSystem &audioSystem,
-                            std::string directory = "assets");
+  EngineStreetHost(systems::AudioSystem &audioSystem, GameVersion version,
+                   std::string directory = "assets");
   ~EngineStreetHost() override;
 
   std::vector<street::Picture> loadSpriteSet(int resource,
@@ -40,9 +41,12 @@ public:
   void setSampleLoop(bool loop) override;
   int random(int limit) override;
 
+  GameVersion version() const;
+
   static std::string sampleName(int bank, int sample);
 
 private:
+  std::string resourceName(int resource) const;
   std::string resourcePath(int resource) const;
   std::string musicPath(int resource) const;
   std::vector<street::Picture> loadFrames(int resource) const;
@@ -50,6 +54,7 @@ private:
   void clearSamples(int bank);
 
   systems::AudioSystem &m_audioSystem;
+  GameVersion m_version;
   std::string m_directory;
   std::mt19937 m_random;
   std::map<int, std::vector<int>> m_samples;

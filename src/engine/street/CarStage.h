@@ -68,6 +68,7 @@ private:
     Password,
     PasswordText,
     Kliker,
+    HideForLoading,
     Era,
     Loading,
     Loaded,
@@ -81,6 +82,7 @@ private:
     StripClosed,
     Cleared,
     GameOverWait,
+    GameOverCleared,
     GameOverScreenGone,
     GameOverPanelClose,
     GameOverPanelGone,
@@ -102,6 +104,7 @@ private:
   void gainEnergy(int amount);
 
   void clearScreen();
+  void hideForLoading();
   void password();
   void era();
   void openRoad();
@@ -117,6 +120,7 @@ private:
   void runOver();
   Flow leave();
   void gameOver();
+  bool quitsToHighScores() const;
   Flow closePlayScreen();
   void sys();
   void test();
@@ -149,6 +153,7 @@ private:
   long m_holdStart = -1;
   long m_holdUntil = -1;
   bool m_escape = false;
+  bool m_mouseButton = false;
   bool m_screenShown = true;
   bool m_panelShown = true;
   int m_screenOffsetX = 0;

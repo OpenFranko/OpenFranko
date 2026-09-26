@@ -13,7 +13,7 @@ HighScoreState::HighScoreState(systems::VideoSystem &videoSystem,
                                systems::AudioSystem &audioSystem,
                                effects::GameOptions &options,
                                street::GameSession &session)
-    : m_videoSystem(videoSystem), m_host(audioSystem),
+    : m_videoSystem(videoSystem), m_host(audioSystem, session.version),
       m_scene(m_host, session, options, save),
       m_rows(effects::visibleRows(
           effects::pictureLine(street::HighScoreScene::DISPLAY_LINE,

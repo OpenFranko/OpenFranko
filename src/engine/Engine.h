@@ -32,6 +32,7 @@ public:
 private:
   void updateState();
 
+  states::EngineStateEnum versionState(states::EngineStateEnum state) const;
   void switchState(states::EngineStateEnum nextState);
 
   systems::Platform platform;

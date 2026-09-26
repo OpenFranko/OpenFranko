@@ -28,6 +28,20 @@ add_executable(${STORY_SEQUENCE_TEST_TARGET}
 target_link_libraries(${STORY_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${STORY_SEQUENCE_TEST_TARGET} COMMAND ${STORY_SEQUENCE_TEST_TARGET})
 
+set(BLYSK_SEQUENCE_TEST_TARGET blyskSequenceTest)
+add_executable(${BLYSK_SEQUENCE_TEST_TARGET}
+    engine/effects/blyskSequenceTest.cpp
+)
+target_link_libraries(${BLYSK_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${BLYSK_SEQUENCE_TEST_TARGET} COMMAND ${BLYSK_SEQUENCE_TEST_TARGET})
+
+set(ASSETS_TEST_TARGET assetsTest)
+add_executable(${ASSETS_TEST_TARGET}
+    engine/assets/assetsTest.cpp
+)
+target_link_libraries(${ASSETS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Assets)
+add_test(NAME ${ASSETS_TEST_TARGET} COMMAND ${ASSETS_TEST_TARGET})
+
 set(CODE_CARD_CHECK_TEST_TARGET codeCardCheckTest)
 add_executable(${CODE_CARD_CHECK_TEST_TARGET}
     engine/effects/codeCardCheckTest.cpp

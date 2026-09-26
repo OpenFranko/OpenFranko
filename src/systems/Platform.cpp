@@ -40,6 +40,8 @@ Key toKey(SDL_Scancode scancode) {
     return Key::F3;
   case SDL_SCANCODE_F4:
     return Key::F4;
+  case SDL_SCANCODE_F9:
+    return Key::F9;
   case SDL_SCANCODE_ESCAPE:
     return Key::Escape;
   default:

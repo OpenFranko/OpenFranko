@@ -1,10 +1,10 @@
 #include "EngineStreetHost.h"
 
 #include "../../../systems/Bitmap.h"
+#include "../../assets/Assets.h"
 #include "../../effects/AmigaDisplay.h"
 
 #include <cctype>
-#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <optional>
@@ -17,12 +17,6 @@ namespace {
 
 constexpr int PANEL_RESOURCE = 0x384;
 constexpr auto CREDITS_FILE = "credits.json";
-
-std::string hexName(int resource) {
-  char name[8];
-  std::snprintf(name, sizeof(name), "%04X", resource);
-  return name;
-}
 
 street::Picture toPicture(systems::IndexedBitmap bitmap) {
   street::Picture picture;
@@ -55,9 +49,9 @@ std::optional<int> numberAfter(const std::string &text,
 } // namespace
 
 EngineStreetHost::EngineStreetHost(systems::AudioSystem &audioSystem,
-                                   std::string directory)
-    : m_audioSystem(audioSystem), m_directory(std::move(directory)),
-      m_random(std::random_device{}()) {}
+                                   GameVersion version, std::string directory)
+    : m_audioSystem(audioSystem), m_version(version),
+      m_directory(std::move(directory)), m_random(std::random_device{}()) {}
 
 EngineStreetHost::~EngineStreetHost() {
   m_audioSystem.setSampleLooping(false);
@@ -112,11 +106,8 @@ street::EndingCredits EngineStreetHost::loadEndingCredits() {
 }
 
 street::Picture EngineStreetHost::loadPanelPicture(int part) {
-  const std::string name = hexName(PANEL_RESOURCE);
-  const std::string file =
-      part == 0 ? name + ".bmp" : name + "_" + std::to_string(part) + ".bmp";
-  return toPicture(
-      systems::loadIndexedBitmap(m_directory + "/" + name + "/" + file));
+  return toPicture(systems::loadIndexedBitmap(
+      assets::partPath(resourceName(PANEL_RESOURCE), part, m_directory)));
 }
 
 void EngineStreetHost::loadMusic(int resource) {
@@ -164,8 +155,14 @@ std::string EngineStreetHost::sampleName(int bank, int sample) {
          std::to_string(sample);
 }
 
+GameVersion EngineStreetHost::version() const { return m_version; }
+
+std::string EngineStreetHost::resourceName(int resource) const {
+  return assets::resourceName(resource, m_version);
+}
+
 std::string EngineStreetHost::resourcePath(int resource) const {
-  return m_directory + "/" + hexName(resource);
+  return m_directory + "/" + resourceName(resource);
 }
 
 std::string EngineStreetHost::musicPath(int resource) const {
@@ -173,7 +170,7 @@ std::string EngineStreetHost::musicPath(int resource) const {
 }
 
 std::vector<street::Picture> EngineStreetHost::loadFrames(int resource) const {
-  const std::string name = hexName(resource);
+  const std::string name = resourceName(resource);
   const std::filesystem::path directory = m_directory + "/" + name;
   std::vector<street::Picture> frames;
   std::error_code error;
@@ -198,7 +195,7 @@ std::vector<street::Picture> EngineStreetHost::loadFrames(int resource) const {
 
 void EngineStreetHost::loadSamples(int resource, int bank) {
   clearSamples(bank);
-  const std::string name = hexName(resource);
+  const std::string name = resourceName(resource);
   const std::filesystem::path directory = m_directory + "/" + name;
   std::error_code error;
   for (const auto &entry :

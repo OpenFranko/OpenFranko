@@ -36,6 +36,7 @@ constexpr int ADDQ_DATA_SHIFT = 9;
 constexpr int ADDQ_EIGHT = 8;
 
 constexpr int CREDITS_GLYPH_OFFSET = 6;
+constexpr std::size_t CALL_SIZE = 8;
 
 constexpr char FIRST_PRINTABLE = 0x20;
 constexpr char LAST_PRINTABLE = 0x7E;
@@ -145,8 +146,7 @@ std::string shifted(std::string text, int shift) {
   return text;
 }
 
-std::vector<Page> creditsIn(const std::vector<uint8_t> &code) {
-  const std::vector<Call> calls = procedureCalls(code);
+std::optional<uint32_t> fontProcedure(const std::vector<Call> &calls) {
   std::map<uint32_t, int> textCalls;
   for (const Call &call : calls) {
     if (call.text) {
@@ -154,9 +154,49 @@ std::vector<Page> creditsIn(const std::vector<uint8_t> &code) {
     }
   }
   if (textCalls.empty()) {
+    return std::nullopt;
+  }
+  return mostFrequent(textCalls);
+}
+
+bool closesWithBareCall(const std::vector<uint8_t> &code, const Call &call,
+                        uint32_t font) {
+  const std::size_t next = call.at + CALL_SIZE;
+  return next + 6 <= code.size() && word(code, next) == JSR_LONG &&
+         static_cast<uint32_t>(longAt(code, next + 2)) != font;
+}
+
+std::vector<Page> introIn(const std::vector<uint8_t> &code) {
+  const std::vector<Call> calls = procedureCalls(code);
+  const std::optional<uint32_t> font = fontProcedure(calls);
+  if (!font) {
     return {};
   }
-  const uint32_t font = mostFrequent(textCalls);
+  const int shift = glyphOffset(code, *font) - CREDITS_GLYPH_OFFSET;
+
+  std::vector<Page> pages;
+  Page page;
+  for (const Call &call : calls) {
+    if (call.target != *font || !call.text) {
+      page = Page{};
+      continue;
+    }
+    page.lines.push_back({shifted(*call.text, shift), call.value});
+    if (closesWithBareCall(code, call, *font)) {
+      pages.push_back(std::move(page));
+      page = Page{};
+    }
+  }
+  return pages;
+}
+
+std::vector<Page> creditsIn(const std::vector<uint8_t> &code) {
+  const std::vector<Call> calls = procedureCalls(code);
+  const std::optional<uint32_t> found = fontProcedure(calls);
+  if (!found) {
+    return {};
+  }
+  const uint32_t font = *found;
   const auto isLine = [font](const Call &call) {
     return call.target == font && call.text;
   };
@@ -265,6 +305,16 @@ std::vector<Page> extract(const std::vector<uint8_t> &executable) {
     }
   }
   throw std::runtime_error("No ending credits found in the executable");
+}
+
+std::vector<Page> extractIntro(const std::vector<uint8_t> &executable) {
+  for (const std::vector<uint8_t> &hunk : readHunks(executable)) {
+    std::vector<Page> pages = introIn(hunk);
+    if (!pages.empty()) {
+      return pages;
+    }
+  }
+  return {};
 }
 
 std::vector<uint8_t> toJson(const std::vector<Page> &pages) {

@@ -47,6 +47,8 @@ constexpr int IDLE_IMAGE = 17;
 constexpr int BOSS_BUBBLE_IMAGE = 91;
 
 constexpr int SCREEN_SHAKE_CHANNEL = 0;
+constexpr int PLAYER_CHANNEL = 1;
+constexpr int16_t CHEAT_LIVES = 12;
 constexpr int PLAYER_WALK_CHANNEL = 1;
 constexpr int PLAYER_DAMAGE_CHANNEL = 2;
 constexpr int PLAYER_CLAMP_CHANNEL = 3;
@@ -148,6 +150,7 @@ void BossStage::advance(const StreetInput &input) {
   if (input.key != SystemKey::None) {
     m_session.keyLatch = input.key;
   }
+  m_mouseButton = input.mouseButton;
   m_buffer.vbl();
   m_copper.vbl(m_options.ntsc);
   m_machine.setJoystick(input.joystick);
@@ -316,7 +319,7 @@ BossStage::Flow BossStage::init() {
   m_screenOffsetX = stage() == 2 ? 16 : 0;
   m_panel = std::make_unique<StatusPanel>(
       m_host.loadPanelPicture(StreetStage::LOADING_STRIP),
-      m_host.loadPanelPicture(StreetStage::PANEL_ARTWORK));
+      m_host.loadPanelPicture(StreetStage::PANEL_ARTWORK), m_session.version);
 
   m_host.stopMusic();
   m_images.clear();
@@ -389,9 +392,11 @@ void BossStage::setUp() {
   global(RX) = 0;
 
   m_machine.bind(SCREEN_SHAKE_CHANNEL, &m_screenDisplay);
-  m_machine.create(SCREEN_SHAKE_CHANNEL, amal::actors::screenShake());
+  m_machine.create(SCREEN_SHAKE_CHANNEL,
+                   amal::actors::screenShake(m_session.version));
   m_machine.create(PLAYER_BLOOD_CHANNEL, amal::actors::playerBlood());
-  m_machine.create(ENEMY_BLOOD_CHANNEL, amal::actors::enemyBlood());
+  m_machine.create(ENEMY_BLOOD_CHANNEL,
+                   amal::actors::enemyBlood(m_session.version));
   const auto player = amal::actors::bossPlayer(stage());
   m_machine.create(PLAYER_WALK_CHANNEL, player.locomotion);
   m_machine.create(PLAYER_DAMAGE_CHANNEL, player.damage);
@@ -746,7 +751,8 @@ BossStage::Flow BossStage::finishStart() {
   m_machine.destroy(BOSS_WALK_CHANNEL);
   m_machine.destroy(PLAYER_CLAMP_CHANNEL);
   global(RT) = word(yBob(BOSS) - yBob(PLAYER));
-  if (stage() == 1 && m_session.brutality) {
+  if (stage() == 1 &&
+      (m_session.brutality || m_session.version == GameVersion::V12)) {
     global(RU) =
         word(xBob(BOSS) - xBob(PLAYER) - 48 - 96 * amosBool(global(RR) != 0));
     global(RS) = word((std::abs(global(RU)) + std::abs(global(RT))) / 2);
@@ -901,10 +907,14 @@ void BossStage::scrollStep() {
   });
 }
 
+bool BossStage::quitsToHighScores() const {
+  return m_escape && m_session.version == GameVersion::V10;
+}
+
 void BossStage::gameOver() {
   m_session.stageReached = global(RO);
   global(RO) = -1;
-  if (m_escape) {
+  if (quitsToHighScores()) {
     global(RN) = 0;
     closePlayScreen();
     return;
@@ -933,6 +943,10 @@ void BossStage::sys() {
   case SystemKey::Ntsc:
     switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
     break;
+  case SystemKey::Lives:
+    global(RG) = CHEAT_LIVES;
+    m_panel->score(stats());
+    break;
   case SystemKey::Escape:
     global(RN) = 0;
     m_escape = true;
@@ -941,6 +955,11 @@ void BossStage::sys() {
   case SystemKey::None:
   case SystemKey::Other:
     break;
+  }
+  if (m_mouseButton && global(RI) > 0) {
+    global(RN) = static_cast<int16_t>(global(RN) + global(RI));
+    global(RI) = 0;
+    m_machine.start(PLAYER_CHANNEL);
   }
 }
 
@@ -1091,6 +1110,16 @@ void BossStage::runBasic(const StreetInput &input) {
       flow = Flow::Yield;
       break;
     case Step::GameOverWait:
+      if (m_session.version == GameVersion::V12) {
+        m_bobs.offAll();
+        autoback([](IndexedSurface &surface) { surface.fill(0); });
+        m_step = Step::GameOverCleared;
+      } else {
+        closePlayScreen();
+      }
+      flow = Flow::Yield;
+      break;
+    case Step::GameOverCleared:
       closePlayScreen();
       flow = Flow::Yield;
       break;
@@ -1113,7 +1142,7 @@ void BossStage::runBasic(const StreetInput &input) {
       flow = Flow::Yield;
       break;
     case Step::GameOverClosed:
-      m_outcome = m_escape ? Outcome::Quit : Outcome::GameOver;
+      m_outcome = quitsToHighScores() ? Outcome::Quit : Outcome::GameOver;
       m_step = Step::Finished;
       flow = Flow::Yield;
       break;

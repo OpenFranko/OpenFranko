@@ -360,14 +360,24 @@ int processFile(const std::string &inputPath, const std::string &outDir) {
 
 int processExecutable(const std::string &inputPath, const std::string &outDir) {
   try {
-    const auto pages = lib::converter::endingCredits::extract(
-        lib::filesystem::readFile::readFile(inputPath));
+    namespace endingCredits = lib::converter::endingCredits;
+    const auto executable = lib::filesystem::readFile::readFile(inputPath);
+    const auto pages = endingCredits::extract(executable);
     const std::string outputPath =
         (std::filesystem::path(outDir) / "credits.json").string();
-    lib::filesystem::writeFile::writeFile(
-        outputPath, lib::converter::endingCredits::toJson(pages));
+    lib::filesystem::writeFile::writeFile(outputPath,
+                                          endingCredits::toJson(pages));
     std::cerr << inputPath << ": ending credits, " << pages.size()
               << " pages -> " << outputPath << std::endl;
+    const auto intro = endingCredits::extractIntro(executable);
+    if (!intro.empty()) {
+      const std::string introPath =
+          (std::filesystem::path(outDir) / "intro.json").string();
+      lib::filesystem::writeFile::writeFile(introPath,
+                                            endingCredits::toJson(intro));
+      std::cerr << inputPath << ": intro texts, " << intro.size()
+                << " pages -> " << introPath << std::endl;
+    }
     return 0;
   } catch (const std::exception &e) {
     std::cerr << inputPath << ": " << e.what() << std::endl;

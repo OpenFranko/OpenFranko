@@ -8,6 +8,8 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <set>
+#include <utility>
 #include <vector>
 
 namespace openfranko {
@@ -33,6 +35,8 @@ public:
   void stopModule();
   bool isModulePlaying() const;
   void setModuleTempo(double factor);
+  void overrideModuleTempo(int tempo);
+  bool isModuleTempoOverridden() const;
   void setMusicVolume(int volume);
   void setFilter(bool on);
 
@@ -62,6 +66,8 @@ private:
 
   struct Module;
 
+  using RowPosition = std::pair<int, int>;
+
   struct Biquad {
     double b0 = 0.0;
     double b1 = 0.0;
@@ -71,6 +77,10 @@ private:
   };
 
   void stopPlayer();
+  void applyModuleTempo();
+  RowPosition modulePosition() const;
+  bool playModule(std::size_t samples);
+  void followModuleTempo();
   bool isSounding(const Playing &playing) const;
   int nextSample(Voice &voice);
   void filter(int16_t *stereo, int frames);
@@ -80,6 +90,10 @@ private:
   std::unique_ptr<Module> module;
   bool moduleLoaded = false;
   bool modulePlaying = false;
+  double moduleTempoFactor = 1.0;
+  int tempoOverride = 0;
+  RowPosition overridePosition{-1, -1};
+  std::set<RowPosition> tempoRows;
   int musicVolume;
   std::vector<int16_t> musicBuffer;
   std::array<Voice, VOICES> voices;

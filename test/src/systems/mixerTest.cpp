@@ -1,6 +1,8 @@
 #include "../../../src/systems/Mixer.h"
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <vector>
@@ -206,6 +208,99 @@ SCENARIO("The LED filter smooths the output") {
       REQUIRE(output.left.front() > 0);
       REQUIRE(output.left.front() < 7168);
       REQUIRE(std::abs(output.left.back() - 7168) <= 1);
+    }
+  }
+}
+
+namespace {
+
+constexpr int MODULE_RATE = 8000;
+
+void putWord(std::vector<char> &data, std::size_t at, int value) {
+  data[at] = static_cast<char>(value & 0xFF);
+  data[at + 1] = static_cast<char>(value >> 8);
+}
+
+std::vector<char> tempoModule() {
+  std::vector<char> data(0xC0, 0);
+  data[0x1C] = 0x1A;
+  data[0x1D] = 16;
+  putWord(data, 0x20, 2);
+  putWord(data, 0x22, 1);
+  putWord(data, 0x24, 1);
+  putWord(data, 0x28, 0x1320);
+  putWord(data, 0x2A, 2);
+  data[0x2C] = 'S';
+  data[0x2D] = 'C';
+  data[0x2E] = 'R';
+  data[0x2F] = 'M';
+  data[0x30] = 64;
+  data[0x31] = 6;
+  data[0x32] = static_cast<char>(128);
+  data[0x33] = static_cast<char>(0xB0);
+  for (int channel = 0; channel < 32; ++channel) {
+    data[0x40 + static_cast<std::size_t>(channel)] =
+        static_cast<char>(channel < 4 ? channel : 0xFF);
+  }
+  data[0x60] = 0;
+  data[0x61] = static_cast<char>(0xFF);
+  putWord(data, 0x62, 0x70 / 16);
+  putWord(data, 0x64, 0xC0 / 16);
+  data[0x70] = 1;
+  data[0x70 + 0x4C] = 'S';
+  data[0x70 + 0x4D] = 'C';
+  data[0x70 + 0x4E] = 'R';
+  data[0x70 + 0x4F] = 'S';
+  const std::vector<char> rowZero = {
+      static_cast<char>(0x80), 1, 5, static_cast<char>(0x81), 20,
+      static_cast<char>(125),  0};
+  std::vector<char> pattern(2, 0);
+  pattern.insert(pattern.end(), rowZero.begin(), rowZero.end());
+  pattern.insert(pattern.end(), 63, 0);
+  putWord(pattern, 0, static_cast<int>(pattern.size()));
+  data.insert(data.end(), pattern.begin(), pattern.end());
+  return data;
+}
+
+void renderSeconds(Mixer &mixer, double seconds) {
+  std::vector<int16_t> stereo(static_cast<std::size_t>(MODULE_RATE) * 2);
+  for (int frames = static_cast<int>(seconds * MODULE_RATE); frames > 0;
+       frames -= MODULE_RATE) {
+    mixer.render(stereo.data(), std::min(frames, MODULE_RATE));
+  }
+}
+
+} // namespace
+
+SCENARIO("Tempo holds until the tune's own tempo command comes round again") {
+  GIVEN("A tune whose single pattern sets tempo 20 on its first row") {
+    Mixer mixer(MODULE_RATE);
+    REQUIRE(mixer.loadModule(tempoModule()));
+    mixer.startModule();
+    mixer.setModuleTempo(1.0);
+    renderSeconds(mixer, 0.05);
+
+    WHEN("Tempo 14 is set on the first row") {
+      mixer.overrideModuleTempo(14);
+
+      THEN("It still holds after the 6.4 s the pattern lasts at tempo 20") {
+        renderSeconds(mixer, 8.5);
+        REQUIRE(mixer.isModuleTempoOverridden());
+      }
+
+      THEN("The first row's command ends it once the 9.1 s pattern loops") {
+        renderSeconds(mixer, 9.5);
+        REQUIRE_FALSE(mixer.isModuleTempoOverridden());
+      }
+    }
+
+    WHEN("The music is restarted") {
+      mixer.overrideModuleTempo(14);
+      mixer.startModule();
+
+      THEN("The override is gone") {
+        REQUIRE_FALSE(mixer.isModuleTempoOverridden());
+      }
     }
   }
 }

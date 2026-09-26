@@ -12,25 +12,22 @@ struct Icon {
   int bob;
   int16_t y;
   bool left;
-  int image;
   bool GameOptions::*option;
 };
 
 constexpr std::array<Icon, 6> ICONS = {{
-    {4, 20, true, 42, nullptr},
-    {5, 90, true, 44, &GameOptions::music},
-    {6, 160, true, 46, &GameOptions::bass},
-    {7, 20, false, 48, &GameOptions::mono},
-    {8, 90, false, 50, &GameOptions::ntsc},
-    {9, 160, false, 52, &GameOptions::tallScreen},
+    {4, 20, true, nullptr},
+    {5, 90, true, &GameOptions::music},
+    {6, 160, true, &GameOptions::bass},
+    {7, 20, false, &GameOptions::mono},
+    {8, 90, false, &GameOptions::ntsc},
+    {9, 160, false, &GameOptions::tallScreen},
 }};
 constexpr int ROWS = 3;
-constexpr int START_PRESSED_IMAGE = 43;
 constexpr int16_t LEFT_OUTSIDE = -64;
 constexpr int16_t RIGHT_OUTSIDE = 384;
 
 constexpr int HAND_BOB = 10;
-constexpr int HAND_IMAGE = 54;
 constexpr std::array<int16_t, 2> HAND_X = {128, 240};
 constexpr std::array<int16_t, ROWS> HAND_Y = {32, 102, 172};
 
@@ -41,12 +38,35 @@ struct Credit {
   int lastImage;
 };
 
-constexpr std::array<Credit, 3> CREDITS = {{
-    {1, 350, 55, 67},
-    {2, 490, 56, 68},
-    {3, 630, 57, 69},
-}};
-constexpr int16_t CREDIT_X = 180;
+struct Layout {
+  std::array<int, 6> iconImages;
+  int startPressedImage;
+  int handImage;
+  std::array<Credit, 3> credits;
+  int16_t creditX;
+};
+
+constexpr Layout VERSION10_LAYOUT = {
+    {42, 44, 46, 48, 50, 52},
+    43,
+    54,
+    {{{1, 350, 55, 67}, {2, 490, 56, 68}, {3, 630, 57, 69}}},
+    180};
+
+constexpr Layout VERSION12_LAYOUT = {
+    {1, 3, 5, 7, 9, 11},
+    2,
+    13,
+    {{{1, 350, 14, 23}, {2, 490, 15, 24}, {3, 630, 16, 25}}},
+    184};
+
+const Layout &layout(GameVersion version) {
+  return version == GameVersion::V12 ? VERSION12_LAYOUT : VERSION10_LAYOUT;
+}
+
+constexpr int DIRECTIONS = 4;
+constexpr int VERSION12_MUSIC_WAIT = 2;
+constexpr int VERSION12_LEAVING_CLOSE_AT = 50;
 
 constexpr int ICON_PAIR_EVERY = 10;
 constexpr int CREDITS_AT = 50;
@@ -65,22 +85,43 @@ const std::vector<AmalMotion::Move> WAGGLE = {
     {4, 2}, {-4, 2}, {0, 1}, {4, 2}, {-4, 2}, {0, 1},
     {4, 2}, {-4, 2}, {0, 1}, {4, 2}, {-4, 2}, {0, 1}};
 
-int iconImage(const Icon &icon, const GameOptions &options) {
+int iconImage(const Icon &icon, const GameOptions &options,
+              GameVersion version) {
+  const std::size_t index = static_cast<std::size_t>(&icon - ICONS.data());
+  const int image = layout(version).iconImages[index];
   if (icon.option == nullptr) {
-    return icon.image;
+    return image;
   }
-  return icon.image + (options.*icon.option ? 1 : 0);
+  return image + (options.*icon.option ? 1 : 0);
+}
+
+bool pressed(const MenuSequence::Joystick &joystick, int direction) {
+  switch (direction) {
+  case 0:
+    return joystick.left;
+  case 1:
+    return joystick.right;
+  case 2:
+    return joystick.up;
+  default:
+    return joystick.down;
+  }
 }
 
 } // namespace
 
 MenuSequence::MenuSequence(GameOptions &options, AmigaPalette palette,
-                           InkeyBuffer &keyboard)
-    : m_options(options), m_palette(std::move(palette)), m_keyboard(keyboard) {
-  m_keyboard.forbid();
+                           InkeyBuffer &keyboard, GameVersion version)
+    : m_options(options), m_version(version), m_palette(std::move(palette)),
+      m_keyboard(keyboard) {
+  if (m_version == GameVersion::V10) {
+    m_keyboard.forbid();
+  } else {
+    m_phaseStart = VERSION12_MUSIC_WAIT;
+  }
   for (const Icon &icon : ICONS) {
     bob(icon.bob) = {true, icon.left ? LEFT_OUTSIDE : RIGHT_OUTSIDE, icon.y,
-                     iconImage(icon, m_options), false};
+                     iconImage(icon, m_options, m_version), false};
   }
   placeHand();
   m_shownBobs = m_bobs;
@@ -182,11 +223,12 @@ void MenuSequence::runScript(const Joystick &joystick) {
     if (time % ICON_PAIR_EVERY == 0 && time / ICON_PAIR_EVERY < ROWS) {
       flyIcons(time / ICON_PAIR_EVERY, false);
     }
-    if (time == LEAVING_FADE_AT) {
+    if (m_version == GameVersion::V10 && time == LEAVING_FADE_AT) {
       m_fader.start(m_palette, LEAVING_FADE_SPEED,
                     AmigaPalette(m_palette.size(), 0));
     }
-    if (time == LEAVING_CLOSE_AT) {
+    if (time == (m_version == GameVersion::V12 ? VERSION12_LEAVING_CLOSE_AT
+                                               : LEAVING_CLOSE_AT)) {
       m_phase = Phase::Closing;
       m_phaseStart = m_frame;
     }
@@ -208,6 +250,10 @@ void MenuSequence::runScript(const Joystick &joystick) {
 }
 
 void MenuSequence::choose(const Joystick &joystick) {
+  if (m_version == GameVersion::V12) {
+    chooseInTurn(joystick);
+    return;
+  }
   if (m_timer > ATTRACT_AFTER) {
     m_attractDue = true;
     return;
@@ -221,11 +267,41 @@ void MenuSequence::choose(const Joystick &joystick) {
   }
 }
 
+void MenuSequence::chooseInTurn(const Joystick &joystick) {
+  if (m_direction == 0 && m_timer > ATTRACT_AFTER) {
+    m_attractDue = true;
+    return;
+  }
+  for (; m_direction < DIRECTIONS; ++m_direction) {
+    if (!pressed(joystick, m_direction)) {
+      continue;
+    }
+    if (m_direction < 2) {
+      m_column = m_direction;
+    } else {
+      m_row = (m_row + (m_direction == 3 ? 1 : ROWS - 1)) % ROWS;
+    }
+    placeHand();
+    ++m_direction;
+    m_resume = Resume::Choosing;
+    m_resumeFrame = m_frame + HAND_MOVE_WAIT;
+    return;
+  }
+  m_direction = 0;
+  if (joystick.fire) {
+    activate();
+  } else {
+    readKeys();
+  }
+}
+
 void MenuSequence::finishPass() {
   const std::optional<char> key = m_keyboard.inkey();
   if (key && *key >= FIRST_TYPED) {
     m_keysRead += *key;
-    m_timer = 0;
+    if (m_version == GameVersion::V10) {
+      m_timer = 0;
+    }
   }
   if (m_mouseButton) {
     m_keyboard.permit();
@@ -255,11 +331,11 @@ void MenuSequence::moveHand(const Joystick &joystick) {
 void MenuSequence::activate() {
   const Icon &icon = ICONS[m_column * ROWS + m_row];
   if (icon.option == nullptr) {
-    bob(icon.bob).image = START_PRESSED_IMAGE;
+    bob(icon.bob).image = layout(m_version).startPressedImage;
     m_resume = Resume::Leaving;
   } else {
     m_options.*icon.option = !(m_options.*icon.option);
-    bob(icon.bob).image = iconImage(icon, m_options);
+    bob(icon.bob).image = iconImage(icon, m_options, m_version);
     m_resume = Resume::Choosing;
   }
   m_resumeFrame = m_frame + MACH_WAIT;
@@ -275,18 +351,20 @@ void MenuSequence::flyIcons(std::size_t row, bool in) {
 }
 
 void MenuSequence::startCredits() {
-  for (std::size_t i = 0; i < CREDITS.size(); ++i) {
-    const Credit &credit = CREDITS[i];
+  const Layout &shown = layout(m_version);
+  for (std::size_t i = 0; i < shown.credits.size(); ++i) {
+    const Credit &credit = shown.credits[i];
     m_credits[i].emplace(credit.y, credit.firstImage, credit.lastImage);
-    bob(credit.bob) = {true, CREDIT_X, credit.y, credit.firstImage, false};
+    bob(credit.bob) = {true, shown.creditX, credit.y, credit.firstImage, false};
   }
 }
 
 void MenuSequence::runAmal() {
-  for (std::size_t i = 0; i < CREDITS.size(); ++i) {
+  const Layout &shown = layout(m_version);
+  for (std::size_t i = 0; i < shown.credits.size(); ++i) {
     if (m_credits[i]) {
       m_credits[i]->advance();
-      Bob &credit = bob(CREDITS[i].bob);
+      Bob &credit = bob(shown.credits[i].bob);
       credit.y = m_credits[i]->y();
       credit.image = m_credits[i]->image();
     }
@@ -297,8 +375,8 @@ void MenuSequence::runAmal() {
 }
 
 void MenuSequence::placeHand() {
-  bob(HAND_BOB) = {true, HAND_X[m_column], HAND_Y[m_row], HAND_IMAGE,
-                   m_column == 0};
+  bob(HAND_BOB) = {true, HAND_X[m_column], HAND_Y[m_row],
+                   layout(m_version).handImage, m_column == 0};
 }
 
 MenuSequence::Bob &MenuSequence::bob(int number) { return m_bobs[number - 1]; }

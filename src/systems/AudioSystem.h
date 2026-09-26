@@ -27,6 +27,7 @@ public:
   void stopMusic();
   void setMusicVolume(int volume);
   void setMusicTempoScale(double scale);
+  void setMusicTempo(int tempo);
   void setVblRate(int hertz);
   void setLowPassFilter(bool on);
   void playSample(const std::string &name, int voiceMask);

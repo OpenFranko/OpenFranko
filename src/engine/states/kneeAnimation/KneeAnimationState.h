@@ -6,6 +6,7 @@
 #include "../../../systems/Canvas.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
+#include "../../GameVersion.h"
 #include "../IEngineState.h"
 
 #include <vector>
@@ -20,7 +21,8 @@ class KneeAnimationState : public IEngineState {
 public:
   KneeAnimationState(systems::VideoSystem &videoSystem,
                      systems::AudioSystem &audioSystem,
-                     systems::ControllerSystem &controllerSystem);
+                     systems::ControllerSystem &controllerSystem,
+                     GameVersion version = GameVersion::V10);
   ~KneeAnimationState();
 
   std::optional<EngineStateEnum> update() override;
@@ -28,6 +30,7 @@ public:
 private:
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
+  GameVersion m_version;
   std::vector<systems::IndexedBitmap> m_images;
   systems::Canvas m_screen;
   int m_frame = 0;

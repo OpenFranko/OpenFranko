@@ -80,6 +80,10 @@ void AudioSystem::setMusicTempoScale(double scale) {
   applyTempo();
 }
 
+void AudioSystem::setMusicTempo(int tempo) {
+  output->mixer.overrideModuleTempo(tempo);
+}
+
 void AudioSystem::setVblRate(int hertz) {
   if (hertz == output->vblRate) {
     return;

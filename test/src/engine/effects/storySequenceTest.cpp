@@ -232,3 +232,28 @@ SCENARIO("StorySequence stops when fire has been latched") {
     }
   }
 }
+
+SCENARIO("StorySequence holds each frame longer when ANI unpacks, then waits") {
+  GIVEN("The 1.2 story, whose ANI unpacks a frame and then does Wait 2") {
+    constexpr int VERSION12_FRAME = 12;
+    StorySequence story(PAGES, CLOSING_PICTURE, VERSION12_FRAME);
+
+    WHEN("The first page plays without any input") {
+      const auto views = run(story, 8 * VERSION12_FRAME + PAGE_TAIL + 1);
+
+      THEN("Each animation frame is held for the unpack and the wait") {
+        REQUIRE(views[0].frame == 1);
+        REQUIRE(views[VERSION12_FRAME - 1].frame == 1);
+        REQUIRE(views[VERSION12_FRAME].frame == 2);
+        REQUIRE(views[7 * VERSION12_FRAME].frame == 8);
+      }
+
+      THEN("The picture and text follow the last frame as in 1.0") {
+        const int picture = 8 * VERSION12_FRAME + StorySequence::PICTURE_FRAMES;
+        REQUIRE_FALSE(views[picture - 1].picture.has_value());
+        REQUIRE(views[picture].picture == 0);
+        REQUIRE(views[picture + StorySequence::TEXT_FRAMES].text == 0);
+      }
+    }
+  }
+}

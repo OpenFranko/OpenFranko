@@ -52,6 +52,7 @@ public:
 struct StreetInput {
   int16_t joystick = 0;
   SystemKey key = SystemKey::None;
+  bool mouseButton = false;
 };
 
 class StreetStage {
@@ -105,6 +106,7 @@ private:
     AdvanceLeaveFlushed,
     AdvanceLeavePasted,
     GameOverWait,
+    GameOverCleared,
     GameOverScreenGone,
     GameOverPanelClose,
     GameOverPanelGone,
@@ -150,6 +152,7 @@ private:
   Flow refereeMoves();
   Flow refereeBlood();
   Flow refereeBloodStamped();
+  void hidePastedBlood(int bob);
   Flow refereeTail();
   Flow advanceWait();
   void advanceSetup();
@@ -166,6 +169,7 @@ private:
   void spawnLoaded();
   void scrollStep();
   void gameOver();
+  bool quitsToHighScores() const;
   void closePlayScreen();
   void sys();
   void runBasic(const StreetInput &input);
@@ -211,6 +215,7 @@ private:
   bool m_screenShown = false;
   bool m_panelShown = true;
   bool m_escape = false;
+  bool m_mouseButton = false;
   std::array<int, 4> m_energy{};
   std::array<int, 4> m_aggression{};
   std::array<int, 4> m_resident{};

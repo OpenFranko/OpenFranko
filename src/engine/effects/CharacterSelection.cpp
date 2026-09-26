@@ -27,9 +27,8 @@ constexpr int FACE_LOOPS = 2;
 
 constexpr int MACH_WAIT = 40;
 constexpr int SHOW_WAIT = 50;
-constexpr int BOBS_OFF_AT = MACH_WAIT + SHOW_WAIT;
+constexpr int VERSION12_SHOW_WAIT = 150;
 constexpr int LOUDEST = 63;
-constexpr int MUSIC_STOP_AT = BOBS_OFF_AT + LOUDEST + 1;
 constexpr int UNPACK_VBLS = 1;
 
 const std::vector<AmalMotion::Move> WAGGLE = {
@@ -42,8 +41,9 @@ const Pose &poseOf(Character character) {
 
 } // namespace
 
-CharacterSelection::CharacterSelection(GameOptions &options, int otherScreens)
-    : m_options(options), m_otherScreens(otherScreens) {
+CharacterSelection::CharacterSelection(GameOptions &options, int otherScreens,
+                                       GameVersion version)
+    : m_options(options), m_version(version), m_otherScreens(otherScreens) {
   choose(Character::Franko);
 }
 
@@ -122,6 +122,10 @@ void CharacterSelection::runScript(int time) {
     }
     return;
   }
+  const bool version12 = m_version == GameVersion::V12;
+  const int bobsOffAt =
+      MACH_WAIT + (version12 ? VERSION12_SHOW_WAIT : SHOW_WAIT);
+  const int musicStopAt = bobsOffAt + LOUDEST + 1;
   const Pose &pose = poseOf(m_options.character);
   if (time == MACH_WAIT) {
     m_face = {true, pose.faceX, FACE_Y, HIDDEN_IMAGE, false};
@@ -130,23 +134,25 @@ void CharacterSelection::runScript(int time) {
                  FACE_LOOPS);
     m_sample = pose.sample;
   }
-  if (time == BOBS_OFF_AT) {
+  if (time == bobsOffAt) {
     m_hand.shown = false;
     m_face.shown = false;
   }
-  if (!m_options.music) {
-    if (time == BOBS_OFF_AT) {
+  if (!m_options.music && !version12) {
+    if (time == bobsOffAt) {
       m_stopsMusic = true;
       close(time);
     }
     return;
   }
-  if (time >= BOBS_OFF_AT && time < MUSIC_STOP_AT) {
-    m_musicVolume = LOUDEST - (time - BOBS_OFF_AT);
+  if (time >= bobsOffAt && time < musicStopAt) {
+    m_musicVolume = LOUDEST - (time - bobsOffAt);
   }
-  if (time == MUSIC_STOP_AT) {
+  if (time == musicStopAt) {
     m_stopsMusic = true;
-    m_musicVolume = LOUDEST;
+    if (!version12) {
+      m_musicVolume = LOUDEST;
+    }
     close(time);
   }
 }
