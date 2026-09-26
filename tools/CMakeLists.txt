@@ -1,5 +1,5 @@
 add_executable(backwardLZ77Decompressor decompressor/backwardLZ77.cpp)
-target_link_libraries(backwardLZ77Decompressor argumentParser readFile backwardLZ77 writeFile)
+target_link_libraries(backwardLZ77Decompressor argumentParser readFile backwardLZ77 writeFile fileContainer gameData)
 
 add_executable(extractSpriteSheet converter/extractSpriteSheet.cpp)
 target_link_libraries(extractSpriteSheet argumentParser readFile backwardLZ77 spriteSheet writeFile fileContainer)
@@ -20,7 +20,7 @@ add_executable(extractScreen converter/extractScreen.cpp)
 target_link_libraries(extractScreen argumentParser readFile writeFile amosCompact fileContainer)
 
 add_executable(extractSamples converter/extractSamples.cpp)
-target_link_libraries(extractSamples argumentParser readFile writeFile backwardLZ77 audioExtractor fileContainer)
+target_link_libraries(extractSamples argumentParser readFile writeFile backwardLZ77 audioExtractor fileContainer gameData)
 
 add_executable(extractMusic converter/extractMusic.cpp)
 target_link_libraries(extractMusic argumentParser readFile writeFile backwardLZ77 audioExtractor fileContainer)

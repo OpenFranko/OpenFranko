@@ -4,6 +4,7 @@
 #include "Palettes.h"
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace openfranko {
@@ -50,6 +51,12 @@ convertToIndividual(const std::vector<uint8_t> &decompressedData,
 
 void applySpritePaletteFixes(const std::string &fileId,
                              std::vector<ConvertedSprite> &sprites);
+
+std::string_view paletteScreen(const std::string &fileId);
+
+void applyScreenPalette(const std::string &fileId,
+                        const std::vector<uint8_t> &screen,
+                        std::vector<ConvertedSprite> &sprites);
 
 std::vector<uint16_t> selectPalette(const std::string &fileId);
 

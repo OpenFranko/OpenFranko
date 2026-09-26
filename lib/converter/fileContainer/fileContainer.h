@@ -18,9 +18,21 @@ struct FileInfo {
   bool compressed;
 };
 
+struct Resource {
+  std::string fileId;
+  uint16_t resourceType = 0;
+  std::vector<uint8_t> data;
+};
+
 FileInfo parseFooter(const std::vector<uint8_t> &rawData);
 
 std::string fileIdToHex(uint16_t fileId);
+
+Resource unpack(const std::string &fileName,
+                const std::vector<uint8_t> &rawData);
+
+std::vector<uint8_t> unsquashVersion12(const std::string &fileName,
+                                       const std::vector<uint8_t> &rawData);
 
 } // namespace fileContainer
 } // namespace converter

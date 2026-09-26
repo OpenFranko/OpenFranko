@@ -88,7 +88,8 @@ double-click it.
 
 it's a tool to extract graphics/sounds/music/levels from original franko game data.
 
-Only Version 1.0 is supported right now.
+Versions 1.0 and 1.2 are supported. The game itself runs on the files extracted
+from version 1.0; the 1.2 files are extracted under their own names.
 
 Usage:
 
@@ -101,11 +102,21 @@ the original installer puts next to the data files. It is picked up
 automatically when it sits in the game data directory; otherwise pass it with
 `-e`. Without it the ending credits are not extracted.
 
-Game data directory must contain files:
+Version 1.0 game data directory must contain files:
 
 ```
 0000, 0001, 0002, 0003, 0004, 0005, 0006, 0007, 0008, 0009, 000A, 000B, 000C, 000D, 000E, 000F, 0010, 0011, 0012, 0013, 0014, 0015, 0034, 0035, 0036, 0037, 0038, 0094, 0095, 0096, 00C6, 00C7, 00C8, 00F6, 00F7, 00F8, 00F9, 00FA, 00FB, 00FC, 00FD, 00FE, 00FF, 0137, 0138, 0139, 013A, 013B, 013C, 013D, 013E, 013F, 0140, 0141, 0142, 0143, 0144, 0145, 014A, 014B, 014C, 014D, 014E, 014F, 0154, 0259, 025A, 025B, 025C, 025D, 025E, 025F, 0261, 0262, 0263, 0384, 0385, 0386, 0387, 0388, 0389, 038A, 038B, 038C, 03B6, 03B7, 03B8, 03B9, 03BA, 03BB, 03BC, 03BD, 03BE, 03BF, 03C0, 03C1, 03C2, 03C3
 ```
+
+Version 1.2 game data directory must contain files:
+
+```
+m1-m7, m9, m10, m11, p0-p8, p50-p62, p80-p85, s0-s21, s50, s52-s56, s148, s149, s150, s198, s199, s200, s246-s255, t11-t25, t30-t35, t40
+```
+
+A file named like one of the 1.2 files above is read as a 1.2 file, whether it
+is in the directory or given alone to `frankoExtract` or to one of the other
+extraction tools; any other file is read as a 1.0 file.
 
 Data will be extracted as:
 
@@ -113,5 +124,5 @@ Data will be extracted as:
 - Sounds as wave files (.wav)
 - Music as ScreamTracker3 modules (.s3m)
 - Level scripts (enemy waves) as JSON files (.json)
-- Copy protection code cards as a JSON file (0384_codecards.json)
+- Copy protection code cards as a JSON file (0384_codecards.json, p0_codecards.json for 1.2)
 - Ending credits as a JSON file (credits.json), from the game executable

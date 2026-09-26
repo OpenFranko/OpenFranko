@@ -1,9 +1,9 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "../../lib/converter/audioExtractor/audioExtractor.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
-#include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
+#include <filesystem>
 #include <iostream>
 
 using namespace openfranko::lib;
@@ -16,7 +16,8 @@ int main(int argc, char **argv) {
     std::cerr << "Usage: " << argv[0] << " -i <input_file> [-o <output.abk>]"
               << std::endl;
     std::cerr
-        << "Extracts a Franko music bank (type 0x0400) to ABK format."
+        << "Extracts a Franko music bank (type 0x0400, or a version 1.2 m "
+           "file) to ABK format."
         << std::endl;
     return 1;
   }
@@ -27,11 +28,12 @@ int main(int argc, char **argv) {
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
-    std::string fileId = converter::fileContainer::fileIdToHex(
-        converter::fileContainer::parseFooter(raw).fileId);
+    auto resource = converter::fileContainer::unpack(
+        std::filesystem::path(inputPath).filename().string(), raw);
+    const std::string &fileId = resource.fileId;
     std::string outputPath = outputOptional.value_or(fileId + ".abk");
 
-    auto dec = decompressor::backwardLZ77::decompress(raw);
+    const auto &dec = resource.data;
     std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
 
     auto abk = converter::audioExtractor::wrapMusicBank(dec, fileId);

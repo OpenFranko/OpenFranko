@@ -2,7 +2,6 @@
 #define GAMEDATA_H_
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <string_view>
 
@@ -82,13 +81,93 @@ inline constexpr uint16_t DEFAULT_SAMPLE_RATE = 8287;
 
 } // namespace audio
 
-namespace protectionCards {
+namespace version12 {
 
-inline constexpr std::string_view FILE_ID = "0384";
-inline constexpr std::size_t OFFSET = 10;
-inline constexpr std::size_t SIZE = 200;
+namespace fileIds {
 
-} // namespace protectionCards
+inline constexpr std::string_view WORLD_SOFTWARE_PALETTE = "s50";
+inline constexpr std::string_view WORLD_SOFTWARE_LOGO = "p50";
+
+} // namespace fileIds
+
+enum class Loader { Data, Data16, Bobs, Music, Coded, Stage };
+
+struct File {
+  std::string_view name;
+  Loader loader;
+  std::string_view counterpart;
+};
+
+inline constexpr std::array<File, 104> FILES = {{
+    {"m1", Loader::Music, "0259"},   {"m2", Loader::Music, "025A"},
+    {"m3", Loader::Music, "025B"},   {"m4", Loader::Music, "025C"},
+    {"m5", Loader::Music, "025D"},   {"m6", Loader::Music, "025E"},
+    {"m7", Loader::Music, "025F"},   {"m9", Loader::Music, "0261"},
+    {"m10", Loader::Music, "0262"},  {"m11", Loader::Music, ""},
+    {"p0", Loader::Data, "0384"},    {"p1", Loader::Data16, "0385"},
+    {"p2", Loader::Data16, "0386"},  {"p3", Loader::Data16, "0387"},
+    {"p4", Loader::Data16, "0388"},  {"p5", Loader::Data16, "0389"},
+    {"p6", Loader::Data16, "038A"},  {"p7", Loader::Data16, "038B"},
+    {"p8", Loader::Data16, "038C"},  {"p50", Loader::Data, "03C3"},
+    {"p51", Loader::Data, "03B7"},   {"p52", Loader::Coded, "03B8"},
+    {"p53", Loader::Data16, "03B9"}, {"p54", Loader::Data16, "03BA"},
+    {"p55", Loader::Data16, "03BB"}, {"p56", Loader::Data16, "03BC"},
+    {"p57", Loader::Data16, "03BD"}, {"p58", Loader::Data, "03BE"},
+    {"p59", Loader::Data, "03BF"},   {"p60", Loader::Data, "03C0"},
+    {"p61", Loader::Data16, "03C1"}, {"p62", Loader::Data16, "03C2"},
+    {"p80", Loader::Data, ""},       {"p81", Loader::Data, ""},
+    {"p82", Loader::Data, ""},       {"p83", Loader::Data, ""},
+    {"p84", Loader::Data, ""},       {"p85", Loader::Data, ""},
+    {"s0", Loader::Bobs, "0000"},    {"s1", Loader::Bobs, "0001"},
+    {"s2", Loader::Bobs, "0002"},    {"s3", Loader::Bobs, "0003"},
+    {"s4", Loader::Bobs, "0004"},    {"s5", Loader::Bobs, "0005"},
+    {"s6", Loader::Bobs, "0006"},    {"s7", Loader::Bobs, "0007"},
+    {"s8", Loader::Bobs, "0008"},    {"s9", Loader::Bobs, "0009"},
+    {"s10", Loader::Bobs, "000A"},   {"s11", Loader::Bobs, "000B"},
+    {"s12", Loader::Bobs, "000C"},   {"s13", Loader::Bobs, "000D"},
+    {"s14", Loader::Bobs, "000E"},   {"s15", Loader::Bobs, "000F"},
+    {"s16", Loader::Bobs, "0010"},   {"s17", Loader::Bobs, "0011"},
+    {"s18", Loader::Bobs, "0012"},   {"s19", Loader::Bobs, "0013"},
+    {"s20", Loader::Bobs, "0014"},   {"s21", Loader::Bobs, "0015"},
+    {"s50", Loader::Bobs, ""},       {"s52", Loader::Bobs, "0034"},
+    {"s53", Loader::Bobs, "0035"},   {"s54", Loader::Bobs, "0036"},
+    {"s55", Loader::Bobs, "0037"},   {"s56", Loader::Bobs, "0038"},
+    {"s148", Loader::Bobs, "0094"},  {"s149", Loader::Bobs, "0095"},
+    {"s150", Loader::Bobs, "0096"},  {"s198", Loader::Bobs, "00C6"},
+    {"s199", Loader::Bobs, "00C7"},  {"s200", Loader::Bobs, "00C8"},
+    {"s246", Loader::Bobs, "00F6"},  {"s247", Loader::Bobs, "00F7"},
+    {"s248", Loader::Bobs, "00F8"},  {"s249", Loader::Bobs, "00F9"},
+    {"s250", Loader::Bobs, "00FA"},  {"s251", Loader::Bobs, "00FB"},
+    {"s252", Loader::Bobs, "00FC"},  {"s253", Loader::Bobs, "00FD"},
+    {"s254", Loader::Bobs, "00FE"},  {"s255", Loader::Bobs, "00FF"},
+    {"t11", Loader::Stage, "0137"},  {"t12", Loader::Stage, "0138"},
+    {"t13", Loader::Stage, "0139"},  {"t14", Loader::Stage, "013A"},
+    {"t15", Loader::Stage, "013B"},  {"t16", Loader::Stage, "013C"},
+    {"t17", Loader::Stage, "013D"},  {"t18", Loader::Stage, "013E"},
+    {"t19", Loader::Stage, "013F"},  {"t20", Loader::Stage, "0140"},
+    {"t21", Loader::Stage, "0141"},  {"t22", Loader::Stage, "0142"},
+    {"t23", Loader::Stage, "0143"},  {"t24", Loader::Stage, "0144"},
+    {"t25", Loader::Stage, "0145"},  {"t30", Loader::Stage, "014A"},
+    {"t31", Loader::Stage, "014B"},  {"t32", Loader::Stage, "014C"},
+    {"t33", Loader::Stage, "014D"},  {"t34", Loader::Stage, "014E"},
+    {"t35", Loader::Stage, "014F"},  {"t40", Loader::Stage, "0154"},
+}};
+
+inline constexpr const File *find(std::string_view name) {
+  for (const File &file : FILES) {
+    if (file.name == name) {
+      return &file;
+    }
+  }
+  return nullptr;
+}
+
+} // namespace version12
+
+inline constexpr std::string_view version10Id(std::string_view fileId) {
+  const version12::File *file = version12::find(fileId);
+  return file == nullptr ? fileId : file->counterpart;
+}
 
 } // namespace gameData
 } // namespace converter

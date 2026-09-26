@@ -2,10 +2,10 @@
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/gameData/gameData.h"
 #include "../../lib/converter/levelScript/levelScript.h"
-#include "../../lib/decompressor/backwardLZ77/backwardLZ77.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
 #include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <string_view>
 
@@ -18,7 +18,8 @@ int main(int argc, char **argv) {
   if (!inputOptional.has_value()) {
     std::cerr << "Usage: " << argv[0] << " -i <input_file> [-o <output.json>]"
               << std::endl;
-    std::cerr << "Converts a Franko level script (files 0385-0387) to JSON."
+    std::cerr << "Converts a Franko level script (files 0385-0387, or p1-p3 "
+                 "of version 1.2) to JSON."
               << std::endl;
     return 1;
   }
@@ -29,18 +30,19 @@ int main(int argc, char **argv) {
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
-    std::string fileId = converter::fileContainer::fileIdToHex(
-        converter::fileContainer::parseFooter(raw).fileId);
+    auto resource = converter::fileContainer::unpack(
+        std::filesystem::path(inputPath).filename().string(), raw);
+    const std::string &fileId = resource.fileId;
     std::string outputPath = outputOptional.value_or(fileId + ".json");
 
     const auto &levelFiles = converter::gameData::fileIds::LEVEL_FILES;
     if (std::find(levelFiles.begin(), levelFiles.end(),
-                  std::string_view(fileId)) == levelFiles.end())
+                  converter::gameData::version10Id(fileId)) == levelFiles.end())
       std::cerr << "Warning: " << fileId
-                << " is not one of the level script files (0385-0387)"
+                << " is not one of the level script files (0385-0387, p1-p3)"
                 << std::endl;
 
-    auto dec = decompressor::backwardLZ77::decompress(raw);
+    const auto &dec = resource.data;
     std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
 
     auto level = converter::levelScript::parse(dec);

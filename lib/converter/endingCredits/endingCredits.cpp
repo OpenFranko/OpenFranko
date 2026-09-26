@@ -28,6 +28,14 @@ constexpr uint16_t MOVE_LONG_D3 = 0x263C;
 constexpr uint16_t PUSH_LONG = 0x273C;
 constexpr uint16_t CLEAR_D5 = 0x7A00;
 constexpr uint16_t JSR_LONG = 0x4EB9;
+constexpr uint16_t JSR_A4 = 0x4EAC;
+constexpr uint16_t JMP_A4 = 0x4EEC;
+constexpr uint16_t ADDQ_LONG_D3 = 0x5083;
+constexpr uint16_t ADDQ_DATA_MASK = 0x0E00;
+constexpr int ADDQ_DATA_SHIFT = 9;
+constexpr int ADDQ_EIGHT = 8;
+
+constexpr int CREDITS_GLYPH_OFFSET = 6;
 
 constexpr char FIRST_PRINTABLE = 0x20;
 constexpr char LAST_PRINTABLE = 0x7E;
@@ -110,6 +118,33 @@ std::vector<Call> procedureCalls(const std::vector<uint8_t> &code) {
   return calls;
 }
 
+uint32_t mostFrequent(const std::map<uint32_t, int> &counts) {
+  return std::max_element(
+             counts.begin(), counts.end(),
+             [](const auto &a, const auto &b) { return a.second < b.second; })
+      ->first;
+}
+
+int glyphOffset(const std::vector<uint8_t> &code, uint32_t font) {
+  for (std::size_t at = font; at + 8 <= code.size() && word(code, at) != JMP_A4;
+       at += 2) {
+    const uint16_t addq = word(code, at + 4);
+    if (word(code, at) == JSR_A4 && (addq & ~ADDQ_DATA_MASK) == ADDQ_LONG_D3 &&
+        word(code, at + 6) == JSR_A4) {
+      const int data = (addq & ADDQ_DATA_MASK) >> ADDQ_DATA_SHIFT;
+      return data == 0 ? ADDQ_EIGHT : data;
+    }
+  }
+  return CREDITS_GLYPH_OFFSET;
+}
+
+std::string shifted(std::string text, int shift) {
+  for (char &c : text) {
+    c = static_cast<char>(c + shift);
+  }
+  return text;
+}
+
 std::vector<Page> creditsIn(const std::vector<uint8_t> &code) {
   const std::vector<Call> calls = procedureCalls(code);
   std::map<uint32_t, int> textCalls;
@@ -121,35 +156,34 @@ std::vector<Page> creditsIn(const std::vector<uint8_t> &code) {
   if (textCalls.empty()) {
     return {};
   }
-  const uint32_t font = std::max_element(textCalls.begin(), textCalls.end(),
-                                         [](const auto &a, const auto &b) {
-                                           return a.second < b.second;
-                                         })
-                            ->first;
-  const auto firstLine =
-      std::find_if(calls.begin(), calls.end(), [font](const Call &call) {
-        return call.target == font && call.text;
-      });
-  const auto firstBeat =
-      std::find_if(firstLine, calls.end(), [font](const Call &call) {
-        return call.target != font && !call.text;
-      });
-  if (firstBeat == calls.end()) {
+  const uint32_t font = mostFrequent(textCalls);
+  const auto isLine = [font](const Call &call) {
+    return call.target == font && call.text;
+  };
+
+  std::map<uint32_t, int> callsAfterLines;
+  for (std::size_t i = 1; i < calls.size(); ++i) {
+    if (isLine(calls[i - 1]) && calls[i].target != font && !calls[i].text) {
+      ++callsAfterLines[calls[i].target];
+    }
+  }
+  if (callsAfterLines.empty()) {
     return {};
   }
-  const uint32_t beat = firstBeat->target;
+  const uint32_t beat = mostFrequent(callsAfterLines);
+  const int shift = glyphOffset(code, font) - CREDITS_GLYPH_OFFSET;
 
   std::vector<Page> pages;
   Page page;
-  for (auto call = firstLine; call != calls.end(); ++call) {
-    if (call->target == font && call->text) {
-      page.lines.push_back({*call->text, call->value});
-    } else if (call->target == beat && !page.lines.empty()) {
-      page.beat = call->value;
+  for (const Call &call : calls) {
+    if (isLine(call)) {
+      page.lines.push_back({shifted(*call.text, shift), call.value});
+    } else if (call.target == beat && !page.lines.empty()) {
+      page.beat = call.value;
       pages.push_back(std::move(page));
       page = Page{};
-    } else if (call->target == beat) {
-      break;
+    } else {
+      page = Page{};
     }
   }
   return pages;

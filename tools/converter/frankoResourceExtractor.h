@@ -2,11 +2,14 @@
 #define FRANKORESOURCEEXTRACTOR_H_
 
 #include <string>
+#include <vector>
 
 namespace openfranko {
 namespace tools {
 namespace converter {
 namespace frankoResourceExtractor {
+
+std::vector<std::string> dataFiles(const std::string &dirPath);
 
 int validateDirectory(const std::string &dirPath);
 

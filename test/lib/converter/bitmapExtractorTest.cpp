@@ -295,3 +295,34 @@ SCENARIO("extract finds bitmaps through the file's own tables") {
     }
   }
 }
+
+SCENARIO("extract treats 1.2 files like their 1.0 counterparts") {
+  GIVEN("p0 laid out like 0384, with a table of 16-bit offsets") {
+    auto data =
+        buildOffsetTable({buildPackedBitmap(2), buildPackedBitmap(2)}, 2);
+
+    WHEN("extract is called with fileId 'p0'") {
+      auto results = extract(data, "p0");
+
+      THEN("The bitmaps are named after p0") {
+        REQUIRE(results.size() == 2);
+        REQUIRE(results[0].name == "p0");
+        REQUIRE(results[1].name == "p0_1");
+      }
+    }
+  }
+
+  GIVEN("A tile chain") {
+    auto data = buildTileFile({buildPackedBitmap(2), buildPackedBitmap(2)});
+
+    WHEN("extract is called with fileId 't11'") {
+      auto results = extract(data, "t11");
+
+      THEN("It is read as tiles") {
+        REQUIRE(results.size() == 2);
+        REQUIRE(results[0].name == "t11_000");
+        REQUIRE(results[1].name == "t11_001");
+      }
+    }
+  }
+}

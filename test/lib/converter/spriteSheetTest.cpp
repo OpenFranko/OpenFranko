@@ -162,6 +162,24 @@ SCENARIO("selectPalette returns the correct palette for known file IDs") {
       }
     }
 
+    WHEN("selectPalette is called with the 1.2 counterparts of those files") {
+      THEN("They get the same palettes") {
+        REQUIRE(selectPalette("s56")[15] == pal::SUNSET[15]);
+        REQUIRE(selectPalette("s55").size() == pal::STORY.size());
+        REQUIRE(selectPalette("s52")[7] == pal::MENU[7]);
+        REQUIRE(selectPalette("s53").size() == pal::MENU_35.size());
+        REQUIRE(selectPalette("s54")[2] == pal::CEMETERY[2]);
+      }
+    }
+
+    WHEN("selectPalette is called with 's50'") {
+      auto p = selectPalette("s50");
+      THEN("It returns WORLD_SOFTWARE") {
+        REQUIRE(p.size() == pal::WORLD_SOFTWARE.size());
+        REQUIRE(p[1] == pal::WORLD_SOFTWARE[1]);
+      }
+    }
+
     WHEN("selectPalette is called with an unknown ID") {
       auto p = selectPalette("9999");
       THEN("It returns LEVEL as default") {
@@ -277,6 +295,17 @@ SCENARIO("applySpritePaletteFixes makes the sunset bank's font white") {
       }
     }
 
+    WHEN("They come from s56 or s50, the 1.2 banks with the same font") {
+      auto intro = sprites;
+      applySpritePaletteFixes("s56", sprites);
+      applySpritePaletteFixes("s50", intro);
+
+      THEN("Font sprite 43 gets white and grey in both") {
+        REQUIRE(entries1And2(sprites[43]) == fixedEntries);
+        REQUIRE(entries1And2(intro[43]) == fixedEntries);
+      }
+    }
+
     WHEN("They come from another bank") {
       applySpritePaletteFixes("0001", sprites);
 
@@ -290,6 +319,65 @@ SCENARIO("applySpritePaletteFixes makes the sunset bank's font white") {
       applySpritePaletteFixes("0038", sprites);
 
       THEN("It stays empty") { REQUIRE(sprites[43].bmpData.empty()); }
+    }
+  }
+}
+
+SCENARIO("applyScreenPalette colours s50's logo reflection like the logo") {
+  GIVEN("Eleven converted sprites and a 16-colour packed screen") {
+    std::vector<ConvertedSprite> sprites(
+        11, ConvertedSprite{std::vector<uint8_t>(1078, 0), {}});
+    std::vector<uint8_t> screen;
+    pushBigEndian32(screen, 0x12031990);
+    for (uint16_t value : {320, 256, 0, 0, 320, 256, 0, 0, 0, 16, 4}) {
+      pushBigEndian16(screen, value);
+    }
+    for (uint16_t colour = 0; colour < 32; colour++) {
+      pushBigEndian16(screen, colour == 14   ? 0x035
+                              : colour == 16 ? 0xFFF
+                                             : 0x000);
+    }
+    auto entry = [](const ConvertedSprite &sprite, int index) {
+      return std::vector<uint8_t>(sprite.bmpData.begin() + 54 + index * 4,
+                                  sprite.bmpData.begin() + 58 + index * 4);
+    };
+    const std::vector<uint8_t> unchanged(4, 0);
+
+    WHEN("They come from s50") {
+      applyScreenPalette("s50", screen, sprites);
+
+      THEN("Sprites 4 to 9 take the screen's colours") {
+        const std::vector<uint8_t> navy = {0x55, 0x33, 0x00, 0x00};
+        REQUIRE(entry(sprites[4], 14) == navy);
+        REQUIRE(entry(sprites[9], 14) == navy);
+      }
+
+      THEN("Colours past the screen's 16 and the other sprites stay") {
+        REQUIRE(entry(sprites[4], 16) == unchanged);
+        REQUIRE(entry(sprites[3], 14) == unchanged);
+        REQUIRE(entry(sprites[10], 14) == unchanged);
+      }
+    }
+
+    WHEN("They come from another bank") {
+      applyScreenPalette("0038", screen, sprites);
+
+      THEN("Nothing changes") { REQUIRE(entry(sprites[4], 14) == unchanged); }
+    }
+
+    WHEN("The screen is not a packed screen") {
+      THEN("It throws a runtime_error") {
+        REQUIRE_THROWS_AS(
+            applyScreenPalette("s50", std::vector<uint8_t>(90, 0), sprites),
+            std::runtime_error);
+      }
+    }
+  }
+
+  GIVEN("The banks that are shown on another file's screen") {
+    THEN("Only s50 names one, the logo p50") {
+      REQUIRE(paletteScreen("s50") == "p50");
+      REQUIRE(paletteScreen("0038").empty());
     }
   }
 }

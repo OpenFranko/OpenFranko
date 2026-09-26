@@ -95,7 +95,8 @@ std::vector<size_t> readTileChain(const std::vector<uint8_t> &data) {
 bool isTileFile(const std::string &id) {
   return std::find(gameData::fileIds::TILE_FILES.begin(),
                    gameData::fileIds::TILE_FILES.end(),
-                   std::string_view(id)) != gameData::fileIds::TILE_FILES.end();
+                   gameData::version10Id(id)) !=
+         gameData::fileIds::TILE_FILES.end();
 }
 
 std::vector<uint16_t> readSPACKPalette(const std::vector<uint8_t> &data,
@@ -179,7 +180,8 @@ extractMultiBMCode(const std::vector<uint8_t> &data,
   return results;
 }
 
-std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data) {
+std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data,
+                                         const std::string &fileId) {
   std::vector<uint16_t> curPal(pal::HUD.begin(), pal::HUD.end());
 
   std::vector<ExtractedBitmap> results;
@@ -199,9 +201,7 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data) {
     }
     const size_t index = results.size();
     std::string name =
-        (index == 0) ? std::string(gameData::fileIds::MULTI_PALETTE_BITMAP)
-                     : std::string(gameData::fileIds::MULTI_PALETTE_BITMAP) +
-                           "_" + std::to_string(index);
+        (index == 0) ? fileId : fileId + "_" + std::to_string(index);
     results.push_back(convertBitmap(data, offset, curPal, name, true));
   }
   return results;
@@ -218,12 +218,14 @@ std::vector<ExtractedBitmap> extract(const std::vector<uint8_t> &data,
   helpers::BigEndianReader reader(data);
   uint32_t magic = reader.readUint32(0);
 
-  if (std::string_view(fileId) == gameData::fileIds::MULTI_PALETTE_BITMAP) {
-    return extract0384(data);
+  const std::string_view role = gameData::version10Id(fileId);
+
+  if (role == gameData::fileIds::MULTI_PALETTE_BITMAP) {
+    return extract0384(data, fileId);
   }
 
   if (magic == amosConsts::SPACK_SCREEN_HEADER &&
-      std::string_view(fileId) != gameData::fileIds::CEMETERY_PICTURE) {
+      role != gameData::fileIds::CEMETERY_PICTURE) {
     return extractSCCode(data, fileId);
   }
 

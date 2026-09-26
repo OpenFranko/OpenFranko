@@ -2,7 +2,7 @@
 #include "../../helpers/helpers.h"
 #include "BitReader.h"
 #include "Consts.h"
-#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
@@ -66,23 +66,32 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("File too small to contain footer");
   }
 
-  const size_t footerStart = compressedData.size() - consts::FOOTER_SIZE;
-  helpers::BigEndianReader footerReader(compressedData);
+  return decompressStream(std::vector<uint8_t>(
+      compressedData.begin(),
+      compressedData.end() -
+          static_cast<std::ptrdiff_t>(consts::FILE_FOOTER_SIZE)));
+}
 
-  uint32_t unpackedSize = footerReader.readUint32(footerStart + 8);
-  uint32_t xorChecksum = footerReader.readUint32(footerStart + 4);
-  uint32_t initialBits = footerReader.readUint32(footerStart + 0);
+std::vector<uint8_t> decompressStream(const std::vector<uint8_t> &stream) {
+  if (stream.size() < consts::TRAILER_SIZE) {
+    throw std::runtime_error("Stream too small to contain its trailer");
+  }
+
+  const size_t trailerStart = stream.size() - consts::TRAILER_SIZE;
+  helpers::BigEndianReader trailerReader(stream);
+
+  uint32_t unpackedSize = trailerReader.readUint32(trailerStart + 8);
+  uint32_t xorChecksum = trailerReader.readUint32(trailerStart + 4);
+  uint32_t initialBits = trailerReader.readUint32(trailerStart + 0);
 
   if (unpackedSize == 0) {
     throw std::runtime_error("Unpacked size is zero");
   }
 
-  const size_t payloadSize =
-      std::min<size_t>(footerStart, static_cast<size_t>(unpackedSize));
-  std::vector<uint8_t> out(payloadSize + unpackedSize + 4096, 0);
-  std::copy_n(compressedData.begin(), payloadSize, out.begin());
+  std::vector<uint8_t> out(unpackedSize, 0);
 
-  BitReader reader(out, payloadSize, initialBits, xorChecksum ^ initialBits);
+  BitReader reader(stream, trailerStart, initialBits,
+                   xorChecksum ^ initialBits);
 
   processDecompression(reader, out, unpackedSize);
 
@@ -90,7 +99,6 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("Decompression failed: XOR checksum mismatch");
   }
 
-  out.resize(unpackedSize);
   return out;
 }
 

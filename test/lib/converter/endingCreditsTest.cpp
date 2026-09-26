@@ -48,6 +48,18 @@ public:
     call(OTHER);
   }
 
+  void fontAdds(int glyphOffset) {
+    const uint16_t addq =
+        static_cast<uint16_t>(0x5083 | (glyphOffset & 7) << 9);
+    std::size_t at = FONT;
+    for (uint16_t value :
+         {uint16_t{0x4EAC}, uint16_t{0x1000}, addq, uint16_t{0x4EAC},
+          uint16_t{0x1400}, uint16_t{0x4EEC}}) {
+      m_code[at++] = static_cast<uint8_t>(value >> 8);
+      m_code[at++] = static_cast<uint8_t>(value);
+    }
+  }
+
   void decoy(const std::string &value) {
     pushLong(static_cast<uint32_t>(text(value)));
     pushInt(1);
@@ -152,6 +164,54 @@ SCENARIO("The ending credits are read from the compiled program's calls") {
       REQUIRE(pages[0].lines[0].text == "AA");
       REQUIRE(pages[1].lines.size() == 1);
       REQUIRE(pages[1].lines[0].text == "CC");
+    }
+  }
+
+  GIVEN("A program whose intro prints lines with no BLYSK2 after them") {
+    Program program;
+    program.line("XX", 0);
+    program.line("YY", 32);
+    program.other(5);
+    program.line("ZZ", 16);
+    program.other(6);
+    program.line("AB", 16);
+    program.beat(0);
+    program.line("CD", 0);
+    program.beat(10);
+    const auto pages = credits::extract(program.executable());
+
+    THEN("Only the lines closed by BLYSK2 are credits") {
+      REQUIRE(pages.size() == 2);
+      REQUIRE(pages[0].lines.size() == 1);
+      REQUIRE(pages[0].lines[0].text == "AB");
+      REQUIRE(pages[1].lines.size() == 1);
+      REQUIRE(pages[1].lines[0].text == "CD");
+      REQUIRE(pages[1].beat == 10);
+    }
+  }
+
+  GIVEN("A FONT procedure that adds 8 to the character code, as in 1.2") {
+    Program program;
+    program.fontAdds(8);
+    program.line("AB%", 16);
+    program.beat(0);
+    const auto pages = credits::extract(program.executable());
+
+    THEN("The text is stored for a FONT that adds 6, as in 1.0") {
+      REQUIRE(pages.size() == 1);
+      REQUIRE(pages[0].lines[0].text == "CD'");
+    }
+  }
+
+  GIVEN("A FONT procedure that adds 6 to the character code, as in 1.0") {
+    Program program;
+    program.fontAdds(6);
+    program.line("AB%", 16);
+    program.beat(0);
+    const auto pages = credits::extract(program.executable());
+
+    THEN("The text is kept as it is") {
+      REQUIRE(pages[0].lines[0].text == "AB%");
     }
   }
 

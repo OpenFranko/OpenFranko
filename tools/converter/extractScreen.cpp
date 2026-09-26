@@ -3,6 +3,7 @@
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
+#include <filesystem>
 #include <iostream>
 
 using namespace openfranko::lib;
@@ -15,7 +16,8 @@ int main(int argc, char **argv) {
     std::cerr << "Usage: " << argv[0] << " -i <input_file> [-o <output.bmp>]"
               << std::endl;
     std::cerr
-        << "Converts a Franko screen package (type 0x0201) to BMP."
+        << "Converts a Franko screen package (type 0x0201, or a version 1.2 "
+           "p file holding a screen) to BMP."
         << std::endl;
     return 1;
   }
@@ -26,11 +28,12 @@ int main(int argc, char **argv) {
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
-    std::string fileId = converter::fileContainer::fileIdToHex(
-        converter::fileContainer::parseFooter(raw).fileId);
+    auto resource = converter::fileContainer::unpack(
+        std::filesystem::path(inputPath).filename().string(), raw);
+    const std::string &fileId = resource.fileId;
     std::string outputPath = outputOptional.value_or(fileId + ".bmp");
 
-    auto bmp = converter::amosCompact::decompress(raw);
+    auto bmp = converter::amosCompact::decompress(resource.data);
     filesystem::writeFile::writeFile(outputPath, bmp);
     std::cerr << "Wrote " << outputPath << " (" << bmp.size() << " bytes)"
               << std::endl;
