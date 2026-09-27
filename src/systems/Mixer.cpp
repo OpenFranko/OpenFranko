@@ -185,6 +185,7 @@ void Mixer::overrideModuleTempo(int tempo) {
   }
   tempoOverride = tempo;
   overridePosition = modulePosition();
+  lastPosition = overridePosition;
   applyModuleTempo();
 }
 
@@ -287,8 +288,8 @@ void Mixer::render(int16_t *stereo, int frames) {
       if (!playing.sound) {
         continue;
       }
-      const int sample = nextSample(playing) * SAMPLE_VOLUME / MAX_VOLUME /
-                         VOICES_PER_SIDE;
+      const int sample =
+          nextSample(playing) * SAMPLE_VOLUME / MAX_VOLUME / VOICES_PER_SIDE;
       int16_t &side = out[isLeftVoice(voice) ? 0 : 1];
       side = clampSample(side + sample);
     }
@@ -298,6 +299,8 @@ void Mixer::render(int16_t *stereo, int frames) {
 
 void Mixer::stopPlayer() {
   tempoOverride = 0;
+  overridePosition = {-1, -1};
+  lastPosition = {-1, -1};
   if (modulePlaying) {
     xmp_end_player(module->player);
     modulePlaying = false;
@@ -364,14 +367,19 @@ void Mixer::followModuleTempo() {
     return;
   }
   const RowPosition position = modulePosition();
-  if (position != overridePosition) {
+  const bool loopedBack =
+      lastPosition != RowPosition{-1, -1} && position < lastPosition;
+  if (!loopedBack && position != overridePosition &&
+      tempoRows.count(position) > 0) {
+    tempoOverride = 0;
+    applyModuleTempo();
     overridePosition = position;
-    if (tempoRows.count(position) > 0) {
-      tempoOverride = 0;
-      applyModuleTempo();
-      return;
-    }
+    lastPosition = position;
+    return;
   }
+
+  overridePosition = position;
+  lastPosition = position;
   if (moduleTiming() != overrideTiming) {
     applyModuleTempo();
   }

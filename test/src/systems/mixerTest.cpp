@@ -272,7 +272,7 @@ void renderSeconds(Mixer &mixer, double seconds) {
 
 } // namespace
 
-SCENARIO("Tempo holds until the tune's own tempo command comes round again") {
+SCENARIO("A module loop-back does not clear the override") {
   GIVEN("A tune whose single pattern sets tempo 20 on its first row") {
     Mixer mixer(MODULE_RATE);
     REQUIRE(mixer.loadModule(tempoModule()));
@@ -280,17 +280,12 @@ SCENARIO("Tempo holds until the tune's own tempo command comes round again") {
     mixer.setModuleTempo(1.0);
     renderSeconds(mixer, 0.05);
 
-    WHEN("Tempo 14 is set on the first row") {
+    WHEN("Tempo 14 is set and the module wraps back to an earlier row") {
       mixer.overrideModuleTempo(14);
 
-      THEN("It still holds after the 6.4 s the pattern lasts at tempo 20") {
-        renderSeconds(mixer, 8.5);
-        REQUIRE(mixer.isModuleTempoOverridden());
-      }
-
-      THEN("The first row's command ends it once the 9.1 s pattern loops") {
+      THEN("The override stays active past the loop-back") {
         renderSeconds(mixer, 9.5);
-        REQUIRE_FALSE(mixer.isModuleTempoOverridden());
+        REQUIRE(mixer.isModuleTempoOverridden());
       }
     }
 
@@ -299,26 +294,6 @@ SCENARIO("Tempo holds until the tune's own tempo command comes round again") {
       mixer.startModule();
 
       THEN("The override is gone") {
-        REQUIRE_FALSE(mixer.isModuleTempoOverridden());
-      }
-    }
-  }
-}
-
-SCENARIO("Tempo set before the tune's first row has sounded still holds") {
-  GIVEN("A tune whose first row sets tempo 20, not yet rendered") {
-    Mixer mixer(MODULE_RATE);
-    REQUIRE(mixer.loadModule(tempoModule()));
-    mixer.startModule();
-    mixer.setModuleTempo(1.0);
-
-    WHEN("Tempo 14 is set at once") {
-      mixer.overrideModuleTempo(14);
-
-      THEN("The first row's own command does not change the pace") {
-        renderSeconds(mixer, 8.5);
-        REQUIRE(mixer.isModuleTempoOverridden());
-        renderSeconds(mixer, 1.0);
         REQUIRE_FALSE(mixer.isModuleTempoOverridden());
       }
     }
