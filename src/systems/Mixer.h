@@ -97,6 +97,7 @@ private:
   double moduleTempoFactor = 1.0;
   int tempoOverride = 0;
   RowPosition overridePosition{-1, -1};
+  RowPosition lastPosition{-1, -1};
   ModuleTiming overrideTiming{0, 0};
   std::set<RowPosition> tempoRows;
   int musicVolume;
