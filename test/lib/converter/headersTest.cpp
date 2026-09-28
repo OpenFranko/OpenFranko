@@ -2,7 +2,7 @@
 #include <catch2/catch_all.hpp>
 #include <vector>
 
-using namespace openfranko::lib::converter::headers;
+using namespace openfranko::lib::converter::shared::headers;
 
 namespace {
 
@@ -94,13 +94,9 @@ SCENARIO("parseBitmapHeader reads all fields from big-endian data") {
         REQUIRE(hdr.gridY == 16);
       }
 
-      THEN("tile height is correct") {
-        REQUIRE(hdr.tileHeight == 32);
-      }
+      THEN("tile height is correct") { REQUIRE(hdr.tileHeight == 32); }
 
-      THEN("bitplane count is correct") {
-        REQUIRE(hdr.numberOfBitplanes == 5);
-      }
+      THEN("bitplane count is correct") { REQUIRE(hdr.numberOfBitplanes == 5); }
 
       THEN("data offsets are correct") {
         REQUIRE(hdr.offsetToByteTable2 == 0x1000);

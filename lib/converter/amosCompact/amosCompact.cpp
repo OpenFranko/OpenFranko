@@ -48,7 +48,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
       throw std::runtime_error("File is too small to be a valid SPACK screen");
     }
 
-    auto spackHeader = headers::parseSPACKHeader(data);
+    auto spackHeader = shared::headers::parseSPACKHeader(data);
     palette = std::vector<uint16_t>(std::begin(spackHeader.amigaPalette),
                                     std::end(spackHeader.amigaPalette));
     data = std::vector<uint8_t>(data.begin() + consts::SPACK_HEADER_SIZE,
@@ -60,7 +60,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("File is not a valid packed bitmap");
   }
 
-  auto bitmapHeader = headers::parseBitmapHeader(data);
+  auto bitmapHeader = shared::headers::parseBitmapHeader(data);
 
   if (bitmapHeader.numberOfBitplanes == 0 ||
       bitmapHeader.numberOfBitplanes > consts::MAX_SUPPORTED_BITPLANES) {

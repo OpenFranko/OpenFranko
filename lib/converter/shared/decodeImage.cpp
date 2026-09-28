@@ -5,7 +5,7 @@
 #include "headers.h"
 #include <stdexcept>
 
-namespace openfranko::lib::converter {
+namespace openfranko::lib::converter::shared {
 
 DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
                               const uint16_t *palette, int numberOfColors) {
@@ -43,4 +43,4 @@ DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
   return img;
 }
 
-} // namespace openfranko::lib::converter
+} // namespace openfranko::lib::converter::shared

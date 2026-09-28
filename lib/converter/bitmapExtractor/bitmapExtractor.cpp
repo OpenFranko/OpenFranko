@@ -13,8 +13,8 @@ namespace openfranko::lib::converter::bitmapExtractor {
 
 namespace amosConsts = amosCompact::consts;
 namespace pal = spriteSheet::palettes;
-using converter::decodeAmosBitmap;
-using converter::DecodedImage;
+using converter::shared::decodeAmosBitmap;
+using converter::shared::DecodedImage;
 
 namespace {
 
@@ -106,7 +106,7 @@ std::vector<uint16_t> readSPACKPalette(const std::vector<uint8_t> &data,
   }
   std::vector<uint8_t> slice(data.begin() + static_cast<std::ptrdiff_t>(offset),
                              data.end());
-  auto hdr = headers::parseSPACKHeader(slice);
+  auto hdr = shared::headers::parseSPACKHeader(slice);
   return {std::begin(hdr.amigaPalette), std::end(hdr.amigaPalette)};
 }
 

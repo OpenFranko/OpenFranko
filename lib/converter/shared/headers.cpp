@@ -2,7 +2,7 @@
 #include "../../helpers/helpers.h"
 #include "../amosCompact/Consts.h"
 
-namespace openfranko::lib::converter::headers {
+namespace openfranko::lib::converter::shared::headers {
 
 SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data) {
   helpers::BigEndianReader reader(data);
@@ -41,4 +41,4 @@ BitmapHeader parseBitmapHeader(const std::vector<uint8_t> &data) {
   return header;
 }
 
-} // namespace openfranko::lib::converter::headers
+} // namespace openfranko::lib::converter::shared::headers

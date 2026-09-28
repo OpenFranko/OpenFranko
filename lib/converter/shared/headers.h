@@ -7,6 +7,7 @@
 namespace openfranko {
 namespace lib {
 namespace converter {
+namespace shared {
 namespace headers {
 
 struct SPACKHeader {
@@ -40,6 +41,7 @@ struct BitmapHeader {
 BitmapHeader parseBitmapHeader(const std::vector<uint8_t> &data);
 
 } // namespace headers
+} // namespace shared
 } // namespace converter
 } // namespace lib
 } // namespace openfranko

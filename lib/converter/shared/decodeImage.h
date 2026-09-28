@@ -7,6 +7,7 @@
 namespace openfranko {
 namespace lib {
 namespace converter {
+namespace shared {
 
 struct DecodedImage {
   uint16_t width = 0;
@@ -17,6 +18,7 @@ struct DecodedImage {
 DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
                               const uint16_t *palette, int numberOfColors);
 
+} // namespace shared
 } // namespace converter
 } // namespace lib
 } // namespace openfranko
