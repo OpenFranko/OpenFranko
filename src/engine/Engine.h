@@ -19,7 +19,7 @@ class Engine {
 public:
   Engine();
   Engine(states::EngineStateEnum firstState,
-         street::GameSession startingSession);
+         street::ui::GameSession startingSession);
   ~Engine();
 
   bool isRunning();
@@ -40,7 +40,7 @@ private:
   systems::AudioSystem audioSystem;
   systems::ControllerSystem controllerSystem;
   effects::core::GameOptions options;
-  street::GameSession session;
+  street::ui::GameSession session;
 
   std::unique_ptr<states::IEngineState> currentState;
   bool running;

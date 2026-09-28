@@ -67,13 +67,13 @@ const effects::color::AmigaPalette &panelPalette();
 systems::Display stageOutput(const IndexedSurface *display,
                              const effects::color::AmigaPalette &palette,
                              const amal::Object &screenDisplay, int offsetX,
-                             const StatusPanel *panel, int panelY,
+                             const ui::StatusPanel *panel, int panelY,
                              const effects::color::AmigaPalette &panelColors,
                              const StageLayout &window);
 void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::color::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,
-                  const StatusPanel *panel, int panelY,
+                  const ui::StatusPanel *panel, int panelY,
                   const effects::color::AmigaPalette &panelColors,
                   const StageLayout &window);
 

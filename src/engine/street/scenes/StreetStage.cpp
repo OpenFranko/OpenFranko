@@ -78,7 +78,7 @@ int rebasedSample(int request) {
 
 } // namespace
 
-StreetStage::StreetStage(StreetHost &host, GameSession &session,
+StreetStage::StreetStage(StreetHost &host, ui::GameSession &session,
                          effects::core::GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
@@ -98,7 +98,7 @@ void StreetStage::advance(const StreetInput &input) {
     return;
   }
   ++m_frame;
-  if (input.key != SystemKey::None) {
+  if (input.key != ui::SystemKey::None) {
     m_session.keyLatch = input.key;
   }
   m_mouseButton = input.mouseButton;
@@ -156,7 +156,7 @@ const core::IndexedSurface &StreetStage::display() const {
   return m_buffer.shown();
 }
 
-const StatusPanel *StreetStage::panel() const { return m_panel.get(); }
+const ui::StatusPanel *StreetStage::panel() const { return m_panel.get(); }
 
 bool StreetStage::isPanelShown() const { return m_panelShown; }
 
@@ -195,7 +195,7 @@ bool StreetStage::col(int number) const { return m_bobs.collided(number); }
 
 int StreetStage::stage() const { return m_session.registers[RO]; }
 
-StatusPanel::Stats StreetStage::stats() const {
+ui::StatusPanel::Stats StreetStage::stats() const {
   const amal::Registers &registers = m_session.registers;
   return {registers[RF], registers[RO], registers[RN], registers[RG]};
 }
@@ -255,13 +255,13 @@ void StreetStage::openScreens(bool shown) {
   m_copper.reset(registers());
   m_screen.fill(0);
   m_buffer = core::DoubleBuffer(m_screen);
-  m_panel = std::make_unique<StatusPanel>(
+  m_panel = std::make_unique<ui::StatusPanel>(
       m_host.loadPanelPicture(LOADING_STRIP),
       m_host.loadPanelPicture(PANEL_ARTWORK), m_session.version);
 }
 
 StreetStage::Flow StreetStage::stageInit() {
-  m_session.keyLatch = SystemKey::None;
+  m_session.keyLatch = ui::SystemKey::None;
   m_host.stopMusic();
   m_images.clear();
   global(RO) = word(global(RO) + 1);
@@ -804,7 +804,7 @@ StreetStage::Flow StreetStage::advanceLeaveFlushed() {
 }
 
 StreetStage::Flow StreetStage::advanceLeavePasted() {
-  m_session.streetExit.emplace(StreetExit{
+  m_session.streetExit.emplace(ui::StreetExit{
       m_screen, *m_block, m_playerX, m_energyShown, m_killsShown, m_buffer});
   m_block.reset();
   m_outcome = Outcome::LevelFinished;
@@ -928,31 +928,33 @@ void StreetStage::closePlayScreen() {
 }
 
 void StreetStage::sys() {
-  const SystemKey key = std::exchange(m_session.keyLatch, SystemKey::None);
+  const ui::SystemKey key =
+      std::exchange(m_session.keyLatch, ui::SystemKey::None);
   switch (key) {
-  case SystemKey::MusicOff:
+  case ui::SystemKey::MusicOff:
     m_host.setMusicVolume(0);
     m_options.music = false;
     break;
-  case SystemKey::MusicOn:
+  case ui::SystemKey::MusicOn:
     m_options.music = true;
     m_host.setMusicVolume(STREET_MUSIC_VOLUME);
     break;
-  case SystemKey::Pal:
-  case SystemKey::Ntsc:
-    core::switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
+  case ui::SystemKey::Pal:
+  case ui::SystemKey::Ntsc:
+    core::switchStandard(m_options, m_screenDisplay,
+                         key == ui::SystemKey::Ntsc);
     break;
-  case SystemKey::Lives:
+  case ui::SystemKey::Lives:
     global(RG) = CHEAT_LIVES;
     m_panel->score(stats());
     break;
-  case SystemKey::Escape:
+  case ui::SystemKey::Escape:
     global(RN) = 0;
     m_escape = true;
     m_machine.freezeAll();
     break;
-  case SystemKey::None:
-  case SystemKey::Other:
+  case ui::SystemKey::None:
+  case ui::SystemKey::Other:
     break;
   }
   if (m_mouseButton && global(RI) > 0) {

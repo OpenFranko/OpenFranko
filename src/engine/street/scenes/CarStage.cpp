@@ -123,12 +123,12 @@ std::string passwordFor(int stage) {
 
 } // namespace
 
-CarStage::CarStage(StreetHost &host, GameSession &session,
+CarStage::CarStage(StreetHost &host, ui::GameSession &session,
                    effects::core::GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen), m_road(0, 0), m_strip(0, 0),
-      m_panel(std::make_unique<StatusPanel>(
+      m_panel(std::make_unique<ui::StatusPanel>(
           host.loadPanelPicture(StreetStage::LOADING_STRIP),
           host.loadPanelPicture(StreetStage::PANEL_ARTWORK), session.version)),
       m_screenDisplay{
@@ -148,7 +148,7 @@ void CarStage::advance(const StreetInput &input) {
     return;
   }
   ++m_frame;
-  if (input.key != SystemKey::None) {
+  if (input.key != ui::SystemKey::None) {
     m_session.keyLatch = input.key;
   }
   m_mouseButton = input.mouseButton;
@@ -200,7 +200,7 @@ const core::IndexedSurface &CarStage::display() const {
   return m_buffer.shown();
 }
 
-const StatusPanel *CarStage::panel() const { return m_panel.get(); }
+const ui::StatusPanel *CarStage::panel() const { return m_panel.get(); }
 
 bool CarStage::isScreenShown() const { return m_copper.live().screenShown; }
 
@@ -234,7 +234,7 @@ int16_t &CarStage::global(int index) { return m_machine.globalRegister(index); }
 
 int CarStage::stage() const { return m_session.registers[RO]; }
 
-StatusPanel::Stats CarStage::stats() const {
+ui::StatusPanel::Stats CarStage::stats() const {
   const amal::Registers &registers = m_session.registers;
   return {registers[RF], registers[RO], registers[RN], registers[RG]};
 }
@@ -367,7 +367,7 @@ void CarStage::startDrive() {
   m_bush2 = BUSH_SPACING;
   m_trackBand = 10;
   m_pavementBand = 5;
-  const DriveCarryOver &left = m_session.lastDrive;
+  const ui::DriveCarryOver &left = m_session.lastDrive;
   m_ignition = left.ignition;
   m_roadBand = left.roadBand;
   m_fenceBand = left.fenceBand;
@@ -627,15 +627,17 @@ CarStage::Flow CarStage::closePlayScreen() {
 }
 
 void CarStage::sys() {
-  const SystemKey key = std::exchange(m_session.keyLatch, SystemKey::None);
-  if (key == SystemKey::Pal || key == SystemKey::Ntsc) {
-    core::switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
+  const ui::SystemKey key =
+      std::exchange(m_session.keyLatch, ui::SystemKey::None);
+  if (key == ui::SystemKey::Pal || key == ui::SystemKey::Ntsc) {
+    core::switchStandard(m_options, m_screenDisplay,
+                         key == ui::SystemKey::Ntsc);
   }
-  if (key == SystemKey::Lives) {
+  if (key == ui::SystemKey::Lives) {
     global(RG) = CHEAT_LIVES;
     m_panel->score(stats());
   }
-  if (key == SystemKey::Escape) {
+  if (key == ui::SystemKey::Escape) {
     global(RN) = 0;
     m_escape = true;
     m_machine.freezeAll();

@@ -62,7 +62,7 @@ joystickFrom(const systems::ControllerSystem::ControllerStates &states) {
 CharacterSelectionState::CharacterSelectionState(
     systems::VideoSystem &videoSystem, systems::AudioSystem &audioSystem,
     systems::ControllerSystem &controllerSystem,
-    effects::core::GameOptions &options, street::GameSession &session)
+    effects::core::GameOptions &options, street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_session(session),
       m_selection(options, session.nameScreenOpen ? 1 : 0, session.version),

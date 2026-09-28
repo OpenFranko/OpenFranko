@@ -70,7 +70,7 @@ constexpr int FADE_WAIT = 30;
 
 } // namespace
 
-HighScoreScene::HighScoreScene(StreetHost &host, GameSession &session,
+HighScoreScene::HighScoreScene(StreetHost &host, ui::GameSession &session,
                                const effects::core::GameOptions &options,
                                Save save)
     : m_host(host), m_session(session), m_options(options),
@@ -209,7 +209,7 @@ void HighScoreScene::runBasic() {
 void HighScoreScene::reset() {
   amal::Registers &registers = m_session.registers;
   const int16_t kills = registers[RN];
-  registers = GameSession::freshRegisters();
+  registers = ui::GameSession::freshRegisters();
   registers[RN] = kills;
   if (m_session.version == GameVersion::V12) {
     m_host.stopMusic();

@@ -34,7 +34,7 @@ public:
   static constexpr int FILES = 4;
   static constexpr int SECOND_DANCE_PAGE = 10;
 
-  EndingScene(StreetHost &host, GameSession &session, bool ntsc = false);
+  EndingScene(StreetHost &host, ui::GameSession &session, bool ntsc = false);
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
@@ -129,7 +129,7 @@ private:
   void stillTest();
 
   StreetHost &m_host;
-  GameSession &m_session;
+  ui::GameSession &m_session;
   amal::Machine m_machine;
   core::LoadingMock m_loading;
   core::ImageBank m_images;
@@ -141,8 +141,8 @@ private:
   bool m_stillVbl = false;
   std::optional<core::DoubleBuffer> m_dancerBuffer;
   int m_bobScreen = 0;
-  std::optional<BossExit> m_stage;
-  std::unique_ptr<StatusPanel> m_panel;
+  std::optional<ui::BossExit> m_stage;
+  std::unique_ptr<ui::StatusPanel> m_panel;
   bool m_stageShown = false;
   bool m_panelShown = false;
   int m_panelTop = core::PANEL_DISPLAY_Y;

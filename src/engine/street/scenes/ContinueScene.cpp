@@ -49,7 +49,7 @@ effects::color::AmigaPalette continuePalette() {
 
 } // namespace
 
-ContinueScene::ContinueScene(StreetHost &host, GameSession &session)
+ContinueScene::ContinueScene(StreetHost &host, ui::GameSession &session)
     : m_host(host), m_session(session), m_machine(session.registers),
       m_screen(WIDTH, HEIGHT), m_display(WIDTH, HEIGHT),
       m_palette(COLORS, BLACK) {

@@ -28,27 +28,27 @@ street::core::Picture panelPicture(const std::string &file) {
                                bitmap.hotspotY, std::move(bitmap.pixels)};
 }
 
-street::BossExit lastBossExit(const amal::Registers &registers) {
+street::ui::BossExit lastBossExit(const amal::Registers &registers) {
   const street::core::StageLayout layout =
       street::core::stageLayout(effects::core::GameOptions{});
-  street::StatusPanel panel(panelPicture("0384.bmp"),
-                            panelPicture("0384_1.bmp"));
+  street::ui::StatusPanel panel(panelPicture("0384.bmp"),
+                                panelPicture("0384_1.bmp"));
   panel.score({registers[RF], registers[RO], registers[RN], registers[RG]});
   const street::core::IndexedSurface screen(street::BossStage::SCREEN_WIDTH,
                                             street::BossStage::SCREEN_HEIGHT);
-  return street::BossExit{street::core::DoubleBuffer(screen),
-                          street::core::levelPalette(false),
-                          street::core::playDisplayY(layout),
-                          0,
-                          panel.surface(),
-                          street::core::panelDisplayY(layout),
-                          layout.laced};
+  return street::ui::BossExit{street::core::DoubleBuffer(screen),
+                              street::core::levelPalette(false),
+                              street::core::playDisplayY(layout),
+                              0,
+                              panel.surface(),
+                              street::core::panelDisplayY(layout),
+                              layout.laced};
 }
 
 } // namespace
 
 int main() {
-  street::GameSession session;
+  street::ui::GameSession session;
   session.registers[RO] = LAST_STAGE;
   session.bossExit.emplace(lastBossExit(session.registers));
   Engine engine(states::EngineStateEnum::Ending, std::move(session));

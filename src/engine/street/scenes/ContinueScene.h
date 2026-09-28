@@ -26,7 +26,7 @@ public:
   static constexpr int DISPLAY_LINE = 50;
   static constexpr int HAND = 10;
 
-  ContinueScene(StreetHost &host, GameSession &session);
+  ContinueScene(StreetHost &host, ui::GameSession &session);
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
@@ -49,7 +49,7 @@ private:
   void redraw();
 
   StreetHost &m_host;
-  GameSession &m_session;
+  ui::GameSession &m_session;
   amal::Machine m_machine;
   core::ImageBank m_images;
   core::BobLayer m_bobs;

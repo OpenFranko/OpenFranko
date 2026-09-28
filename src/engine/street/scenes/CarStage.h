@@ -39,7 +39,7 @@ public:
   static constexpr int FILES = 3;
   static constexpr int PASSES_PER_SECOND = 15;
 
-  CarStage(StreetHost &host, GameSession &session,
+  CarStage(StreetHost &host, ui::GameSession &session,
            effects::core::GameOptions &options);
 
   void advance(const StreetInput &input);
@@ -50,7 +50,7 @@ public:
   const core::BobLayer &bobs() const;
   const core::IndexedSurface &screen() const;
   const core::IndexedSurface &display() const;
-  const StatusPanel *panel() const;
+  const ui::StatusPanel *panel() const;
   bool isScreenShown() const;
   bool isPanelShown() const;
   amal::Machine &machine();
@@ -93,7 +93,7 @@ private:
 
   int16_t &global(int index);
   int stage() const;
-  StatusPanel::Stats stats() const;
+  ui::StatusPanel::Stats stats() const;
   Flow wait(int frames, Step next);
   Flow hold(int frames, Step next);
   Flow autoback(core::DoubleBuffer::Op op, Step next);
@@ -128,7 +128,7 @@ private:
   void runBasic(const StreetInput &input);
 
   StreetHost &m_host;
-  GameSession &m_session;
+  ui::GameSession &m_session;
   effects::core::GameOptions &m_options;
   amal::Machine m_machine;
   core::ImageBank m_images;
@@ -138,7 +138,7 @@ private:
   core::IndexedSurface m_road;
   core::IndexedSurface m_strip;
   core::Picture m_backdrop;
-  std::unique_ptr<StatusPanel> m_panel;
+  std::unique_ptr<ui::StatusPanel> m_panel;
   amal::Object m_screenDisplay;
   core::StageDisplay m_copper;
   effects::color::AmigaPalette m_palette;

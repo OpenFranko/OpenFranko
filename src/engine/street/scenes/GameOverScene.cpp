@@ -57,7 +57,7 @@ effects::color::AmigaPalette graveyardPalette() {
 
 } // namespace
 
-GameOverScene::GameOverScene(StreetHost &host, GameSession &session)
+GameOverScene::GameOverScene(StreetHost &host, ui::GameSession &session)
     : m_host(host), m_session(session), m_screen(PICTURE_WIDTH, PICTURE_HEIGHT),
       m_palette(graveyardPalette()), m_border(session.border),
       m_copperBorder(session.border) {}

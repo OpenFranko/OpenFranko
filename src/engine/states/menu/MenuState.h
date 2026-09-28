@@ -26,7 +26,8 @@ public:
   MenuState(systems::VideoSystem &videoSystem,
             systems::AudioSystem &audioSystem,
             systems::ControllerSystem &controllerSystem,
-            effects::core::GameOptions &options, street::GameSession &session);
+            effects::core::GameOptions &options,
+            street::ui::GameSession &session);
 
   std::optional<EngineStateEnum> update() override;
 
@@ -45,7 +46,7 @@ private:
   systems::AudioSystem &m_audioSystem;
   systems::ControllerSystem &m_controllerSystem;
   effects::core::GameOptions &m_options;
-  street::GameSession &m_session;
+  street::ui::GameSession &m_session;
   systems::IndexedBitmap m_backdrop;
   systems::IndexedBitmap m_title;
   systems::IndexedBitmap m_hiscores;

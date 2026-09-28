@@ -21,7 +21,7 @@ public:
   HighScoreState(systems::VideoSystem &videoSystem,
                  systems::AudioSystem &audioSystem,
                  effects::core::GameOptions &options,
-                 street::GameSession &session);
+                 street::ui::GameSession &session);
 
   std::optional<EngineStateEnum> update() override;
 

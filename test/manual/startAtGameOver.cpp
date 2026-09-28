@@ -12,7 +12,7 @@ constexpr int FIRST_STAGE = 1;
 } // namespace
 
 int main() {
-  street::GameSession session;
+  street::ui::GameSession session;
   session.stageReached = FIRST_STAGE;
   session.border = street::core::STAGE_BORDER;
   Engine engine(states::EngineStateEnum::GameOver, std::move(session));

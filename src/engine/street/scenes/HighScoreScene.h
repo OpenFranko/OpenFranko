@@ -35,7 +35,7 @@ public:
 
   using Save = std::function<void(const HighScoreTable &)>;
 
-  HighScoreScene(StreetHost &host, GameSession &session,
+  HighScoreScene(StreetHost &host, ui::GameSession &session,
                  const effects::core::GameOptions &options, Save save);
 
   void advance();
@@ -90,7 +90,7 @@ private:
   void redraw();
 
   StreetHost &m_host;
-  GameSession &m_session;
+  ui::GameSession &m_session;
   const effects::core::GameOptions &m_options;
   Save m_save;
   core::LoadingMock m_loading;

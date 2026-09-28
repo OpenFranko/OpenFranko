@@ -52,7 +52,7 @@ public:
 
 struct StreetInput {
   int16_t joystick = 0;
-  SystemKey key = SystemKey::None;
+  ui::SystemKey key = ui::SystemKey::None;
   bool mouseButton = false;
 };
 
@@ -65,7 +65,7 @@ public:
   static constexpr int LOADING_STRIP = 0;
   static constexpr int PANEL_ARTWORK = 1;
 
-  StreetStage(StreetHost &host, GameSession &session,
+  StreetStage(StreetHost &host, ui::GameSession &session,
               effects::core::GameOptions &options);
 
   void advance(const StreetInput &input);
@@ -76,7 +76,7 @@ public:
   const core::BobLayer &bobs() const;
   const core::IndexedSurface &screen() const;
   const core::IndexedSurface &display() const;
-  const StatusPanel *panel() const;
+  const ui::StatusPanel *panel() const;
   amal::Machine &machine();
   int columnsWalked() const;
   int wavesSpawned() const;
@@ -125,7 +125,7 @@ private:
   bool bobCol(int number, int first = 0, int last = core::BobLayer::COUNT - 1);
   bool col(int number) const;
   int stage() const;
-  StatusPanel::Stats stats() const;
+  ui::StatusPanel::Stats stats() const;
   void stall();
   void autoback(core::DoubleBuffer::Op op);
   bool pasteStalled(int x, int y, int image);
@@ -176,14 +176,14 @@ private:
   void runBasic(const StreetInput &input);
 
   StreetHost &m_host;
-  GameSession &m_session;
+  ui::GameSession &m_session;
   effects::core::GameOptions &m_options;
   amal::Machine m_machine;
   core::ImageBank m_images;
   core::BobLayer m_bobs;
   core::IndexedSurface m_screen;
   core::DoubleBuffer m_buffer;
-  std::unique_ptr<StatusPanel> m_panel;
+  std::unique_ptr<ui::StatusPanel> m_panel;
   amal::Object m_screenDisplay;
   core::StageDisplay m_copper;
   effects::color::AmigaPalette m_palette;

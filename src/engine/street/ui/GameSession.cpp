@@ -1,6 +1,6 @@
 #include "GameSession.h"
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::ui {
 namespace {
 
 constexpr int RF = 5;
@@ -21,4 +21,4 @@ amal::Registers GameSession::freshRegisters() {
   return registers;
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::ui

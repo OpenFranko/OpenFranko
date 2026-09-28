@@ -57,7 +57,7 @@ void typeCheatKey(std::string &text, char key) {
   }
 }
 
-void applyCheatCodes(GameSession &session) {
+void applyCheatCodes(ui::GameSession &session) {
   const std::string &text = session.textBuffer;
   const bool version12 = session.version == GameVersion::V12;
   for (const RegisterCheat &cheat : version12 ? VERSION12_LIVES : LIVES) {

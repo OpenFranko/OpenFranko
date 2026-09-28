@@ -100,7 +100,7 @@ int StageDisplay::panelY(bool laced) const {
 systems::Display stageOutput(const IndexedSurface *display,
                              const effects::color::AmigaPalette &palette,
                              const amal::Object &screenDisplay, int offsetX,
-                             const StatusPanel *panel, int panelY,
+                             const ui::StatusPanel *panel, int panelY,
                              const effects::color::AmigaPalette &panelColors,
                              const StageLayout &window) {
   const int rows = frameRows(window);
@@ -132,11 +132,11 @@ systems::Display stageOutput(const IndexedSurface *display,
   panelLayer.pixels = panelSurface.pixels().data();
   panelLayer.stride = panelSurface.width();
   panelLayer.sourceColumns = panelSurface.width();
-  panelLayer.sourceRows = StatusPanel::VISIBLE_HEIGHT;
+  panelLayer.sourceRows = ui::StatusPanel::VISIBLE_HEIGHT;
   panelLayer.repeat = perLine;
   panelLayer.top = (panelY - top) * perLine;
   panelLayer.columns = FRAME_WIDTH;
-  panelLayer.rows = StatusPanel::VISIBLE_HEIGHT * perLine;
+  panelLayer.rows = ui::StatusPanel::VISIBLE_HEIGHT * perLine;
   panelLayer.palette = panelColors;
   output.layers.push_back(std::move(panelLayer));
   output.layers.push_back(systems::solidLayer(
@@ -148,7 +148,7 @@ systems::Display stageOutput(const IndexedSurface *display,
 void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::color::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,
-                  const StatusPanel *panel, int panelY,
+                  const ui::StatusPanel *panel, int panelY,
                   const effects::color::AmigaPalette &panelColors,
                   const StageLayout &window) {
   systems::rasterize(stageOutput(display, palette, screenDisplay, offsetX,

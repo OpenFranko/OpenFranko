@@ -17,6 +17,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace ui {
 
 enum class SystemKey {
   None,
@@ -79,6 +80,7 @@ struct GameSession {
   std::optional<BossExit> bossExit;
 };
 
+} // namespace ui
 } // namespace street
 } // namespace engine
 } // namespace src

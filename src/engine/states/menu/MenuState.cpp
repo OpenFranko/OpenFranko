@@ -113,7 +113,7 @@ MenuState::MenuState(systems::VideoSystem &videoSystem,
                      systems::AudioSystem &audioSystem,
                      systems::ControllerSystem &controllerSystem,
                      effects::core::GameOptions &options,
-                     street::GameSession &session)
+                     street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_options(options),
       m_session(session), m_backdrop(loadPicture(BACKDROP, session.version)),

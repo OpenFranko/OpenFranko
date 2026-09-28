@@ -26,7 +26,7 @@ public:
                           systems::AudioSystem &audioSystem,
                           systems::ControllerSystem &controllerSystem,
                           effects::core::GameOptions &options,
-                          street::GameSession &session);
+                          street::ui::GameSession &session);
   ~CharacterSelectionState();
 
   std::optional<EngineStateEnum> update() override;
@@ -38,7 +38,7 @@ private:
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
   systems::ControllerSystem &m_controllerSystem;
-  street::GameSession &m_session;
+  street::ui::GameSession &m_session;
   effects::animation::CharacterSelection m_selection;
   effects::color::VisibleRows m_rows;
   systems::IndexedBitmap m_picture;

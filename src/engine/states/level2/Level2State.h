@@ -22,7 +22,7 @@ public:
               systems::AudioSystem &audioSystem,
               systems::ControllerSystem &controllerSystem,
               effects::core::GameOptions &options,
-              street::GameSession &session);
+              street::ui::GameSession &session);
 
   std::optional<EngineStateEnum> update() override;
 

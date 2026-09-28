@@ -12,7 +12,7 @@ void save(const street::HighScoreTable &table) {
 HighScoreState::HighScoreState(systems::VideoSystem &videoSystem,
                                systems::AudioSystem &audioSystem,
                                effects::core::GameOptions &options,
-                               street::GameSession &session)
+                               street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_host(audioSystem, session.version),
       m_scene(m_host, session, options, save),
       m_rows(effects::color::visibleRows(

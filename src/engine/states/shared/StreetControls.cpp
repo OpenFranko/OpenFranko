@@ -6,26 +6,27 @@ namespace openfranko::src::engine::states::shared {
 
 namespace {
 
-street::SystemKey heldSystemKey(const systems::ControllerSystem &controller) {
+street::ui::SystemKey
+heldSystemKey(const systems::ControllerSystem &controller) {
   if (controller.isKeyHeld(systems::Key::Escape)) {
-    return street::SystemKey::Escape;
+    return street::ui::SystemKey::Escape;
   }
   if (controller.isKeyHeld(systems::Key::F9)) {
-    return street::SystemKey::Lives;
+    return street::ui::SystemKey::Lives;
   }
   if (controller.isKeyHeld(systems::Key::F1)) {
-    return street::SystemKey::Pal;
+    return street::ui::SystemKey::Pal;
   }
   if (controller.isKeyHeld(systems::Key::F2)) {
-    return street::SystemKey::Ntsc;
+    return street::ui::SystemKey::Ntsc;
   }
   if (controller.isKeyHeld(systems::Key::F3)) {
-    return street::SystemKey::MusicOff;
+    return street::ui::SystemKey::MusicOff;
   }
   if (controller.isKeyHeld(systems::Key::F4)) {
-    return street::SystemKey::MusicOn;
+    return street::ui::SystemKey::MusicOn;
   }
-  return street::SystemKey::None;
+  return street::ui::SystemKey::None;
 }
 
 } // namespace
@@ -42,22 +43,22 @@ street::StreetInput readStreetInput(const systems::ControllerSystem &controller,
   if (const auto key = controller.functionKey()) {
     switch (*key) {
     case systems::FunctionKey::F1:
-      input.key = street::SystemKey::MusicOn;
+      input.key = street::ui::SystemKey::MusicOn;
       break;
     case systems::FunctionKey::F2:
-      input.key = street::SystemKey::MusicOff;
+      input.key = street::ui::SystemKey::MusicOff;
       break;
     case systems::FunctionKey::Escape:
-      input.key = street::SystemKey::Escape;
+      input.key = street::ui::SystemKey::Escape;
       break;
     case systems::FunctionKey::F3:
-      input.key = street::SystemKey::Pal;
+      input.key = street::ui::SystemKey::Pal;
       break;
     case systems::FunctionKey::F4:
-      input.key = street::SystemKey::Ntsc;
+      input.key = street::ui::SystemKey::Ntsc;
       break;
     case systems::FunctionKey::Other:
-      input.key = street::SystemKey::Other;
+      input.key = street::ui::SystemKey::Other;
       break;
     }
   }

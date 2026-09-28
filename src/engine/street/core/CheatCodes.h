@@ -15,7 +15,7 @@ namespace core {
 constexpr std::size_t CHEAT_TEXT_LENGTH = 15;
 
 void typeCheatKey(std::string &text, char key);
-void applyCheatCodes(GameSession &session);
+void applyCheatCodes(ui::GameSession &session);
 
 } // namespace core
 } // namespace street

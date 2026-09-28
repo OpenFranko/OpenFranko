@@ -99,7 +99,7 @@ effects::color::AmigaPalette beat(effects::color::AmigaColor ink,
 
 } // namespace
 
-EndingScene::EndingScene(StreetHost &host, GameSession &session, bool ntsc)
+EndingScene::EndingScene(StreetHost &host, ui::GameSession &session, bool ntsc)
     : m_host(host), m_session(session), m_machine(session.registers),
       m_display(0, 0), m_border(core::STAGE_BORDER), m_ntsc(ntsc),
       m_displayLine(effects::color::pictureLine(DISPLAY_LINE, ntsc)) {}
@@ -170,10 +170,10 @@ systems::Display EndingScene::output() const {
     layer.pixels = shown->pixels().data();
     layer.stride = shown->width();
     layer.sourceColumns = shown->width();
-    layer.sourceRows = StatusPanel::VISIBLE_HEIGHT;
+    layer.sourceRows = ui::StatusPanel::VISIBLE_HEIGHT;
     layer.top = m_panelTop - m_displayLine;
-    layer.columns = StatusPanel::WIDTH;
-    layer.rows = StatusPanel::VISIBLE_HEIGHT;
+    layer.columns = ui::StatusPanel::WIDTH;
+    layer.rows = ui::StatusPanel::VISIBLE_HEIGHT;
     layer.palette = core::panelPalette();
     display.layers.push_back(std::move(layer));
   }
@@ -492,7 +492,7 @@ void EndingScene::start() {
 
 void EndingScene::era() {
   m_credits = m_host.loadEndingCredits();
-  m_panel = std::make_unique<StatusPanel>(
+  m_panel = std::make_unique<ui::StatusPanel>(
       m_host.loadPanelPicture(StreetStage::LOADING_STRIP), core::Picture{},
       m_session.version);
   m_host.stopMusic();

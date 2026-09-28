@@ -8,7 +8,7 @@ Level2CarState::Level2CarState(systems::VideoSystem &videoSystem,
                                systems::AudioSystem &audioSystem,
                                systems::ControllerSystem &controllerSystem,
                                effects::core::GameOptions &options,
-                               street::GameSession &session)
+                               street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_options(options), m_host(audioSystem, session.version),
       m_stage(m_host, session, options) {}

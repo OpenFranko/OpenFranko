@@ -8,6 +8,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace ui {
 
 class StatusPanel {
 public:
@@ -41,6 +42,7 @@ private:
   core::IndexedSurface m_surface;
 };
 
+} // namespace ui
 } // namespace street
 } // namespace engine
 } // namespace src

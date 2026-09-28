@@ -8,7 +8,7 @@ void LoadingMock::queue(std::function<void()> load) {
   m_files.push_back(std::move(load));
 }
 
-bool LoadingMock::advance(StatusPanel *panel) {
+bool LoadingMock::advance(ui::StatusPanel *panel) {
   if (m_phase != Phase::Idle && --m_countdown > 0) {
     return false;
   }

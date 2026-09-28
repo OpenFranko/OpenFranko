@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::ui {
 namespace {
 
 constexpr uint8_t EMPTY_BAR_COLOR = 6;
@@ -76,4 +76,4 @@ void StatusPanel::gainEnergy(int energy) {
 
 const core::IndexedSurface &StatusPanel::surface() const { return m_surface; }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::ui

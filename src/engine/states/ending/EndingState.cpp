@@ -6,7 +6,7 @@ EndingState::EndingState(systems::VideoSystem &videoSystem,
                          systems::AudioSystem &audioSystem,
                          systems::ControllerSystem &controllerSystem,
                          const effects::core::GameOptions &options,
-                         street::GameSession &session)
+                         street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem, session.version),
       m_scene(m_host, session, options.ntsc),
