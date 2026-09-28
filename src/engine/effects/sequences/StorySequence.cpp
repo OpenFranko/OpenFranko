@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::sequences {
 namespace {
 
 constexpr int NO_FRAMES = -1;
@@ -75,4 +75,4 @@ void StorySequence::finish() {
   m_finished = true;
 }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::sequences

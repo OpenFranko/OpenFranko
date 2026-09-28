@@ -29,7 +29,7 @@ private:
   effects::color::VisibleRows m_rows;
   systems::IndexedBitmap m_picture;
   systems::Canvas m_screen;
-  effects::FotoSequence m_sequence;
+  effects::sequences::FotoSequence m_sequence;
 };
 
 } // namespace worldSoftware

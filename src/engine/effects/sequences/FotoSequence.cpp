@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::sequences {
 namespace {
 
 constexpr color::AmigaColor WHITE = 0xFFF;
@@ -78,4 +78,4 @@ int FotoSequence::totalFrames() const {
   return closeStart() + color::SCREEN_CLOSE_VBLS;
 }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::sequences

@@ -1,6 +1,6 @@
 #include "BlyskSequence.h"
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::sequences {
 namespace {
 
 constexpr color::AmigaColor BLACK = 0x000;
@@ -61,4 +61,4 @@ void BlyskSequence::startPage() {
   m_fader.start(m_palette, FADE_SPEED, LIT);
 }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::sequences

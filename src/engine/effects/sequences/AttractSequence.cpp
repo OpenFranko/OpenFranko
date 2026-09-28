@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::sequences {
 namespace {
 
 constexpr int TITLE_INPUT_FROM = 10;
@@ -101,4 +101,4 @@ void AttractSequence::advanceHiscores(bool joystickTouched) {
       isOver(m_frame, HISCORE_INPUT_FROM, HISCORE_HOLD, joystickTouched);
 }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::sequences

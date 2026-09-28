@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-using namespace openfranko::src::engine::effects;
+using namespace openfranko::src::engine::effects::sequences;
 
 namespace {
 

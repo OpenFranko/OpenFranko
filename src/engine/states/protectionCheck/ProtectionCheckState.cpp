@@ -17,10 +17,10 @@
 namespace openfranko::src::engine::states::protectionCheck {
 namespace {
 
-using Cells =
-    std::array<effects::CodeCardCheck::Cell, effects::CodeCardCheck::CARDS>;
-using Tries = std::array<effects::CodeCardCheck::Cell,
-                         effects::CodeCardCheck::STAGE_TRIES>;
+using Cells = std::array<effects::sequences::CodeCardCheck::Cell,
+                         effects::sequences::CodeCardCheck::CARDS>;
+using Tries = std::array<effects::sequences::CodeCardCheck::Cell,
+                         effects::sequences::CodeCardCheck::STAGE_TRIES>;
 
 constexpr auto QUESTION_PATH = "assets/03C1.bmp";
 constexpr auto FAILURE_PATH = "assets/03C2.bmp";
@@ -55,22 +55,22 @@ template <typename CellArray> CellArray randomCells() {
   std::random_device seed;
   std::mt19937 random(seed());
   std::uniform_int_distribution<int> coordinate(
-      0, effects::CodeCardCheck::CARD_SIZE - 1);
+      0, effects::sequences::CodeCardCheck::CARD_SIZE - 1);
 
   CellArray cells{};
-  for (effects::CodeCardCheck::Cell &cell : cells) {
+  for (effects::sequences::CodeCardCheck::Cell &cell : cells) {
     cell.x = coordinate(random);
     cell.y = coordinate(random);
   }
   return cells;
 }
 
-effects::CodeCardCheck makeCheck(ProtectionCheckState::Check check) {
+effects::sequences::CodeCardCheck makeCheck(ProtectionCheckState::Check check) {
   if (check == ProtectionCheckState::Check::Stage3) {
-    return effects::CodeCardCheck::stageCheck(loadCards(),
-                                              randomCells<Tries>());
+    return effects::sequences::CodeCardCheck::stageCheck(loadCards(),
+                                                         randomCells<Tries>());
   }
-  return effects::CodeCardCheck(loadCards(), randomCells<Cells>());
+  return effects::sequences::CodeCardCheck(loadCards(), randomCells<Cells>());
 }
 
 void xorRect(systems::IndexedBitmap &image, int x, int y, int width, int height,
@@ -172,8 +172,8 @@ bool ProtectionCheckState::takeAnswer() {
   while (const std::optional<char> key = m_keyboard.inkey()) {
     const char letter =
         static_cast<char>(std::toupper(static_cast<unsigned char>(*key)));
-    if (letter >= effects::CodeCardCheck::FIRST_ANSWER &&
-        letter <= effects::CodeCardCheck::LAST_ANSWER) {
+    if (letter >= effects::sequences::CodeCardCheck::FIRST_ANSWER &&
+        letter <= effects::sequences::CodeCardCheck::LAST_ANSWER) {
       m_check.answer(letter);
       return true;
     }
@@ -196,7 +196,7 @@ void ProtectionCheckState::draw() {
 
 void ProtectionCheckState::show() { m_videoSystem.show(m_screen.output()); }
 
-const effects::CodeCardCheck &ProtectionCheckState::check() const {
+const effects::sequences::CodeCardCheck &ProtectionCheckState::check() const {
   return m_check;
 }
 
@@ -205,7 +205,7 @@ void ProtectionCheckState::showQuestion() {
   m_questionPalette = m_question.palette;
   m_border = m_questionPalette[0];
   m_flasher.start(BOX_INK, BOX_FLASH);
-  const effects::CodeCardCheck::Cell cell = m_check.cell();
+  const effects::sequences::CodeCardCheck::Cell cell = m_check.cell();
   xorRect(m_question, CELL_PITCH * cell.x + BOX_OFFSET,
           CELL_PITCH * cell.y + BOX_OFFSET, BOX_SIZE, BOX_SIZE, BOX_INK);
 }

@@ -59,7 +59,8 @@ constexpr int WALK_TEMPO = 14;
 constexpr int LOGO_SETUP =
     effects::color::SCREEN_OPEN_VBLS + DOUBLE_BUFFER_VBLS + AUTOBACK_VBLS - 1;
 constexpr int JINGLE_WAIT = 10;
-constexpr effects::FotoSequence::Timings LOGO_TIMINGS{3, 210, 3, 45, false};
+constexpr effects::sequences::FotoSequence ::Timings LOGO_TIMINGS{3, 210, 3, 45,
+                                                                  false};
 
 systems::IndexedBitmap filled(int width, int height, uint8_t color) {
   systems::IndexedBitmap bitmap;

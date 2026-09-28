@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::sequences {
 
 CodeCardCheck::CodeCardCheck(std::vector<uint8_t> cards,
                              std::array<Cell, CARDS> cells)
@@ -65,4 +65,4 @@ bool CodeCardCheck::isPassed() const {
   return isFinished() && (m_firstRightPasses ? m_anyRight : !m_anyWrong);
 }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::sequences

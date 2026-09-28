@@ -16,7 +16,8 @@ constexpr int DISPLAY_LINE = 25;
 constexpr std::size_t SCREEN_COLORS = 32;
 constexpr effects::color::AmigaColor BLACK = 0x000;
 
-constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 75, false};
+constexpr effects::sequences::FotoSequence ::Timings TIMINGS{5, 200, 5, 75,
+                                                             false};
 
 constexpr std::size_t EYES_COLOR = 22;
 const effects::color::FlashSteps EYES_FLASH = {

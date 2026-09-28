@@ -1,7 +1,7 @@
 #include "../../../../src/engine/effects/sequences/BlyskSequence.h"
 #include <catch2/catch_all.hpp>
 
-using namespace openfranko::src::engine::effects;
+using namespace openfranko::src::engine::effects::sequences;
 using namespace openfranko::src::engine::effects::color;
 
 namespace {

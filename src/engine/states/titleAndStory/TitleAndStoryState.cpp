@@ -21,13 +21,13 @@ constexpr std::size_t SCREEN_COLORS = 32;
 constexpr effects::color::AmigaColor BLACK = 0x000;
 
 constexpr int LOADING_FRAMES = 300;
-constexpr effects::FotoSequence::Timings TITLE_TIMINGS{5, LOADING_FRAMES, 3, 45,
-                                                       false};
+constexpr effects::sequences::FotoSequence ::Timings TITLE_TIMINGS{
+    5, LOADING_FRAMES, 3, 45, false};
 constexpr int VERSION12_TITLE_WAIT = 100;
-constexpr effects::FotoSequence::Timings VERSION12_TITLE_TIMINGS{
+constexpr effects::sequences::FotoSequence ::Timings VERSION12_TITLE_TIMINGS{
     5, VERSION12_TITLE_WAIT, 3, 45, false};
 
-const std::vector<effects::StorySequence::Page> PAGES = {
+const std::vector<effects::sequences::StorySequence::Page> PAGES = {
     {1, 8, 0}, {8, 11, 1}, {11, 14, 2}, {14, 20, 3}, {20, 28, 4}, {28, 69, 5}};
 constexpr int CLOSING_PICTURE = 6;
 constexpr int PICTURES = 7;
@@ -81,10 +81,11 @@ TitleAndStoryState::TitleAndStoryState(
       m_title(screenPalette(m_titlePicture), version == GameVersion::V12
                                                  ? VERSION12_TITLE_TIMINGS
                                                  : TITLE_TIMINGS),
-      m_story(PAGES, CLOSING_PICTURE,
-              version == GameVersion::V12
-                  ? VERSION12_FRAMES_PER_ANIMATION_FRAME
-                  : effects::StorySequence::FRAMES_PER_ANIMATION_FRAME) {
+      m_story(
+          PAGES, CLOSING_PICTURE,
+          version == GameVersion::V12
+              ? VERSION12_FRAMES_PER_ANIMATION_FRAME
+              : effects::sequences::StorySequence::FRAMES_PER_ANIMATION_FRAME) {
   if (m_version == GameVersion::V12) {
     m_strip.emplace(videoSystem);
   }
@@ -172,7 +173,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
     m_phase = Phase::Story;
   }
   if (m_phase == Phase::Story) {
-    const effects::StorySequence::View shown = m_story.view();
+    const effects::sequences::StorySequence::View shown = m_story.view();
     if (m_version == GameVersion::V12) {
       m_story.advance(false, m_controllerSystem.states.button);
     } else {
@@ -207,7 +208,8 @@ std::optional<EngineStateEnum> TitleAndStoryState::leave() {
   return runStory();
 }
 
-void TitleAndStoryState::drawStory(const effects::StorySequence::View &view) {
+void TitleAndStoryState::drawStory(
+    const effects::sequences::StorySequence::View &view) {
   m_screen.fill(STORY_BACKGROUND_GREY);
   if (view.frame) {
     drawStoryImage(m_frame, *view.frame - 1, FRAME_POSITION.x, FRAME_POSITION.y,

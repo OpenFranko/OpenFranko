@@ -54,7 +54,7 @@ IntroStrip::IntroStrip(systems::VideoSystem &videoSystem,
 
 int IntroStrip::pages() const { return static_cast<int>(m_pages.size()); }
 
-void IntroStrip::show(const effects::BlyskSequence &sequence) {
+void IntroStrip::show(const effects::sequences::BlyskSequence &sequence) {
   if (sequence.page() != m_pasted) {
     std::fill(m_strip.pixels.begin(), m_strip.pixels.end(), 0);
     m_pasted = sequence.page();

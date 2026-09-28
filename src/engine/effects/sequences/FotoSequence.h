@@ -10,6 +10,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace sequences {
 
 class FotoSequence {
 public:
@@ -49,6 +50,7 @@ private:
   int m_frame = 0;
 };
 
+} // namespace sequences
 } // namespace effects
 } // namespace engine
 } // namespace src

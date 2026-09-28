@@ -10,6 +10,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace sequences {
 
 class CodeCardCheck {
 public:
@@ -53,6 +54,7 @@ private:
   bool m_anyWrong = false;
 };
 
+} // namespace sequences
 } // namespace effects
 } // namespace engine
 } // namespace src

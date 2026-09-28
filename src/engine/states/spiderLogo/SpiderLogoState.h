@@ -49,7 +49,7 @@ private:
   effects::color::VisibleRows m_logoRows;
   systems::Canvas m_walkScreen;
   systems::Canvas m_logoScreen;
-  std::optional<effects::FotoSequence> m_foto;
+  std::optional<effects::sequences::FotoSequence> m_foto;
   int m_frame = 0;
   int m_timer = 0;
   std::optional<int> m_walkEnd;

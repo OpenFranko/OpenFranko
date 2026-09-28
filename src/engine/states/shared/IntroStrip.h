@@ -27,7 +27,7 @@ public:
                       const std::string &directory = "assets");
 
   int pages() const;
-  void show(const effects::BlyskSequence &sequence);
+  void show(const effects::sequences::BlyskSequence &sequence);
   void showBlack();
 
 private:

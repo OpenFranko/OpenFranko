@@ -9,6 +9,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace sequences {
 
 class StorySequence {
 public:
@@ -51,6 +52,7 @@ private:
   bool m_finished = false;
 };
 
+} // namespace sequences
 } // namespace effects
 } // namespace engine
 } // namespace src

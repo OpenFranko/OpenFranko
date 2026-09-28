@@ -31,7 +31,8 @@ public:
   std::optional<EngineStateEnum> update() override;
 
 private:
-  void advanceAttract(const effects::MenuSequence::Joystick &joystick);
+  void
+  advanceAttract(const effects::sequences::MenuSequence::Joystick &joystick);
   void switchStandard();
   void startAttract();
   void drawMenu();
@@ -52,12 +53,12 @@ private:
   std::vector<systems::IndexedBitmap> m_letters;
   systems::Canvas m_menuScreen;
   systems::Canvas m_attractScreen;
-  effects::MenuSequence m_menu;
+  effects::sequences::MenuSequence m_menu;
   effects::color::AmigaPalette m_titlePalette;
   effects::color::AmigaPalette m_hiscorePalette;
-  std::optional<effects::AttractSequence> m_attract;
-  effects::AttractSequence::Kind m_nextAttract =
-      effects::AttractSequence::Kind::Title;
+  std::optional<effects::sequences::AttractSequence> m_attract;
+  effects::sequences::AttractSequence::Kind m_nextAttract =
+      effects::sequences::AttractSequence::Kind::Title;
   int m_attractTop = 0;
   int m_attractClosing = 0;
   int m_musicWait = 0;

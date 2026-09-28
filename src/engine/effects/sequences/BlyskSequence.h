@@ -11,6 +11,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace sequences {
 
 class BlyskSequence {
 public:
@@ -42,6 +43,7 @@ private:
   color::PaletteFader m_fader;
 };
 
+} // namespace sequences
 } // namespace effects
 } // namespace engine
 } // namespace src

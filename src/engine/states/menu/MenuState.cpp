@@ -97,12 +97,12 @@ effects::color::AmigaPalette resized(effects::color::AmigaPalette palette,
   return palette;
 }
 
-effects::MenuSequence::Joystick
+effects::sequences::MenuSequence::Joystick
 joystickFrom(const systems::ControllerSystem::ControllerStates &states) {
   return {states.up, states.down, states.left, states.right, states.button};
 }
 
-bool isTouched(const effects::MenuSequence::Joystick &joystick) {
+bool isTouched(const effects::sequences::MenuSequence::Joystick &joystick) {
   return joystick.up || joystick.down || joystick.left || joystick.right ||
          joystick.fire;
 }
@@ -138,7 +138,7 @@ MenuState::MenuState(systems::VideoSystem &videoSystem,
 }
 
 std::optional<EngineStateEnum> MenuState::update() {
-  const effects::MenuSequence::Joystick joystick =
+  const effects::sequences::MenuSequence::Joystick joystick =
       joystickFrom(m_controllerSystem.states);
   if (m_musicWait > 0 && --m_musicWait == 0) {
     m_audioSystem.setMusicTempo(effects::color::CONVERTED_MENU_TEMPO);
@@ -202,7 +202,7 @@ std::optional<EngineStateEnum> MenuState::update() {
 }
 
 void MenuState::advanceAttract(
-    const effects::MenuSequence::Joystick &joystick) {
+    const effects::sequences::MenuSequence::Joystick &joystick) {
   m_attract->advance(isTouched(joystick));
   if (m_attract->isWaiting()) {
     m_session.keyboard.sleep();
@@ -226,10 +226,10 @@ void MenuState::startAttract() {
       ATTRACT_SCREEN_HEIGHT, m_videoSystem.isNtsc());
   m_attractTop = rows.first;
   m_attractScreen = systems::Canvas(ATTRACT_SCREEN_WIDTH, rows.count);
-  const effects::AttractSequence::Kind kind = m_nextAttract;
-  const bool title = kind == effects::AttractSequence::Kind::Title;
-  m_nextAttract = title ? effects::AttractSequence::Kind::Hiscores
-                        : effects::AttractSequence::Kind::Title;
+  const effects::sequences::AttractSequence::Kind kind = m_nextAttract;
+  const bool title = kind == effects::sequences::AttractSequence::Kind::Title;
+  m_nextAttract = title ? effects::sequences::AttractSequence::Kind::Hiscores
+                        : effects::sequences::AttractSequence::Kind::Title;
   m_attract.emplace(kind, title ? m_titlePalette : m_hiscorePalette);
 }
 
@@ -242,7 +242,7 @@ void MenuState::drawMenu() {
 
   m_menuScreen.setPalette(m_menu.palette());
   m_menuScreen.draw(m_backdrop, 0, 0);
-  for (const effects::MenuSequence::Bob &bob : m_menu.shownBobs()) {
+  for (const effects::sequences::MenuSequence::Bob &bob : m_menu.shownBobs()) {
     const systems::IndexedBitmap *image =
         findImage(m_menuBobs, firstMenuImage(m_session.version), bob.image);
     if (bob.shown && image) {
@@ -261,7 +261,7 @@ void MenuState::drawAttract() {
 }
 
 void MenuState::drawAttractPicture() {
-  if (m_attract->kind() == effects::AttractSequence::Kind::Title) {
+  if (m_attract->kind() == effects::sequences::AttractSequence::Kind::Title) {
     m_attractScreen.setPalette(m_title.palette);
     m_attractScreen.draw(m_title, 0, -m_attractTop);
     show(m_attractScreen);
@@ -271,7 +271,8 @@ void MenuState::drawAttractPicture() {
   m_attractScreen.setPalette(m_attract->palette());
   m_attractScreen.draw(m_hiscores, 0, -m_attractTop);
   for (int drawn = 0; drawn < m_attract->rowsShown(); ++drawn) {
-    drawHiscoreRow(effects::AttractSequence::HISCORE_ROWS - 1 - drawn);
+    drawHiscoreRow(effects::sequences::AttractSequence::HISCORE_ROWS - 1 -
+                   drawn);
   }
   show(m_attractScreen);
 }

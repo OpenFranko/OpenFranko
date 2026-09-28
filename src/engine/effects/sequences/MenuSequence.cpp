@@ -5,7 +5,7 @@
 #include <utility>
 #include <vector>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::sequences {
 namespace {
 
 struct Icon {
@@ -383,4 +383,4 @@ void MenuSequence::placeHand() {
 
 MenuSequence::Bob &MenuSequence::bob(int number) { return m_bobs[number - 1]; }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::sequences

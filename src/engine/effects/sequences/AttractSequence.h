@@ -7,6 +7,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace sequences {
 
 class AttractSequence {
 public:
@@ -39,6 +40,7 @@ private:
   bool m_finished = false;
 };
 
+} // namespace sequences
 } // namespace effects
 } // namespace engine
 } // namespace src

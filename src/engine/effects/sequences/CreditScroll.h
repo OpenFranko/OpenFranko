@@ -7,6 +7,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace sequences {
 
 class CreditScroll {
 public:
@@ -26,6 +27,7 @@ private:
   bool m_liftNext = false;
 };
 
+} // namespace sequences
 } // namespace effects
 } // namespace engine
 } // namespace src

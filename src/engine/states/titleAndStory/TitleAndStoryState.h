@@ -55,7 +55,7 @@ private:
   std::optional<EngineStateEnum> runPages();
   std::optional<EngineStateEnum> runStory();
   std::optional<EngineStateEnum> leave();
-  void drawStory(const effects::StorySequence::View &view);
+  void drawStory(const effects::sequences::StorySequence::View &view);
   void drawStoryImage(StoryImage &image, int index, int x, int y, bool masked);
 
   systems::VideoSystem &m_videoSystem;
@@ -67,16 +67,16 @@ private:
   StoryImage m_picture;
   StoryImage m_text;
   systems::Canvas m_screen;
-  effects::FotoSequence m_title;
-  effects::StorySequence m_story;
+  effects::sequences::FotoSequence m_title;
+  effects::sequences::StorySequence m_story;
   std::optional<shared::IntroStrip> m_strip;
-  std::optional<effects::BlyskSequence> m_pages;
+  std::optional<effects::sequences::BlyskSequence> m_pages;
   shared::MusicFadeOut m_musicFade;
   Phase m_phase = Phase::Title;
   int m_phaseFrames = 0;
   bool m_stripShown = false;
   effects::color::AmigaColor m_background = 0x000;
-  effects::StorySequence::View m_lastView;
+  effects::sequences::StorySequence::View m_lastView;
 };
 
 } // namespace titleAndStory

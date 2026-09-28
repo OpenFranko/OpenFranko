@@ -19,6 +19,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace sequences {
 
 class MenuSequence {
 public:
@@ -99,6 +100,7 @@ private:
   bool m_busy = false;
 };
 
+} // namespace sequences
 } // namespace effects
 } // namespace engine
 } // namespace src

@@ -28,7 +28,7 @@ public:
 
   std::optional<EngineStateEnum> update() override;
 
-  const effects::CodeCardCheck &check() const;
+  const effects::sequences::CodeCardCheck &check() const;
 
 private:
   enum class Step { Unpack, Ask, Hidden, Closed, FailureUnpacked, Hang };
@@ -44,7 +44,7 @@ private:
   systems::AudioSystem &m_audioSystem;
   effects::core::InkeyBuffer &m_keyboard;
   Check m_kind;
-  effects::CodeCardCheck m_check;
+  effects::sequences::CodeCardCheck m_check;
   int m_loadingFrames;
   Step m_step = Step::Unpack;
   int m_frame = 0;
