@@ -12,16 +12,16 @@ struct Icon {
   int bob;
   int16_t y;
   bool left;
-  bool GameOptions::*option;
+  bool core::GameOptions::*option;
 };
 
 constexpr std::array<Icon, 6> ICONS = {{
     {4, 20, true, nullptr},
-    {5, 90, true, &GameOptions::music},
-    {6, 160, true, &GameOptions::bass},
-    {7, 20, false, &GameOptions::mono},
-    {8, 90, false, &GameOptions::ntsc},
-    {9, 160, false, &GameOptions::tallScreen},
+    {5, 90, true, &core::GameOptions::music},
+    {6, 160, true, &core::GameOptions::bass},
+    {7, 20, false, &core::GameOptions::mono},
+    {8, 90, false, &core::GameOptions::ntsc},
+    {9, 160, false, &core::GameOptions::tallScreen},
 }};
 constexpr int ROWS = 3;
 constexpr int16_t LEFT_OUTSIDE = -64;
@@ -79,13 +79,13 @@ constexpr int UNPACK_VBLS = 1;
 constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr char FIRST_TYPED = ' ';
 
-const std::vector<AmalMotion::Move> FLY_RIGHT = {{88, 16}, {8, 8}};
-const std::vector<AmalMotion::Move> FLY_LEFT = {{-88, 16}, {-8, 8}};
-const std::vector<AmalMotion::Move> WAGGLE = {
+const std::vector<animation::AmalMotion::Move> FLY_RIGHT = {{88, 16}, {8, 8}};
+const std::vector<animation::AmalMotion::Move> FLY_LEFT = {{-88, 16}, {-8, 8}};
+const std::vector<animation::AmalMotion::Move> WAGGLE = {
     {4, 2}, {-4, 2}, {0, 1}, {4, 2}, {-4, 2}, {0, 1},
     {4, 2}, {-4, 2}, {0, 1}, {4, 2}, {-4, 2}, {0, 1}};
 
-int iconImage(const Icon &icon, const GameOptions &options,
+int iconImage(const Icon &icon, const core::GameOptions &options,
               GameVersion version) {
   const std::size_t index = static_cast<std::size_t>(&icon - ICONS.data());
   const int image = layout(version).iconImages[index];
@@ -110,8 +110,9 @@ bool pressed(const MenuSequence::Joystick &joystick, int direction) {
 
 } // namespace
 
-MenuSequence::MenuSequence(GameOptions &options, AmigaPalette palette,
-                           InkeyBuffer &keyboard, GameVersion version)
+MenuSequence::MenuSequence(core::GameOptions &options,
+                           color::AmigaPalette palette,
+                           core::InkeyBuffer &keyboard, GameVersion version)
     : m_options(options), m_version(version), m_palette(std::move(palette)),
       m_keyboard(keyboard) {
   if (m_version == GameVersion::V10) {
@@ -146,7 +147,7 @@ void MenuSequence::resumeAfterAttract() {
   m_attractDue = false;
   m_timer = 0;
   m_resume = Resume::Choosing;
-  m_resumeFrame = m_frame + SCREEN_CLOSE_VBLS;
+  m_resumeFrame = m_frame + color::SCREEN_CLOSE_VBLS;
   m_busy = true;
 }
 
@@ -160,7 +161,7 @@ MenuSequence::shownBobs() const {
   return m_shownBobs;
 }
 
-const AmigaPalette &MenuSequence::palette() const { return m_palette; }
+const color::AmigaPalette &MenuSequence::palette() const { return m_palette; }
 
 const std::string &MenuSequence::keysRead() const { return m_keysRead; }
 
@@ -225,7 +226,7 @@ void MenuSequence::runScript(const Joystick &joystick) {
     }
     if (m_version == GameVersion::V10 && time == LEAVING_FADE_AT) {
       m_fader.start(m_palette, LEAVING_FADE_SPEED,
-                    AmigaPalette(m_palette.size(), 0));
+                    color::AmigaPalette(m_palette.size(), 0));
     }
     if (time == (m_version == GameVersion::V12 ? VERSION12_LEAVING_CLOSE_AT
                                                : LEAVING_CLOSE_AT)) {
@@ -234,13 +235,13 @@ void MenuSequence::runScript(const Joystick &joystick) {
     }
     break;
   case Phase::Closing:
-    if (time == SCREEN_CLOSE_SHOWN_VBLS) {
+    if (time == color::SCREEN_CLOSE_SHOWN_VBLS) {
       for (Bob &shown : m_bobs) {
         shown.shown = false;
       }
       m_screenShown = false;
     }
-    if (time == SCREEN_CLOSE_VBLS) {
+    if (time == color::SCREEN_CLOSE_VBLS) {
       m_phase = Phase::Finished;
     }
     break;
@@ -339,14 +340,15 @@ void MenuSequence::activate() {
     m_resume = Resume::Choosing;
   }
   m_resumeFrame = m_frame + MACH_WAIT;
-  m_motions[HAND_BOB - 1] = AmalMotion(WAGGLE);
+  m_motions[HAND_BOB - 1] = animation::AmalMotion(WAGGLE);
 }
 
 void MenuSequence::flyIcons(std::size_t row, bool in) {
   for (std::size_t i = row; i < ICONS.size(); i += ROWS) {
     const Icon &icon = ICONS[i];
     const bool towardsRight = icon.left == in;
-    m_motions[icon.bob - 1] = AmalMotion(towardsRight ? FLY_RIGHT : FLY_LEFT);
+    m_motions[icon.bob - 1] =
+        animation::AmalMotion(towardsRight ? FLY_RIGHT : FLY_LEFT);
   }
 }
 

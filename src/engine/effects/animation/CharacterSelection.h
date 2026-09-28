@@ -13,6 +13,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace animation {
 
 class CharacterSelection {
 public:
@@ -30,7 +31,7 @@ public:
     bool flipped = false;
   };
 
-  explicit CharacterSelection(GameOptions &options, int otherScreens = 0,
+  explicit CharacterSelection(core::GameOptions &options, int otherScreens = 0,
                               GameVersion version = GameVersion::V10);
 
   void advance(const Joystick &joystick);
@@ -44,11 +45,11 @@ public:
   bool isFinished() const;
 
 private:
-  void choose(Character character);
+  void choose(core::Character character);
   void runScript(int time);
   void close(int time);
 
-  GameOptions &m_options;
+  core::GameOptions &m_options;
   GameVersion m_version;
   Bob m_hand;
   Bob m_face;
@@ -65,6 +66,7 @@ private:
   std::optional<int> m_closedAt;
 };
 
+} // namespace animation
 } // namespace effects
 } // namespace engine
 } // namespace src

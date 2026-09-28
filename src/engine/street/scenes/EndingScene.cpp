@@ -21,12 +21,12 @@ constexpr int ENDING_TUNE = 0x25F;
 constexpr int FIRST_IMAGE = 1;
 
 constexpr int FULL_VOLUME = 63;
-constexpr effects::AmigaColor BLACK = 0x000;
-constexpr effects::AmigaColor DEFAULT_COLOR = 0x000;
-constexpr effects::AmigaColor WHITE = 0xFFF;
-constexpr effects::AmigaColor STILL_GREY = 0x444;
-constexpr effects::AmigaColor INK = 0xFFF;
-constexpr effects::AmigaColor SHADE = 0xAAA;
+constexpr effects::color::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor DEFAULT_COLOR = 0x000;
+constexpr effects::color::AmigaColor WHITE = 0xFFF;
+constexpr effects::color::AmigaColor STILL_GREY = 0x444;
+constexpr effects::color::AmigaColor INK = 0xFFF;
+constexpr effects::color::AmigaColor SHADE = 0xAAA;
 
 constexpr int STAGE_WIDTH = 304;
 
@@ -83,12 +83,14 @@ constexpr int BEAT_SPEED = 10;
 constexpr int BEAT_HOLD = 150;
 constexpr int BEAT_DARK = 150;
 
-const effects::AmigaPalette DANCER_PALETTE = {
+const effects::color::AmigaPalette DANCER_PALETTE = {
     0x000, 0x06F, 0x730, 0x840, 0x950, 0xA60, 0xB70, 0xC80,
     0xD90, 0xEA0, 0xFB0, 0xFC1, 0xFD2, 0xFE3, 0xFF4, 0xFFF};
 
-effects::AmigaPalette beat(effects::AmigaColor ink, effects::AmigaColor shade) {
-  effects::AmigaPalette target(TEXT_COLORS, effects::PaletteFader::KEEP);
+effects::color::AmigaPalette beat(effects::color::AmigaColor ink,
+                                  effects::color::AmigaColor shade) {
+  effects::color::AmigaPalette target(TEXT_COLORS,
+                                      effects::color::PaletteFader::KEEP);
   target[0] = BLACK;
   target[1] = ink;
   target[2] = shade;
@@ -100,7 +102,7 @@ effects::AmigaPalette beat(effects::AmigaColor ink, effects::AmigaColor shade) {
 EndingScene::EndingScene(StreetHost &host, GameSession &session, bool ntsc)
     : m_host(host), m_session(session), m_machine(session.registers),
       m_display(0, 0), m_border(STAGE_BORDER), m_ntsc(ntsc),
-      m_displayLine(effects::pictureLine(DISPLAY_LINE, ntsc)) {}
+      m_displayLine(effects::color::pictureLine(DISPLAY_LINE, ntsc)) {}
 
 void EndingScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
@@ -234,13 +236,13 @@ bool EndingScene::isStageShown() const { return m_stageShown; }
 
 int EndingScene::displayLine() const { return m_displayLine; }
 
-effects::AmigaColor EndingScene::border() const { return m_border; }
+effects::color::AmigaColor EndingScene::border() const { return m_border; }
 
 const IndexedSurface &EndingScene::screen(int number) const {
   return m_screens[static_cast<std::size_t>(number)].surface;
 }
 
-const effects::AmigaPalette &EndingScene::palette(int number) const {
+const effects::color::AmigaPalette &EndingScene::palette(int number) const {
   return m_screens[static_cast<std::size_t>(number)].palette;
 }
 
@@ -312,19 +314,19 @@ void EndingScene::runBasic(int16_t joystick) {
         flow = Flow::Yield;
         break;
       }
-      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::StageGone);
+      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::StageGone);
       break;
     case Step::StageGone:
       m_stageShown = false;
-      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::ClosePanel);
+      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::ClosePanel);
       break;
     case Step::ClosePanel:
-      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::PanelGone);
+      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::PanelGone);
       break;
     case Step::PanelGone:
       m_panelShown = false;
       m_stage.reset();
-      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::Foto);
+      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::Foto);
       break;
     case Step::Foto:
       m_host.setMusicVolume(FULL_VOLUME);
@@ -340,11 +342,11 @@ void EndingScene::runBasic(int16_t joystick) {
       flow = wait(FOTO_WAIT, Step::FotoClose);
       break;
     case Step::FotoClose:
-      flow = hold(effects::SCREEN_CLOSE_VBLS, Step::Still);
+      flow = hold(effects::color::SCREEN_CLOSE_VBLS, Step::Still);
       break;
     case Step::Still:
       m_bobs.set(TEXT_BOX, TEXT_BOX_X, TEXT_BOX_Y, TEXT_BOX_IMAGE);
-      flow = hold(effects::SCREEN_OPEN_VBLS, Step::StillHidden);
+      flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::StillHidden);
       break;
     case Step::StillHidden:
       hideStill();
@@ -384,24 +386,24 @@ void EndingScene::runBasic(int16_t joystick) {
       }
       m_screens[0].surface.fill(0);
       m_fader.start(m_screens[0].palette, STILL_FADE_SPEED,
-                    effects::AmigaPalette(STILL_COLORS, BLACK));
+                    effects::color::AmigaPalette(STILL_COLORS, BLACK));
       flow = wait(STILL_FADE_WAIT, Step::CloseStill);
       break;
     case Step::CloseStill:
       off();
-      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::StillGone);
+      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::StillGone);
       break;
     case Step::StillGone:
       closeScreen(0);
-      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::CloseHidden);
+      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::CloseHidden);
       break;
     case Step::CloseHidden:
       closeScreen(1);
-      flow = hold(effects::SCREEN_CLOSE_VBLS, Step::Dancer);
+      flow = hold(effects::color::SCREEN_CLOSE_VBLS, Step::Dancer);
       break;
     case Step::Dancer:
       std::swap(m_images, m_parked);
-      flow = hold(effects::SCREEN_OPEN_VBLS, Step::DancerShown);
+      flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::DancerShown);
       break;
     case Step::DancerShown:
       openScreen(1, DANCER_TOP, DANCER_HEIGHT, DANCER_PALETTE);
@@ -413,7 +415,7 @@ void EndingScene::runBasic(int16_t joystick) {
     case Step::Dance:
       dance();
       m_dancerCopper = true;
-      flow = hold(effects::SCREEN_OPEN_VBLS, Step::TextScreen);
+      flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::TextScreen);
       break;
     case Step::TextScreen:
       textScreen();
@@ -447,19 +449,19 @@ void EndingScene::runBasic(int16_t joystick) {
         break;
       }
       off();
-      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::TextGone);
+      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::TextGone);
       break;
     case Step::TextGone:
       closeScreen(0);
-      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::CloseDancer);
+      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::CloseDancer);
       break;
     case Step::CloseDancer:
-      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::DancerGone);
+      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::DancerGone);
       break;
     case Step::DancerGone:
       closeScreen(1);
       m_count = FULL_VOLUME;
-      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::MusicFade);
+      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::MusicFade);
       break;
     case Step::MusicFade:
       flow = musicFade();
@@ -514,7 +516,7 @@ void EndingScene::era() {
 
 void EndingScene::fotoWhite() {
   openScreen(0, STILL_TOP, STILL_HEIGHT,
-             effects::AmigaPalette(STILL_COLORS, WHITE));
+             effects::color::AmigaPalette(STILL_COLORS, WHITE));
   m_screens[0].surface.unpack(m_picture, 0, 0);
   m_picture = Picture{};
   m_bobScreen = 0;
@@ -522,7 +524,7 @@ void EndingScene::fotoWhite() {
 }
 
 void EndingScene::hideStill() {
-  effects::AmigaPalette palette = m_screens[0].palette;
+  effects::color::AmigaPalette palette = m_screens[0].palette;
   palette[0] = STILL_GREY;
   openScreen(1, STILL_TOP, STILL_HEIGHT, std::move(palette));
   m_screens[1].hidden = true;
@@ -567,7 +569,7 @@ void EndingScene::secondDance() {
 }
 
 void EndingScene::textScreen() {
-  effects::AmigaPalette palette(TEXT_COLORS, DEFAULT_COLOR);
+  effects::color::AmigaPalette palette(TEXT_COLORS, DEFAULT_COLOR);
   std::fill_n(palette.begin(), 3, BLACK);
   openScreen(0, TEXT_TOP, TEXT_HEIGHT, std::move(palette));
   m_border = m_screens[0].palette[0];
@@ -616,22 +618,22 @@ void EndingScene::off() {
 }
 
 void EndingScene::openScreen(int number, int top, int height,
-                             effects::AmigaPalette palette) {
+                             effects::color::AmigaPalette palette) {
   Screen &screen = m_screens[static_cast<std::size_t>(number)];
   screen.open = true;
   screen.hidden = false;
-  screen.top = effects::pictureLine(top, m_ntsc);
+  screen.top = effects::color::pictureLine(top, m_ntsc);
   screen.surface = IndexedSurface(WIDTH, height);
   screen.palette = std::move(palette);
   if (number == 0) {
-    m_fader = effects::PaletteFader{};
+    m_fader = effects::color::PaletteFader{};
   }
 }
 
 void EndingScene::closeScreen(int number) {
   m_screens[static_cast<std::size_t>(number)] = Screen{};
   if (number == 0) {
-    m_fader = effects::PaletteFader{};
+    m_fader = effects::color::PaletteFader{};
   }
   if (number == 1) {
     m_dancerBuffer.reset();

@@ -30,9 +30,9 @@ constexpr int LOGO_DISPLAY_LINE = 42;
 constexpr int REFLECTION_TOP = 133;
 constexpr int REFLECTION_BOTTOM = 200;
 constexpr std::size_t LOGO_COLORS = 16;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 
-const effects::AmigaPalette WALK_PALETTE = {
+const effects::color::AmigaPalette WALK_PALETTE = {
     0x000, 0x600, 0x333, 0x550, 0x444, 0x770, 0x008, 0x009,
     0x00A, 0x00B, 0x00C, 0x00D, 0x222, 0x003, 0xFFF, 0xFFF};
 
@@ -51,13 +51,13 @@ constexpr auto REFLECTION_PROGRAM =
 
 constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr int AUTOBACK_VBLS = 3;
-constexpr int WALK_SETUP =
-    effects::SCREEN_REOPEN_VBLS + DOUBLE_BUFFER_VBLS + 2 * AUTOBACK_VBLS - 1;
+constexpr int WALK_SETUP = effects::color::SCREEN_REOPEN_VBLS +
+                           DOUBLE_BUFFER_VBLS + 2 * AUTOBACK_VBLS - 1;
 constexpr int TEMPO_WAIT = 2;
 constexpr int STEP_TIMER = 10;
 constexpr int WALK_TEMPO = 14;
 constexpr int LOGO_SETUP =
-    effects::SCREEN_OPEN_VBLS + DOUBLE_BUFFER_VBLS + AUTOBACK_VBLS - 1;
+    effects::color::SCREEN_OPEN_VBLS + DOUBLE_BUFFER_VBLS + AUTOBACK_VBLS - 1;
 constexpr int JINGLE_WAIT = 10;
 constexpr effects::FotoSequence::Timings LOGO_TIMINGS{3, 210, 3, 45, false};
 
@@ -69,8 +69,8 @@ systems::IndexedBitmap filled(int width, int height, uint8_t color) {
   return bitmap;
 }
 
-effects::AmigaPalette logoPalette(const systems::IndexedBitmap &logo) {
-  effects::AmigaPalette palette = logo.palette;
+effects::color::AmigaPalette logoPalette(const systems::IndexedBitmap &logo) {
+  effects::color::AmigaPalette palette = logo.palette;
   palette.resize(LOGO_COLORS);
   return palette;
 }
@@ -85,10 +85,10 @@ SpiderLogoState::SpiderLogoState(systems::VideoSystem &videoSystem,
       m_reflectionArea(
           filled(LOGO_WIDTH, REFLECTION_BOTTOM - REFLECTION_TOP, 0)),
       m_machine(m_registers),
-      m_walkRows(effects::visibleRows(WALK_DISPLAY_LINE, WALK_HEIGHT,
-                                      videoSystem.isNtsc())),
-      m_logoRows(effects::visibleRows(LOGO_DISPLAY_LINE, LOGO_HEIGHT,
-                                      videoSystem.isNtsc())),
+      m_walkRows(effects::color::visibleRows(WALK_DISPLAY_LINE, WALK_HEIGHT,
+                                             videoSystem.isNtsc())),
+      m_logoRows(effects::color::visibleRows(LOGO_DISPLAY_LINE, LOGO_HEIGHT,
+                                             videoSystem.isNtsc())),
       m_walkScreen(WALK_WIDTH, m_walkRows.count),
       m_logoScreen(LOGO_WIDTH, m_logoRows.count) {
   for (int index = 0; index < IMAGES; ++index) {
@@ -152,12 +152,13 @@ void SpiderLogoState::walk() {
     }
   }
 
-  if (!m_walkEnd || m_frame < *m_walkEnd + effects::SCREEN_CLOSE_SHOWN_VBLS) {
+  if (!m_walkEnd ||
+      m_frame < *m_walkEnd + effects::color::SCREEN_CLOSE_SHOWN_VBLS) {
     showWalk();
   } else {
     showBlack(m_walkScreen, true);
   }
-  if (m_walkEnd && m_frame == *m_walkEnd + effects::SCREEN_CLOSE_VBLS) {
+  if (m_walkEnd && m_frame == *m_walkEnd + effects::color::SCREEN_CLOSE_VBLS) {
     m_logoStart = m_frame + 1;
     m_machine.destroyAll();
   }

@@ -68,7 +68,7 @@ public:
     return graveyard();
   }
 
-  effects::AmigaPalette loadPalette(int) override { return {}; }
+  effects::color::AmigaPalette loadPalette(int) override { return {}; }
 
   std::vector<Picture> loadScenery(int) override { return {}; }
 
@@ -221,7 +221,7 @@ SCENARIO("Game over loads its three files while the screens are closed") {
          "28, so the screen's line 45 shows entry 113 and it stops after line "
          "267") {
       graveyard.run(1);
-      const effects::AmigaPalette table = effects::rainbowTable(
+      const effects::color::AmigaPalette table = effects::color::rainbowTable(
           1000, "(8,-1,15)(16,1,15)", "", "(8,1,15)(16,-1,15)");
       REQUIRE(graveyard.pixel(360, 0) == toArgb(table[113]));
       REQUIRE(graveyard.pixel(360, 100) == toArgb(table[213]));

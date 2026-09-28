@@ -15,13 +15,13 @@ public:
   static constexpr int HISCORE_ROWS = 10;
   static constexpr int UNPACK_VBLS = 1;
 
-  AttractSequence(Kind kind, AmigaPalette picturePalette);
+  AttractSequence(Kind kind, color::AmigaPalette picturePalette);
 
   void advance(bool joystickTouched);
 
   Kind kind() const;
   bool isShowing() const;
-  const AmigaPalette &palette() const;
+  const color::AmigaPalette &palette() const;
   int rowsShown() const;
   bool isWaiting() const;
   bool isFinished() const;
@@ -31,7 +31,7 @@ private:
   void advanceHiscores(bool joystickTouched);
 
   Kind m_kind;
-  AmigaPalette m_palette;
+  color::AmigaPalette m_palette;
   int m_frame = -UNPACK_VBLS;
   int m_rows = 0;
   bool m_showing = false;

@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <vector>
 
-using namespace openfranko::src::engine::effects;
+using namespace openfranko::src::engine::effects::color;
 
 SCENARIO("PaletteFlasher cycles a colour like the AMOS Flash instruction") {
   GIVEN("Colour 1 flashing $F00 for 4 frames and $800 for 2") {

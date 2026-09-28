@@ -41,7 +41,7 @@ public:
   bool isFinished() const;
   int offset() const;
   const BobLayer &bobs() const;
-  const effects::AmigaPalette &palette() const;
+  const effects::color::AmigaPalette &palette() const;
 
 private:
   enum class Step {
@@ -80,14 +80,14 @@ private:
   Picture m_picture;
   IndexedSurface m_screen;
   std::optional<DoubleBuffer> m_buffer;
-  effects::AmigaPalette m_palette;
-  effects::AmigaPalette m_rainbow;
-  effects::PaletteFader m_fader;
-  effects::AmalAnim m_hand;
+  effects::color::AmigaPalette m_palette;
+  effects::color::AmigaPalette m_rainbow;
+  effects::color::PaletteFader m_fader;
+  effects::animation::AmalAnim m_hand;
 
   Step m_step = Step::Close;
-  effects::AmigaColor m_border;
-  effects::AmigaColor m_copperBorder;
+  effects::color::AmigaColor m_border;
+  effects::color::AmigaColor m_copperBorder;
   bool m_shown = false;
   bool m_copperShown = false;
   bool m_rainbowShown = false;

@@ -18,9 +18,9 @@ constexpr int PANEL_COLORS = 7;
 constexpr uint32_t BLANK = 0xFF000000u;
 constexpr uint32_t BORDER = 0xFF555555u;
 
-const effects::AmigaPalette GREYS = {0x000, 0x111, 0x222, 0x333, 0x444, 0x555,
-                                     0x666, 0x777, 0x888, 0x999, 0xAAA, 0xBBB,
-                                     0xCCC, 0xDDD, 0xEEE, 0xFFF};
+const effects::color::AmigaPalette GREYS = {
+    0x000, 0x111, 0x222, 0x333, 0x444, 0x555, 0x666, 0x777,
+    0x888, 0x999, 0xAAA, 0xBBB, 0xCCC, 0xDDD, 0xEEE, 0xFFF};
 
 Picture rowCoded(int width, int height, int colors) {
   Picture picture{
@@ -104,7 +104,7 @@ SCENARIO("The stage layout follows state 09's Screen Display lines") {
   }
 
   THEN("The menu's options pick the layout") {
-    effects::GameOptions options;
+    effects::core::GameOptions options;
     options.ntsc = true;
     options.tallScreen = true;
     const StageLayout layout = stageLayout(options);

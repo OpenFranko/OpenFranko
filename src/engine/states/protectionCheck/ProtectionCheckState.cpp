@@ -33,14 +33,14 @@ constexpr int FAILURE_SCREEN_HEIGHT = 256;
 constexpr int FAILURE_DISPLAY_LINE = 50;
 
 constexpr int STAGE_CHECK_FILES = 2;
-constexpr effects::AmigaColor STAGE_BORDER = 0x555;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor STAGE_BORDER = 0x555;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 
 constexpr int CELL_PITCH = 15;
 constexpr int BOX_OFFSET = 11;
 constexpr int BOX_SIZE = 13;
 constexpr uint8_t BOX_INK = 15;
-const effects::FlashSteps BOX_FLASH = {{0xFFF, 5}, {0x000, 5}};
+const effects::color::FlashSteps BOX_FLASH = {{0xFFF, 5}, {0x000, 5}};
 
 std::vector<uint8_t> loadCards() {
   std::ifstream file(CARDS_PATH, std::ios::binary);
@@ -91,14 +91,14 @@ void xorRect(systems::IndexedBitmap &image, int x, int y, int width, int height,
 
 ProtectionCheckState::ProtectionCheckState(systems::VideoSystem &videoSystem,
                                            systems::AudioSystem &audioSystem,
-                                           effects::InkeyBuffer &keyboard,
+                                           effects::core::InkeyBuffer &keyboard,
                                            Check check)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_keyboard(keyboard), m_kind(check), m_check(makeCheck(check)),
       m_loadingFrames(check == Check::Stage3
                           ? STAGE_CHECK_FILES * street::LoadingMock::FILE_FRAMES
                           : 0),
-      m_resumeFrame(effects::SCREEN_OPEN_VBLS),
+      m_resumeFrame(effects::color::SCREEN_OPEN_VBLS),
       m_screen(QUESTION_SCREEN_WIDTH, QUESTION_SCREEN_HEIGHT),
       m_border(check == Check::Stage3 ? STAGE_BORDER : BLACK) {}
 
@@ -133,26 +133,26 @@ std::optional<EngineStateEnum> ProtectionCheckState::runCheck() {
       if (!takeAnswer()) {
         return std::nullopt;
       }
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
       m_step = Step::Hidden;
       break;
     case Step::Hidden:
       m_questionShown = false;
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::Closed;
       break;
     case Step::Closed:
       if (!m_check.isFinished()) {
-        m_resumeFrame = m_frame + effects::SCREEN_OPEN_VBLS;
+        m_resumeFrame = m_frame + effects::color::SCREEN_OPEN_VBLS;
         m_step = Step::Unpack;
       } else if (m_check.isPassed()) {
         return m_kind == Check::Stage3 ? EngineStateEnum::Level3
                                        : EngineStateEnum::HighScore;
       } else {
         showFailure();
-        m_resumeFrame =
-            m_frame + (m_kind == Check::Stage3 ? effects::SCREEN_REOPEN_VBLS
-                                               : effects::SCREEN_OPEN_VBLS);
+        m_resumeFrame = m_frame + (m_kind == Check::Stage3
+                                       ? effects::color::SCREEN_REOPEN_VBLS
+                                       : effects::color::SCREEN_OPEN_VBLS);
         m_step = Step::FailureUnpacked;
       }
       break;
@@ -212,9 +212,9 @@ void ProtectionCheckState::showQuestion() {
 
 void ProtectionCheckState::showFailure() {
   const bool ntsc = m_videoSystem.isNtsc();
-  const effects::VisibleRows rows =
-      effects::visibleRows(effects::pictureLine(FAILURE_DISPLAY_LINE, ntsc),
-                           FAILURE_SCREEN_HEIGHT, ntsc);
+  const effects::color::VisibleRows rows = effects::color::visibleRows(
+      effects::color::pictureLine(FAILURE_DISPLAY_LINE, ntsc),
+      FAILURE_SCREEN_HEIGHT, ntsc);
   m_failureTop = rows.first;
   m_screen = systems::Canvas(FAILURE_SCREEN_WIDTH, rows.count);
   m_failure = systems::loadIndexedBitmap(FAILURE_PATH);

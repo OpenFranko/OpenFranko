@@ -107,7 +107,7 @@ public:
     return box(320, 222, 0, 0, OPENING_COLOR);
   }
 
-  effects::AmigaPalette loadPalette(int) override { return {}; }
+  effects::color::AmigaPalette loadPalette(int) override { return {}; }
 
   std::vector<Picture> loadScenery(int resource) override {
     scenery.push_back(resource);
@@ -165,7 +165,7 @@ public:
 struct Street {
   FakeHost host;
   GameSession session;
-  effects::GameOptions options;
+  effects::core::GameOptions options;
   std::unique_ptr<StreetStage> stage;
   bool afterDrive = false;
 
@@ -312,7 +312,7 @@ SCENARIO("A new game opens the street as states 09 and 10 do") {
 
   GIVEN("Alex chosen with the music off") {
     Street street(emptyStreet(600));
-    street.options.character = effects::Character::Alex;
+    street.options.character = effects::core::Character::Alex;
     street.options.music = false;
     street.start();
     street.open();

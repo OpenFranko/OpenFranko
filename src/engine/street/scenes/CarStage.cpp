@@ -124,7 +124,7 @@ std::string passwordFor(int stage) {
 } // namespace
 
 CarStage::CarStage(StreetHost &host, GameSession &session,
-                   effects::GameOptions &options)
+                   effects::core::GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen), m_road(0, 0), m_strip(0, 0),
@@ -556,7 +556,7 @@ CarStage::Flow CarStage::driveBottom() {
     m_session.lastDrive = {m_ignition, m_roadBand, m_fenceBand, m_clock,
                            m_engineBeat};
     m_buffer.setUpdates(true);
-    return hold(effects::SCREEN_CLOSE_VBLS, Step::StripClosed);
+    return hold(effects::color::SCREEN_CLOSE_VBLS, Step::StripClosed);
   }
   sys();
   m_step = Step::DriveTop;
@@ -617,7 +617,8 @@ void CarStage::gameOver() {
 }
 
 CarStage::Flow CarStage::closePlayScreen() {
-  return hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::GameOverScreenGone);
+  return hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS,
+              Step::GameOverScreenGone);
 }
 
 void CarStage::sys() {
@@ -677,15 +678,15 @@ void CarStage::runBasic(const StreetInput &input) {
     case Step::Loaded:
       m_panel->score(stats());
       m_road = IndexedSurface(ROAD_WIDTH, SCREEN_HEIGHT);
-      flow = hold(effects::SCREEN_OPEN_VBLS, Step::RoadOpened);
+      flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::RoadOpened);
       break;
     case Step::RoadOpened:
       openRoad();
-      flow = hold(effects::SCREEN_OPEN_VBLS, Step::StripOpened);
+      flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::StripOpened);
       break;
     case Step::StripOpened:
       openStrip();
-      flow = hold(effects::SCREEN_CLOSE_VBLS, Step::RoadClosed);
+      flow = hold(effects::color::SCREEN_CLOSE_VBLS, Step::RoadClosed);
       break;
     case Step::RoadClosed:
       startDrive();
@@ -727,14 +728,17 @@ void CarStage::runBasic(const StreetInput &input) {
     case Step::GameOverScreenGone:
       m_screenShown = false;
       m_copper.hide();
-      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverPanelClose);
+      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS,
+                  Step::GameOverPanelClose);
       break;
     case Step::GameOverPanelClose:
-      flow = hold(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::GameOverPanelGone);
+      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS,
+                  Step::GameOverPanelGone);
       break;
     case Step::GameOverPanelGone:
       m_panelShown = false;
-      flow = hold(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverClosed);
+      flow =
+          hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverClosed);
       break;
     case Step::GameOverClosed:
       m_outcome = quitsToHighScores() ? Outcome::Quit : Outcome::GameOver;

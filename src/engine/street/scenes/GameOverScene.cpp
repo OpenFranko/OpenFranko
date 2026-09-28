@@ -17,7 +17,7 @@ constexpr int GRAVEYARD = 0x3BB;
 constexpr int GAME_OVER_TUNE = 0x262;
 
 constexpr int FULL_VOLUME = 63;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 
 constexpr int TITLE = 1;
 constexpr int HAND = 2;
@@ -45,11 +45,11 @@ constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr int FADE_SPEED = 5;
 constexpr int HOLD_FRAMES = 100;
 
-const std::vector<effects::AmalAnim::Frame> HAND_FRAMES = {
+const std::vector<effects::animation::AmalAnim::Frame> HAND_FRAMES = {
     {1, 5}, {2, 5}, {3, 5}, {4, 5}, {5, 25}, {3, 5}, {2, 5}, {1, 25}};
 
-effects::AmigaPalette graveyardPalette() {
-  effects::AmigaPalette palette(32, BLACK);
+effects::color::AmigaPalette graveyardPalette() {
+  effects::color::AmigaPalette palette(32, BLACK);
   palette[2] = 0xF00;
   palette[9] = 0x222;
   return palette;
@@ -123,7 +123,7 @@ void GameOverScene::advance(int16_t joystick) {
       break;
     case Step::CloseShown:
       closeGraveyard();
-      flow = wait(effects::SCREEN_CLOSE_HIDDEN_VBLS, Step::Closed);
+      flow = wait(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::Closed);
       break;
     case Step::Closed:
       m_step = Step::Finished;
@@ -187,7 +187,7 @@ int GameOverScene::offset() const { return m_offset; }
 
 const BobLayer &GameOverScene::bobs() const { return m_bobs; }
 
-const effects::AmigaPalette &GameOverScene::palette() const {
+const effects::color::AmigaPalette &GameOverScene::palette() const {
   return m_palette;
 }
 
@@ -227,12 +227,12 @@ void GameOverScene::unpack() {
 
 void GameOverScene::open() {
   m_palette = graveyardPalette();
-  m_rainbow = effects::rainbowTable(RAINBOW_ENTRIES, "(8,-1,15)(16,1,15)", "",
-                                    "(8,1,15)(16,-1,15)");
+  m_rainbow = effects::color::rainbowTable(
+      RAINBOW_ENTRIES, "(8,-1,15)(16,1,15)", "", "(8,1,15)(16,-1,15)");
   m_rainbowShown = true;
   m_bobs.set(HAND, HAND_X, HAND_Y, HAND_IMAGE);
   m_bobs.set(TITLE, PINNED_X, TITLE_Y, TITLE_IMAGE);
-  m_hand = effects::AmalAnim(HAND_FRAMES, 0);
+  m_hand = effects::animation::AmalAnim(HAND_FRAMES, 0);
   m_animating = true;
   m_copperShown = true;
   m_copperOffset = m_offset;
@@ -263,7 +263,7 @@ GameOverScene::Flow GameOverScene::click(int16_t joystick) {
     return Flow::Yield;
   }
   m_fader.start(m_palette, FADE_SPEED,
-                effects::AmigaPalette(m_palette.size(), BLACK));
+                effects::color::AmigaPalette(m_palette.size(), BLACK));
   m_count = FULL_VOLUME;
   m_step = Step::MusicFade;
   return Flow::Continue;
@@ -287,7 +287,7 @@ GameOverScene::Flow GameOverScene::hold() {
     return Flow::Yield;
   }
   m_animating = false;
-  return wait(effects::SCREEN_CLOSE_SHOWN_VBLS, Step::CloseShown);
+  return wait(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::CloseShown);
 }
 
 void GameOverScene::closeGraveyard() {

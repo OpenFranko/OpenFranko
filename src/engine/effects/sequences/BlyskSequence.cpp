@@ -3,12 +3,13 @@
 namespace openfranko::src::engine::effects {
 namespace {
 
-constexpr AmigaColor BLACK = 0x000;
-constexpr AmigaColor INK = 0xFFF;
-constexpr AmigaColor SHADE = 0xAAA;
+constexpr color::AmigaColor BLACK = 0x000;
+constexpr color::AmigaColor INK = 0xFFF;
+constexpr color::AmigaColor SHADE = 0xAAA;
 
-const AmigaPalette LIT = {BLACK, INK, SHADE, PaletteFader::KEEP};
-const AmigaPalette DARK = {BLACK, BLACK, BLACK, PaletteFader::KEEP};
+const color::AmigaPalette LIT = {BLACK, INK, SHADE, color::PaletteFader::KEEP};
+const color::AmigaPalette DARK = {BLACK, BLACK, BLACK,
+                                  color::PaletteFader::KEEP};
 
 } // namespace
 
@@ -49,7 +50,7 @@ std::optional<int> BlyskSequence::page() const {
   return m_pasted ? std::optional<int>(m_page) : std::nullopt;
 }
 
-const AmigaPalette &BlyskSequence::palette() const { return m_palette; }
+const color::AmigaPalette &BlyskSequence::palette() const { return m_palette; }
 
 bool BlyskSequence::isFinished() const { return m_finished; }
 

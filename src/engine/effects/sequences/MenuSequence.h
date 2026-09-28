@@ -41,8 +41,9 @@ public:
   static constexpr std::size_t BOBS = 10;
   static constexpr int ATTRACT_AFTER = 300;
 
-  MenuSequence(GameOptions &options, AmigaPalette palette,
-               InkeyBuffer &keyboard, GameVersion version = GameVersion::V10);
+  MenuSequence(core::GameOptions &options, color::AmigaPalette palette,
+               core::InkeyBuffer &keyboard,
+               GameVersion version = GameVersion::V10);
 
   void setMouseButton(bool down);
   void advance(const Joystick &joystick);
@@ -50,7 +51,7 @@ public:
 
   const std::array<Bob, BOBS> &bobs() const;
   const std::array<Bob, BOBS> &shownBobs() const;
-  const AmigaPalette &palette() const;
+  const color::AmigaPalette &palette() const;
   const std::string &keysRead() const;
   bool isAttractDue() const;
   bool isScreenShown() const;
@@ -73,15 +74,15 @@ private:
   void placeHand();
   Bob &bob(int number);
 
-  GameOptions &m_options;
+  core::GameOptions &m_options;
   GameVersion m_version;
-  AmigaPalette m_palette;
-  PaletteFader m_fader;
+  color::AmigaPalette m_palette;
+  color::PaletteFader m_fader;
   std::array<Bob, BOBS> m_bobs{};
   std::array<Bob, BOBS> m_shownBobs{};
-  std::array<AmalMotion, BOBS> m_motions{};
+  std::array<animation::AmalMotion, BOBS> m_motions{};
   std::array<std::optional<CreditScroll>, 3> m_credits{};
-  InkeyBuffer &m_keyboard;
+  core::InkeyBuffer &m_keyboard;
   std::string m_keysRead;
   Phase m_phase = Phase::Unpacking;
   Resume m_resume = Resume::Nothing;

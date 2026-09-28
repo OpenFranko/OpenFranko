@@ -30,7 +30,7 @@ street::Picture panelPicture(const std::string &file) {
 
 street::BossExit lastBossExit(const amal::Registers &registers) {
   const street::StageLayout layout =
-      street::stageLayout(effects::GameOptions{});
+      street::stageLayout(effects::core::GameOptions{});
   street::StatusPanel panel(panelPicture("0384.bmp"),
                             panelPicture("0384_1.bmp"));
   panel.score({registers[RF], registers[RO], registers[RN], registers[RG]});

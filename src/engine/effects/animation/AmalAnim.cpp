@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <utility>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::animation {
 
 AmalAnim::AmalAnim(std::vector<Frame> frames, int loops)
     : m_frames(std::move(frames)), m_loops(loops),
@@ -34,4 +34,4 @@ int AmalAnim::advance(int image) {
 
 bool AmalAnim::isFinished() const { return m_finished; }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::animation

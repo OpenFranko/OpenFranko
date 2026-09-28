@@ -7,11 +7,11 @@
 #include "../../effects/color/PaletteFader.h"
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
-#include "EndingCredits.h"
-#include "../ui/GameSession.h"
 #include "../core/IndexedSurface.h"
 #include "../core/LoadingMock.h"
+#include "../ui/GameSession.h"
 #include "../ui/StatusPanel.h"
+#include "EndingCredits.h"
 #include "StreetStage.h"
 
 #include <array>
@@ -49,9 +49,9 @@ public:
   bool isShown(int screen) const;
   bool isStageShown() const;
   int displayLine() const;
-  effects::AmigaColor border() const;
+  effects::color::AmigaColor border() const;
   const IndexedSurface &screen(int number) const;
-  const effects::AmigaPalette &palette(int number) const;
+  const effects::color::AmigaPalette &palette(int number) const;
   const BobLayer &bobs() const;
   const IndexedSurface *panel() const;
   amal::Machine &machine();
@@ -100,7 +100,7 @@ private:
     bool hidden = false;
     int top = 0;
     IndexedSurface surface = IndexedSurface(0, 0);
-    effects::AmigaPalette palette;
+    effects::color::AmigaPalette palette;
   };
 
   Flow wait(int frames, Step next);
@@ -123,7 +123,7 @@ private:
   Flow musicFade();
   void off();
   void openScreen(int number, int top, int height,
-                  effects::AmigaPalette palette);
+                  effects::color::AmigaPalette palette);
   void closeScreen(int number);
   void redraw();
   void stillTest();
@@ -147,9 +147,9 @@ private:
   bool m_panelShown = false;
   int m_panelTop = PANEL_DISPLAY_Y;
   Picture m_picture;
-  effects::AmigaPalette m_picturePalette;
-  effects::PaletteFader m_fader;
-  effects::AmigaColor m_border;
+  effects::color::AmigaPalette m_picturePalette;
+  effects::color::PaletteFader m_fader;
+  effects::color::AmigaColor m_border;
   bool m_dancerCopper = false;
   EndingCredits m_credits;
 

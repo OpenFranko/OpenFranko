@@ -9,6 +9,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace animation {
 
 class AmalMotion {
 public:
@@ -33,6 +34,7 @@ private:
   int m_framesLeft = 0;
 };
 
+} // namespace animation
 } // namespace effects
 } // namespace engine
 } // namespace src

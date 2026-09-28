@@ -27,7 +27,7 @@ constexpr int MUSIC_START_WAIT = 2;
 constexpr int UNPACK_VBLS = 1;
 
 constexpr std::size_t COLORS = 32;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 constexpr int DIM_ROUNDS = 4;
 constexpr int DIM_SPEED = 100;
 constexpr int DIM_WAIT = 1;
@@ -36,7 +36,7 @@ constexpr int ROW_WAIT = 10;
 
 struct Relit {
   std::size_t index;
-  effects::AmigaColor color;
+  effects::color::AmigaColor color;
 };
 
 constexpr std::array<Relit, 3> RELIT = {{
@@ -71,7 +71,8 @@ constexpr int FADE_WAIT = 30;
 } // namespace
 
 HighScoreScene::HighScoreScene(StreetHost &host, GameSession &session,
-                               const effects::GameOptions &options, Save save)
+                               const effects::core::GameOptions &options,
+                               Save save)
     : m_host(host), m_session(session), m_options(options),
       m_save(std::move(save)), m_screen(WIDTH, HEIGHT),
       m_scratch(SCRATCH_WIDTH, SCRATCH_HEIGHT), m_display(WIDTH, HEIGHT),
@@ -130,7 +131,7 @@ const BobLayer &HighScoreScene::bobs() const { return m_bobs; }
 
 const IndexedSurface &HighScoreScene::screen() const { return m_screen; }
 
-const effects::AmigaPalette &HighScoreScene::palette() const {
+const effects::color::AmigaPalette &HighScoreScene::palette() const {
   return m_palette;
 }
 
@@ -160,7 +161,7 @@ void HighScoreScene::runBasic() {
       flow = wait(MUSIC_START_WAIT, Step::Pictures);
       break;
     case Step::Pictures:
-      m_host.setMusicTempo(effects::menuTempo(m_options.ntsc));
+      m_host.setMusicTempo(effects::color::menuTempo(m_options.ntsc));
       m_loading.queue([this] { m_host.loadPicture(TITLE); });
       queuePictures();
       break;
@@ -191,7 +192,7 @@ void HighScoreScene::runBasic() {
       break;
     case Step::FadeOut:
       m_fader.start(m_palette, FADE_SPEED,
-                    effects::AmigaPalette(COLORS, BLACK));
+                    effects::color::AmigaPalette(COLORS, BLACK));
       flow = wait(FADE_WAIT, Step::Clear);
       break;
     case Step::Clear:
@@ -252,11 +253,12 @@ HighScoreScene::Flow HighScoreScene::loaded() {
   m_palette.resize(COLORS, BLACK);
   m_round = 0;
   m_session.nameScreenOpen = true;
-  return wait(UNPACK_VBLS + effects::SCREEN_OPEN_VBLS, Step::Dim);
+  return wait(UNPACK_VBLS + effects::color::SCREEN_OPEN_VBLS, Step::Dim);
 }
 
 HighScoreScene::Flow HighScoreScene::dim() {
-  m_fader.start(m_palette, DIM_SPEED, effects::AmigaPalette(COLORS, BLACK));
+  m_fader.start(m_palette, DIM_SPEED,
+                effects::color::AmigaPalette(COLORS, BLACK));
   return wait(DIM_WAIT, Step::Dimmed);
 }
 
@@ -352,7 +354,7 @@ HighScoreScene::Flow HighScoreScene::entry() {
     if (typed == RETURN) {
       commit();
       m_session.nameScreenOpen = false;
-      return wait(effects::SCREEN_CLOSE_VBLS, Step::Hold);
+      return wait(effects::color::SCREEN_CLOSE_VBLS, Step::Hold);
     }
   }
   return Flow::Yield;

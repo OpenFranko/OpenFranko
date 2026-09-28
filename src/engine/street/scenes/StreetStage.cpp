@@ -79,7 +79,7 @@ int rebasedSample(int request) {
 } // namespace
 
 StreetStage::StreetStage(StreetHost &host, GameSession &session,
-                         effects::GameOptions &options)
+                         effects::core::GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen),
@@ -231,7 +231,7 @@ void StreetStage::playRouted(int request, int voices) {
 }
 
 void StreetStage::newGame() {
-  global(RQ) = m_options.character == effects::Character::Alex ? 1 : 0;
+  global(RQ) = m_options.character == effects::core::Character::Alex ? 1 : 0;
   m_resident.fill(0);
   m_needed.fill(0);
   m_escape = false;
@@ -918,7 +918,7 @@ bool StreetStage::quitsToHighScores() const {
 }
 
 void StreetStage::closePlayScreen() {
-  m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+  m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
   m_step = Step::GameOverScreenGone;
 }
 
@@ -970,8 +970,8 @@ void StreetStage::runBasic(const StreetInput &input) {
       }
       newGame();
       gameInit();
-      m_resumeFrame = m_frame + effects::SCREEN_OPEN_VBLS + DOUBLE_BUFFER_VBLS +
-                      effects::SCREEN_OPEN_VBLS;
+      m_resumeFrame = m_frame + effects::color::SCREEN_OPEN_VBLS +
+                      DOUBLE_BUFFER_VBLS + effects::color::SCREEN_OPEN_VBLS;
       m_step = Step::GameInitialized;
       flow = Flow::Yield;
       break;
@@ -1057,18 +1057,18 @@ void StreetStage::runBasic(const StreetInput &input) {
       break;
     case Step::GameOverScreenGone:
       hideScreen();
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::GameOverPanelClose;
       flow = Flow::Yield;
       break;
     case Step::GameOverPanelClose:
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
       m_step = Step::GameOverPanelGone;
       flow = Flow::Yield;
       break;
     case Step::GameOverPanelGone:
       m_panelShown = false;
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::GameOverClosed;
       flow = Flow::Yield;
       break;

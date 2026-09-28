@@ -4,10 +4,10 @@
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/input/ControllerSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../effects/animation/CharacterSelection.h"
+#include "../../effects/color/AmigaDisplay.h"
 #include "../../effects/core/GameOptions.h"
 #include "../../street/ui/GameSession.h"
 #include "../IEngineState.h"
@@ -25,7 +25,7 @@ public:
   CharacterSelectionState(systems::VideoSystem &videoSystem,
                           systems::AudioSystem &audioSystem,
                           systems::ControllerSystem &controllerSystem,
-                          effects::GameOptions &options,
+                          effects::core::GameOptions &options,
                           street::GameSession &session);
   ~CharacterSelectionState();
 
@@ -39,10 +39,10 @@ private:
   systems::AudioSystem &m_audioSystem;
   systems::ControllerSystem &m_controllerSystem;
   street::GameSession &m_session;
-  effects::CharacterSelection m_selection;
-  effects::VisibleRows m_rows;
+  effects::animation::CharacterSelection m_selection;
+  effects::color::VisibleRows m_rows;
   systems::IndexedBitmap m_picture;
-  effects::AmigaPalette m_screenPalette;
+  effects::color::AmigaPalette m_screenPalette;
   std::vector<systems::IndexedBitmap> m_sprites;
   systems::Canvas m_screen;
 };

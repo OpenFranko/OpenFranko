@@ -35,8 +35,9 @@ constexpr int RO = 14;
 constexpr int SECOND_STAGE = 2;
 constexpr int THIRD_STAGE = 3;
 
-effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
-  effects::AmigaPalette palette = picture.palette;
+effects::color::AmigaPalette
+screenPalette(const systems::IndexedBitmap &picture) {
+  effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
@@ -51,7 +52,7 @@ std::vector<systems::IndexedBitmap> loadSprites(GameVersion version) {
   return sprites;
 }
 
-effects::CharacterSelection::Joystick
+effects::animation::CharacterSelection::Joystick
 joystickFrom(const systems::ControllerSystem::ControllerStates &states) {
   return {states.left, states.right, states.button};
 }
@@ -60,14 +61,14 @@ joystickFrom(const systems::ControllerSystem::ControllerStates &states) {
 
 CharacterSelectionState::CharacterSelectionState(
     systems::VideoSystem &videoSystem, systems::AudioSystem &audioSystem,
-    systems::ControllerSystem &controllerSystem, effects::GameOptions &options,
-    street::GameSession &session)
+    systems::ControllerSystem &controllerSystem,
+    effects::core::GameOptions &options, street::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_session(session),
       m_selection(options, session.nameScreenOpen ? 1 : 0, session.version),
-      m_rows(
-          effects::visibleRows(effects::pictureLine(DISPLAY_LINE, options.ntsc),
-                               SCREEN_HEIGHT, options.ntsc)),
+      m_rows(effects::color::visibleRows(
+          effects::color::pictureLine(DISPLAY_LINE, options.ntsc),
+          SCREEN_HEIGHT, options.ntsc)),
       m_picture(systems::loadIndexedBitmap(
           assets::picturePath(assets::resourceName(PICTURE, session.version)))),
       m_screenPalette(screenPalette(m_picture)),
@@ -136,7 +137,7 @@ void CharacterSelectionState::draw() {
   } else {
     m_screen.setPalette(m_picture.palette);
     m_screen.draw(m_picture, 0, -m_rows.first);
-    for (const effects::CharacterSelection::Bob *bob :
+    for (const effects::animation::CharacterSelection::Bob *bob :
          {&m_selection.face(), &m_selection.hand()}) {
       const int sprite = bob->image - FIRST_SPRITE_IMAGE;
       if (bob->shown && bob->image != HIDDEN_IMAGE && sprite >= 0 &&

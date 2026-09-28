@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 
 using namespace openfranko::src::engine::effects;
+using namespace openfranko::src::engine::effects::color;
 
 namespace {
 

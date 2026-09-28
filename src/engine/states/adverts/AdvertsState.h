@@ -3,8 +3,8 @@
 
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/input/ControllerSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../effects/color/AmigaDisplay.h"
 #include "../../effects/color/PaletteFader.h"
 #include "../IEngineState.h"
@@ -47,10 +47,10 @@ private:
   systems::VideoSystem &m_videoSystem;
   systems::ControllerSystem &m_controllerSystem;
   std::vector<systems::IndexedBitmap> m_slides;
-  effects::VisibleRows m_rows;
+  effects::color::VisibleRows m_rows;
   systems::Canvas m_screen;
-  effects::AmigaPalette m_palette;
-  effects::PaletteFader m_fader;
+  effects::color::AmigaPalette m_palette;
+  effects::color::PaletteFader m_fader;
   Step m_step = Step::Open;
   std::optional<int> m_copied;
   int m_slide = 0;

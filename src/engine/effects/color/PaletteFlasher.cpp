@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::color {
 
 void PaletteFlasher::start(std::size_t color, FlashSteps steps) {
   if (steps.size() > MAX_STEPS) {
@@ -38,4 +38,4 @@ bool PaletteFlasher::tick(AmigaPalette &palette) {
 
 bool PaletteFlasher::isFlashing() const { return !m_steps.empty(); }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::color

@@ -114,7 +114,7 @@ public:
 
   Picture loadPicture(int) override { return box(320, 222, 0, 0, 0); }
 
-  effects::AmigaPalette loadPalette(int) override { return {}; }
+  effects::color::AmigaPalette loadPalette(int) override { return {}; }
 
   std::vector<Picture> loadScenery(int resource) override {
     scenery.push_back(resource);
@@ -169,7 +169,7 @@ public:
 struct Duel {
   FakeHost host;
   GameSession session;
-  effects::GameOptions options;
+  effects::core::GameOptions options;
   std::unique_ptr<BossStage> stage;
 
   Duel() {
@@ -322,7 +322,7 @@ SCENARIO("The boss stage keeps the display lines state 09 and SYS set") {
     stage.compose(frame);
 
     THEN("The play screen sits on line 7, its top rows above line 26 lost") {
-      const effects::AmigaPalette &colors = levelPalette(false);
+      const effects::color::AmigaPalette &colors = levelPalette(false);
       REQUIRE(frame.size() == 304u * 255u);
       REQUIRE(frame[18 * 304] == 0xFF000000u);
       REQUIRE(frame[19 * 304] == toArgb(colors[STREET_COLOR]));
@@ -371,7 +371,7 @@ SCENARIO("The boss stage keeps the display lines state 09 and SYS set") {
 
     THEN("The laced play screen starts 60 lines lower in a double-height "
          "frame") {
-      const effects::AmigaPalette &colors = levelPalette(false);
+      const effects::color::AmigaPalette &colors = levelPalette(false);
       REQUIRE(frame.size() == 304u * 510u);
       REQUIRE(frame[119 * 304] == 0xFF555555u);
       REQUIRE(frame[120 * 304] == toArgb(colors[STREET_COLOR]));

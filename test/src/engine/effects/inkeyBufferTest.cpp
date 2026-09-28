@@ -3,7 +3,7 @@
 
 #include <string>
 
-using namespace openfranko::src::engine::effects;
+using namespace openfranko::src::engine::effects::core;
 
 namespace {
 

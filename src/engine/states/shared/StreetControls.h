@@ -1,8 +1,8 @@
 #ifndef ENGINE_STATES_STREETCONTROLS_H_
 #define ENGINE_STATES_STREETCONTROLS_H_
 
-#include "../../../systems/input/ControllerSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../GameVersion.h"
 #include "../../effects/core/GameOptions.h"
 #include "../../street/scenes/StreetStage.h"
@@ -17,7 +17,7 @@ street::StreetInput readStreetInput(const systems::ControllerSystem &controller,
                                     GameVersion version);
 void showStageFrame(systems::VideoSystem &videoSystem,
                     const systems::Display &frame,
-                    const effects::GameOptions &options);
+                    const effects::core::GameOptions &options);
 
 } // namespace shared
 } // namespace states

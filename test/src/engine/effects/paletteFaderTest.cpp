@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <vector>
 
-using namespace openfranko::src::engine::effects;
+using namespace openfranko::src::engine::effects::color;
 
 SCENARIO("PaletteFader steps like the AMOS Fade instruction") {
   GIVEN("A white colour fading to $505 at speed 5") {

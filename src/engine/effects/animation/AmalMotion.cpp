@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <utility>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::animation {
 namespace {
 
 constexpr uint16_t HALF = 0x8000;
@@ -49,4 +49,4 @@ void AmalMotion::startNextMove() {
   m_framesLeft = frames;
 }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::animation

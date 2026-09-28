@@ -44,7 +44,7 @@ public:
 
   Picture loadPicture(int) override { return box(320, 256, 0); }
 
-  effects::AmigaPalette loadPalette(int) override { return {}; }
+  effects::color::AmigaPalette loadPalette(int) override { return {}; }
 
   std::vector<Picture> loadScenery(int) override { return {}; }
 
@@ -111,7 +111,7 @@ SCENARIO("The continue screen is drawn on the cleared hiscore screen") {
     }
 
     THEN("Colour 0 is purple and only the text and hand colours are lit") {
-      const effects::AmigaPalette &palette = choice.scene.palette();
+      const effects::color::AmigaPalette &palette = choice.scene.palette();
       REQUIRE(palette[0] == 0x707);
       REQUIRE(palette[18] == 0xAAA);
       REQUIRE(palette[24] == 0xDDD);

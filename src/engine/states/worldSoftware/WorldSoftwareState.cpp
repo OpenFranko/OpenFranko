@@ -14,18 +14,19 @@ constexpr int SCREEN_WIDTH = 368;
 constexpr int SCREEN_HEIGHT = 290;
 constexpr int DISPLAY_LINE = 25;
 constexpr std::size_t SCREEN_COLORS = 32;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 
 constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 75, false};
 
 constexpr std::size_t EYES_COLOR = 22;
-const effects::FlashSteps EYES_FLASH = {
+const effects::color::FlashSteps EYES_FLASH = {
     {0xF00, 4}, {0xE00, 4}, {0xD00, 4}, {0xC00, 4}, {0xB00, 4},
     {0xA00, 4}, {0x900, 4}, {0x800, 4}, {0x900, 4}, {0xA00, 4},
     {0xB00, 4}, {0xC00, 4}, {0xD00, 4}, {0xE00, 4}};
 
-effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
-  effects::AmigaPalette palette = picture.palette;
+effects::color::AmigaPalette
+screenPalette(const systems::IndexedBitmap &picture) {
+  effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
@@ -35,8 +36,8 @@ effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
 WorldSoftwareState::WorldSoftwareState(systems::VideoSystem &videoSystem,
                                        systems::AudioSystem &audioSystem)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_rows(effects::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
-                                  videoSystem.isNtsc())),
+      m_rows(effects::color::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
+                                         videoSystem.isNtsc())),
       m_picture(systems::loadIndexedBitmap(PICTURE_PATH)),
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_sequence(screenPalette(m_picture), TIMINGS) {

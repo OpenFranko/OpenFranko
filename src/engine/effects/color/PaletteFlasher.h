@@ -10,6 +10,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace color {
 
 struct FlashStep {
   AmigaColor color;
@@ -34,6 +35,7 @@ private:
   int m_countdown = 0;
 };
 
+} // namespace color
 } // namespace effects
 } // namespace engine
 } // namespace src

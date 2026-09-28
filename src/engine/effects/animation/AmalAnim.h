@@ -8,6 +8,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace animation {
 
 class AmalAnim {
 public:
@@ -31,6 +32,7 @@ private:
   bool m_finished = true;
 };
 
+} // namespace animation
 } // namespace effects
 } // namespace engine
 } // namespace src

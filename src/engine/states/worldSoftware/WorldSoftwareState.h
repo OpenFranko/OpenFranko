@@ -26,7 +26,7 @@ public:
 private:
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
-  effects::VisibleRows m_rows;
+  effects::color::VisibleRows m_rows;
   systems::IndexedBitmap m_picture;
   systems::Canvas m_screen;
   effects::FotoSequence m_sequence;

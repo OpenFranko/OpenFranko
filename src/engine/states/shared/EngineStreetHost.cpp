@@ -75,7 +75,7 @@ street::Picture EngineStreetHost::loadPicture(int resource) {
   return toPicture(systems::loadIndexedBitmap(resourcePath(resource) + ".bmp"));
 }
 
-effects::AmigaPalette EngineStreetHost::loadPalette(int resource) {
+effects::color::AmigaPalette EngineStreetHost::loadPalette(int resource) {
   return systems::loadIndexedBitmap(resourcePath(resource) + ".bmp").palette;
 }
 
@@ -127,7 +127,7 @@ void EngineStreetHost::setMusicVolume(int volume) {
 }
 
 void EngineStreetHost::setMusicTempo(int tempo) {
-  m_audioSystem.setMusicTempoScale(effects::menuTuneScale(tempo));
+  m_audioSystem.setMusicTempoScale(effects::color::menuTuneScale(tempo));
 }
 
 void EngineStreetHost::playSample(int bank, int sample, int voices) {

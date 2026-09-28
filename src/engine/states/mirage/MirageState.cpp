@@ -11,12 +11,13 @@ constexpr int SCREEN_WIDTH = 368;
 constexpr int SCREEN_HEIGHT = 290;
 constexpr int DISPLAY_LINE = 30;
 constexpr std::size_t SCREEN_COLORS = 32;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 
 constexpr effects::FotoSequence::Timings TIMINGS{5, 200, 5, 70, true};
 
-effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
-  effects::AmigaPalette palette = picture.palette;
+effects::color::AmigaPalette
+screenPalette(const systems::IndexedBitmap &picture) {
+  effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
@@ -25,8 +26,8 @@ effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
 
 MirageState::MirageState(systems::VideoSystem &videoSystem)
     : m_videoSystem(videoSystem),
-      m_rows(effects::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
-                                  videoSystem.isNtsc())),
+      m_rows(effects::color::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
+                                         videoSystem.isNtsc())),
       m_picture(systems::loadIndexedBitmap(PICTURE_PATH)),
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_sequence(screenPalette(m_picture), TIMINGS) {}

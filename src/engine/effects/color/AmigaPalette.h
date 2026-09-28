@@ -8,6 +8,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace color {
 
 using AmigaColor = uint16_t;
 using AmigaPalette = std::vector<AmigaColor>;
@@ -24,6 +25,7 @@ constexpr Rgb toRgb(AmigaColor color) {
           static_cast<uint8_t>((color & 0xF) * 17)};
 }
 
+} // namespace color
 } // namespace effects
 } // namespace engine
 } // namespace src

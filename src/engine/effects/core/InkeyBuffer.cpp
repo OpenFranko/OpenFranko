@@ -1,6 +1,6 @@
 #include "InkeyBuffer.h"
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::core {
 
 void InkeyBuffer::press(char key) {
   m_pressed.push_back(key);
@@ -38,4 +38,4 @@ void InkeyBuffer::deliver() {
   m_pressed.clear();
 }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::core

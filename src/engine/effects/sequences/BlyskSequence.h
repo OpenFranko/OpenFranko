@@ -25,7 +25,7 @@ public:
   void advance(bool fireLatched);
 
   std::optional<int> page() const;
-  const AmigaPalette &palette() const;
+  const color::AmigaPalette &palette() const;
   bool isFinished() const;
   bool isSkipped() const;
 
@@ -38,8 +38,8 @@ private:
   bool m_pasted = false;
   bool m_finished = false;
   bool m_skipped = false;
-  AmigaPalette m_palette = AmigaPalette(COLORS, 0);
-  PaletteFader m_fader;
+  color::AmigaPalette m_palette = color::AmigaPalette(COLORS, 0);
+  color::PaletteFader m_fader;
 };
 
 } // namespace effects

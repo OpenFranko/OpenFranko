@@ -45,8 +45,8 @@ private:
   amal::Machine m_machine;
   amal::Object m_bob;
   amal::Object m_shownBob;
-  effects::VisibleRows m_walkRows;
-  effects::VisibleRows m_logoRows;
+  effects::color::VisibleRows m_walkRows;
+  effects::color::VisibleRows m_logoRows;
   systems::Canvas m_walkScreen;
   systems::Canvas m_logoScreen;
   std::optional<effects::FotoSequence> m_foto;

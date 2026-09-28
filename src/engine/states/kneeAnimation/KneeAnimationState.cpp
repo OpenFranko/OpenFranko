@@ -23,8 +23,8 @@ constexpr int VERSION12_TEMPO = 37;
 
 constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
-constexpr effects::AmigaColor BACKGROUND_GREY = 0x555;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor BACKGROUND_GREY = 0x555;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 
 constexpr int FRAMES_PER_UNPACK = 20;
 constexpr int SAMPLE_UNPACK = 2;
@@ -37,9 +37,11 @@ constexpr int SAMPLE_FRAME = SAMPLE_UNPACK * FRAMES_PER_UNPACK;
 constexpr int MUSIC_FRAME = IMAGE_COUNT * FRAMES_PER_UNPACK + MUSIC_WAIT;
 constexpr int CLOSE_FRAME = MUSIC_FRAME + TEMPO_WAIT + CLOSE_WAIT;
 constexpr int SCREENS = 2;
-constexpr int OPEN_FRAMES = SCREENS * effects::SCREEN_OPEN_VBLS;
-constexpr int GONE_FRAME = CLOSE_FRAME + effects::SCREEN_CLOSE_SHOWN_VBLS;
-constexpr int CLOSED_FRAME = CLOSE_FRAME + SCREENS * effects::SCREEN_CLOSE_VBLS;
+constexpr int OPEN_FRAMES = SCREENS * effects::color::SCREEN_OPEN_VBLS;
+constexpr int GONE_FRAME =
+    CLOSE_FRAME + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
+constexpr int CLOSED_FRAME =
+    CLOSE_FRAME + SCREENS * effects::color::SCREEN_CLOSE_VBLS;
 
 } // namespace
 

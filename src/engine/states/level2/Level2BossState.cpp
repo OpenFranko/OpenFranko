@@ -7,7 +7,7 @@ namespace openfranko::src::engine::states::level2 {
 Level2BossState::Level2BossState(systems::VideoSystem &videoSystem,
                                  systems::AudioSystem &audioSystem,
                                  systems::ControllerSystem &controllerSystem,
-                                 effects::GameOptions &options,
+                                 effects::core::GameOptions &options,
                                  street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_options(options), m_host(audioSystem, session.version),

@@ -6,9 +6,9 @@
 #include "../../effects/color/AmigaPalette.h"
 #include "../../effects/core/InkeyBuffer.h"
 #include "../core/DoubleBuffer.h"
-#include "../scenes/HighScoreTable.h"
 #include "../core/IndexedSurface.h"
 #include "../core/StageFrame.h"
+#include "../scenes/HighScoreTable.h"
 
 #include <optional>
 #include <string>
@@ -40,7 +40,7 @@ struct StreetExit {
 
 struct BossExit {
   DoubleBuffer buffer;
-  effects::AmigaPalette palette;
+  effects::color::AmigaPalette palette;
   int displayY = 0;
   int offsetX = 0;
   IndexedSurface panel;
@@ -70,11 +70,11 @@ struct GameSession {
   int stageReached = 0;
   bool fromBonusDrive = false;
   bool nameScreenOpen = false;
-  effects::AmigaColor border = 0x000;
+  effects::color::AmigaColor border = 0x000;
   SystemKey keyLatch = SystemKey::None;
   DriveCarryOver lastDrive;
   HighScoreTable highScores;
-  effects::InkeyBuffer keyboard;
+  effects::core::InkeyBuffer keyboard;
   std::optional<StreetExit> streetExit;
   std::optional<BossExit> bossExit;
 };

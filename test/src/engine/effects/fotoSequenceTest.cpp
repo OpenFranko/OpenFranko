@@ -4,6 +4,7 @@
 #include <vector>
 
 using namespace openfranko::src::engine::effects;
+using namespace openfranko::src::engine::effects::color;
 
 namespace {
 

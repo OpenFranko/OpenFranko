@@ -5,8 +5,8 @@
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../effects/color/AmigaDisplay.h"
 #include "../../effects/core/GameOptions.h"
-#include "../../street/ui/GameSession.h"
 #include "../../street/scenes/HighScoreScene.h"
+#include "../../street/ui/GameSession.h"
 #include "../IEngineState.h"
 #include "../shared/EngineStreetHost.h"
 
@@ -20,7 +20,8 @@ class HighScoreState : public IEngineState {
 public:
   HighScoreState(systems::VideoSystem &videoSystem,
                  systems::AudioSystem &audioSystem,
-                 effects::GameOptions &options, street::GameSession &session);
+                 effects::core::GameOptions &options,
+                 street::GameSession &session);
 
   std::optional<EngineStateEnum> update() override;
 
@@ -30,7 +31,7 @@ private:
   systems::VideoSystem &m_videoSystem;
   shared::EngineStreetHost m_host;
   street::HighScoreScene m_scene;
-  effects::VisibleRows m_rows;
+  effects::color::VisibleRows m_rows;
 };
 
 } // namespace highScore

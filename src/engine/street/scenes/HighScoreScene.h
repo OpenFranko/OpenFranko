@@ -3,13 +3,13 @@
 
 #include "../../../systems/graphics/Display.h"
 #include "../../effects/color/AmigaPalette.h"
-#include "../../effects/core/GameOptions.h"
 #include "../../effects/color/PaletteFader.h"
+#include "../../effects/core/GameOptions.h"
 #include "../core/Bobs.h"
-#include "../ui/GameSession.h"
-#include "HighScoreTable.h"
 #include "../core/IndexedSurface.h"
 #include "../core/LoadingMock.h"
+#include "../ui/GameSession.h"
+#include "HighScoreTable.h"
 #include "StreetStage.h"
 
 #include <cstdint>
@@ -36,7 +36,7 @@ public:
   using Save = std::function<void(const HighScoreTable &)>;
 
   HighScoreScene(StreetHost &host, GameSession &session,
-                 const effects::GameOptions &options, Save save);
+                 const effects::core::GameOptions &options, Save save);
 
   void advance();
   void compose(std::vector<uint32_t> &frame) const;
@@ -50,7 +50,7 @@ public:
   const std::string &name() const;
   const BobLayer &bobs() const;
   const IndexedSurface &screen() const;
-  const effects::AmigaPalette &palette() const;
+  const effects::color::AmigaPalette &palette() const;
 
 private:
   enum class Step {
@@ -91,18 +91,18 @@ private:
 
   StreetHost &m_host;
   GameSession &m_session;
-  const effects::GameOptions &m_options;
+  const effects::core::GameOptions &m_options;
   Save m_save;
   LoadingMock m_loading;
   ImageBank m_images;
   BobLayer m_bobs;
   Picture m_picture;
-  effects::AmigaPalette m_picturePalette;
+  effects::color::AmigaPalette m_picturePalette;
   IndexedSurface m_screen;
   IndexedSurface m_scratch;
   IndexedSurface m_display;
-  effects::AmigaPalette m_palette;
-  effects::PaletteFader m_fader;
+  effects::color::AmigaPalette m_palette;
+  effects::color::PaletteFader m_fader;
 
   Step m_step = Step::Reset;
   Step m_afterLoading = Step::Reset;

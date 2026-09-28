@@ -2,8 +2,8 @@
 #define ENGINE_STATES_LEVEL1CARSTATE_H_
 
 #include "../../../systems/audio/AudioSystem.h"
-#include "../../../systems/input/ControllerSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../effects/core/GameOptions.h"
 #include "../../street/scenes/CarStage.h"
 #include "../../street/ui/GameSession.h"
@@ -21,7 +21,8 @@ public:
   Level1CarState(systems::VideoSystem &videoSystem,
                  systems::AudioSystem &audioSystem,
                  systems::ControllerSystem &controllerSystem,
-                 effects::GameOptions &options, street::GameSession &session);
+                 effects::core::GameOptions &options,
+                 street::GameSession &session);
 
   std::optional<EngineStateEnum> update() override;
 
@@ -30,7 +31,7 @@ public:
 private:
   systems::VideoSystem &m_videoSystem;
   systems::ControllerSystem &m_controllerSystem;
-  const effects::GameOptions &m_options;
+  const effects::core::GameOptions &m_options;
   shared::EngineStreetHost m_host;
   street::CarStage m_stage;
 };

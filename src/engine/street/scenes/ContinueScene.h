@@ -5,8 +5,8 @@
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
 #include "../core/Bobs.h"
-#include "../ui/GameSession.h"
 #include "../core/IndexedSurface.h"
+#include "../ui/GameSession.h"
 #include "StreetStage.h"
 
 #include <cstdint>
@@ -36,7 +36,7 @@ public:
   bool isShown() const;
   bool isContinueChosen() const;
   const BobLayer &bobs() const;
-  const effects::AmigaPalette &palette() const;
+  const effects::color::AmigaPalette &palette() const;
 
 private:
   enum class Step { Open, Choose, Chosen, Gone, Closed, Finished };
@@ -55,7 +55,7 @@ private:
   BobLayer m_bobs;
   IndexedSurface m_screen;
   IndexedSurface m_display;
-  effects::AmigaPalette m_palette;
+  effects::color::AmigaPalette m_palette;
 
   Step m_step = Step::Open;
   Outcome m_outcome = Outcome::Choosing;

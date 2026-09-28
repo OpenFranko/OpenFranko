@@ -34,10 +34,10 @@ constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
 
 constexpr std::size_t COLORS = 32;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 
-effects::AmigaPalette continuePalette() {
-  effects::AmigaPalette palette(COLORS, BLACK);
+effects::color::AmigaPalette continuePalette() {
+  effects::color::AmigaPalette palette(COLORS, BLACK);
   palette[0] = 0x707;
   palette[18] = 0xAAA;
   palette[24] = 0xDDD;
@@ -79,7 +79,7 @@ void ContinueScene::advance(int16_t joystick) {
     case Step::Gone:
       m_bobs.offAll();
       m_shown = false;
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::Closed;
       flow = Flow::Yield;
       break;
@@ -132,7 +132,7 @@ bool ContinueScene::isContinueChosen() const { return m_continue; }
 
 const BobLayer &ContinueScene::bobs() const { return m_bobs; }
 
-const effects::AmigaPalette &ContinueScene::palette() const {
+const effects::color::AmigaPalette &ContinueScene::palette() const {
   return m_palette;
 }
 
@@ -172,7 +172,7 @@ void ContinueScene::close() {
     m_host.playSample(VOICE_BANK, m_session.registers[RQ] + 1, ALL_VOICES);
   }
   m_machine.destroyAll();
-  m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+  m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
   m_step = Step::Gone;
 }
 

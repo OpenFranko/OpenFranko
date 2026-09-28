@@ -2,8 +2,8 @@
 #define ENGINE_STATES_GAMEOVERSTATE_H_
 
 #include "../../../systems/audio/AudioSystem.h"
-#include "../../../systems/input/ControllerSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../effects/color/AmigaDisplay.h"
 #include "../../effects/core/GameOptions.h"
 #include "../../street/scenes/GameOverScene.h"
@@ -21,7 +21,7 @@ public:
   GameOverState(systems::VideoSystem &videoSystem,
                 systems::AudioSystem &audioSystem,
                 systems::ControllerSystem &controllerSystem,
-                const effects::GameOptions &options,
+                const effects::core::GameOptions &options,
                 street::GameSession &session);
 
   std::optional<EngineStateEnum> update() override;
@@ -33,7 +33,7 @@ private:
   systems::ControllerSystem &m_controllerSystem;
   shared::EngineStreetHost m_host;
   street::GameOverScene m_scene;
-  effects::VisibleRows m_rows;
+  effects::color::VisibleRows m_rows;
 };
 
 } // namespace gameOver

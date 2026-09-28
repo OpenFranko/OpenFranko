@@ -70,10 +70,10 @@ Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
       std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
 }
 
-effects::AmigaPalette picturePalette() {
-  effects::AmigaPalette palette(32);
+effects::color::AmigaPalette picturePalette() {
+  effects::color::AmigaPalette palette(32);
   for (std::size_t i = 0; i < palette.size(); ++i) {
-    palette[i] = static_cast<effects::AmigaColor>((i * 0x123) & 0xFFF);
+    palette[i] = static_cast<effects::color::AmigaColor>((i * 0x123) & 0xFFF);
   }
   return palette;
 }
@@ -108,7 +108,9 @@ public:
     return box(320, 256, 0, 0, PICTURE_COLOR);
   }
 
-  effects::AmigaPalette loadPalette(int) override { return picturePalette(); }
+  effects::color::AmigaPalette loadPalette(int) override {
+    return picturePalette();
+  }
 
   std::vector<Picture> loadScenery(int) override { return {}; }
 
@@ -214,7 +216,7 @@ struct Ending {
   int panelPixel(int x, int y) const { return scene.panel()->pixel(x, y); }
 
   bool stillBobAt(int x, int y) const {
-    const effects::AmigaPalette &colors = scene.palette(0);
+    const effects::color::AmigaPalette &colors = scene.palette(0);
     return pixel(x, y) !=
            toArgb(colors[scene.screen(0).pixel(x, y) & (colors.size() - 1)]);
   }
@@ -229,7 +231,7 @@ SCENARIO("CONGRA shows the stage where 320x512 or NTSC left it") {
     ending.session.bossExit->displayY = 107;
     ending.session.bossExit->panelY = 219;
     ending.run(1);
-    const effects::AmigaPalette &colors = levelPalette(false);
+    const effects::color::AmigaPalette &colors = levelPalette(false);
 
     THEN("Each line shows the even field's row, so the screen fills 111 "
          "lines") {
@@ -300,7 +302,7 @@ SCENARIO("CONGRA clears the stage, stops the tune and loads four files") {
       REQUIRE(scene.border() == 0x555);
       REQUIRE(ending.host.musicStops == 0);
       REQUIRE_FALSE(ending.session.bossExit.has_value());
-      const effects::AmigaPalette &colors = levelPalette(false);
+      const effects::color::AmigaPalette &colors = levelPalette(false);
       REQUIRE(ending.pixel(0, 0) == toArgb(colors[STREET_COLOR]));
       REQUIRE(ending.pixel(100, 100 + STAGE_TOP - EndingScene::DISPLAY_LINE) ==
               toArgb(colors[BOB_COLOR]));
@@ -392,7 +394,7 @@ SCENARIO("FOTO fades the still in from white and holds it for KLIKER") {
       THEN("The picture shows all white on a black border") {
         REQUIRE(scene.isShowingStill());
         REQUIRE(scene.isShown(0));
-        REQUIRE(scene.palette(0) == effects::AmigaPalette(32, 0xFFF));
+        REQUIRE(scene.palette(0) == effects::color::AmigaPalette(32, 0xFFF));
         REQUIRE(scene.border() == 0x000);
         REQUIRE(scene.screen(0).pixel(100, 100) == PICTURE_COLOR);
       }
@@ -487,7 +489,7 @@ SCENARIO("Franko walks away into the light, one image per 22 frames") {
     WHEN("Cls 0 and Fade 5 To 1 have had their Wait 50") {
       const uint8_t picture = scene.screen(0).pixel(100, 100);
       ending.run(1);
-      const effects::AmigaPalette grey = scene.palette(0);
+      const effects::color::AmigaPalette grey = scene.palette(0);
       ending.run(50);
 
       THEN("The still is cleared and faded to grey, and BACK[-1] greys the "
@@ -613,7 +615,8 @@ SCENARIO("The break-dance opens two screens and walks the dancer in") {
           THEN("The text screen sits at line 50 in black on a black border") {
             REQUIRE(scene.isShown(0));
             REQUIRE(scene.screen(0).height() == 80);
-            REQUIRE(scene.palette(0) == effects::AmigaPalette(16, 0x000));
+            REQUIRE(scene.palette(0) ==
+                    effects::color::AmigaPalette(16, 0x000));
             REQUIRE(scene.border() == 0x000);
             REQUIRE(scene.isShowingCredits());
             REQUIRE(scene.page() == 0);

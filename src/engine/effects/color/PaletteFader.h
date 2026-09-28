@@ -10,6 +10,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace color {
 
 class PaletteFader {
 public:
@@ -30,6 +31,7 @@ private:
   int m_countdown = 0;
 };
 
+} // namespace color
 } // namespace effects
 } // namespace engine
 } // namespace src

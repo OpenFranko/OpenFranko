@@ -9,6 +9,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace core {
 
 class InkeyBuffer {
 public:
@@ -29,6 +30,7 @@ private:
   bool m_permitted = false;
 };
 
+} // namespace core
 } // namespace effects
 } // namespace engine
 } // namespace src

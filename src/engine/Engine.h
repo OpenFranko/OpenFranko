@@ -2,9 +2,9 @@
 #define ENGINE_ENGINE_H_
 
 #include "../systems/audio/AudioSystem.h"
+#include "../systems/graphics/VideoSystem.h"
 #include "../systems/input/ControllerSystem.h"
 #include "../systems/input/Platform.h"
-#include "../systems/graphics/VideoSystem.h"
 #include "effects/core/GameOptions.h"
 #include "states/IEngineState.h"
 #include "street/ui/GameSession.h"
@@ -39,7 +39,7 @@ private:
   systems::VideoSystem videoSystem;
   systems::AudioSystem audioSystem;
   systems::ControllerSystem controllerSystem;
-  effects::GameOptions options;
+  effects::core::GameOptions options;
   street::GameSession session;
 
   std::unique_ptr<states::IEngineState> currentState;

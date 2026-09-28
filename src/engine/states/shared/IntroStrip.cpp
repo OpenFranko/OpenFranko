@@ -21,7 +21,7 @@ constexpr int STRIP_WIDTH = 320;
 constexpr int STRIP_HEIGHT = 48;
 constexpr int STRIP_DISPLAY_LINE = 136;
 constexpr int STRIP_LEFT = 160;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 
 constexpr int LINE_WIDTH = 280;
 constexpr int GLYPH_WIDTH = 16;
@@ -43,8 +43,8 @@ IntroStrip::IntroStrip(systems::VideoSystem &videoSystem,
                        const std::string &directory)
     : m_videoSystem(videoSystem), m_directory(directory),
       m_pages(loadPages(directory)),
-      m_rows(effects::visibleRows(FRAME_DISPLAY_LINE, FRAME_HEIGHT,
-                                  videoSystem.isNtsc())),
+      m_rows(effects::color::visibleRows(FRAME_DISPLAY_LINE, FRAME_HEIGHT,
+                                         videoSystem.isNtsc())),
       m_frame(FRAME_WIDTH, m_rows.count) {
   m_strip.width = STRIP_WIDTH;
   m_strip.height = STRIP_HEIGHT;

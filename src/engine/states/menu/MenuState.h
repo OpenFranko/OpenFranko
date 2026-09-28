@@ -4,10 +4,10 @@
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/input/ControllerSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
-#include "../../effects/sequences/AttractSequence.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../effects/core/GameOptions.h"
+#include "../../effects/sequences/AttractSequence.h"
 #include "../../effects/sequences/MenuSequence.h"
 #include "../../street/ui/GameSession.h"
 #include "../IEngineState.h"
@@ -26,7 +26,7 @@ public:
   MenuState(systems::VideoSystem &videoSystem,
             systems::AudioSystem &audioSystem,
             systems::ControllerSystem &controllerSystem,
-            effects::GameOptions &options, street::GameSession &session);
+            effects::core::GameOptions &options, street::GameSession &session);
 
   std::optional<EngineStateEnum> update() override;
 
@@ -43,7 +43,7 @@ private:
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
   systems::ControllerSystem &m_controllerSystem;
-  effects::GameOptions &m_options;
+  effects::core::GameOptions &m_options;
   street::GameSession &m_session;
   systems::IndexedBitmap m_backdrop;
   systems::IndexedBitmap m_title;
@@ -53,8 +53,8 @@ private:
   systems::Canvas m_menuScreen;
   systems::Canvas m_attractScreen;
   effects::MenuSequence m_menu;
-  effects::AmigaPalette m_titlePalette;
-  effects::AmigaPalette m_hiscorePalette;
+  effects::color::AmigaPalette m_titlePalette;
+  effects::color::AmigaPalette m_hiscorePalette;
   std::optional<effects::AttractSequence> m_attract;
   effects::AttractSequence::Kind m_nextAttract =
       effects::AttractSequence::Kind::Title;

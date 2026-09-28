@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <vector>
 
-using namespace openfranko::src::engine::effects;
+using namespace openfranko::src::engine::effects::color;
 
 SCENARIO("Set Rainbow builds its table as TRSet does") {
   GIVEN("The game-over sky: red and blue ramps with green left empty") {

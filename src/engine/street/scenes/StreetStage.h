@@ -6,13 +6,13 @@
 #include "../../effects/core/GameOptions.h"
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
-#include "EndingCredits.h"
-#include "../ui/GameSession.h"
 #include "../core/IndexedSurface.h"
 #include "../core/LevelScript.h"
 #include "../core/LoadingMock.h"
 #include "../core/StageFrame.h"
+#include "../ui/GameSession.h"
 #include "../ui/StatusPanel.h"
+#include "EndingCredits.h"
 
 #include <array>
 #include <cstdint>
@@ -31,7 +31,7 @@ public:
 
   virtual std::vector<Picture> loadSpriteSet(int resource, int sampleBank) = 0;
   virtual Picture loadPicture(int resource) = 0;
-  virtual effects::AmigaPalette loadPalette(int resource) = 0;
+  virtual effects::color::AmigaPalette loadPalette(int resource) = 0;
   virtual std::vector<Picture> loadScenery(int resource) = 0;
   virtual LevelScript loadLevelScript(int resource) = 0;
   virtual EndingCredits loadEndingCredits() = 0;
@@ -65,7 +65,7 @@ public:
   static constexpr int PANEL_ARTWORK = 1;
 
   StreetStage(StreetHost &host, GameSession &session,
-              effects::GameOptions &options);
+              effects::core::GameOptions &options);
 
   void advance(const StreetInput &input);
   void compose(std::vector<uint32_t> &frame) const;
@@ -176,7 +176,7 @@ private:
 
   StreetHost &m_host;
   GameSession &m_session;
-  effects::GameOptions &m_options;
+  effects::core::GameOptions &m_options;
   amal::Machine m_machine;
   ImageBank m_images;
   BobLayer m_bobs;
@@ -185,8 +185,8 @@ private:
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
   StageDisplay m_copper;
-  effects::AmigaPalette m_palette;
-  effects::AmigaPalette m_panelPalette;
+  effects::color::AmigaPalette m_palette;
+  effects::color::AmigaPalette m_panelPalette;
   LevelScript m_script;
   std::vector<Picture> m_columns;
   Picture m_opening;

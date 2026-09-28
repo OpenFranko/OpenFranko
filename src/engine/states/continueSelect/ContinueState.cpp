@@ -5,13 +5,13 @@ namespace openfranko::src::engine::states::continueSelect {
 ContinueState::ContinueState(systems::VideoSystem &videoSystem,
                              systems::AudioSystem &audioSystem,
                              systems::ControllerSystem &controllerSystem,
-                             const effects::GameOptions &options,
+                             const effects::core::GameOptions &options,
                              street::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem, session.version), m_scene(m_host, session),
-      m_rows(effects::visibleRows(
-          effects::pictureLine(street::ContinueScene::DISPLAY_LINE,
-                               options.ntsc),
+      m_rows(effects::color::visibleRows(
+          effects::color::pictureLine(street::ContinueScene::DISPLAY_LINE,
+                                      options.ntsc),
           street::ContinueScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }

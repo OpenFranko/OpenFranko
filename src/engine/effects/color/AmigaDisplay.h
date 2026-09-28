@@ -7,6 +7,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace color {
 
 constexpr int FIRST_VISIBLE_LINE = 26;
 constexpr int LAST_PAL_LINE = 309;
@@ -51,6 +52,7 @@ constexpr double menuTuneScale(int tempo) {
   return static_cast<double>(tempo) / CONVERTED_MENU_TEMPO;
 }
 
+} // namespace color
 } // namespace effects
 } // namespace engine
 } // namespace src

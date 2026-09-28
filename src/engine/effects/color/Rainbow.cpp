@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <vector>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::color {
 namespace {
 
 struct Move {
@@ -127,16 +127,16 @@ AmigaPalette rainbowTable(int height, const std::string &red,
     channels[i].moves = parse(*programs[i]);
     channels[i].value = (start >> (8 - 4 * static_cast<int>(i))) & 0xF;
   }
-  AmigaPalette table;
+  color::AmigaPalette table;
   table.reserve(static_cast<std::size_t>(height));
   for (int entry = 0; entry < height; ++entry) {
     for (Channel &channel : channels) {
       step(channel);
     }
-    table.push_back(static_cast<AmigaColor>(
+    table.push_back(static_cast<color::AmigaColor>(
         channels[0].value << 8 | channels[1].value << 4 | channels[2].value));
   }
   return table;
 }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::color

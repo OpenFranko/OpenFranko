@@ -9,11 +9,13 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace color {
 
 AmigaPalette rainbowTable(int height, const std::string &red,
                           const std::string &green, const std::string &blue,
                           AmigaColor start = 0);
 
+}
 } // namespace effects
 } // namespace engine
 } // namespace src

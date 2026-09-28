@@ -23,7 +23,7 @@ constexpr int HISCORE_HOLD = 400;
 
 struct Relit {
   std::size_t index;
-  AmigaColor color;
+  color::AmigaColor color;
 };
 
 constexpr std::array<Relit, 3> RELIT = {{
@@ -38,7 +38,7 @@ bool isOver(int frame, int inputFrom, int hold, bool joystickTouched) {
 
 } // namespace
 
-AttractSequence::AttractSequence(Kind kind, AmigaPalette picturePalette)
+AttractSequence::AttractSequence(Kind kind, color::AmigaPalette picturePalette)
     : m_kind(kind), m_palette(std::move(picturePalette)) {}
 
 void AttractSequence::advance(bool joystickTouched) {
@@ -66,7 +66,9 @@ AttractSequence::Kind AttractSequence::kind() const { return m_kind; }
 
 bool AttractSequence::isShowing() const { return m_showing; }
 
-const AmigaPalette &AttractSequence::palette() const { return m_palette; }
+const color::AmigaPalette &AttractSequence::palette() const {
+  return m_palette;
+}
 
 int AttractSequence::rowsShown() const { return m_rows; }
 
@@ -80,8 +82,8 @@ void AttractSequence::advanceTitle(bool joystickTouched) {
 
 void AttractSequence::advanceHiscores(bool joystickTouched) {
   if (m_frame < ROWS_FROM && m_frame % DIM_EVERY == 0) {
-    PaletteFader dim;
-    dim.start(m_palette, 1, AmigaPalette(m_palette.size(), 0));
+    color::PaletteFader dim;
+    dim.start(m_palette, 1, color::AmigaPalette(m_palette.size(), 0));
     dim.tick(m_palette);
   }
   if (m_frame == ROWS_FROM) {

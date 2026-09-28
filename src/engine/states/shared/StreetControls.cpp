@@ -66,7 +66,7 @@ street::StreetInput readStreetInput(const systems::ControllerSystem &controller,
 
 void showStageFrame(systems::VideoSystem &videoSystem,
                     const systems::Display &frame,
-                    const effects::GameOptions &options) {
+                    const effects::core::GameOptions &options) {
   videoSystem.setNtsc(street::stageLayout(options).ntsc);
   videoSystem.show(frame);
 }

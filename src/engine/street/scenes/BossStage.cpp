@@ -130,7 +130,7 @@ int clampBound(int stage) { return stage == 2 ? 48 : 272; }
 } // namespace
 
 BossStage::BossStage(StreetHost &host, GameSession &session,
-                     effects::GameOptions &options)
+                     effects::core::GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen),
@@ -924,7 +924,7 @@ void BossStage::gameOver() {
 }
 
 void BossStage::closePlayScreen() {
-  m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+  m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
   m_step = Step::GameOverScreenGone;
 }
 
@@ -1126,18 +1126,18 @@ void BossStage::runBasic(const StreetInput &input) {
     case Step::GameOverScreenGone:
       m_screenShown = false;
       m_copper.hide();
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::GameOverPanelClose;
       flow = Flow::Yield;
       break;
     case Step::GameOverPanelClose:
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
       m_step = Step::GameOverPanelGone;
       flow = Flow::Yield;
       break;
     case Step::GameOverPanelGone:
       m_panelShown = false;
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::GameOverClosed;
       flow = Flow::Yield;
       break;

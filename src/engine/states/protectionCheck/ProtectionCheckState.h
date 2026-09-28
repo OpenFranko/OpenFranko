@@ -6,9 +6,9 @@
 #include "../../../systems/graphics/Canvas.h"
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../effects/color/AmigaDisplay.h"
-#include "../../effects/sequences/CodeCardCheck.h"
-#include "../../effects/core/InkeyBuffer.h"
 #include "../../effects/color/PaletteFlasher.h"
+#include "../../effects/core/InkeyBuffer.h"
+#include "../../effects/sequences/CodeCardCheck.h"
 #include "../IEngineState.h"
 
 namespace openfranko {
@@ -23,7 +23,7 @@ public:
 
   ProtectionCheckState(systems::VideoSystem &videoSystem,
                        systems::AudioSystem &audioSystem,
-                       effects::InkeyBuffer &keyboard,
+                       effects::core::InkeyBuffer &keyboard,
                        Check check = Check::Title);
 
   std::optional<EngineStateEnum> update() override;
@@ -42,7 +42,7 @@ private:
 
   systems::VideoSystem &m_videoSystem;
   systems::AudioSystem &m_audioSystem;
-  effects::InkeyBuffer &m_keyboard;
+  effects::core::InkeyBuffer &m_keyboard;
   Check m_kind;
   effects::CodeCardCheck m_check;
   int m_loadingFrames;
@@ -54,9 +54,9 @@ private:
   systems::Canvas m_screen;
   systems::IndexedBitmap m_question;
   systems::IndexedBitmap m_failure;
-  effects::AmigaPalette m_questionPalette;
-  effects::AmigaColor m_border;
-  effects::PaletteFlasher m_flasher;
+  effects::color::AmigaPalette m_questionPalette;
+  effects::color::AmigaColor m_border;
+  effects::color::PaletteFlasher m_flasher;
   int m_failureTop = 0;
 };
 

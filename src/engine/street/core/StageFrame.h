@@ -5,8 +5,8 @@
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
 #include "../../effects/core/GameOptions.h"
-#include "IndexedSurface.h"
 #include "../ui/StatusPanel.h"
+#include "IndexedSurface.h"
 
 #include <cstdint>
 #include <vector>
@@ -16,7 +16,7 @@ namespace src {
 namespace engine {
 namespace street {
 
-constexpr effects::AmigaColor STAGE_BORDER = 0x555;
+constexpr effects::color::AmigaColor STAGE_BORDER = 0x555;
 constexpr int FRAME_WIDTH = 304;
 constexpr int FRAME_HEIGHT = 255;
 constexpr int DISPLAY_X = 128;
@@ -51,29 +51,29 @@ private:
   bool m_beamNtsc = false;
 };
 
-StageLayout stageLayout(const effects::GameOptions &options);
+StageLayout stageLayout(const effects::core::GameOptions &options);
 int playDisplayY(const StageLayout &layout);
 int panelDisplayY(const StageLayout &layout);
 int frameTop(const StageLayout &layout);
 int rowsPerLine(const StageLayout &layout);
 int frameRows(const StageLayout &layout);
-void switchStandard(effects::GameOptions &options, amal::Object &screenDisplay,
-                    bool ntsc);
+void switchStandard(effects::core::GameOptions &options,
+                    amal::Object &screenDisplay, bool ntsc);
 
-const effects::AmigaPalette &levelPalette(bool mono);
-const effects::AmigaPalette &panelPalette();
+const effects::color::AmigaPalette &levelPalette(bool mono);
+const effects::color::AmigaPalette &panelPalette();
 
 systems::Display stageOutput(const IndexedSurface *display,
-                             const effects::AmigaPalette &palette,
+                             const effects::color::AmigaPalette &palette,
                              const amal::Object &screenDisplay, int offsetX,
                              const StatusPanel *panel, int panelY,
-                             const effects::AmigaPalette &panelColors,
+                             const effects::color::AmigaPalette &panelColors,
                              const StageLayout &window);
 void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
-                  const effects::AmigaPalette &palette,
+                  const effects::color::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,
                   const StatusPanel *panel, int panelY,
-                  const effects::AmigaPalette &panelColors,
+                  const effects::color::AmigaPalette &panelColors,
                   const StageLayout &window);
 
 } // namespace street

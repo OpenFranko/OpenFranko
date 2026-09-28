@@ -5,6 +5,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
+namespace core {
 
 enum class Character { Franko, Alex };
 
@@ -17,6 +18,7 @@ struct GameOptions {
   Character character = Character::Franko;
 };
 
+} // namespace core
 } // namespace effects
 } // namespace engine
 } // namespace src

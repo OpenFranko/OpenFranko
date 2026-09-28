@@ -93,7 +93,7 @@ public:
     return road();
   }
 
-  effects::AmigaPalette loadPalette(int) override { return {}; }
+  effects::color::AmigaPalette loadPalette(int) override { return {}; }
 
   std::vector<Picture> loadScenery(int) override { return {}; }
 
@@ -148,7 +148,7 @@ public:
 struct Drive {
   FakeHost host;
   GameSession session;
-  effects::GameOptions options;
+  effects::core::GameOptions options;
   std::unique_ptr<CarStage> stage;
 
   Drive() {

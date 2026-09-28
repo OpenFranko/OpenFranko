@@ -12,14 +12,14 @@ constexpr int NTSC_SHIFT = 40;
 constexpr int LACED_PLAY_SHIFT = 60;
 constexpr int LACED_PANEL_SHIFT = 51;
 
-const effects::AmigaPalette LEVEL_PALETTE = {
+const effects::color::AmigaPalette LEVEL_PALETTE = {
     0x555, 0xAAA, 0x666, 0xFAA, 0x083, 0x902, 0xB95, 0x760,
     0x063, 0x000, 0x520, 0x17A, 0x09E, 0x4DF, 0x777, 0xDDD};
-const effects::AmigaPalette GREY_PALETTE = {
+const effects::color::AmigaPalette GREY_PALETTE = {
     0x555, 0xCCC, 0x888, 0xEEE, 0x444, 0x111, 0xBBB, 0x777,
     0x333, 0x000, 0x222, 0x666, 0x999, 0xDDD, 0xAAA, 0xFFF};
-const effects::AmigaPalette PANEL_PALETTE = {0x555, 0x000, 0xF10, 0x666,
-                                             0x888, 0x999, 0xAAA, 0xDDD};
+const effects::color::AmigaPalette PANEL_PALETTE = {0x555, 0x000, 0xF10, 0x666,
+                                                    0x888, 0x999, 0xAAA, 0xDDD};
 
 int sys(const StageLayout &layout) { return layout.ntsc ? -1 : 0; }
 
@@ -27,7 +27,7 @@ int wyb(const StageLayout &layout) { return layout.laced ? -1 : 0; }
 
 } // namespace
 
-StageLayout stageLayout(const effects::GameOptions &options) {
+StageLayout stageLayout(const effects::core::GameOptions &options) {
   return {options.ntsc, options.tallScreen};
 }
 
@@ -51,8 +51,8 @@ int frameRows(const StageLayout &layout) {
   return FRAME_HEIGHT * rowsPerLine(layout);
 }
 
-void switchStandard(effects::GameOptions &options, amal::Object &screenDisplay,
-                    bool ntsc) {
+void switchStandard(effects::core::GameOptions &options,
+                    amal::Object &screenDisplay, bool ntsc) {
   if (options.ntsc == ntsc) {
     return;
   }
@@ -61,11 +61,11 @@ void switchStandard(effects::GameOptions &options, amal::Object &screenDisplay,
   screenDisplay.y = static_cast<int16_t>(playDisplayY(stageLayout(options)));
 }
 
-const effects::AmigaPalette &levelPalette(bool mono) {
+const effects::color::AmigaPalette &levelPalette(bool mono) {
   return mono ? GREY_PALETTE : LEVEL_PALETTE;
 }
 
-const effects::AmigaPalette &panelPalette() { return PANEL_PALETTE; }
+const effects::color::AmigaPalette &panelPalette() { return PANEL_PALETTE; }
 
 void StageDisplay::reset(const StageCopper &registers) {
   m_built = registers;
@@ -98,10 +98,10 @@ int StageDisplay::panelY(bool laced) const {
 }
 
 systems::Display stageOutput(const IndexedSurface *display,
-                             const effects::AmigaPalette &palette,
+                             const effects::color::AmigaPalette &palette,
                              const amal::Object &screenDisplay, int offsetX,
                              const StatusPanel *panel, int panelY,
-                             const effects::AmigaPalette &panelColors,
+                             const effects::color::AmigaPalette &panelColors,
                              const StageLayout &window) {
   const int rows = frameRows(window);
   const int perLine = rowsPerLine(window);
@@ -140,15 +140,16 @@ systems::Display stageOutput(const IndexedSurface *display,
   panelLayer.palette = panelColors;
   output.layers.push_back(std::move(panelLayer));
   output.layers.push_back(systems::solidLayer(
-      0x000, 0, (effects::FIRST_VISIBLE_LINE - top) * perLine, FRAME_WIDTH));
+      0x000, 0, (effects::color::FIRST_VISIBLE_LINE - top) * perLine,
+      FRAME_WIDTH));
   return output;
 }
 
 void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
-                  const effects::AmigaPalette &palette,
+                  const effects::color::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,
                   const StatusPanel *panel, int panelY,
-                  const effects::AmigaPalette &panelColors,
+                  const effects::color::AmigaPalette &panelColors,
                   const StageLayout &window) {
   systems::rasterize(stageOutput(display, palette, screenDisplay, offsetX,
                                  panel, panelY, panelColors, window),

@@ -21,13 +21,13 @@ public:
     bool replacesScreen;
   };
 
-  FotoSequence(AmigaPalette picturePalette, Timings timings);
+  FotoSequence(color::AmigaPalette picturePalette, Timings timings);
 
   bool advance();
 
-  void flash(std::size_t color, FlashSteps steps);
+  void flash(std::size_t color, color::FlashSteps steps);
 
-  const AmigaPalette &palette() const;
+  const color::AmigaPalette &palette() const;
   bool isShown() const;
   bool isFinished() const;
 
@@ -41,11 +41,11 @@ private:
   int closeStart() const;
   int totalFrames() const;
 
-  AmigaPalette m_picturePalette;
-  AmigaPalette m_palette;
+  color::AmigaPalette m_picturePalette;
+  color::AmigaPalette m_palette;
   Timings m_timings;
-  PaletteFader m_fader;
-  PaletteFlasher m_flasher;
+  color::PaletteFader m_fader;
+  color::PaletteFlasher m_flasher;
   int m_frame = 0;
 };
 

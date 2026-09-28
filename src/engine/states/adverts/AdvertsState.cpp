@@ -13,11 +13,12 @@ constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
 constexpr int DISPLAY_LINE = 42;
 constexpr std::size_t SCREEN_COLORS = 32;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 constexpr int SCREENS = 2;
 
-effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
-  effects::AmigaPalette palette = picture.palette;
+effects::color::AmigaPalette
+screenPalette(const systems::IndexedBitmap &picture) {
+  effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
@@ -27,8 +28,8 @@ effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
 AdvertsState::AdvertsState(systems::VideoSystem &videoSystem,
                            systems::ControllerSystem &controllerSystem)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_rows(effects::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
-                                  videoSystem.isNtsc())),
+      m_rows(effects::color::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
+                                         videoSystem.isNtsc())),
       m_screen(SCREEN_WIDTH, m_rows.count), m_palette(SCREEN_COLORS, BLACK) {
   for (int slide = 0; slide < SLIDES; ++slide) {
     m_slides.push_back(systems::loadIndexedBitmap(
@@ -51,7 +52,7 @@ void AdvertsState::runBasic(bool fire) {
   while (m_frame >= m_resumeFrame && m_step != Step::Finished) {
     switch (m_step) {
     case Step::Open:
-      wait(effects::SCREEN_OPEN_VBLS, Step::Show);
+      wait(effects::color::SCREEN_OPEN_VBLS, Step::Show);
       break;
     case Step::Show:
       m_copied = m_slide;
@@ -67,7 +68,7 @@ void AdvertsState::runBasic(bool fire) {
         m_step = Step::Close;
       } else {
         m_fader.start(m_palette, FADE_SPEED,
-                      effects::AmigaPalette(SCREEN_COLORS, BLACK));
+                      effects::color::AmigaPalette(SCREEN_COLORS, BLACK));
         m_count = 0;
         m_step = Step::SecondPause;
       }
@@ -78,12 +79,12 @@ void AdvertsState::runBasic(bool fire) {
       } else if (fire || ++m_slide == SLIDES) {
         m_step = Step::Close;
       } else {
-        wait(effects::SCREEN_REOPEN_VBLS, Step::Show);
+        wait(effects::color::SCREEN_REOPEN_VBLS, Step::Show);
       }
       break;
     case Step::Close:
       m_closeFrame = m_frame;
-      wait(SCREENS * effects::SCREEN_CLOSE_VBLS, Step::Closed);
+      wait(SCREENS * effects::color::SCREEN_CLOSE_VBLS, Step::Closed);
       break;
     case Step::Closed:
       m_step = Step::Finished;
@@ -102,7 +103,7 @@ void AdvertsState::wait(int frames, Step next) {
 void AdvertsState::show() {
   const bool closed =
       m_closeFrame &&
-      m_frame >= *m_closeFrame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+      m_frame >= *m_closeFrame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
   if (!m_copied || closed) {
     m_screen.fill(BLACK);
   } else {

@@ -4,8 +4,8 @@
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/input/ControllerSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../GameVersion.h"
 #include "../../effects/sequences/BlyskSequence.h"
 #include "../../effects/sequences/FotoSequence.h"
@@ -75,7 +75,7 @@ private:
   Phase m_phase = Phase::Title;
   int m_phaseFrames = 0;
   bool m_stripShown = false;
-  effects::AmigaColor m_background = 0x000;
+  effects::color::AmigaColor m_background = 0x000;
   effects::StorySequence::View m_lastView;
 };
 

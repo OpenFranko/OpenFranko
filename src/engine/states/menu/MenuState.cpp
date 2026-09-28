@@ -48,10 +48,10 @@ constexpr int ROW_PITCH = 20;
 constexpr int RO = 14;
 
 systems::Canvas menuScreen(bool ntscDisplay) {
-  return systems::Canvas(
-      MENU_SCREEN_WIDTH,
-      effects::visibleRows(MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay)
-          .count);
+  return systems::Canvas(MENU_SCREEN_WIDTH,
+                         effects::color::visibleRows(
+                             MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay)
+                             .count);
 }
 
 systems::IndexedBitmap loadPicture(int resource, GameVersion version) {
@@ -91,8 +91,8 @@ findImage(const std::vector<systems::IndexedBitmap> &images, int firstImage,
   return &images[static_cast<std::size_t>(index)];
 }
 
-effects::AmigaPalette resized(effects::AmigaPalette palette,
-                              std::size_t colors) {
+effects::color::AmigaPalette resized(effects::color::AmigaPalette palette,
+                                     std::size_t colors) {
   palette.resize(colors);
   return palette;
 }
@@ -112,7 +112,7 @@ bool isTouched(const effects::MenuSequence::Joystick &joystick) {
 MenuState::MenuState(systems::VideoSystem &videoSystem,
                      systems::AudioSystem &audioSystem,
                      systems::ControllerSystem &controllerSystem,
-                     effects::GameOptions &options,
+                     effects::core::GameOptions &options,
                      street::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_options(options),
@@ -141,7 +141,7 @@ std::optional<EngineStateEnum> MenuState::update() {
   const effects::MenuSequence::Joystick joystick =
       joystickFrom(m_controllerSystem.states);
   if (m_musicWait > 0 && --m_musicWait == 0) {
-    m_audioSystem.setMusicTempo(effects::CONVERTED_MENU_TEMPO);
+    m_audioSystem.setMusicTempo(effects::color::CONVERTED_MENU_TEMPO);
     m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
   }
 
@@ -152,7 +152,7 @@ std::optional<EngineStateEnum> MenuState::update() {
       return std::nullopt;
     }
     m_menu.resumeAfterAttract();
-    m_attractClosing = effects::SCREEN_CLOSE_SHOWN_VBLS;
+    m_attractClosing = effects::color::SCREEN_CLOSE_SHOWN_VBLS;
   }
 
   const bool music = m_options.music;
@@ -212,17 +212,17 @@ void MenuState::advanceAttract(
 void MenuState::switchStandard() {
   m_videoSystem.setNtsc(m_options.ntsc);
   if (m_session.version == GameVersion::V12) {
-    m_audioSystem.setMusicTempo(effects::menuTempo(m_options.ntsc));
+    m_audioSystem.setMusicTempo(effects::color::menuTempo(m_options.ntsc));
   } else {
-    m_audioSystem.setMusicTempoScale(
-        effects::menuTuneScale(effects::menuTempo(m_options.ntsc)));
+    m_audioSystem.setMusicTempoScale(effects::color::menuTuneScale(
+        effects::color::menuTempo(m_options.ntsc)));
   }
   m_menuScreen = menuScreen(m_options.ntsc);
 }
 
 void MenuState::startAttract() {
-  const effects::VisibleRows rows = effects::visibleRows(
-      effects::pictureLine(ATTRACT_DISPLAY_Y, m_options.ntsc),
+  const effects::color::VisibleRows rows = effects::color::visibleRows(
+      effects::color::pictureLine(ATTRACT_DISPLAY_Y, m_options.ntsc),
       ATTRACT_SCREEN_HEIGHT, m_videoSystem.isNtsc());
   m_attractTop = rows.first;
   m_attractScreen = systems::Canvas(ATTRACT_SCREEN_WIDTH, rows.count);

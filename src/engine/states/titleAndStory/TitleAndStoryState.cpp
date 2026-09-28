@@ -18,7 +18,7 @@ constexpr int STORY_TEXTS = 0x3C0;
 constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
 constexpr std::size_t SCREEN_COLORS = 32;
-constexpr effects::AmigaColor BLACK = 0x000;
+constexpr effects::color::AmigaColor BLACK = 0x000;
 
 constexpr int LOADING_FRAMES = 300;
 constexpr effects::FotoSequence::Timings TITLE_TIMINGS{5, LOADING_FRAMES, 3, 45,
@@ -48,11 +48,12 @@ constexpr std::array<Position, PICTURES> TEXT_POSITIONS = {
     {{0, 0}, {8, 8}, {16, 7}, {0, 7}, {24, 14}, {16, 0}, {8, 12}}};
 constexpr Position VERSION12_TEXT_POSITION{0, 0};
 
-constexpr effects::AmigaColor STORY_BACKGROUND_GREY = 0x444;
+constexpr effects::color::AmigaColor STORY_BACKGROUND_GREY = 0x444;
 constexpr int STORY_SCREENS = 2;
 
-effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
-  effects::AmigaPalette palette = picture.palette;
+effects::color::AmigaPalette
+screenPalette(const systems::IndexedBitmap &picture) {
+  effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
@@ -142,7 +143,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::runPages() {
     m_phase = Phase::StripClosing;
     m_phaseFrames = 0;
   }
-  if (m_phaseFrames < effects::SCREEN_CLOSE_VBLS) {
+  if (m_phaseFrames < effects::color::SCREEN_CLOSE_VBLS) {
     m_strip->showBlack();
     m_stripShown = true;
     ++m_phaseFrames;
@@ -163,7 +164,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
   }
   if (m_phase == Phase::StoryOpening) {
     m_background = STORY_BACKGROUND_GREY;
-    if (m_phaseFrames < STORY_SCREENS * effects::SCREEN_OPEN_VBLS) {
+    if (m_phaseFrames < STORY_SCREENS * effects::color::SCREEN_OPEN_VBLS) {
       m_screen.fill(m_phaseFrames == 0 ? BLACK : STORY_BACKGROUND_GREY);
       ++m_phaseFrames;
       return std::nullopt;
@@ -186,10 +187,10 @@ std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
     m_phase = Phase::StoryClosing;
     m_phaseFrames = 0;
   }
-  if (m_phaseFrames == STORY_SCREENS * effects::SCREEN_CLOSE_VBLS) {
+  if (m_phaseFrames == STORY_SCREENS * effects::color::SCREEN_CLOSE_VBLS) {
     return leave();
   }
-  if (m_phaseFrames < effects::SCREEN_CLOSE_SHOWN_VBLS) {
+  if (m_phaseFrames < effects::color::SCREEN_CLOSE_SHOWN_VBLS) {
     drawStory(m_lastView);
   } else {
     m_screen.fill(STORY_BACKGROUND_GREY);

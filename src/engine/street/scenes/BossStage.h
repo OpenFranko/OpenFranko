@@ -6,10 +6,10 @@
 #include "../../effects/core/GameOptions.h"
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
-#include "../ui/GameSession.h"
 #include "../core/IndexedSurface.h"
 #include "../core/LoadingMock.h"
 #include "../core/StageFrame.h"
+#include "../ui/GameSession.h"
 #include "../ui/StatusPanel.h"
 #include "StreetStage.h"
 
@@ -33,7 +33,7 @@ public:
   static constexpr int BOSS_ENERGY = 80;
 
   BossStage(StreetHost &host, GameSession &session,
-            effects::GameOptions &options);
+            effects::core::GameOptions &options);
 
   void advance(const StreetInput &input);
   void compose(std::vector<uint32_t> &frame) const;
@@ -162,7 +162,7 @@ private:
 
   StreetHost &m_host;
   GameSession &m_session;
-  effects::GameOptions &m_options;
+  effects::core::GameOptions &m_options;
   amal::Machine m_machine;
   ImageBank m_images;
   BobLayer m_bobs;
@@ -171,8 +171,8 @@ private:
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
   StageDisplay m_copper;
-  effects::AmigaPalette m_palette;
-  effects::AmigaPalette m_panelPalette;
+  effects::color::AmigaPalette m_palette;
+  effects::color::AmigaPalette m_panelPalette;
   std::vector<Picture> m_columns;
   LoadingMock m_loading;
   std::optional<ScreenBlock> m_block;

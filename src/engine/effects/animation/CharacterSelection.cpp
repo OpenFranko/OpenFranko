@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::animation {
 namespace {
 
 struct Pose {
@@ -35,16 +35,16 @@ const std::vector<AmalMotion::Move> WAGGLE = {
     {4, 2}, {-4, 2}, {0, 1}, {4, 2}, {-4, 2}, {0, 1},
     {4, 2}, {-4, 2}, {0, 1}, {4, 2}, {-4, 2}, {0, 1}};
 
-const Pose &poseOf(Character character) {
-  return character == Character::Franko ? FRANKO : ALEX;
+const Pose &poseOf(core::Character character) {
+  return character == core::Character::Franko ? FRANKO : ALEX;
 }
 
 } // namespace
 
-CharacterSelection::CharacterSelection(GameOptions &options, int otherScreens,
-                                       GameVersion version)
+CharacterSelection::CharacterSelection(core::GameOptions &options,
+                                       int otherScreens, GameVersion version)
     : m_options(options), m_version(version), m_otherScreens(otherScreens) {
-  choose(Character::Franko);
+  choose(core::Character::Franko);
 }
 
 void CharacterSelection::advance(const Joystick &joystick) {
@@ -64,10 +64,10 @@ void CharacterSelection::advance(const Joystick &joystick) {
 
   if (!m_confirmedAt) {
     if (joystick.left) {
-      choose(Character::Franko);
+      choose(core::Character::Franko);
     }
     if (joystick.right) {
-      choose(Character::Alex);
+      choose(core::Character::Alex);
     }
     if (joystick.fire) {
       m_confirmedAt = m_frame;
@@ -106,7 +106,7 @@ bool CharacterSelection::isScreenShown() const { return m_screenShown; }
 
 bool CharacterSelection::isFinished() const { return m_finished; }
 
-void CharacterSelection::choose(Character character) {
+void CharacterSelection::choose(core::Character character) {
   m_options.character = character;
   const Pose &pose = poseOf(character);
   m_hand = {true, pose.handX, HAND_Y, HAND_IMAGE, pose.handFlipped};
@@ -114,10 +114,10 @@ void CharacterSelection::choose(Character character) {
 
 void CharacterSelection::runScript(int time) {
   if (m_closedAt) {
-    if (time == *m_closedAt + SCREEN_CLOSE_SHOWN_VBLS) {
+    if (time == *m_closedAt + color::SCREEN_CLOSE_SHOWN_VBLS) {
       m_screenShown = false;
     }
-    if (time == *m_closedAt + SCREEN_CLOSE_VBLS * (1 + m_otherScreens)) {
+    if (time == *m_closedAt + color::SCREEN_CLOSE_VBLS * (1 + m_otherScreens)) {
       m_finished = true;
     }
     return;
@@ -159,4 +159,4 @@ void CharacterSelection::runScript(int time) {
 
 void CharacterSelection::close(int time) { m_closedAt = time; }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::animation

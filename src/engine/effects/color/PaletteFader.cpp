@@ -3,7 +3,7 @@
 #include <iterator>
 #include <stdexcept>
 
-namespace openfranko::src::engine::effects {
+namespace openfranko::src::engine::effects::color {
 namespace {
 
 constexpr AmigaColor COLOR_MASK = 0x0FFF;
@@ -70,4 +70,4 @@ bool PaletteFader::tick(AmigaPalette &palette) {
 
 bool PaletteFader::isFading() const { return !m_fading.empty(); }
 
-} // namespace openfranko::src::engine::effects
+} // namespace openfranko::src::engine::effects::color

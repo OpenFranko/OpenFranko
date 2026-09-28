@@ -38,7 +38,7 @@ private:
   std::string m_directory;
   std::vector<street::CreditPage> m_pages;
   std::map<int, std::optional<systems::IndexedBitmap>> m_glyphs;
-  effects::VisibleRows m_rows;
+  effects::color::VisibleRows m_rows;
   systems::Canvas m_frame;
   systems::IndexedBitmap m_strip;
   std::optional<int> m_pasted;

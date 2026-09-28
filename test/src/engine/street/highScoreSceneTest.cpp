@@ -36,8 +36,8 @@ Picture box(int width, int height, uint8_t color) {
       std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
 }
 
-effects::AmigaPalette picturePalette() {
-  effects::AmigaPalette palette(32, 0x888);
+effects::color::AmigaPalette picturePalette() {
+  effects::color::AmigaPalette palette(32, 0x888);
   palette[0] = 0x444;
   palette[3] = 0xFFF;
   palette[29] = 0x760;
@@ -81,7 +81,7 @@ public:
     return box(HighScoreScene::WIDTH, HighScoreScene::HEIGHT, PAPER);
   }
 
-  effects::AmigaPalette loadPalette(int resource) override {
+  effects::color::AmigaPalette loadPalette(int resource) override {
     palettes.push_back(resource);
     return picturePalette();
   }
@@ -122,7 +122,7 @@ public:
 struct Board {
   FakeHost host;
   GameSession session;
-  effects::GameOptions options;
+  effects::core::GameOptions options;
   std::vector<HighScoreTable> saves;
   HighScoreScene scene{
       host, session, options,
@@ -511,7 +511,8 @@ SCENARIO("The name is typed over the row the score went into") {
             400);
         REQUIRE(frames == 4 + 330);
         REQUIRE(board.scene.outcome() == HighScoreScene::Outcome::Continue);
-        REQUIRE(board.scene.palette() == effects::AmigaPalette(32, 0x000));
+        REQUIRE(board.scene.palette() ==
+                effects::color::AmigaPalette(32, 0x000));
         REQUIRE(board.ink(56, 32) == 0);
         REQUIRE(board.saves.size() == 1);
       }

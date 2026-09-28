@@ -2,7 +2,7 @@
 #include <catch2/catch_all.hpp>
 #include <vector>
 
-using namespace openfranko::src::engine::effects;
+using namespace openfranko::src::engine::effects::animation;
 
 namespace {
 
