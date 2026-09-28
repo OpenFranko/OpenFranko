@@ -12,7 +12,7 @@
 #include "../../effects/StorySequence.h"
 #include "../IEngineState.h"
 #include "../presents/IntroStrip.h"
-#include "../presents/MusicFadeOut.h"
+#include "../shared/MusicFadeOut.h"
 
 #include <optional>
 #include <string>

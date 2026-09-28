@@ -6,8 +6,8 @@
 #include "../../../systems/VideoSystem.h"
 #include "../../effects/BlyskSequence.h"
 #include "../IEngineState.h"
+#include "../shared/MusicFadeOut.h"
 #include "IntroStrip.h"
-#include "MusicFadeOut.h"
 
 #include <optional>
 
