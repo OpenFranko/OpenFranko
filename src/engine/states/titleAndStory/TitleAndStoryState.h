@@ -11,7 +11,7 @@
 #include "../../effects/FotoSequence.h"
 #include "../../effects/StorySequence.h"
 #include "../IEngineState.h"
-#include "../presents/IntroStrip.h"
+#include "../shared/IntroStrip.h"
 #include "../shared/MusicFadeOut.h"
 
 #include <optional>
