@@ -2,7 +2,7 @@
 
 #include "../../street/StageFrame.h"
 
-namespace openfranko::src::engine::states::level1 {
+namespace openfranko::src::engine::states::shared {
 
 namespace {
 
@@ -71,4 +71,4 @@ void showStageFrame(systems::VideoSystem &videoSystem,
   videoSystem.show(frame);
 }
 
-} // namespace openfranko::src::engine::states::level1
+} // namespace openfranko::src::engine::states::shared

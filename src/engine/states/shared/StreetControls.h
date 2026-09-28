@@ -11,7 +11,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace states {
-namespace level1 {
+namespace shared {
 
 street::StreetInput readStreetInput(const systems::ControllerSystem &controller,
                                     GameVersion version);
@@ -19,7 +19,7 @@ void showStageFrame(systems::VideoSystem &videoSystem,
                     const systems::Display &frame,
                     const effects::GameOptions &options);
 
-} // namespace level1
+} // namespace shared
 } // namespace states
 } // namespace engine
 } // namespace src
