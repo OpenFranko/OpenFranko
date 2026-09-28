@@ -1,4 +1,4 @@
-#include "../../../src/systems/Wave.h"
+#include "../../../src/systems/audio/Wave.h"
 #include <catch2/catch_all.hpp>
 
 #include <cstdint>

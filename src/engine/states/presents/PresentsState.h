@@ -1,9 +1,9 @@
 #ifndef ENGINE_STATES_PRESENTS_PRESENTSSTATE_H_
 #define ENGINE_STATES_PRESENTS_PRESENTSSTATE_H_
 
-#include "../../../systems/AudioSystem.h"
-#include "../../../systems/ControllerSystem.h"
-#include "../../../systems/VideoSystem.h"
+#include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/input/ControllerSystem.h"
+#include "../../../systems/graphics/VideoSystem.h"
 #include "../../effects/sequences/BlyskSequence.h"
 #include "../IEngineState.h"
 #include "../shared/IntroStrip.h"

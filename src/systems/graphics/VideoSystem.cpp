@@ -1,4 +1,4 @@
-#include "VideoSystem.h"
+#include "graphics/VideoSystem.h"
 
 #include <SDL2/SDL.h>
 #include <algorithm>

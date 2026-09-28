@@ -1,15 +1,42 @@
-add_library(Graphics Bitmap.cpp Bitmap.h Canvas.cpp Canvas.h Display.cpp Display.h)
+add_library(Graphics
+    graphics/Bitmap.cpp
+    graphics/Bitmap.h
+    graphics/Canvas.cpp
+    graphics/Canvas.h
+    graphics/Display.cpp
+    graphics/Display.h)
+target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_library(VideoSystem VideoSystem.cpp VideoSystem.h)
+add_library(VideoSystem
+    graphics/VideoSystem.cpp
+    graphics/VideoSystem.h)
 target_link_libraries(VideoSystem PRIVATE ${SDL2_TARGET} PUBLIC Graphics)
+target_include_directories(VideoSystem PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_library(Mixer Wave.cpp Wave.h Mixer.cpp Mixer.h)
+add_library(Mixer
+    audio/Wave.cpp
+    audio/Wave.h
+    audio/Mixer.cpp
+    audio/Mixer.h)
+target_include_directories(Mixer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(Mixer PUBLIC ${XMP_TARGET})
 
-add_library(AudioSystem AudioSystem.cpp AudioSystem.h AudioOutput.h AudioDevice.cpp AudioDevice.h)
+add_library(AudioSystem
+    audio/AudioSystem.cpp
+    audio/AudioSystem.h
+    audio/AudioOutput.h
+    audio/AudioDevice.cpp
+    audio/AudioDevice.h)
+target_include_directories(AudioSystem PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(AudioSystem PRIVATE ${SDL2_TARGET} PUBLIC Mixer)
 
-add_library(ControllerSystem ControllerSystem.cpp ControllerSystem.h)
+add_library(ControllerSystem
+    input/ControllerSystem.cpp
+    input/ControllerSystem.h)
+target_include_directories(ControllerSystem PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_library(Platform Platform.cpp Platform.h)
+add_library(Platform
+    input/Platform.cpp
+    input/Platform.h)
+target_include_directories(Platform PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(Platform PRIVATE ${SDL2_TARGET} PUBLIC ControllerSystem)

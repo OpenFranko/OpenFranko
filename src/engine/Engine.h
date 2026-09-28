@@ -1,10 +1,10 @@
 #ifndef ENGINE_ENGINE_H_
 #define ENGINE_ENGINE_H_
 
-#include "../systems/AudioSystem.h"
-#include "../systems/ControllerSystem.h"
-#include "../systems/Platform.h"
-#include "../systems/VideoSystem.h"
+#include "../systems/audio/AudioSystem.h"
+#include "../systems/input/ControllerSystem.h"
+#include "../systems/input/Platform.h"
+#include "../systems/graphics/VideoSystem.h"
 #include "effects/core/GameOptions.h"
 #include "states/IEngineState.h"
 #include "street/ui/GameSession.h"

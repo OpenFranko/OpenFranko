@@ -1,7 +1,7 @@
 #ifndef SYSTEMS_MIXER_H_
 #define SYSTEMS_MIXER_H_
 
-#include "Wave.h"
+#include "audio/Wave.h"
 
 #include <array>
 #include <cstdint>

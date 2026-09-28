@@ -1,4 +1,4 @@
-#include "Canvas.h"
+#include "graphics/Canvas.h"
 
 #include <algorithm>
 #include <cstddef>

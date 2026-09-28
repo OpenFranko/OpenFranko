@@ -1,11 +1,11 @@
 #ifndef ENGINE_STATES_CHARACTERSELECTIONSTATE_H_
 #define ENGINE_STATES_CHARACTERSELECTIONSTATE_H_
 
-#include "../../../systems/AudioSystem.h"
-#include "../../../systems/Bitmap.h"
-#include "../../../systems/Canvas.h"
-#include "../../../systems/ControllerSystem.h"
-#include "../../../systems/VideoSystem.h"
+#include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/graphics/Bitmap.h"
+#include "../../../systems/graphics/Canvas.h"
+#include "../../../systems/input/ControllerSystem.h"
+#include "../../../systems/graphics/VideoSystem.h"
 #include "../../effects/color/AmigaDisplay.h"
 #include "../../effects/animation/CharacterSelection.h"
 #include "../../effects/core/GameOptions.h"

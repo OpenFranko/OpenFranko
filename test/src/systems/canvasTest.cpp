@@ -1,4 +1,4 @@
-#include "../../../src/systems/Canvas.h"
+#include "../../../src/systems/graphics/Canvas.h"
 #include <catch2/catch_all.hpp>
 
 #include <cstdint>

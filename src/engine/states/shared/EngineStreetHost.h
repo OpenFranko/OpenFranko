@@ -1,7 +1,7 @@
 #ifndef ENGINE_STATES_ENGINESTREETHOST_H_
 #define ENGINE_STATES_ENGINESTREETHOST_H_
 
-#include "../../../systems/AudioSystem.h"
+#include "../../../systems/audio/AudioSystem.h"
 #include "../../GameVersion.h"
 #include "../../street/scenes/StreetStage.h"
 

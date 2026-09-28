@@ -1,10 +1,10 @@
 #ifndef SYSTEMS_AUDIOOUTPUT_H_
 #define SYSTEMS_AUDIOOUTPUT_H_
 
-#include "AudioDevice.h"
-#include "AudioSystem.h"
-#include "Mixer.h"
-#include "Wave.h"
+#include "audio/AudioDevice.h"
+#include "audio/AudioSystem.h"
+#include "audio/Mixer.h"
+#include "audio/Wave.h"
 
 #include <map>
 #include <memory>

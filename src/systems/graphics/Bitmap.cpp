@@ -1,4 +1,4 @@
-#include "Bitmap.h"
+#include "graphics/Bitmap.h"
 
 #include <algorithm>
 #include <cstddef>

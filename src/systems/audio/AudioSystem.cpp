@@ -1,5 +1,5 @@
-#include "AudioSystem.h"
-#include "AudioOutput.h"
+#include "audio/AudioSystem.h"
+#include "audio/AudioOutput.h"
 
 #include <fstream>
 #include <iterator>

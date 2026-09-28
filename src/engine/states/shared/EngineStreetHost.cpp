@@ -1,6 +1,6 @@
 #include "EngineStreetHost.h"
 
-#include "../../../systems/Bitmap.h"
+#include "../../../systems/graphics/Bitmap.h"
 #include "../../assets/Assets.h"
 #include "../../effects/color/AmigaDisplay.h"
 

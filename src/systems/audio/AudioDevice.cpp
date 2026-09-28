@@ -1,4 +1,4 @@
-#include "AudioDevice.h"
+#include "audio/AudioDevice.h"
 
 #include <SDL2/SDL.h>
 #include <stdexcept>

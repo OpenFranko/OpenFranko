@@ -1,7 +1,7 @@
 #ifndef SYSTEMS_PLATFORM_H_
 #define SYSTEMS_PLATFORM_H_
 
-#include "ControllerSystem.h"
+#include "input/ControllerSystem.h"
 
 namespace openfranko {
 namespace src {

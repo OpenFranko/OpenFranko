@@ -1,4 +1,4 @@
-#include "Platform.h"
+#include "input/Platform.h"
 
 #include <SDL2/SDL.h>
 #include <stdexcept>

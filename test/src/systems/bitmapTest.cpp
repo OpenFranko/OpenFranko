@@ -1,4 +1,4 @@
-#include "../../../src/systems/Bitmap.h"
+#include "../../../src/systems/graphics/Bitmap.h"
 #include <catch2/catch_all.hpp>
 
 #include <cstdint>

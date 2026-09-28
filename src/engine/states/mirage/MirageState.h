@@ -1,9 +1,9 @@
 #ifndef ENGINE_STATES_MIRAGESTATE_H_
 #define ENGINE_STATES_MIRAGESTATE_H_
 
-#include "../../../systems/Bitmap.h"
-#include "../../../systems/Canvas.h"
-#include "../../../systems/VideoSystem.h"
+#include "../../../systems/graphics/Bitmap.h"
+#include "../../../systems/graphics/Canvas.h"
+#include "../../../systems/graphics/VideoSystem.h"
 #include "../../effects/color/AmigaDisplay.h"
 #include "../../effects/sequences/FotoSequence.h"
 #include "../IEngineState.h"

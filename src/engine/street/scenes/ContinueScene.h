@@ -1,7 +1,7 @@
 #ifndef ENGINE_STREET_CONTINUESCENE_H_
 #define ENGINE_STREET_CONTINUESCENE_H_
 
-#include "../../../systems/Display.h"
+#include "../../../systems/graphics/Display.h"
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
 #include "../core/Bobs.h"

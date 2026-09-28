@@ -1,7 +1,7 @@
 #ifndef SYSTEMS_VIDEOSYSTEM_H_
 #define SYSTEMS_VIDEOSYSTEM_H_
 
-#include "Display.h"
+#include "graphics/Display.h"
 
 #include <cstdint>
 #include <memory>

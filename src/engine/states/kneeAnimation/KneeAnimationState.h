@@ -1,11 +1,11 @@
 #ifndef ENGINE_STATES_KNEEANIMATIONSTATE_H_
 #define ENGINE_STATES_KNEEANIMATIONSTATE_H_
 
-#include "../../../systems/AudioSystem.h"
-#include "../../../systems/Bitmap.h"
-#include "../../../systems/Canvas.h"
-#include "../../../systems/ControllerSystem.h"
-#include "../../../systems/VideoSystem.h"
+#include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/graphics/Bitmap.h"
+#include "../../../systems/graphics/Canvas.h"
+#include "../../../systems/input/ControllerSystem.h"
+#include "../../../systems/graphics/VideoSystem.h"
 #include "../../GameVersion.h"
 #include "../IEngineState.h"
 

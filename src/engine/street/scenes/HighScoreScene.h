@@ -1,7 +1,7 @@
 #ifndef ENGINE_STREET_HIGHSCORESCENE_H_
 #define ENGINE_STREET_HIGHSCORESCENE_H_
 
-#include "../../../systems/Display.h"
+#include "../../../systems/graphics/Display.h"
 #include "../../effects/color/AmigaPalette.h"
 #include "../../effects/core/GameOptions.h"
 #include "../../effects/color/PaletteFader.h"

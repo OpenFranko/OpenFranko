@@ -1,7 +1,7 @@
 #ifndef ENGINE_STATES_PRESENTS_MUSICFADEOUT_H_
 #define ENGINE_STATES_PRESENTS_MUSICFADEOUT_H_
 
-#include "../../../systems/AudioSystem.h"
+#include "../../../systems/audio/AudioSystem.h"
 
 namespace openfranko {
 namespace src {

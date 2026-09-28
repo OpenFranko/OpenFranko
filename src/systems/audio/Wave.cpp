@@ -1,4 +1,4 @@
-#include "Wave.h"
+#include "audio/Wave.h"
 
 #include <algorithm>
 #include <cstddef>

@@ -1,8 +1,8 @@
 #ifndef SYSTEMS_CANVAS_H_
 #define SYSTEMS_CANVAS_H_
 
-#include "Bitmap.h"
-#include "Display.h"
+#include "graphics/Bitmap.h"
+#include "graphics/Display.h"
 
 #include <cstdint>
 #include <vector>
