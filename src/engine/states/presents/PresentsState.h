@@ -30,7 +30,7 @@ private:
   systems::ControllerSystem &m_controllerSystem;
   IntroStrip m_strip;
   effects::BlyskSequence m_sequence;
-  std::optional<MusicFadeOut> m_musicFade;
+  std::optional<shared::MusicFadeOut> m_musicFade;
   int m_frame = 0;
 };
 

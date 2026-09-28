@@ -71,7 +71,7 @@ private:
   effects::StorySequence m_story;
   std::optional<presents::IntroStrip> m_strip;
   std::optional<effects::BlyskSequence> m_pages;
-  presents::MusicFadeOut m_musicFade;
+  shared::MusicFadeOut m_musicFade;
   Phase m_phase = Phase::Title;
   int m_phaseFrames = 0;
   bool m_stripShown = false;

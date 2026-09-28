@@ -7,7 +7,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace states {
-namespace presents {
+namespace shared {
 
 class MusicFadeOut {
 public:
@@ -19,7 +19,7 @@ private:
   int m_volume = FULL_VOLUME;
 };
 
-} // namespace presents
+} // namespace shared
 } // namespace states
 } // namespace engine
 } // namespace src

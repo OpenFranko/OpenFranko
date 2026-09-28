@@ -1,6 +1,6 @@
 #include "MusicFadeOut.h"
 
-namespace openfranko::src::engine::states::presents {
+namespace openfranko::src::engine::states::shared {
 
 bool MusicFadeOut::advance(systems::AudioSystem &audioSystem) {
   if (m_volume >= 0) {
@@ -11,4 +11,4 @@ bool MusicFadeOut::advance(systems::AudioSystem &audioSystem) {
   return true;
 }
 
-} // namespace openfranko::src::engine::states::presents
+} // namespace openfranko::src::engine::states::shared
