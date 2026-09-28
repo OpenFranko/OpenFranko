@@ -31,7 +31,7 @@ public:
 private:
   systems::VideoSystem &m_videoSystem;
   systems::ControllerSystem &m_controllerSystem;
-  level1::EngineStreetHost m_host;
+  shared::EngineStreetHost m_host;
   street::GameOverScene m_scene;
   effects::VisibleRows m_rows;
 };

@@ -28,7 +28,7 @@ public:
 
 private:
   systems::VideoSystem &m_videoSystem;
-  level1::EngineStreetHost m_host;
+  shared::EngineStreetHost m_host;
   street::HighScoreScene m_scene;
   effects::VisibleRows m_rows;
 };

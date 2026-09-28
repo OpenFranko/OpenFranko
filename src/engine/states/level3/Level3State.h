@@ -31,7 +31,7 @@ private:
   systems::VideoSystem &m_videoSystem;
   systems::ControllerSystem &m_controllerSystem;
   const effects::GameOptions &m_options;
-  level1::EngineStreetHost m_host;
+  shared::EngineStreetHost m_host;
   street::StreetStage m_stage;
 };
 

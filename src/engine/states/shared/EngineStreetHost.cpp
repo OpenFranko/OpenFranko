@@ -12,7 +12,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace openfranko::src::engine::states::level1 {
+namespace openfranko::src::engine::states::shared {
 namespace {
 
 constexpr int PANEL_RESOURCE = 0x384;
@@ -217,4 +217,4 @@ void EngineStreetHost::clearSamples(int bank) {
   m_samples[bank].clear();
 }
 
-} // namespace openfranko::src::engine::states::level1
+} // namespace openfranko::src::engine::states::shared

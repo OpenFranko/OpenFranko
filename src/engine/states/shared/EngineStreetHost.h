@@ -14,7 +14,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace states {
-namespace level1 {
+namespace shared {
 
 class EngineStreetHost : public street::StreetHost {
 public:
@@ -60,7 +60,7 @@ private:
   std::map<int, std::vector<int>> m_samples;
 };
 
-} // namespace level1
+} // namespace shared
 } // namespace states
 } // namespace engine
 } // namespace src
