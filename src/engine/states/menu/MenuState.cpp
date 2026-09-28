@@ -165,7 +165,7 @@ std::optional<EngineStateEnum> MenuState::update() {
     m_session.border = m_menu.palette()[0];
   }
   for (const char key : m_menu.keysRead()) {
-    street::typeCheatKey(m_session.textBuffer, key);
+    street::core::typeCheatKey(m_session.textBuffer, key);
   }
   if (m_options.music != music) {
     m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
@@ -178,7 +178,7 @@ std::optional<EngineStateEnum> MenuState::update() {
   }
   if (m_menu.isFinished()) {
     m_session.registers[RO] = 0;
-    street::applyCheatCodes(m_session);
+    street::core::applyCheatCodes(m_session);
     return EngineStateEnum::CharacterSelection;
   }
 

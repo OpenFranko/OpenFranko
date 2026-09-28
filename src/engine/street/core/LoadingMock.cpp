@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::core {
 
 void LoadingMock::queue(std::function<void()> load) {
   m_files.push_back(std::move(load));
@@ -35,4 +35,4 @@ bool LoadingMock::advance(StatusPanel *panel) {
   return false;
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::core

@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <stdexcept>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::core {
 namespace {
 
 class JsonReader {
@@ -183,4 +183,4 @@ JsonValue parseJson(const std::string &text) {
   return JsonReader(text).document();
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::core

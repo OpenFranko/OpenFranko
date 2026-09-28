@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::core {
 namespace {
 
 int clampToSize(int value, int size) {
@@ -142,4 +142,4 @@ void ScreenBlock::put(IndexedSurface &target) const {
   target.copy(m_pixels, 0, 0, m_pixels.width(), m_pixels.height(), m_x, m_y);
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::core

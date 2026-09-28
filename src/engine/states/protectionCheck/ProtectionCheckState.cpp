@@ -96,7 +96,8 @@ ProtectionCheckState::ProtectionCheckState(systems::VideoSystem &videoSystem,
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_keyboard(keyboard), m_kind(check), m_check(makeCheck(check)),
       m_loadingFrames(check == Check::Stage3
-                          ? STAGE_CHECK_FILES * street::LoadingMock::FILE_FRAMES
+                          ? STAGE_CHECK_FILES *
+                                street::core::LoadingMock::FILE_FRAMES
                           : 0),
       m_resumeFrame(effects::color::SCREEN_OPEN_VBLS),
       m_screen(QUESTION_SCREEN_WIDTH, QUESTION_SCREEN_HEIGHT),

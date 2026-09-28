@@ -30,21 +30,21 @@ enum class SystemKey {
 };
 
 struct StreetExit {
-  IndexedSurface screen;
-  ScreenBlock block;
+  core::IndexedSurface screen;
+  core::ScreenBlock block;
   int playerX = 0;
   int energyShown = 0;
   int killsShown = 0;
-  std::optional<DoubleBuffer> buffer;
+  std::optional<core::DoubleBuffer> buffer;
 };
 
 struct BossExit {
-  DoubleBuffer buffer;
+  core::DoubleBuffer buffer;
   effects::color::AmigaPalette palette;
   int displayY = 0;
   int offsetX = 0;
-  IndexedSurface panel;
-  int panelY = PANEL_DISPLAY_Y;
+  core::IndexedSurface panel;
+  int panelY = core::PANEL_DISPLAY_Y;
   bool laced = false;
 };
 

@@ -130,7 +130,7 @@ bool ContinueScene::isShown() const { return m_shown; }
 
 bool ContinueScene::isContinueChosen() const { return m_continue; }
 
-const BobLayer &ContinueScene::bobs() const { return m_bobs; }
+const core::BobLayer &ContinueScene::bobs() const { return m_bobs; }
 
 const effects::color::AmigaPalette &ContinueScene::palette() const {
   return m_palette;
@@ -138,7 +138,8 @@ const effects::color::AmigaPalette &ContinueScene::palette() const {
 
 void ContinueScene::open() {
   m_screen.fill(0);
-  BobLayer::paste(m_screen, m_images, QUESTION_X, QUESTION_Y, QUESTION_IMAGE);
+  core::BobLayer::paste(m_screen, m_images, QUESTION_X, QUESTION_Y,
+                        QUESTION_IMAGE);
   m_bobs.set(HAND, LEFT_X, HAND_Y, HAND_IMAGE);
   m_machine.bind(HAND, &m_bobs.object(HAND));
   m_machine.create(HAND, amal::actors::pointingHand());
@@ -155,7 +156,7 @@ ContinueScene::Flow ContinueScene::choose(int16_t joystick) {
     m_continue = true;
   }
   if (joystick & JOY_RIGHT) {
-    m_bobs.set(HAND, RIGHT_X, HAND_Y, HAND_IMAGE | ImageBank::FLIP_X);
+    m_bobs.set(HAND, RIGHT_X, HAND_Y, HAND_IMAGE | core::ImageBank::FLIP_X);
     m_continue = false;
   }
   if (!(joystick & JOY_FIRE)) {

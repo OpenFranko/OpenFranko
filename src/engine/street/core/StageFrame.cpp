@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::core {
 namespace {
 
 constexpr int NTSC_SHIFT = 40;
@@ -156,4 +156,4 @@ void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                      frame);
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::core

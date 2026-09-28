@@ -29,13 +29,14 @@ class StreetHost {
 public:
   virtual ~StreetHost() = default;
 
-  virtual std::vector<Picture> loadSpriteSet(int resource, int sampleBank) = 0;
-  virtual Picture loadPicture(int resource) = 0;
+  virtual std::vector<core::Picture> loadSpriteSet(int resource,
+                                                   int sampleBank) = 0;
+  virtual core::Picture loadPicture(int resource) = 0;
   virtual effects::color::AmigaPalette loadPalette(int resource) = 0;
-  virtual std::vector<Picture> loadScenery(int resource) = 0;
-  virtual LevelScript loadLevelScript(int resource) = 0;
+  virtual std::vector<core::Picture> loadScenery(int resource) = 0;
+  virtual core::LevelScript loadLevelScript(int resource) = 0;
   virtual EndingCredits loadEndingCredits() = 0;
-  virtual Picture loadPanelPicture(int part) = 0;
+  virtual core::Picture loadPanelPicture(int part) = 0;
   virtual void loadMusic(int resource) = 0;
   virtual bool isMusicLoaded(int resource) const = 0;
   virtual void playMusic() = 0;
@@ -72,9 +73,9 @@ public:
   systems::Display output() const;
 
   Outcome outcome() const;
-  const BobLayer &bobs() const;
-  const IndexedSurface &screen() const;
-  const IndexedSurface &display() const;
+  const core::BobLayer &bobs() const;
+  const core::IndexedSurface &screen() const;
+  const core::IndexedSurface &display() const;
   const StatusPanel *panel() const;
   amal::Machine &machine();
   int columnsWalked() const;
@@ -121,12 +122,12 @@ private:
   int xBob(int number) const;
   int yBob(int number) const;
   int iBob(int number) const;
-  bool bobCol(int number, int first = 0, int last = BobLayer::COUNT - 1);
+  bool bobCol(int number, int first = 0, int last = core::BobLayer::COUNT - 1);
   bool col(int number) const;
   int stage() const;
   StatusPanel::Stats stats() const;
   void stall();
-  void autoback(DoubleBuffer::Op op);
+  void autoback(core::DoubleBuffer::Op op);
   bool pasteStalled(int x, int y, int image);
   void putBlock();
   Flow endOfPass() const;
@@ -137,7 +138,7 @@ private:
   void openScreens(bool shown);
   void test();
   void hideScreen();
-  StageCopper registers() const;
+  core::StageCopper registers() const;
   Flow stageInit();
   Flow stageMusic();
   Flow stageScreen();
@@ -178,20 +179,20 @@ private:
   GameSession &m_session;
   effects::core::GameOptions &m_options;
   amal::Machine m_machine;
-  ImageBank m_images;
-  BobLayer m_bobs;
-  IndexedSurface m_screen;
-  DoubleBuffer m_buffer;
+  core::ImageBank m_images;
+  core::BobLayer m_bobs;
+  core::IndexedSurface m_screen;
+  core::DoubleBuffer m_buffer;
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
-  StageDisplay m_copper;
+  core::StageDisplay m_copper;
   effects::color::AmigaPalette m_palette;
   effects::color::AmigaPalette m_panelPalette;
-  LevelScript m_script;
-  std::vector<Picture> m_columns;
-  Picture m_opening;
-  LoadingMock m_loading;
-  std::optional<ScreenBlock> m_block;
+  core::LevelScript m_script;
+  std::vector<core::Picture> m_columns;
+  core::Picture m_opening;
+  core::LoadingMock m_loading;
+  std::optional<core::ScreenBlock> m_block;
 
   Step m_step = Step::Start;
   Step m_afterLoading = Step::Finished;

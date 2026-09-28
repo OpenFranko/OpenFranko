@@ -7,12 +7,12 @@
 namespace openfranko::src::engine::street {
 
 EndingCredits EndingCredits::fromJson(const std::string &json) {
-  const JsonValue root = parseJson(json);
+  const core::JsonValue root = core::parseJson(json);
   EndingCredits credits;
-  for (const JsonValue &record : root.member("pages").array()) {
+  for (const core::JsonValue &record : root.member("pages").array()) {
     CreditPage page;
     page.beat = record.member("beat").integer();
-    for (const JsonValue &line : record.member("lines").array()) {
+    for (const core::JsonValue &line : record.member("lines").array()) {
       page.lines.push_back(
           {line.member("text").string(), line.member("y").integer()});
     }

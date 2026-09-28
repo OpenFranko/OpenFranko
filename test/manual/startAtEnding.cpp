@@ -21,27 +21,27 @@ constexpr int RO = 14;
 constexpr int16_t LAST_STAGE = 3;
 constexpr auto PANEL_DIRECTORY = "assets/0384/";
 
-street::Picture panelPicture(const std::string &file) {
+street::core::Picture panelPicture(const std::string &file) {
   systems::IndexedBitmap bitmap =
       systems::loadIndexedBitmap(PANEL_DIRECTORY + file);
-  return street::Picture{bitmap.width, bitmap.height, bitmap.hotspotX,
-                         bitmap.hotspotY, std::move(bitmap.pixels)};
+  return street::core::Picture{bitmap.width, bitmap.height, bitmap.hotspotX,
+                               bitmap.hotspotY, std::move(bitmap.pixels)};
 }
 
 street::BossExit lastBossExit(const amal::Registers &registers) {
-  const street::StageLayout layout =
-      street::stageLayout(effects::core::GameOptions{});
+  const street::core::StageLayout layout =
+      street::core::stageLayout(effects::core::GameOptions{});
   street::StatusPanel panel(panelPicture("0384.bmp"),
                             panelPicture("0384_1.bmp"));
   panel.score({registers[RF], registers[RO], registers[RN], registers[RG]});
-  const street::IndexedSurface screen(street::BossStage::SCREEN_WIDTH,
-                                      street::BossStage::SCREEN_HEIGHT);
-  return street::BossExit{street::DoubleBuffer(screen),
-                          street::levelPalette(false),
-                          street::playDisplayY(layout),
+  const street::core::IndexedSurface screen(street::BossStage::SCREEN_WIDTH,
+                                            street::BossStage::SCREEN_HEIGHT);
+  return street::BossExit{street::core::DoubleBuffer(screen),
+                          street::core::levelPalette(false),
+                          street::core::playDisplayY(layout),
                           0,
                           panel.surface(),
-                          street::panelDisplayY(layout),
+                          street::core::panelDisplayY(layout),
                           layout.laced};
 }
 

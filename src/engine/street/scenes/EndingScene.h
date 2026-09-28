@@ -50,10 +50,10 @@ public:
   bool isStageShown() const;
   int displayLine() const;
   effects::color::AmigaColor border() const;
-  const IndexedSurface &screen(int number) const;
+  const core::IndexedSurface &screen(int number) const;
   const effects::color::AmigaPalette &palette(int number) const;
-  const BobLayer &bobs() const;
-  const IndexedSurface *panel() const;
+  const core::BobLayer &bobs() const;
+  const core::IndexedSurface *panel() const;
   amal::Machine &machine();
 
 private:
@@ -99,7 +99,7 @@ private:
     bool open = false;
     bool hidden = false;
     int top = 0;
-    IndexedSurface surface = IndexedSurface(0, 0);
+    core::IndexedSurface surface = core::IndexedSurface(0, 0);
     effects::color::AmigaPalette palette;
   };
 
@@ -131,22 +131,22 @@ private:
   StreetHost &m_host;
   GameSession &m_session;
   amal::Machine m_machine;
-  LoadingMock m_loading;
-  ImageBank m_images;
-  ImageBank m_parked;
-  BobLayer m_bobs;
+  core::LoadingMock m_loading;
+  core::ImageBank m_images;
+  core::ImageBank m_parked;
+  core::BobLayer m_bobs;
   std::array<Screen, 2> m_screens;
-  IndexedSurface m_display;
-  BobLayer m_stillBobs;
+  core::IndexedSurface m_display;
+  core::BobLayer m_stillBobs;
   bool m_stillVbl = false;
-  std::optional<DoubleBuffer> m_dancerBuffer;
+  std::optional<core::DoubleBuffer> m_dancerBuffer;
   int m_bobScreen = 0;
   std::optional<BossExit> m_stage;
   std::unique_ptr<StatusPanel> m_panel;
   bool m_stageShown = false;
   bool m_panelShown = false;
-  int m_panelTop = PANEL_DISPLAY_Y;
-  Picture m_picture;
+  int m_panelTop = core::PANEL_DISPLAY_Y;
+  core::Picture m_picture;
   effects::color::AmigaPalette m_picturePalette;
   effects::color::PaletteFader m_fader;
   effects::color::AmigaColor m_border;

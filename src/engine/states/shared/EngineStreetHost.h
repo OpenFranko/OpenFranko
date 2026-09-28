@@ -22,14 +22,14 @@ public:
                    std::string directory = "assets");
   ~EngineStreetHost() override;
 
-  std::vector<street::Picture> loadSpriteSet(int resource,
-                                             int sampleBank) override;
-  street::Picture loadPicture(int resource) override;
+  std::vector<street::core::Picture> loadSpriteSet(int resource,
+                                                   int sampleBank) override;
+  street::core::Picture loadPicture(int resource) override;
   effects::color::AmigaPalette loadPalette(int resource) override;
-  std::vector<street::Picture> loadScenery(int resource) override;
-  street::LevelScript loadLevelScript(int resource) override;
+  std::vector<street::core::Picture> loadScenery(int resource) override;
+  street::core::LevelScript loadLevelScript(int resource) override;
   street::EndingCredits loadEndingCredits() override;
-  street::Picture loadPanelPicture(int part) override;
+  street::core::Picture loadPanelPicture(int part) override;
   void loadMusic(int resource) override;
   bool isMusicLoaded(int resource) const override;
   void playMusic() override;
@@ -49,7 +49,7 @@ private:
   std::string resourceName(int resource) const;
   std::string resourcePath(int resource) const;
   std::string musicPath(int resource) const;
-  std::vector<street::Picture> loadFrames(int resource) const;
+  std::vector<street::core::Picture> loadFrames(int resource) const;
   void loadSamples(int resource, int bank);
   void clearSamples(int bank);
 

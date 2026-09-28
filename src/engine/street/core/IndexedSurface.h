@@ -8,6 +8,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace core {
 
 struct Picture {
   int width = 0;
@@ -58,6 +59,7 @@ private:
   int m_y;
 };
 
+} // namespace core
 } // namespace street
 } // namespace engine
 } // namespace src

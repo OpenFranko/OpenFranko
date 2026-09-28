@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::core {
 namespace {
 
 constexpr int FIRST_DRAW = 1;
@@ -106,4 +106,4 @@ void DoubleBuffer::update(const BobLayer &bobs, ImageBank &images) {
   swap();
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::core

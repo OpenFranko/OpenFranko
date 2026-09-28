@@ -101,7 +101,7 @@ effects::color::AmigaPalette beat(effects::color::AmigaColor ink,
 
 EndingScene::EndingScene(StreetHost &host, GameSession &session, bool ntsc)
     : m_host(host), m_session(session), m_machine(session.registers),
-      m_display(0, 0), m_border(STAGE_BORDER), m_ntsc(ntsc),
+      m_display(0, 0), m_border(core::STAGE_BORDER), m_ntsc(ntsc),
       m_displayLine(effects::color::pictureLine(DISPLAY_LINE, ntsc)) {}
 
 void EndingScene::advance(int16_t joystick) {
@@ -149,7 +149,7 @@ systems::Display EndingScene::output() const {
   display.displayHeight = HEIGHT;
   display.border = m_border;
   if (m_stageShown && m_stage) {
-    const IndexedSurface &shown = m_stage->buffer.shown();
+    const core::IndexedSurface &shown = m_stage->buffer.shown();
     const int rowsPerLine = m_stage->laced ? 2 : 1;
     systems::Layer stage;
     stage.pixels = shown.pixels().data();
@@ -165,7 +165,7 @@ systems::Display EndingScene::output() const {
     stage.palette = m_stage->palette;
     display.layers.push_back(std::move(stage));
   }
-  if (const IndexedSurface *shown = panel()) {
+  if (const core::IndexedSurface *shown = panel()) {
     systems::Layer layer;
     layer.pixels = shown->pixels().data();
     layer.stride = shown->width();
@@ -174,7 +174,7 @@ systems::Display EndingScene::output() const {
     layer.top = m_panelTop - m_displayLine;
     layer.columns = StatusPanel::WIDTH;
     layer.rows = StatusPanel::VISIBLE_HEIGHT;
-    layer.palette = panelPalette();
+    layer.palette = core::panelPalette();
     display.layers.push_back(std::move(layer));
   }
   for (int number : {1, 0}) {
@@ -182,7 +182,7 @@ systems::Display EndingScene::output() const {
     if (!screen.open || screen.hidden) {
       continue;
     }
-    const IndexedSurface &surface =
+    const core::IndexedSurface &surface =
         number == 1 && m_dancerBuffer
             ? m_dancerBuffer->shown()
             : (number == m_bobScreen ? m_display : screen.surface);
@@ -238,7 +238,7 @@ int EndingScene::displayLine() const { return m_displayLine; }
 
 effects::color::AmigaColor EndingScene::border() const { return m_border; }
 
-const IndexedSurface &EndingScene::screen(int number) const {
+const core::IndexedSurface &EndingScene::screen(int number) const {
   return m_screens[static_cast<std::size_t>(number)].surface;
 }
 
@@ -246,9 +246,9 @@ const effects::color::AmigaPalette &EndingScene::palette(int number) const {
   return m_screens[static_cast<std::size_t>(number)].palette;
 }
 
-const BobLayer &EndingScene::bobs() const { return m_bobs; }
+const core::BobLayer &EndingScene::bobs() const { return m_bobs; }
 
-const IndexedSurface *EndingScene::panel() const {
+const core::IndexedSurface *EndingScene::panel() const {
   if (!m_panelShown) {
     return nullptr;
   }
@@ -481,18 +481,19 @@ void EndingScene::start() {
   m_session.bossExit.reset();
   m_panelTop = m_stage->panelY;
   if (!m_stage->buffer.isAutobacking()) {
-    m_stage->buffer.autoback([](IndexedSurface &surface) { surface.fill(0); });
+    m_stage->buffer.autoback(
+        [](core::IndexedSurface &surface) { surface.fill(0); });
   }
   stageFrame();
   m_stageShown = true;
   m_panelShown = true;
-  m_border = STAGE_BORDER;
+  m_border = core::STAGE_BORDER;
 }
 
 void EndingScene::era() {
   m_credits = m_host.loadEndingCredits();
   m_panel = std::make_unique<StatusPanel>(
-      m_host.loadPanelPicture(StreetStage::LOADING_STRIP), Picture{},
+      m_host.loadPanelPicture(StreetStage::LOADING_STRIP), core::Picture{},
       m_session.version);
   m_host.stopMusic();
   m_images.clear();
@@ -518,7 +519,7 @@ void EndingScene::fotoWhite() {
   openScreen(0, STILL_TOP, STILL_HEIGHT,
              effects::color::AmigaPalette(STILL_COLORS, WHITE));
   m_screens[0].surface.unpack(m_picture, 0, 0);
-  m_picture = Picture{};
+  m_picture = core::Picture{};
   m_bobScreen = 0;
   m_border = BLACK;
 }
@@ -535,9 +536,10 @@ void EndingScene::hideStill() {
 void EndingScene::farewell() {
   Screen &still = m_screens[0];
   m_border = still.palette[0];
-  BobLayer::paste(still.surface, m_images, DOORWAY_X, DOORWAY_Y, DOORWAY_IMAGE);
-  BobLayer::paste(still.surface, m_images, FAREWELL_X, FAREWELL_Y,
-                  FAREWELL_IMAGE);
+  core::BobLayer::paste(still.surface, m_images, DOORWAY_X, DOORWAY_Y,
+                        DOORWAY_IMAGE);
+  core::BobLayer::paste(still.surface, m_images, FAREWELL_X, FAREWELL_Y,
+                        FAREWELL_IMAGE);
   m_bobs.set(WALKER, WALKER_X, WALKER_Y, WALKER_IMAGE);
   m_machine.create(WALKER, amal::actors::walkAway());
   m_machine.startAll();
@@ -582,8 +584,8 @@ void EndingScene::font(const std::string &text, int y) {
     const int image =
         static_cast<unsigned char>(text[static_cast<std::size_t>(i - 1)]) +
         GLYPH_OFFSET;
-    BobLayer::paste(m_screens[0].surface, m_images, i * GLYPH_WIDTH + x, y,
-                    image);
+    core::BobLayer::paste(m_screens[0].surface, m_images, i * GLYPH_WIDTH + x,
+                          y, image);
   }
 }
 
@@ -623,7 +625,7 @@ void EndingScene::openScreen(int number, int top, int height,
   screen.open = true;
   screen.hidden = false;
   screen.top = effects::color::pictureLine(top, m_ntsc);
-  screen.surface = IndexedSurface(WIDTH, height);
+  screen.surface = core::IndexedSurface(WIDTH, height);
   screen.palette = std::move(palette);
   if (number == 0) {
     m_fader = effects::color::PaletteFader{};

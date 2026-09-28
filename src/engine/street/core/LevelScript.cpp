@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::core {
 
 LevelScript LevelScript::fromJson(const std::string &json) {
   const JsonValue root = parseJson(json);
@@ -34,4 +34,4 @@ LevelScript LevelScript::fromJson(const std::string &json) {
   return script;
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::core

@@ -12,6 +12,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace core {
 
 class ImageBank {
 public:
@@ -94,6 +95,7 @@ private:
   std::array<bool, COUNT> m_collisions{};
 };
 
+} // namespace core
 } // namespace street
 } // namespace engine
 } // namespace src

@@ -134,12 +134,14 @@ BossStage::BossStage(StreetHost &host, GameSession &session,
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen),
-      m_screenDisplay{DISPLAY_X,
-                      static_cast<int16_t>(playDisplayY(stageLayout(options))),
-                      0},
-      m_palette(levelPalette(options.mono)), m_panelPalette(panelPalette()) {
+      m_screenDisplay{
+          core::DISPLAY_X,
+          static_cast<int16_t>(core::playDisplayY(core::stageLayout(options))),
+          0},
+      m_palette(core::levelPalette(options.mono)),
+      m_panelPalette(core::panelPalette()) {
   m_copper.reset(registers());
-  m_session.border = STAGE_BORDER;
+  m_session.border = core::STAGE_BORDER;
 }
 
 void BossStage::advance(const StreetInput &input) {
@@ -172,7 +174,7 @@ void BossStage::test() {
   }
 }
 
-StageCopper BossStage::registers() const {
+core::StageCopper BossStage::registers() const {
   return {m_screenShown, m_screenDisplay, m_options.ntsc};
 }
 
@@ -181,7 +183,7 @@ void BossStage::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::Display BossStage::output() const {
-  const StageCopper &live = m_copper.live();
+  const core::StageCopper &live = m_copper.live();
   return stageOutput(live.screenShown ? &m_buffer.shown() : nullptr, m_palette,
                      live.screenDisplay, m_screenOffsetX,
                      m_panelShown ? m_panel.get() : nullptr,
@@ -191,11 +193,13 @@ systems::Display BossStage::output() const {
 
 BossStage::Outcome BossStage::outcome() const { return m_outcome; }
 
-const BobLayer &BossStage::bobs() const { return m_bobs; }
+const core::BobLayer &BossStage::bobs() const { return m_bobs; }
 
-const IndexedSurface &BossStage::screen() const { return m_screen; }
+const core::IndexedSurface &BossStage::screen() const { return m_screen; }
 
-const IndexedSurface &BossStage::display() const { return m_buffer.shown(); }
+const core::IndexedSurface &BossStage::display() const {
+  return m_buffer.shown();
+}
 
 const StatusPanel *BossStage::panel() const { return m_panel.get(); }
 
@@ -267,18 +271,18 @@ StatusPanel::Stats BossStage::stats() const {
 
 void BossStage::stall() { m_resumeFrame = m_frame + AUTOBACK_VBLS; }
 
-void BossStage::autoback(DoubleBuffer::Op op) {
+void BossStage::autoback(core::DoubleBuffer::Op op) {
   op(m_screen);
   m_buffer.autoback(std::move(op));
   stall();
 }
 
 bool BossStage::pasteStalled(int x, int y, int image) {
-  if (!BobLayer::paste(m_screen, m_images, x, y, image)) {
+  if (!core::BobLayer::paste(m_screen, m_images, x, y, image)) {
     return false;
   }
-  m_buffer.autoback([this, x, y, image](IndexedSurface &surface) {
-    BobLayer::paste(surface, m_images, x, y, image);
+  m_buffer.autoback([this, x, y, image](core::IndexedSurface &surface) {
+    core::BobLayer::paste(surface, m_images, x, y, image);
   });
   stall();
   return true;
@@ -309,7 +313,7 @@ BossStage::Flow BossStage::init() {
   }
   m_screen = m_session.streetExit->screen;
   m_buffer = m_session.streetExit->buffer ? *m_session.streetExit->buffer
-                                          : DoubleBuffer(m_screen);
+                                          : core::DoubleBuffer(m_screen);
   m_block.emplace(m_session.streetExit->block);
   m_playerX = m_session.streetExit->playerX;
   m_energyShown = m_session.streetExit->energyShown;
@@ -444,7 +448,7 @@ BossStage::Flow BossStage::approachTop(const StreetInput &input) {
   m_scrollPhase = m_scrollPhase + 1 > 1 ? 0 : m_scrollPhase + 1;
   if (m_scrollPhase == 0) {
     autoback([column = m_columns.at(static_cast<std::size_t>(m_columnsWalked)),
-              x = stage() == 2 ? 0 : 304](IndexedSurface &surface) {
+              x = stage() == 2 ? 0 : 304](core::IndexedSurface &surface) {
       surface.unpack(column, x, 0);
     });
     ++m_columnsWalked;
@@ -886,23 +890,23 @@ BossStage::Flow BossStage::finishCleanUp() {
   m_machine.destroyAll();
   m_bobs.offAll();
   if (stage() == 3) {
-    m_buffer.autoback([](IndexedSurface &surface) { surface.fill(0); });
-    m_session.bossExit.emplace(BossExit{m_buffer, m_palette, m_screenDisplay.y,
-                                        m_screenOffsetX, m_panel->surface(),
-                                        panelDisplayY(stageLayout(m_options)),
-                                        m_options.tallScreen});
+    m_buffer.autoback([](core::IndexedSurface &surface) { surface.fill(0); });
+    m_session.bossExit.emplace(BossExit{
+        m_buffer, m_palette, m_screenDisplay.y, m_screenOffsetX,
+        m_panel->surface(), core::panelDisplayY(core::stageLayout(m_options)),
+        m_options.tallScreen});
     m_outcome = Outcome::BossDefeated;
     m_step = Step::Finished;
     return Flow::Yield;
   }
   m_step = Step::Cleared;
-  autoback([](IndexedSurface &surface) { surface.fill(0); });
+  autoback([](core::IndexedSurface &surface) { surface.fill(0); });
   return Flow::Yield;
 }
 
 void BossStage::scrollStep() {
   const int dx = stage() == 2 ? 8 : -8;
-  autoback([dx](IndexedSurface &surface) {
+  autoback([dx](core::IndexedSurface &surface) {
     surface.copy(surface, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, dx, 0);
   });
 }
@@ -941,7 +945,7 @@ void BossStage::sys() {
     break;
   case SystemKey::Pal:
   case SystemKey::Ntsc:
-    switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
+    core::switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
     break;
   case SystemKey::Lives:
     global(RG) = CHEAT_LIVES;
@@ -1112,7 +1116,7 @@ void BossStage::runBasic(const StreetInput &input) {
     case Step::GameOverWait:
       if (m_session.version == GameVersion::V12) {
         m_bobs.offAll();
-        autoback([](IndexedSurface &surface) { surface.fill(0); });
+        autoback([](core::IndexedSurface &surface) { surface.fill(0); });
         m_step = Step::GameOverCleared;
       } else {
         closePlayScreen();

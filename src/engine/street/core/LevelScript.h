@@ -9,6 +9,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace core {
 
 struct EnemySlot {
   static constexpr int EMPTY = 255;
@@ -33,6 +34,7 @@ struct LevelScript {
   static LevelScript fromJson(const std::string &json);
 };
 
+} // namespace core
 } // namespace street
 } // namespace engine
 } // namespace src

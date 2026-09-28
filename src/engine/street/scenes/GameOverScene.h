@@ -40,7 +40,7 @@ public:
   bool isPanning() const;
   bool isFinished() const;
   int offset() const;
-  const BobLayer &bobs() const;
+  const core::BobLayer &bobs() const;
   const effects::color::AmigaPalette &palette() const;
 
 private:
@@ -74,12 +74,12 @@ private:
 
   StreetHost &m_host;
   GameSession &m_session;
-  LoadingMock m_loading;
-  ImageBank m_images;
-  BobLayer m_bobs;
-  Picture m_picture;
-  IndexedSurface m_screen;
-  std::optional<DoubleBuffer> m_buffer;
+  core::LoadingMock m_loading;
+  core::ImageBank m_images;
+  core::BobLayer m_bobs;
+  core::Picture m_picture;
+  core::IndexedSurface m_screen;
+  std::optional<core::DoubleBuffer> m_buffer;
   effects::color::AmigaPalette m_palette;
   effects::color::AmigaPalette m_rainbow;
   effects::color::PaletteFader m_fader;

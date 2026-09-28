@@ -15,6 +15,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace core {
 
 constexpr effects::color::AmigaColor STAGE_BORDER = 0x555;
 constexpr int FRAME_WIDTH = 304;
@@ -76,6 +77,7 @@ void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::color::AmigaPalette &panelColors,
                   const StageLayout &window);
 
+} // namespace core
 } // namespace street
 } // namespace engine
 } // namespace src

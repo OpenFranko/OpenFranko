@@ -18,8 +18,8 @@ namespace {
 constexpr int PANEL_RESOURCE = 0x384;
 constexpr auto CREDITS_FILE = "credits.json";
 
-street::Picture toPicture(systems::IndexedBitmap bitmap) {
-  street::Picture picture;
+street::core::Picture toPicture(systems::IndexedBitmap bitmap) {
+  street::core::Picture picture;
   picture.width = bitmap.width;
   picture.height = bitmap.height;
   picture.hotX = bitmap.hotspotX;
@@ -62,8 +62,8 @@ EngineStreetHost::~EngineStreetHost() {
   }
 }
 
-std::vector<street::Picture> EngineStreetHost::loadSpriteSet(int resource,
-                                                             int sampleBank) {
+std::vector<street::core::Picture>
+EngineStreetHost::loadSpriteSet(int resource, int sampleBank) {
   auto frames = loadFrames(resource);
   if (sampleBank != 0) {
     loadSamples(resource, sampleBank);
@@ -71,7 +71,7 @@ std::vector<street::Picture> EngineStreetHost::loadSpriteSet(int resource,
   return frames;
 }
 
-street::Picture EngineStreetHost::loadPicture(int resource) {
+street::core::Picture EngineStreetHost::loadPicture(int resource) {
   return toPicture(systems::loadIndexedBitmap(resourcePath(resource) + ".bmp"));
 }
 
@@ -79,11 +79,11 @@ effects::color::AmigaPalette EngineStreetHost::loadPalette(int resource) {
   return systems::loadIndexedBitmap(resourcePath(resource) + ".bmp").palette;
 }
 
-std::vector<street::Picture> EngineStreetHost::loadScenery(int resource) {
+std::vector<street::core::Picture> EngineStreetHost::loadScenery(int resource) {
   return loadFrames(resource);
 }
 
-street::LevelScript EngineStreetHost::loadLevelScript(int resource) {
+street::core::LevelScript EngineStreetHost::loadLevelScript(int resource) {
   const std::string path = resourcePath(resource) + ".json";
   std::ifstream file(path);
   if (!file) {
@@ -91,7 +91,7 @@ street::LevelScript EngineStreetHost::loadLevelScript(int resource) {
   }
   std::stringstream text;
   text << file.rdbuf();
-  return street::LevelScript::fromJson(text.str());
+  return street::core::LevelScript::fromJson(text.str());
 }
 
 street::EndingCredits EngineStreetHost::loadEndingCredits() {
@@ -105,7 +105,7 @@ street::EndingCredits EngineStreetHost::loadEndingCredits() {
   return street::EndingCredits::fromJson(text.str());
 }
 
-street::Picture EngineStreetHost::loadPanelPicture(int part) {
+street::core::Picture EngineStreetHost::loadPanelPicture(int part) {
   return toPicture(systems::loadIndexedBitmap(
       assets::partPath(resourceName(PANEL_RESOURCE), part, m_directory)));
 }
@@ -169,10 +169,11 @@ std::string EngineStreetHost::musicPath(int resource) const {
   return resourcePath(resource) + ".s3m";
 }
 
-std::vector<street::Picture> EngineStreetHost::loadFrames(int resource) const {
+std::vector<street::core::Picture>
+EngineStreetHost::loadFrames(int resource) const {
   const std::string name = resourceName(resource);
   const std::filesystem::path directory = m_directory + "/" + name;
-  std::vector<street::Picture> frames;
+  std::vector<street::core::Picture> frames;
   std::error_code error;
   for (const auto &entry :
        std::filesystem::directory_iterator(directory, error)) {

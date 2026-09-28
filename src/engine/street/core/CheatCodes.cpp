@@ -3,7 +3,7 @@
 #include <array>
 #include <cstdint>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::core {
 namespace {
 
 constexpr int RG = 6;
@@ -76,4 +76,4 @@ void applyCheatCodes(GameSession &session) {
   }
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::core

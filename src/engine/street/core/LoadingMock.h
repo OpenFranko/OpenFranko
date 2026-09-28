@@ -10,6 +10,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace core {
 
 class LoadingMock {
 public:
@@ -28,6 +29,7 @@ private:
   int m_countdown = 0;
 };
 
+} // namespace core
 } // namespace street
 } // namespace engine
 } // namespace src

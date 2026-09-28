@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 
 using namespace openfranko::src::engine::street;
+using namespace openfranko::src::engine::street::core;
 
 namespace {
 

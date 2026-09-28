@@ -83,12 +83,14 @@ StreetStage::StreetStage(StreetHost &host, GameSession &session,
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen),
-      m_screenDisplay{DISPLAY_X,
-                      static_cast<int16_t>(playDisplayY(stageLayout(options))),
-                      0},
-      m_palette(levelPalette(false)), m_panelPalette(panelPalette()) {
+      m_screenDisplay{
+          core::DISPLAY_X,
+          static_cast<int16_t>(core::playDisplayY(core::stageLayout(options))),
+          0},
+      m_palette(core::levelPalette(false)),
+      m_panelPalette(core::panelPalette()) {
   m_copper.reset(registers());
-  m_session.border = STAGE_BORDER;
+  m_session.border = core::STAGE_BORDER;
 }
 
 void StreetStage::advance(const StreetInput &input) {
@@ -126,7 +128,7 @@ void StreetStage::hideScreen() {
   m_copper.hide();
 }
 
-StageCopper StreetStage::registers() const {
+core::StageCopper StreetStage::registers() const {
   return {m_screenShown, m_screenDisplay, m_options.ntsc};
 }
 
@@ -135,21 +137,24 @@ void StreetStage::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::Display StreetStage::output() const {
-  const StageCopper &live = m_copper.live();
-  return stageOutput(live.screenShown ? &m_buffer.shown() : nullptr, m_palette,
-                     live.screenDisplay, m_screenOffsetX,
-                     m_panelShown ? m_panel.get() : nullptr,
-                     m_copper.panelY(m_options.tallScreen), m_panelPalette,
-                     m_copper.window(m_options.tallScreen));
+  const core::StageCopper &live = m_copper.live();
+  return core::stageOutput(live.screenShown ? &m_buffer.shown() : nullptr,
+                           m_palette, live.screenDisplay, m_screenOffsetX,
+                           m_panelShown ? m_panel.get() : nullptr,
+                           m_copper.panelY(m_options.tallScreen),
+                           m_panelPalette,
+                           m_copper.window(m_options.tallScreen));
 }
 
 StreetStage::Outcome StreetStage::outcome() const { return m_outcome; }
 
-const BobLayer &StreetStage::bobs() const { return m_bobs; }
+const core::BobLayer &StreetStage::bobs() const { return m_bobs; }
 
-const IndexedSurface &StreetStage::screen() const { return m_screen; }
+const core::IndexedSurface &StreetStage::screen() const { return m_screen; }
 
-const IndexedSurface &StreetStage::display() const { return m_buffer.shown(); }
+const core::IndexedSurface &StreetStage::display() const {
+  return m_buffer.shown();
+}
 
 const StatusPanel *StreetStage::panel() const { return m_panel.get(); }
 
@@ -197,18 +202,18 @@ StatusPanel::Stats StreetStage::stats() const {
 
 void StreetStage::stall() { m_resumeFrame = m_frame + AUTOBACK_VBLS; }
 
-void StreetStage::autoback(DoubleBuffer::Op op) {
+void StreetStage::autoback(core::DoubleBuffer::Op op) {
   op(m_screen);
   m_buffer.autoback(std::move(op));
   stall();
 }
 
 bool StreetStage::pasteStalled(int x, int y, int image) {
-  if (!BobLayer::paste(m_screen, m_images, x, y, image)) {
+  if (!core::BobLayer::paste(m_screen, m_images, x, y, image)) {
     return false;
   }
-  m_buffer.autoback([this, x, y, image](IndexedSurface &surface) {
-    BobLayer::paste(surface, m_images, x, y, image);
+  m_buffer.autoback([this, x, y, image](core::IndexedSurface &surface) {
+    core::BobLayer::paste(surface, m_images, x, y, image);
   });
   stall();
   return true;
@@ -244,12 +249,12 @@ void StreetStage::gameInit() {
 }
 
 void StreetStage::openScreens(bool shown) {
-  m_palette = levelPalette(m_options.mono);
-  m_panelPalette = panelPalette();
+  m_palette = core::levelPalette(m_options.mono);
+  m_panelPalette = core::panelPalette();
   m_screenShown = shown;
   m_copper.reset(registers());
   m_screen.fill(0);
-  m_buffer = DoubleBuffer(m_screen);
+  m_buffer = core::DoubleBuffer(m_screen);
   m_panel = std::make_unique<StatusPanel>(
       m_host.loadPanelPicture(LOADING_STRIP),
       m_host.loadPanelPicture(PANEL_ARTWORK), m_session.version);
@@ -296,7 +301,7 @@ StreetStage::Flow StreetStage::stageMusic() {
 
 StreetStage::Flow StreetStage::stageScreen() {
   m_step = Step::StageShown;
-  autoback([opening = m_opening](IndexedSurface &surface) {
+  autoback([opening = m_opening](core::IndexedSurface &surface) {
     surface.unpack(opening, 0, 0);
   });
   return Flow::Yield;
@@ -304,7 +309,7 @@ StreetStage::Flow StreetStage::stageScreen() {
 
 void StreetStage::stageShown() {
   m_bobs.set(PLAYER, m_playerX, (STREET_Y / 4) * 4, IDLE_IMAGE + m_facing);
-  m_opening = Picture{};
+  m_opening = core::Picture{};
   test();
   m_panel->showWaiting();
   m_screenShown = true;
@@ -341,7 +346,7 @@ StreetStage::Flow StreetStage::stopForLoading(Step next) {
   global(RB) = word((global(RB) / 4) * 4);
   m_bobs.offAll();
   m_step = next;
-  autoback([](IndexedSurface &) {});
+  autoback([](core::IndexedSurface &) {});
   return Flow::Yield;
 }
 
@@ -756,7 +761,7 @@ StreetStage::Flow StreetStage::advanceWalk(const StreetInput &input) {
   m_scrollPhase = m_scrollPhase + 1 > 1 ? 0 : m_scrollPhase + 1;
   if (m_scrollPhase == 0) {
     autoback([column = m_columns.at(static_cast<std::size_t>(m_columnInChunk)),
-              x = stage() == 2 ? 0 : 304](IndexedSurface &surface) {
+              x = stage() == 2 ? 0 : 304](core::IndexedSurface &surface) {
       surface.unpack(column, x, 0);
     });
     ++m_columnInChunk;
@@ -815,7 +820,7 @@ StreetStage::Flow StreetStage::spawnFlushed() {
 StreetStage::Flow StreetStage::spawnPasted() {
   test();
   m_panel->showWaiting();
-  const Wave &wave = m_script.waves[static_cast<std::size_t>(m_nextWave)];
+  const core::Wave &wave = m_script.waves[static_cast<std::size_t>(m_nextWave)];
   global(RI) = 3;
 
   for (int i = 1; i <= 3; ++i) {
@@ -826,11 +831,11 @@ StreetStage::Flow StreetStage::spawnPasted() {
                  wave.slots[2].spriteSet == resident);
   }
   int slot = 0;
-  for (const EnemySlot &enemy : wave.slots) {
+  for (const core::EnemySlot &enemy : wave.slots) {
     bool missing = false;
     for (int i = 1; i <= 3; ++i) {
       if (enemy.spriteSet != m_resident[static_cast<std::size_t>(i)] &&
-          enemy.spriteSet != EnemySlot::EMPTY) {
+          enemy.spriteSet != core::EnemySlot::EMPTY) {
         missing = true;
       } else {
         missing = false;
@@ -864,12 +869,12 @@ StreetStage::Flow StreetStage::spawnPasted() {
 }
 
 void StreetStage::spawnLoaded() {
-  const Wave &wave = m_script.waves[static_cast<std::size_t>(m_nextWave)];
+  const core::Wave &wave = m_script.waves[static_cast<std::size_t>(m_nextWave)];
   for (int j = 2; j <= 4; ++j) {
-    const EnemySlot &enemy = wave.slots[static_cast<std::size_t>(j - 2)];
+    const core::EnemySlot &enemy = wave.slots[static_cast<std::size_t>(j - 2)];
     m_machine.bind(j * 2, &m_bobs.object(j));
     m_machine.bind(j * 2 + 1, &m_bobs.object(j));
-    if (enemy.spriteSet == EnemySlot::EMPTY) {
+    if (enemy.spriteSet == core::EnemySlot::EMPTY) {
       m_bobs.set(j, 1000, 300, HIDDEN_IMAGE);
       m_machine.create(j * 2, amal::actors::idle(m_session.version));
       m_machine.create(j * 2 + 1, amal::actors::idle(m_session.version));
@@ -896,7 +901,7 @@ void StreetStage::spawnLoaded() {
 
 void StreetStage::scrollStep() {
   const int dx = stage() == 2 ? 8 : -8;
-  autoback([dx](IndexedSurface &surface) {
+  autoback([dx](core::IndexedSurface &surface) {
     surface.copy(surface, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, dx, 0);
   });
 }
@@ -935,7 +940,7 @@ void StreetStage::sys() {
     break;
   case SystemKey::Pal:
   case SystemKey::Ntsc:
-    switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
+    core::switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
     break;
   case SystemKey::Lives:
     global(RG) = CHEAT_LIVES;
@@ -1044,7 +1049,7 @@ void StreetStage::runBasic(const StreetInput &input) {
     case Step::GameOverWait:
       if (m_session.version == GameVersion::V12) {
         m_bobs.offAll();
-        autoback([](IndexedSurface &surface) { surface.fill(0); });
+        autoback([](core::IndexedSurface &surface) { surface.fill(0); });
         m_step = Step::GameOverCleared;
       } else {
         closePlayScreen();

@@ -14,7 +14,7 @@ constexpr int FIRST_STAGE = 1;
 int main() {
   street::GameSession session;
   session.stageReached = FIRST_STAGE;
-  session.border = street::STAGE_BORDER;
+  session.border = street::core::STAGE_BORDER;
   Engine engine(states::EngineStateEnum::GameOver, std::move(session));
   engine.run();
   return 0;

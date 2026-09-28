@@ -152,7 +152,7 @@ systems::Display GameOverScene::output() const {
   if (!m_shown || !m_buffer) {
     return display;
   }
-  const IndexedSurface &shown = m_buffer->shown();
+  const core::IndexedSurface &shown = m_buffer->shown();
   systems::Layer layer;
   layer.pixels = shown.pixels().data();
   layer.stride = shown.width();
@@ -185,7 +185,7 @@ bool GameOverScene::isFinished() const { return m_step == Step::Finished; }
 
 int GameOverScene::offset() const { return m_offset; }
 
-const BobLayer &GameOverScene::bobs() const { return m_bobs; }
+const core::BobLayer &GameOverScene::bobs() const { return m_bobs; }
 
 const effects::color::AmigaPalette &GameOverScene::palette() const {
   return m_palette;
@@ -222,7 +222,7 @@ void GameOverScene::unpack() {
   m_host.setMusicVolume(FULL_VOLUME);
   m_host.playMusic();
   m_screen.unpack(m_picture, 0, 0);
-  m_picture = Picture{};
+  m_picture = core::Picture{};
 }
 
 void GameOverScene::open() {

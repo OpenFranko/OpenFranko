@@ -35,7 +35,7 @@ public:
   Outcome outcome() const;
   bool isShown() const;
   bool isContinueChosen() const;
-  const BobLayer &bobs() const;
+  const core::BobLayer &bobs() const;
   const effects::color::AmigaPalette &palette() const;
 
 private:
@@ -51,10 +51,10 @@ private:
   StreetHost &m_host;
   GameSession &m_session;
   amal::Machine m_machine;
-  ImageBank m_images;
-  BobLayer m_bobs;
-  IndexedSurface m_screen;
-  IndexedSurface m_display;
+  core::ImageBank m_images;
+  core::BobLayer m_bobs;
+  core::IndexedSurface m_screen;
+  core::IndexedSurface m_display;
   effects::color::AmigaPalette m_palette;
 
   Step m_step = Step::Open;

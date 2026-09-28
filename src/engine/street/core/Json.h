@@ -9,6 +9,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace core {
 
 struct JsonValue {
   enum class Kind { Null, Boolean, Number, String, Array, Object };
@@ -28,6 +29,7 @@ struct JsonValue {
 
 JsonValue parseJson(const std::string &text);
 
+} // namespace core
 } // namespace street
 } // namespace engine
 } // namespace src

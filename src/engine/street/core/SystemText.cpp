@@ -3,7 +3,7 @@
 #include <array>
 #include <cstddef>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::core {
 namespace {
 
 struct Glyph {
@@ -54,4 +54,4 @@ void drawSystemText(IndexedSurface &surface, int x, int baseline,
   }
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::core

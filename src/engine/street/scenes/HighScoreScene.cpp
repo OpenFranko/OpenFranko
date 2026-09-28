@@ -127,9 +127,9 @@ int HighScoreScene::rowsShown() const { return m_rowsShown; }
 
 const std::string &HighScoreScene::name() const { return m_name; }
 
-const BobLayer &HighScoreScene::bobs() const { return m_bobs; }
+const core::BobLayer &HighScoreScene::bobs() const { return m_bobs; }
 
-const IndexedSurface &HighScoreScene::screen() const { return m_screen; }
+const core::IndexedSurface &HighScoreScene::screen() const { return m_screen; }
 
 const effects::color::AmigaPalette &HighScoreScene::palette() const {
   return m_palette;
@@ -248,7 +248,7 @@ HighScoreScene::Flow HighScoreScene::loaded() {
   }
   m_slot = m_session.highScores.insert(kills);
   m_screen.unpack(m_picture, 0, 0);
-  m_picture = Picture{};
+  m_picture = core::Picture{};
   m_palette = m_picturePalette;
   m_palette.resize(COLORS, BLACK);
   m_round = 0;
@@ -295,8 +295,8 @@ void HighScoreScene::pasteRow(int row) {
   for (int column = 0; column < HighScoreTable::NAME_LENGTH; ++column) {
     const int letter = table.letter(row, column);
     if (letter < HighScoreTable::LETTERS) {
-      BobLayer::paste(m_screen, m_images, NAME_X + column * CELL_WIDTH, y,
-                      letter + LETTER_IMAGE);
+      core::BobLayer::paste(m_screen, m_images, NAME_X + column * CELL_WIDTH, y,
+                            letter + LETTER_IMAGE);
     }
   }
   const std::string score = " " + std::to_string(table.score(row)) + "   ";
@@ -304,8 +304,8 @@ void HighScoreScene::pasteRow(int row) {
   for (int k = 1; k <= SCORE_CHARACTERS; ++k) {
     const char character = score[static_cast<std::size_t>(k - 1)];
     if (character > ' ') {
-      BobLayer::paste(m_screen, m_images, left + k * CELL_WIDTH, y,
-                      character - DIGIT_IMAGE_OFFSET);
+      core::BobLayer::paste(m_screen, m_images, left + k * CELL_WIDTH, y,
+                            character - DIGIT_IMAGE_OFFSET);
     }
   }
 }
@@ -330,7 +330,8 @@ HighScoreScene::Flow HighScoreScene::entry() {
         static_cast<std::size_t>((m_x - NAME_X) / CELL_WIDTH);
     if (typed >= 'A' && typed <= 'Z') {
       restoreCell();
-      BobLayer::paste(m_screen, m_images, m_x, m_y, typed - TYPED_IMAGE_OFFSET);
+      core::BobLayer::paste(m_screen, m_images, m_x, m_y,
+                            typed - TYPED_IMAGE_OFFSET);
       m_name[cell] = typed;
       if (m_x < LAST_CELL_X) {
         m_x += CELL_WIDTH;

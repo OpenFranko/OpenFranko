@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::core {
 namespace {
 
 struct Shape {
@@ -307,4 +307,4 @@ bool BobLayer::paste(IndexedSurface &surface, ImageBank &images, int x, int y,
   return true;
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::core

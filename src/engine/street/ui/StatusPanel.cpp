@@ -23,7 +23,7 @@ constexpr int VERSION12_LIVES_DIGIT_X = 31;
 
 } // namespace
 
-StatusPanel::StatusPanel(Picture loadingStrip, Picture artwork,
+StatusPanel::StatusPanel(core::Picture loadingStrip, core::Picture artwork,
                          GameVersion version)
     : m_loadingStrip(std::move(loadingStrip)), m_artwork(std::move(artwork)),
       m_livesDigitX(version == GameVersion::V12 ? VERSION12_LIVES_DIGIT_X
@@ -74,6 +74,6 @@ void StatusPanel::gainEnergy(int energy) {
                   BAR_BOTTOM);
 }
 
-const IndexedSurface &StatusPanel::surface() const { return m_surface; }
+const core::IndexedSurface &StatusPanel::surface() const { return m_surface; }
 
 } // namespace openfranko::src::engine::street

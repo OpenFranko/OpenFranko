@@ -131,13 +131,15 @@ CarStage::CarStage(StreetHost &host, GameSession &session,
       m_panel(std::make_unique<StatusPanel>(
           host.loadPanelPicture(StreetStage::LOADING_STRIP),
           host.loadPanelPicture(StreetStage::PANEL_ARTWORK), session.version)),
-      m_screenDisplay{DISPLAY_X,
-                      static_cast<int16_t>(playDisplayY(stageLayout(options))),
-                      0},
-      m_palette(levelPalette(options.mono)), m_panelPalette(panelPalette()),
+      m_screenDisplay{
+          core::DISPLAY_X,
+          static_cast<int16_t>(core::playDisplayY(core::stageLayout(options))),
+          0},
+      m_palette(core::levelPalette(options.mono)),
+      m_panelPalette(core::panelPalette()),
       m_screenOffsetX(stage() == 2 ? 16 : 0) {
   m_copper.reset(registers());
-  m_session.border = STAGE_BORDER;
+  m_session.border = core::STAGE_BORDER;
   m_panel->score(stats());
 }
 
@@ -170,7 +172,7 @@ void CarStage::test() {
   }
 }
 
-StageCopper CarStage::registers() const {
+core::StageCopper CarStage::registers() const {
   return {m_screenShown, m_screenDisplay, m_options.ntsc};
 }
 
@@ -179,21 +181,24 @@ void CarStage::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::Display CarStage::output() const {
-  const StageCopper &live = m_copper.live();
-  return stageOutput(live.screenShown ? &m_buffer.shown() : nullptr, m_palette,
-                     live.screenDisplay, m_screenOffsetX,
-                     m_panelShown ? m_panel.get() : nullptr,
-                     m_copper.panelY(m_options.tallScreen), m_panelPalette,
-                     m_copper.window(m_options.tallScreen));
+  const core::StageCopper &live = m_copper.live();
+  return core::stageOutput(live.screenShown ? &m_buffer.shown() : nullptr,
+                           m_palette, live.screenDisplay, m_screenOffsetX,
+                           m_panelShown ? m_panel.get() : nullptr,
+                           m_copper.panelY(m_options.tallScreen),
+                           m_panelPalette,
+                           m_copper.window(m_options.tallScreen));
 }
 
 CarStage::Outcome CarStage::outcome() const { return m_outcome; }
 
-const BobLayer &CarStage::bobs() const { return m_bobs; }
+const core::BobLayer &CarStage::bobs() const { return m_bobs; }
 
-const IndexedSurface &CarStage::screen() const { return m_screen; }
+const core::IndexedSurface &CarStage::screen() const { return m_screen; }
 
-const IndexedSurface &CarStage::display() const { return m_buffer.shown(); }
+const core::IndexedSurface &CarStage::display() const {
+  return m_buffer.shown();
+}
 
 const StatusPanel *CarStage::panel() const { return m_panel.get(); }
 
@@ -246,7 +251,7 @@ CarStage::Flow CarStage::hold(int frames, Step next) {
   return wait(frames, next);
 }
 
-CarStage::Flow CarStage::autoback(DoubleBuffer::Op op, Step next) {
+CarStage::Flow CarStage::autoback(core::DoubleBuffer::Op op, Step next) {
   op(m_screen);
   m_buffer.autoback(std::move(op));
   return wait(AUTOBACK_VBLS, next);
@@ -287,7 +292,7 @@ void CarStage::gainEnergy(int amount) {
 }
 
 void CarStage::clearScreen() {
-  autoback([](IndexedSurface &surface) { surface.fill(0); },
+  autoback([](core::IndexedSurface &surface) { surface.fill(0); },
            m_session.version == GameVersion::V12 ? Step::HideForLoading
                                                  : Step::PasswordText);
 }
@@ -304,9 +309,9 @@ void CarStage::password() {
   m_waited = 0;
   m_session.textBuffer = passwordFor(stage());
   autoback(
-      [text = m_session.textBuffer](IndexedSurface &surface) {
-        drawSystemText(surface, PASSWORD_X, PASSWORD_BASELINE, text,
-                       PASSWORD_INK, PASSWORD_PAPER);
+      [text = m_session.textBuffer](core::IndexedSurface &surface) {
+        core::drawSystemText(surface, PASSWORD_X, PASSWORD_BASELINE, text,
+                             PASSWORD_INK, PASSWORD_PAPER);
       },
       Step::Kliker);
 }
@@ -330,15 +335,15 @@ void CarStage::era() {
 void CarStage::openRoad() {
   m_road.fill(0);
   m_road.unpack(m_backdrop, 0, 0);
-  m_backdrop = Picture{};
-  m_strip = IndexedSurface(STRIP_WIDTH, SCREEN_HEIGHT);
+  m_backdrop = core::Picture{};
+  m_strip = core::IndexedSurface(STRIP_WIDTH, SCREEN_HEIGHT);
 }
 
 void CarStage::openStrip() {
   m_strip.fill(0);
   m_strip.copy(m_road, 0, 0, ROAD_WIDTH, SCREEN_HEIGHT, 0, 0);
   m_strip.copy(m_road, 0, 0, ROAD_WIDTH, SCREEN_HEIGHT, ROAD_WIDTH, 0);
-  m_road = IndexedSurface(0, 0);
+  m_road = core::IndexedSurface(0, 0);
 }
 
 void CarStage::startDrive() {
@@ -495,7 +500,7 @@ CarStage::Flow CarStage::driveScenery() {
   addWrap(m_pavementBand, m_speed * 4, 0, BAND_END);
   addWrap(m_roadBand, m_speed * 3, 0, BAND_END);
   addWrap(m_fenceBand, m_speed, 0, BAND_END);
-  for (IndexedSurface *target : {&m_screen, &m_buffer.logic()}) {
+  for (core::IndexedSurface *target : {&m_screen, &m_buffer.logic()}) {
     target->copy(m_strip, m_trackBand, 93, VISIBLE_WIDTH + m_trackBand, 115, 0,
                  93);
     target->copy(m_strip, m_pavementBand, 202, VISIBLE_WIDTH + m_pavementBand,
@@ -588,7 +593,7 @@ void CarStage::runOver() {
 }
 
 CarStage::Flow CarStage::leave() {
-  m_strip = IndexedSurface(0, 0);
+  m_strip = core::IndexedSurface(0, 0);
   if (global(RG) < 0 || m_escape) {
     gameOver();
     return Flow::Yield;
@@ -596,7 +601,7 @@ CarStage::Flow CarStage::leave() {
   test();
   m_machine.destroyAll();
   m_bobs.offAll();
-  return autoback([](IndexedSurface &surface) { surface.fill(0); },
+  return autoback([](core::IndexedSurface &surface) { surface.fill(0); },
                   Step::Cleared);
 }
 
@@ -624,7 +629,7 @@ CarStage::Flow CarStage::closePlayScreen() {
 void CarStage::sys() {
   const SystemKey key = std::exchange(m_session.keyLatch, SystemKey::None);
   if (key == SystemKey::Pal || key == SystemKey::Ntsc) {
-    switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
+    core::switchStandard(m_options, m_screenDisplay, key == SystemKey::Ntsc);
   }
   if (key == SystemKey::Lives) {
     global(RG) = CHEAT_LIVES;
@@ -677,7 +682,7 @@ void CarStage::runBasic(const StreetInput &input) {
       break;
     case Step::Loaded:
       m_panel->score(stats());
-      m_road = IndexedSurface(ROAD_WIDTH, SCREEN_HEIGHT);
+      m_road = core::IndexedSurface(ROAD_WIDTH, SCREEN_HEIGHT);
       flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::RoadOpened);
       break;
     case Step::RoadOpened:
@@ -716,7 +721,7 @@ void CarStage::runBasic(const StreetInput &input) {
     case Step::GameOverWait:
       if (m_session.version == GameVersion::V12) {
         m_bobs.offAll();
-        flow = autoback([](IndexedSurface &surface) { surface.fill(0); },
+        flow = autoback([](core::IndexedSurface &surface) { surface.fill(0); },
                         Step::GameOverCleared);
       } else {
         flow = closePlayScreen();

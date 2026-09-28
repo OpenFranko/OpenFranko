@@ -47,9 +47,9 @@ public:
   systems::Display output() const;
 
   Outcome outcome() const;
-  const BobLayer &bobs() const;
-  const IndexedSurface &screen() const;
-  const IndexedSurface &display() const;
+  const core::BobLayer &bobs() const;
+  const core::IndexedSurface &screen() const;
+  const core::IndexedSurface &display() const;
   const StatusPanel *panel() const;
   bool isScreenShown() const;
   bool isPanelShown() const;
@@ -96,7 +96,7 @@ private:
   StatusPanel::Stats stats() const;
   Flow wait(int frames, Step next);
   Flow hold(int frames, Step next);
-  Flow autoback(DoubleBuffer::Op op, Step next);
+  Flow autoback(core::DoubleBuffer::Op op, Step next);
   bool holdsAtStart() const;
   bool holdsAtEnd() const;
   void play(int voices, int sample);
@@ -124,26 +124,26 @@ private:
   Flow closePlayScreen();
   void sys();
   void test();
-  StageCopper registers() const;
+  core::StageCopper registers() const;
   void runBasic(const StreetInput &input);
 
   StreetHost &m_host;
   GameSession &m_session;
   effects::core::GameOptions &m_options;
   amal::Machine m_machine;
-  ImageBank m_images;
-  BobLayer m_bobs;
-  IndexedSurface m_screen;
-  DoubleBuffer m_buffer;
-  IndexedSurface m_road;
-  IndexedSurface m_strip;
-  Picture m_backdrop;
+  core::ImageBank m_images;
+  core::BobLayer m_bobs;
+  core::IndexedSurface m_screen;
+  core::DoubleBuffer m_buffer;
+  core::IndexedSurface m_road;
+  core::IndexedSurface m_strip;
+  core::Picture m_backdrop;
   std::unique_ptr<StatusPanel> m_panel;
   amal::Object m_screenDisplay;
-  StageDisplay m_copper;
+  core::StageDisplay m_copper;
   effects::color::AmigaPalette m_palette;
   effects::color::AmigaPalette m_panelPalette;
-  LoadingMock m_loading;
+  core::LoadingMock m_loading;
 
   Step m_step = Step::Password;
   Step m_afterLoading = Step::Finished;

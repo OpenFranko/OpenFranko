@@ -48,8 +48,8 @@ public:
   int slot() const;
   int rowsShown() const;
   const std::string &name() const;
-  const BobLayer &bobs() const;
-  const IndexedSurface &screen() const;
+  const core::BobLayer &bobs() const;
+  const core::IndexedSurface &screen() const;
   const effects::color::AmigaPalette &palette() const;
 
 private:
@@ -93,14 +93,14 @@ private:
   GameSession &m_session;
   const effects::core::GameOptions &m_options;
   Save m_save;
-  LoadingMock m_loading;
-  ImageBank m_images;
-  BobLayer m_bobs;
-  Picture m_picture;
+  core::LoadingMock m_loading;
+  core::ImageBank m_images;
+  core::BobLayer m_bobs;
+  core::Picture m_picture;
   effects::color::AmigaPalette m_picturePalette;
-  IndexedSurface m_screen;
-  IndexedSurface m_scratch;
-  IndexedSurface m_display;
+  core::IndexedSurface m_screen;
+  core::IndexedSurface m_scratch;
+  core::IndexedSurface m_display;
   effects::color::AmigaPalette m_palette;
   effects::color::PaletteFader m_fader;
 

@@ -22,7 +22,7 @@ public:
     int lives = 0;
   };
 
-  StatusPanel(Picture loadingStrip, Picture artwork,
+  StatusPanel(core::Picture loadingStrip, core::Picture artwork,
               GameVersion version = GameVersion::V10);
 
   void showLoading();
@@ -32,13 +32,13 @@ public:
   void loseEnergy(int energy);
   void gainEnergy(int energy);
 
-  const IndexedSurface &surface() const;
+  const core::IndexedSurface &surface() const;
 
 private:
-  Picture m_loadingStrip;
-  Picture m_artwork;
+  core::Picture m_loadingStrip;
+  core::Picture m_artwork;
   int m_livesDigitX;
-  IndexedSurface m_surface;
+  core::IndexedSurface m_surface;
 };
 
 } // namespace street
