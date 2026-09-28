@@ -1,4 +1,4 @@
-#include "../../../../src/engine/street/CheatCodes.h"
+#include "../../../../src/engine/street/core/CheatCodes.h"
 #include <catch2/catch_all.hpp>
 
 #include <string>

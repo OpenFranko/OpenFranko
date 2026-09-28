@@ -1,7 +1,7 @@
 #ifndef ENGINE_STREET_BOBS_H_
 #define ENGINE_STREET_BOBS_H_
 
-#include "../amal/Machine.h"
+#include "../../amal/Machine.h"
 #include "IndexedSurface.h"
 
 #include <array>

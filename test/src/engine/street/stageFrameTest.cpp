@@ -1,4 +1,4 @@
-#include "../../../../src/engine/street/StageFrame.h"
+#include "../../../../src/engine/street/core/StageFrame.h"
 #include <catch2/catch_all.hpp>
 
 #include <cstddef>

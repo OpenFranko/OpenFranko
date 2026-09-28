@@ -1,4 +1,4 @@
-#include "../../../../src/engine/street/HighScoreTable.h"
+#include "../../../../src/engine/street/scenes/HighScoreTable.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <filesystem>

@@ -1,9 +1,9 @@
 #include "CarStage.h"
 
-#include "../effects/AmigaDisplay.h"
+#include "../../effects/AmigaDisplay.h"
 
-#include "../amal/Actors.h"
-#include "SystemText.h"
+#include "../../amal/Actors.h"
+#include "../core/SystemText.h"
 
 #include <cstdlib>
 #include <string>

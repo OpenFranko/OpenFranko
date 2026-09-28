@@ -1,7 +1,7 @@
 #ifndef ENGINE_STREET_LOADINGMOCK_H_
 #define ENGINE_STREET_LOADINGMOCK_H_
 
-#include "StatusPanel.h"
+#include "../ui/StatusPanel.h"
 
 #include <deque>
 #include <functional>

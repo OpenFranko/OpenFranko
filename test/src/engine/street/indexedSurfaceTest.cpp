@@ -1,4 +1,4 @@
-#include "../../../../src/engine/street/IndexedSurface.h"
+#include "../../../../src/engine/street/core/IndexedSurface.h"
 #include <catch2/catch_all.hpp>
 #include <stdexcept>
 

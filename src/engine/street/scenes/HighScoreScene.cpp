@@ -1,7 +1,7 @@
 #include "HighScoreScene.h"
 
-#include "../effects/AmigaDisplay.h"
-#include "StageFrame.h"
+#include "../../effects/AmigaDisplay.h"
+#include "../core/StageFrame.h"
 
 #include <algorithm>
 #include <array>

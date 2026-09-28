@@ -7,7 +7,7 @@
 #include "../systems/VideoSystem.h"
 #include "effects/GameOptions.h"
 #include "states/IEngineState.h"
-#include "street/GameSession.h"
+#include "street/ui/GameSession.h"
 
 #include <memory>
 

@@ -5,8 +5,8 @@
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
 #include "../../effects/GameOptions.h"
-#include "../../street/GameSession.h"
-#include "../../street/StreetStage.h"
+#include "../../street/ui/GameSession.h"
+#include "../../street/scenes/StreetStage.h"
 #include "../IEngineState.h"
 #include "../shared/EngineStreetHost.h"
 

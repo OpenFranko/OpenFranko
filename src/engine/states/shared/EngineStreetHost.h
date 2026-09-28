@@ -3,7 +3,7 @@
 
 #include "../../../systems/AudioSystem.h"
 #include "../../GameVersion.h"
-#include "../../street/StreetStage.h"
+#include "../../street/scenes/StreetStage.h"
 
 #include <map>
 #include <random>

@@ -1,15 +1,15 @@
 #ifndef ENGINE_STREET_HIGHSCORESCENE_H_
 #define ENGINE_STREET_HIGHSCORESCENE_H_
 
-#include "../../systems/Display.h"
-#include "../effects/AmigaPalette.h"
-#include "../effects/GameOptions.h"
-#include "../effects/PaletteFader.h"
-#include "Bobs.h"
-#include "GameSession.h"
+#include "../../../systems/Display.h"
+#include "../../effects/AmigaPalette.h"
+#include "../../effects/GameOptions.h"
+#include "../../effects/PaletteFader.h"
+#include "../core/Bobs.h"
+#include "../ui/GameSession.h"
 #include "HighScoreTable.h"
-#include "IndexedSurface.h"
-#include "LoadingMock.h"
+#include "../core/IndexedSurface.h"
+#include "../core/LoadingMock.h"
 #include "StreetStage.h"
 
 #include <cstdint>

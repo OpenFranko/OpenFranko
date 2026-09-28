@@ -6,7 +6,7 @@
 #include "../../../systems/VideoSystem.h"
 #include "../../effects/AmigaDisplay.h"
 #include "../../effects/BlyskSequence.h"
-#include "../../street/EndingCredits.h"
+#include "../../street/scenes/EndingCredits.h"
 
 #include <map>
 #include <optional>

@@ -6,7 +6,7 @@
 #include "../../../systems/VideoSystem.h"
 #include "../../effects/AmigaDisplay.h"
 #include "../../effects/GameOptions.h"
-#include "../../street/GameOverScene.h"
+#include "../../street/scenes/GameOverScene.h"
 #include "../IEngineState.h"
 #include "../shared/EngineStreetHost.h"
 

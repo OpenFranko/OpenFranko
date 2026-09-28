@@ -1,5 +1,5 @@
-#include "../../../../src/engine/street/ContinueScene.h"
-#include "../../../../src/engine/street/StageFrame.h"
+#include "../../../../src/engine/street/scenes/ContinueScene.h"
+#include "../../../../src/engine/street/core/StageFrame.h"
 #include <catch2/catch_all.hpp>
 #include <utility>
 #include <vector>

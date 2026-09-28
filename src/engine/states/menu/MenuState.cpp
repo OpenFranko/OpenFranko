@@ -2,7 +2,7 @@
 
 #include "../../assets/Assets.h"
 #include "../../effects/AmigaDisplay.h"
-#include "../../street/CheatCodes.h"
+#include "../../street/core/CheatCodes.h"
 
 #include <cstddef>
 #include <string>

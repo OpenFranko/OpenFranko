@@ -1,5 +1,5 @@
-#include "../../../../src/engine/street/EndingScene.h"
-#include "../../../../src/engine/street/StageFrame.h"
+#include "../../../../src/engine/street/scenes/EndingScene.h"
+#include "../../../../src/engine/street/core/StageFrame.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <functional>

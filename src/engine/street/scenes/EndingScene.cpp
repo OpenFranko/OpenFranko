@@ -1,8 +1,8 @@
 #include "EndingScene.h"
 
-#include "../amal/Actors.h"
-#include "../effects/AmigaDisplay.h"
-#include "StageFrame.h"
+#include "../../amal/Actors.h"
+#include "../../effects/AmigaDisplay.h"
+#include "../core/StageFrame.h"
 
 #include <algorithm>
 #include <cstddef>

@@ -1,14 +1,14 @@
 #ifndef ENGINE_STREET_GAMEOVERSCENE_H_
 #define ENGINE_STREET_GAMEOVERSCENE_H_
 
-#include "../../systems/Display.h"
-#include "../effects/AmalAnim.h"
-#include "../effects/AmigaPalette.h"
-#include "../effects/PaletteFader.h"
-#include "Bobs.h"
-#include "DoubleBuffer.h"
-#include "IndexedSurface.h"
-#include "LoadingMock.h"
+#include "../../../systems/Display.h"
+#include "../../effects/AmalAnim.h"
+#include "../../effects/AmigaPalette.h"
+#include "../../effects/PaletteFader.h"
+#include "../core/Bobs.h"
+#include "../core/DoubleBuffer.h"
+#include "../core/IndexedSurface.h"
+#include "../core/LoadingMock.h"
 #include "StreetStage.h"
 
 #include <cstdint>

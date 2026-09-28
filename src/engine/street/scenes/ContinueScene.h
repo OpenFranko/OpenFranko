@@ -1,12 +1,12 @@
 #ifndef ENGINE_STREET_CONTINUESCENE_H_
 #define ENGINE_STREET_CONTINUESCENE_H_
 
-#include "../../systems/Display.h"
-#include "../amal/Machine.h"
-#include "../effects/AmigaPalette.h"
-#include "Bobs.h"
-#include "GameSession.h"
-#include "IndexedSurface.h"
+#include "../../../systems/Display.h"
+#include "../../amal/Machine.h"
+#include "../../effects/AmigaPalette.h"
+#include "../core/Bobs.h"
+#include "../ui/GameSession.h"
+#include "../core/IndexedSurface.h"
 #include "StreetStage.h"
 
 #include <cstdint>

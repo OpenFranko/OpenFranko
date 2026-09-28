@@ -1,16 +1,16 @@
 #ifndef ENGINE_STREET_CARSTAGE_H_
 #define ENGINE_STREET_CARSTAGE_H_
 
-#include "../amal/Machine.h"
-#include "../effects/AmigaPalette.h"
-#include "../effects/GameOptions.h"
-#include "Bobs.h"
-#include "DoubleBuffer.h"
-#include "GameSession.h"
-#include "IndexedSurface.h"
-#include "LoadingMock.h"
-#include "StageFrame.h"
-#include "StatusPanel.h"
+#include "../../amal/Machine.h"
+#include "../../effects/AmigaPalette.h"
+#include "../../effects/GameOptions.h"
+#include "../core/Bobs.h"
+#include "../core/DoubleBuffer.h"
+#include "../ui/GameSession.h"
+#include "../core/IndexedSurface.h"
+#include "../core/LoadingMock.h"
+#include "../core/StageFrame.h"
+#include "../ui/StatusPanel.h"
 #include "StreetStage.h"
 
 #include <array>

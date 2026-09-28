@@ -1,6 +1,6 @@
 #include "ProtectionCheckState.h"
 
-#include "../../street/LoadingMock.h"
+#include "../../street/core/LoadingMock.h"
 
 #include <algorithm>
 #include <array>

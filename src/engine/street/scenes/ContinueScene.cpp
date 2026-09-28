@@ -1,9 +1,9 @@
 #include "ContinueScene.h"
 
-#include "../effects/AmigaDisplay.h"
+#include "../../effects/AmigaDisplay.h"
 
-#include "../amal/Actors.h"
-#include "StageFrame.h"
+#include "../../amal/Actors.h"
+#include "../core/StageFrame.h"
 
 #include <algorithm>
 #include <cstddef>

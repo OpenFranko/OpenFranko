@@ -5,7 +5,7 @@
 #include "../../../systems/VideoSystem.h"
 #include "../../GameVersion.h"
 #include "../../effects/GameOptions.h"
-#include "../../street/StreetStage.h"
+#include "../../street/scenes/StreetStage.h"
 
 namespace openfranko {
 namespace src {

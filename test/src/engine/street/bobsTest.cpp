@@ -1,4 +1,4 @@
-#include "../../../../src/engine/street/Bobs.h"
+#include "../../../../src/engine/street/core/Bobs.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 

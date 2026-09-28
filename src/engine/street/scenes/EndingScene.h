@@ -1,17 +1,17 @@
 #ifndef ENGINE_STREET_ENDINGSCENE_H_
 #define ENGINE_STREET_ENDINGSCENE_H_
 
-#include "../../systems/Display.h"
-#include "../amal/Machine.h"
-#include "../effects/AmigaPalette.h"
-#include "../effects/PaletteFader.h"
-#include "Bobs.h"
-#include "DoubleBuffer.h"
+#include "../../../systems/Display.h"
+#include "../../amal/Machine.h"
+#include "../../effects/AmigaPalette.h"
+#include "../../effects/PaletteFader.h"
+#include "../core/Bobs.h"
+#include "../core/DoubleBuffer.h"
 #include "EndingCredits.h"
-#include "GameSession.h"
-#include "IndexedSurface.h"
-#include "LoadingMock.h"
-#include "StatusPanel.h"
+#include "../ui/GameSession.h"
+#include "../core/IndexedSurface.h"
+#include "../core/LoadingMock.h"
+#include "../ui/StatusPanel.h"
 #include "StreetStage.h"
 
 #include <array>

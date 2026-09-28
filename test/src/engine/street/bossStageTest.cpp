@@ -1,5 +1,5 @@
-#include "../../../../src/engine/street/BossStage.h"
-#include "../../../../src/engine/street/StageFrame.h"
+#include "../../../../src/engine/street/scenes/BossStage.h"
+#include "../../../../src/engine/street/core/StageFrame.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <cstdlib>

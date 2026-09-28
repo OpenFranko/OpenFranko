@@ -1,4 +1,4 @@
-#include "../../../../src/engine/street/StreetStage.h"
+#include "../../../../src/engine/street/scenes/StreetStage.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <functional>

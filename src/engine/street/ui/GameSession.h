@@ -1,14 +1,14 @@
 #ifndef ENGINE_STREET_GAMESESSION_H_
 #define ENGINE_STREET_GAMESESSION_H_
 
-#include "../GameVersion.h"
-#include "../amal/Machine.h"
-#include "../effects/AmigaPalette.h"
-#include "../effects/InkeyBuffer.h"
-#include "DoubleBuffer.h"
-#include "HighScoreTable.h"
-#include "IndexedSurface.h"
-#include "StageFrame.h"
+#include "../../GameVersion.h"
+#include "../../amal/Machine.h"
+#include "../../effects/AmigaPalette.h"
+#include "../../effects/InkeyBuffer.h"
+#include "../core/DoubleBuffer.h"
+#include "../scenes/HighScoreTable.h"
+#include "../core/IndexedSurface.h"
+#include "../core/StageFrame.h"
 
 #include <optional>
 #include <string>

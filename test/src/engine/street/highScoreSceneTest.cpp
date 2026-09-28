@@ -1,5 +1,5 @@
-#include "../../../../src/engine/street/HighScoreScene.h"
-#include "../../../../src/engine/street/StageFrame.h"
+#include "../../../../src/engine/street/scenes/HighScoreScene.h"
+#include "../../../../src/engine/street/core/StageFrame.h"
 #include <catch2/catch_all.hpp>
 #include <functional>
 #include <string>

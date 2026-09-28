@@ -1,5 +1,5 @@
 #include "../../src/engine/Engine.h"
-#include "../../src/engine/street/StageFrame.h"
+#include "../../src/engine/street/core/StageFrame.h"
 
 #include <utility>
 

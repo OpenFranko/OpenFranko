@@ -9,7 +9,7 @@
 #include "../../effects/AmigaDisplay.h"
 #include "../../effects/CharacterSelection.h"
 #include "../../effects/GameOptions.h"
-#include "../../street/GameSession.h"
+#include "../../street/ui/GameSession.h"
 #include "../IEngineState.h"
 
 #include <vector>

@@ -1,12 +1,12 @@
 #ifndef ENGINE_STREET_STAGEFRAME_H_
 #define ENGINE_STREET_STAGEFRAME_H_
 
-#include "../../systems/Display.h"
-#include "../amal/Machine.h"
-#include "../effects/AmigaPalette.h"
-#include "../effects/GameOptions.h"
+#include "../../../systems/Display.h"
+#include "../../amal/Machine.h"
+#include "../../effects/AmigaPalette.h"
+#include "../../effects/GameOptions.h"
 #include "IndexedSurface.h"
-#include "StatusPanel.h"
+#include "../ui/StatusPanel.h"
 
 #include <cstdint>
 #include <vector>

@@ -6,8 +6,8 @@
 #include "../../../systems/VideoSystem.h"
 #include "../../effects/AmigaDisplay.h"
 #include "../../effects/GameOptions.h"
-#include "../../street/ContinueScene.h"
-#include "../../street/GameSession.h"
+#include "../../street/scenes/ContinueScene.h"
+#include "../../street/ui/GameSession.h"
 #include "../IEngineState.h"
 #include "../shared/EngineStreetHost.h"
 

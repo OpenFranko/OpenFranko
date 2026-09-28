@@ -1,4 +1,4 @@
-#include "../../../../src/engine/street/LevelScript.h"
+#include "../../../../src/engine/street/core/LevelScript.h"
 #include <catch2/catch_all.hpp>
 #include <stdexcept>
 

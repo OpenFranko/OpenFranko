@@ -1,6 +1,6 @@
 #include "StageFrame.h"
 
-#include "../effects/AmigaDisplay.h"
+#include "../../effects/AmigaDisplay.h"
 
 #include <algorithm>
 #include <utility>

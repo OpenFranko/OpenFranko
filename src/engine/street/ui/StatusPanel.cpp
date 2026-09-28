@@ -1,6 +1,6 @@
 #include "StatusPanel.h"
 
-#include "../amal/Actors.h"
+#include "../../amal/Actors.h"
 
 #include <algorithm>
 #include <cstdlib>

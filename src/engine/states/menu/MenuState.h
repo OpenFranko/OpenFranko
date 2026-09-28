@@ -9,7 +9,7 @@
 #include "../../effects/AttractSequence.h"
 #include "../../effects/GameOptions.h"
 #include "../../effects/MenuSequence.h"
-#include "../../street/GameSession.h"
+#include "../../street/ui/GameSession.h"
 #include "../IEngineState.h"
 
 #include <optional>

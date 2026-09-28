@@ -1,8 +1,8 @@
 #ifndef ENGINE_STREET_STATUSPANEL_H_
 #define ENGINE_STREET_STATUSPANEL_H_
 
-#include "../GameVersion.h"
-#include "IndexedSurface.h"
+#include "../../GameVersion.h"
+#include "../core/IndexedSurface.h"
 
 namespace openfranko {
 namespace src {

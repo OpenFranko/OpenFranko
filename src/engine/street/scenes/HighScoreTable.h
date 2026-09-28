@@ -1,7 +1,7 @@
 #ifndef ENGINE_STREET_HIGHSCORETABLE_H_
 #define ENGINE_STREET_HIGHSCORETABLE_H_
 
-#include "../GameVersion.h"
+#include "../../GameVersion.h"
 
 #include <array>
 #include <cstdint>

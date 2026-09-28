@@ -1,6 +1,6 @@
 #include "StreetControls.h"
 
-#include "../../street/StageFrame.h"
+#include "../../street/core/StageFrame.h"
 
 namespace openfranko::src::engine::states::shared {
 

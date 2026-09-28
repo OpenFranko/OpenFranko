@@ -1,4 +1,4 @@
-#include "../../../../src/engine/street/DoubleBuffer.h"
+#include "../../../../src/engine/street/core/DoubleBuffer.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 

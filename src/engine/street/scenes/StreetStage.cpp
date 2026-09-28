@@ -1,8 +1,8 @@
 #include "StreetStage.h"
 
-#include "../effects/AmigaDisplay.h"
+#include "../../effects/AmigaDisplay.h"
 
-#include "../amal/Actors.h"
+#include "../../amal/Actors.h"
 
 #include <algorithm>
 #include <cstdlib>

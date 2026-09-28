@@ -1,4 +1,4 @@
-#include "../../../../src/engine/street/LoadingMock.h"
+#include "../../../../src/engine/street/core/LoadingMock.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 

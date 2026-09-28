@@ -1,7 +1,7 @@
 #ifndef ENGINE_STREET_CHEATCODES_H_
 #define ENGINE_STREET_CHEATCODES_H_
 
-#include "GameSession.h"
+#include "../ui/GameSession.h"
 
 #include <cstddef>
 #include <string>

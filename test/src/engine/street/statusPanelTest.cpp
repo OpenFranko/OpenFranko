@@ -1,4 +1,4 @@
-#include "../../../../src/engine/street/StatusPanel.h"
+#include "../../../../src/engine/street/ui/StatusPanel.h"
 #include <catch2/catch_all.hpp>
 
 using namespace openfranko::src::engine::street;
