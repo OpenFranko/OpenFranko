@@ -17,7 +17,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace states {
-namespace presents {
+namespace shared {
 
 class IntroStrip {
 public:
@@ -44,7 +44,7 @@ private:
   std::optional<int> m_pasted;
 };
 
-} // namespace presents
+} // namespace shared
 } // namespace states
 } // namespace engine
 } // namespace src

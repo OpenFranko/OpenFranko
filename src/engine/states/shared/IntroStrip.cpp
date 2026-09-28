@@ -8,7 +8,7 @@
 #include <fstream>
 #include <sstream>
 
-namespace openfranko::src::engine::states::presents {
+namespace openfranko::src::engine::states::shared {
 namespace {
 
 constexpr auto INTRO_FILE = "intro.json";
@@ -127,4 +127,4 @@ const systems::IndexedBitmap *IntroStrip::glyph(int image) {
   return found->second ? &*found->second : nullptr;
 }
 
-} // namespace openfranko::src::engine::states::presents
+} // namespace openfranko::src::engine::states::shared

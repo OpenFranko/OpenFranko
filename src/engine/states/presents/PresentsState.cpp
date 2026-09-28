@@ -9,7 +9,8 @@ PresentsState::PresentsState(systems::VideoSystem &videoSystem,
                              systems::ControllerSystem &controllerSystem)
     : m_audioSystem(audioSystem), m_controllerSystem(controllerSystem),
       m_strip(videoSystem),
-      m_sequence(0, std::min(IntroStrip::PAGES_BEFORE_KNEE, m_strip.pages())) {
+      m_sequence(
+          0, std::min(shared::IntroStrip::PAGES_BEFORE_KNEE, m_strip.pages())) {
   m_controllerSystem.clearFireLatch();
 }
 

@@ -28,7 +28,7 @@ public:
 private:
   systems::AudioSystem &m_audioSystem;
   systems::ControllerSystem &m_controllerSystem;
-  IntroStrip m_strip;
+  shared::IntroStrip m_strip;
   effects::BlyskSequence m_sequence;
   std::optional<shared::MusicFadeOut> m_musicFade;
   int m_frame = 0;

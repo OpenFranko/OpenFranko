@@ -117,8 +117,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::runTitle() {
     m_phaseFrames = 0;
     if (m_version == GameVersion::V12) {
       m_phase = Phase::Pages;
-      m_pages.emplace(presents::IntroStrip::PAGES_BEFORE_KNEE,
-                      m_strip->pages());
+      m_pages.emplace(shared::IntroStrip::PAGES_BEFORE_KNEE, m_strip->pages());
     } else {
       m_phase = Phase::StoryOpening;
     }

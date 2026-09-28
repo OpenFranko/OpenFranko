@@ -69,7 +69,7 @@ private:
   systems::Canvas m_screen;
   effects::FotoSequence m_title;
   effects::StorySequence m_story;
-  std::optional<presents::IntroStrip> m_strip;
+  std::optional<shared::IntroStrip> m_strip;
   std::optional<effects::BlyskSequence> m_pages;
   shared::MusicFadeOut m_musicFade;
   Phase m_phase = Phase::Title;
