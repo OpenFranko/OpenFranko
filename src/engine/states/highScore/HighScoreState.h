@@ -8,7 +8,7 @@
 #include "../../street/GameSession.h"
 #include "../../street/HighScoreScene.h"
 #include "../IEngineState.h"
-#include "../level1/EngineStreetHost.h"
+#include "../shared/EngineStreetHost.h"
 
 namespace openfranko {
 namespace src {
