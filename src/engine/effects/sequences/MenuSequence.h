@@ -1,13 +1,13 @@
 #ifndef ENGINE_EFFECTS_MENUSEQUENCE_H_
 #define ENGINE_EFFECTS_MENUSEQUENCE_H_
 
-#include "../GameVersion.h"
-#include "AmalMotion.h"
-#include "AmigaPalette.h"
+#include "../../GameVersion.h"
+#include "../animation/AmalMotion.h"
+#include "../color/AmigaPalette.h"
+#include "../color/PaletteFader.h"
+#include "../core/GameOptions.h"
+#include "../core/InkeyBuffer.h"
 #include "CreditScroll.h"
-#include "GameOptions.h"
-#include "InkeyBuffer.h"
-#include "PaletteFader.h"
 
 #include <array>
 #include <cstddef>

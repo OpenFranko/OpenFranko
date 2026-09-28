@@ -3,8 +3,8 @@
 
 #include "../../../systems/Display.h"
 #include "../../amal/Machine.h"
-#include "../../effects/AmigaPalette.h"
-#include "../../effects/PaletteFader.h"
+#include "../../effects/color/AmigaPalette.h"
+#include "../../effects/color/PaletteFader.h"
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "EndingCredits.h"

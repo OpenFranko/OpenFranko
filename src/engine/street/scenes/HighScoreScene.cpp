@@ -1,6 +1,6 @@
 #include "HighScoreScene.h"
 
-#include "../../effects/AmigaDisplay.h"
+#include "../../effects/color/AmigaDisplay.h"
 #include "../core/StageFrame.h"
 
 #include <algorithm>

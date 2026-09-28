@@ -3,8 +3,8 @@
 
 #include "../../../systems/Display.h"
 #include "../../amal/Machine.h"
-#include "../../effects/AmigaPalette.h"
-#include "../../effects/GameOptions.h"
+#include "../../effects/color/AmigaPalette.h"
+#include "../../effects/core/GameOptions.h"
 #include "IndexedSurface.h"
 #include "../ui/StatusPanel.h"
 

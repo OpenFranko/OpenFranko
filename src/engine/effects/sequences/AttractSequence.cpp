@@ -1,6 +1,6 @@
 #include "AttractSequence.h"
 
-#include "PaletteFader.h"
+#include "../color/PaletteFader.h"
 
 #include <array>
 #include <cstddef>

@@ -5,8 +5,8 @@
 #include "../../../systems/Canvas.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../effects/PaletteFader.h"
+#include "../../effects/color/AmigaDisplay.h"
+#include "../../effects/color/PaletteFader.h"
 #include "../IEngineState.h"
 
 #include <optional>

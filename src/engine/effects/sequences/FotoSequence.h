@@ -1,8 +1,8 @@
 #ifndef ENGINE_EFFECTS_FOTOSEQUENCE_H_
 #define ENGINE_EFFECTS_FOTOSEQUENCE_H_
 
-#include "PaletteFader.h"
-#include "PaletteFlasher.h"
+#include "../color/PaletteFader.h"
+#include "../color/PaletteFlasher.h"
 
 #include <cstddef>
 

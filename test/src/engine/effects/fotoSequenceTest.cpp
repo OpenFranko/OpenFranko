@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/FotoSequence.h"
+#include "../../../../src/engine/effects/sequences/FotoSequence.h"
 #include <catch2/catch_all.hpp>
 #include <cstddef>
 #include <vector>

@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/AmigaDisplay.h"
+#include "../../../../src/engine/effects/color/AmigaDisplay.h"
 #include <catch2/catch_all.hpp>
 
 using namespace openfranko::src::engine::effects;

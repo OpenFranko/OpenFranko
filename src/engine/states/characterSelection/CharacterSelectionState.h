@@ -6,9 +6,9 @@
 #include "../../../systems/Canvas.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../effects/CharacterSelection.h"
-#include "../../effects/GameOptions.h"
+#include "../../effects/color/AmigaDisplay.h"
+#include "../../effects/animation/CharacterSelection.h"
+#include "../../effects/core/GameOptions.h"
 #include "../../street/ui/GameSession.h"
 #include "../IEngineState.h"
 

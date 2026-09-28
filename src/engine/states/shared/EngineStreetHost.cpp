@@ -2,7 +2,7 @@
 
 #include "../../../systems/Bitmap.h"
 #include "../../assets/Assets.h"
-#include "../../effects/AmigaDisplay.h"
+#include "../../effects/color/AmigaDisplay.h"
 
 #include <cctype>
 #include <filesystem>

@@ -2,8 +2,8 @@
 #define ENGINE_STREET_STREETSTAGE_H_
 
 #include "../../amal/Machine.h"
-#include "../../effects/AmigaPalette.h"
-#include "../../effects/GameOptions.h"
+#include "../../effects/color/AmigaPalette.h"
+#include "../../effects/core/GameOptions.h"
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "EndingCredits.h"

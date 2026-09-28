@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/PaletteFlasher.h"
+#include "../../../../src/engine/effects/color/PaletteFlasher.h"
 #include <catch2/catch_all.hpp>
 #include <stdexcept>
 #include <vector>

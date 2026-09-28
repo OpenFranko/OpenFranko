@@ -3,8 +3,8 @@
 
 #include "../../GameVersion.h"
 #include "../../amal/Machine.h"
-#include "../../effects/AmigaPalette.h"
-#include "../../effects/InkeyBuffer.h"
+#include "../../effects/color/AmigaPalette.h"
+#include "../../effects/core/InkeyBuffer.h"
 #include "../core/DoubleBuffer.h"
 #include "../scenes/HighScoreTable.h"
 #include "../core/IndexedSurface.h"

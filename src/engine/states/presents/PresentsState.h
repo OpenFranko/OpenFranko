@@ -4,7 +4,7 @@
 #include "../../../systems/AudioSystem.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
-#include "../../effects/BlyskSequence.h"
+#include "../../effects/sequences/BlyskSequence.h"
 #include "../IEngineState.h"
 #include "../shared/IntroStrip.h"
 #include "../shared/MusicFadeOut.h"

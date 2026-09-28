@@ -1,8 +1,8 @@
 #ifndef ENGINE_EFFECTS_BLYSKSEQUENCE_H_
 #define ENGINE_EFFECTS_BLYSKSEQUENCE_H_
 
-#include "AmigaPalette.h"
-#include "PaletteFader.h"
+#include "../color/AmigaPalette.h"
+#include "../color/PaletteFader.h"
 
 #include <cstddef>
 #include <optional>

@@ -5,10 +5,10 @@
 #include "../../../systems/Bitmap.h"
 #include "../../../systems/Canvas.h"
 #include "../../../systems/VideoSystem.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../effects/CodeCardCheck.h"
-#include "../../effects/InkeyBuffer.h"
-#include "../../effects/PaletteFlasher.h"
+#include "../../effects/color/AmigaDisplay.h"
+#include "../../effects/sequences/CodeCardCheck.h"
+#include "../../effects/core/InkeyBuffer.h"
+#include "../../effects/color/PaletteFlasher.h"
 #include "../IEngineState.h"
 
 namespace openfranko {

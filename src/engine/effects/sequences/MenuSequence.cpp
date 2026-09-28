@@ -1,6 +1,6 @@
 #include "MenuSequence.h"
 
-#include "AmigaDisplay.h"
+#include "../color/AmigaDisplay.h"
 
 #include <utility>
 #include <vector>

@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/CreditScroll.h"
+#include "../../../../src/engine/effects/sequences/CreditScroll.h"
 #include <catch2/catch_all.hpp>
 #include <cstdint>
 #include <vector>

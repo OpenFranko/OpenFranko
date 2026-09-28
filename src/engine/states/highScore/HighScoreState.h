@@ -3,8 +3,8 @@
 
 #include "../../../systems/AudioSystem.h"
 #include "../../../systems/VideoSystem.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../effects/GameOptions.h"
+#include "../../effects/color/AmigaDisplay.h"
+#include "../../effects/core/GameOptions.h"
 #include "../../street/ui/GameSession.h"
 #include "../../street/scenes/HighScoreScene.h"
 #include "../IEngineState.h"

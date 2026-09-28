@@ -5,7 +5,7 @@
 #include "../systems/ControllerSystem.h"
 #include "../systems/Platform.h"
 #include "../systems/VideoSystem.h"
-#include "effects/GameOptions.h"
+#include "effects/core/GameOptions.h"
 #include "states/IEngineState.h"
 #include "street/ui/GameSession.h"
 

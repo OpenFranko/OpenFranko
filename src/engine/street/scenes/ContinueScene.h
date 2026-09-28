@@ -3,7 +3,7 @@
 
 #include "../../../systems/Display.h"
 #include "../../amal/Machine.h"
-#include "../../effects/AmigaPalette.h"
+#include "../../effects/color/AmigaPalette.h"
 #include "../core/Bobs.h"
 #include "../ui/GameSession.h"
 #include "../core/IndexedSurface.h"

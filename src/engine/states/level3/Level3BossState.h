@@ -4,7 +4,7 @@
 #include "../../../systems/AudioSystem.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
-#include "../../effects/GameOptions.h"
+#include "../../effects/core/GameOptions.h"
 #include "../../street/scenes/BossStage.h"
 #include "../../street/ui/GameSession.h"
 #include "../IEngineState.h"

@@ -2,9 +2,9 @@
 #define ENGINE_STREET_GAMEOVERSCENE_H_
 
 #include "../../../systems/Display.h"
-#include "../../effects/AmalAnim.h"
-#include "../../effects/AmigaPalette.h"
-#include "../../effects/PaletteFader.h"
+#include "../../effects/animation/AmalAnim.h"
+#include "../../effects/color/AmigaPalette.h"
+#include "../../effects/color/PaletteFader.h"
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"

@@ -1,5 +1,5 @@
 #include "../../../../src/engine/street/scenes/GameOverScene.h"
-#include "../../../../src/engine/effects/Rainbow.h"
+#include "../../../../src/engine/effects/color/Rainbow.h"
 #include "../../../../src/engine/street/core/StageFrame.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>

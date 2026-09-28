@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/InkeyBuffer.h"
+#include "../../../../src/engine/effects/core/InkeyBuffer.h"
 #include <catch2/catch_all.hpp>
 
 #include <string>

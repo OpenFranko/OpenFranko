@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/Rainbow.h"
+#include "../../../../src/engine/effects/color/Rainbow.h"
 #include <catch2/catch_all.hpp>
 #include <stdexcept>
 #include <vector>

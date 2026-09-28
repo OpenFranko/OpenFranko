@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/CharacterSelection.h"
+#include "../../../../src/engine/effects/animation/CharacterSelection.h"
 #include <catch2/catch_all.hpp>
 
 using namespace openfranko::src::engine::effects;

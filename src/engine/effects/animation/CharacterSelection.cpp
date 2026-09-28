@@ -1,6 +1,6 @@
 #include "CharacterSelection.h"
 
-#include "AmigaDisplay.h"
+#include "../color/AmigaDisplay.h"
 
 #include <vector>
 

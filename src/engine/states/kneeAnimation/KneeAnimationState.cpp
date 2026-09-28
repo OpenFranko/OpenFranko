@@ -1,8 +1,8 @@
 #include "KneeAnimationState.h"
 
 #include "../../assets/Assets.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../effects/AmigaPalette.h"
+#include "../../effects/color/AmigaDisplay.h"
+#include "../../effects/color/AmigaPalette.h"
 
 #include <algorithm>
 #include <string>

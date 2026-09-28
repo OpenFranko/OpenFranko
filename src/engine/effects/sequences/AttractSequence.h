@@ -1,7 +1,7 @@
 #ifndef ENGINE_EFFECTS_ATTRACTSEQUENCE_H_
 #define ENGINE_EFFECTS_ATTRACTSEQUENCE_H_
 
-#include "AmigaPalette.h"
+#include "../color/AmigaPalette.h"
 
 namespace openfranko {
 namespace src {

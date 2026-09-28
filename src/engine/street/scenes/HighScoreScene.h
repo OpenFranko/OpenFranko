@@ -2,9 +2,9 @@
 #define ENGINE_STREET_HIGHSCORESCENE_H_
 
 #include "../../../systems/Display.h"
-#include "../../effects/AmigaPalette.h"
-#include "../../effects/GameOptions.h"
-#include "../../effects/PaletteFader.h"
+#include "../../effects/color/AmigaPalette.h"
+#include "../../effects/core/GameOptions.h"
+#include "../../effects/color/PaletteFader.h"
 #include "../core/Bobs.h"
 #include "../ui/GameSession.h"
 #include "HighScoreTable.h"

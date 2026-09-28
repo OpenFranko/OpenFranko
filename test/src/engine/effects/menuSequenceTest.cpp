@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/MenuSequence.h"
+#include "../../../../src/engine/effects/sequences/MenuSequence.h"
 #include <catch2/catch_all.hpp>
 
 #include <string>

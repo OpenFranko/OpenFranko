@@ -1,6 +1,6 @@
 #include "ContinueScene.h"
 
-#include "../../effects/AmigaDisplay.h"
+#include "../../effects/color/AmigaDisplay.h"
 
 #include "../../amal/Actors.h"
 #include "../core/StageFrame.h"

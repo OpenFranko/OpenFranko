@@ -1,4 +1,42 @@
-add_library(Effects effects/AmigaPalette.h effects/PaletteFader.cpp effects/PaletteFader.h effects/PaletteFlasher.cpp effects/PaletteFlasher.h effects/FotoSequence.cpp effects/FotoSequence.h effects/StorySequence.cpp effects/StorySequence.h effects/CodeCardCheck.cpp effects/CodeCardCheck.h effects/GameOptions.h effects/AmalMotion.cpp effects/AmalMotion.h effects/CreditScroll.cpp effects/CreditScroll.h effects/MenuSequence.cpp effects/MenuSequence.h effects/InkeyBuffer.cpp effects/InkeyBuffer.h effects/AttractSequence.cpp effects/AttractSequence.h effects/AmalAnim.cpp effects/AmalAnim.h effects/CharacterSelection.cpp effects/CharacterSelection.h effects/Rainbow.cpp effects/Rainbow.h effects/BlyskSequence.cpp effects/BlyskSequence.h)
+add_library(Effects
+    effects/color/AmigaPalette.h
+    effects/color/AmigaDisplay.h
+    effects/color/PaletteFader.cpp
+    effects/color/PaletteFader.h
+    effects/color/PaletteFlasher.cpp
+    effects/color/PaletteFlasher.h
+    effects/color/Rainbow.cpp
+    effects/color/Rainbow.h
+    effects/sequences/FotoSequence.cpp
+    effects/sequences/FotoSequence.h
+    effects/sequences/StorySequence.cpp
+    effects/sequences/StorySequence.h
+    effects/sequences/CodeCardCheck.cpp
+    effects/sequences/CodeCardCheck.h
+    effects/core/GameOptions.h
+    effects/animation/AmalMotion.cpp
+    effects/animation/AmalMotion.h
+    effects/sequences/CreditScroll.cpp
+    effects/sequences/CreditScroll.h
+    effects/sequences/MenuSequence.cpp
+    effects/sequences/MenuSequence.h
+    effects/core/InkeyBuffer.cpp
+    effects/core/InkeyBuffer.h
+    effects/sequences/AttractSequence.cpp
+    effects/sequences/AttractSequence.h
+    effects/animation/AmalAnim.cpp
+    effects/animation/AmalAnim.h
+    effects/animation/CharacterSelection.cpp
+    effects/animation/CharacterSelection.h
+    effects/sequences/BlyskSequence.cpp
+    effects/sequences/BlyskSequence.h)
+
+target_include_directories(Effects PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/effects
+    ${CMAKE_CURRENT_SOURCE_DIR}/effects/animation
+    ${CMAKE_CURRENT_SOURCE_DIR}/effects/color
+    ${CMAKE_CURRENT_SOURCE_DIR}/effects/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/effects/sequences)
 
 add_library(Assets assets/Assets.cpp assets/Assets.h GameVersion.h)
 

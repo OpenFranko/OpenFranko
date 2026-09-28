@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/AmalAnim.h"
+#include "../../../../src/engine/effects/animation/AmalAnim.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 

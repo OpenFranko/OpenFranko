@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/StorySequence.h"
+#include "../../../../src/engine/effects/sequences/StorySequence.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 

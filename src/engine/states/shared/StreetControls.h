@@ -4,7 +4,7 @@
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
 #include "../../GameVersion.h"
-#include "../../effects/GameOptions.h"
+#include "../../effects/core/GameOptions.h"
 #include "../../street/scenes/StreetStage.h"
 
 namespace openfranko {

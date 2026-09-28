@@ -1,8 +1,8 @@
 #include "GameOverScene.h"
 
-#include "../../effects/AmigaDisplay.h"
+#include "../../effects/color/AmigaDisplay.h"
 
-#include "../../effects/Rainbow.h"
+#include "../../effects/color/Rainbow.h"
 #include "../core/StageFrame.h"
 
 #include <algorithm>

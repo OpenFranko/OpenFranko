@@ -1,10 +1,10 @@
 #ifndef ENGINE_EFFECTS_CHARACTERSELECTION_H_
 #define ENGINE_EFFECTS_CHARACTERSELECTION_H_
 
-#include "../GameVersion.h"
+#include "../../GameVersion.h"
+#include "../core/GameOptions.h"
 #include "AmalAnim.h"
 #include "AmalMotion.h"
-#include "GameOptions.h"
 
 #include <cstdint>
 #include <optional>

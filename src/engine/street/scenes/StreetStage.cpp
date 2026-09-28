@@ -1,6 +1,6 @@
 #include "StreetStage.h"
 
-#include "../../effects/AmigaDisplay.h"
+#include "../../effects/color/AmigaDisplay.h"
 
 #include "../../amal/Actors.h"
 

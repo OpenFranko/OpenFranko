@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/CodeCardCheck.h"
+#include "../../../../src/engine/effects/sequences/CodeCardCheck.h"
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <cstdint>

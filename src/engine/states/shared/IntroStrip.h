@@ -4,8 +4,8 @@
 #include "../../../systems/Bitmap.h"
 #include "../../../systems/Canvas.h"
 #include "../../../systems/VideoSystem.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../effects/BlyskSequence.h"
+#include "../../effects/color/AmigaDisplay.h"
+#include "../../effects/sequences/BlyskSequence.h"
 #include "../../street/scenes/EndingCredits.h"
 
 #include <map>

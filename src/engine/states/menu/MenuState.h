@@ -6,9 +6,9 @@
 #include "../../../systems/Canvas.h"
 #include "../../../systems/ControllerSystem.h"
 #include "../../../systems/VideoSystem.h"
-#include "../../effects/AttractSequence.h"
-#include "../../effects/GameOptions.h"
-#include "../../effects/MenuSequence.h"
+#include "../../effects/sequences/AttractSequence.h"
+#include "../../effects/core/GameOptions.h"
+#include "../../effects/sequences/MenuSequence.h"
 #include "../../street/ui/GameSession.h"
 #include "../IEngineState.h"
 

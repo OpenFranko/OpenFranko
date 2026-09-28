@@ -1,4 +1,4 @@
-#include "../../../../src/engine/effects/AttractSequence.h"
+#include "../../../../src/engine/effects/sequences/AttractSequence.h"
 #include <catch2/catch_all.hpp>
 
 using namespace openfranko::src::engine::effects;

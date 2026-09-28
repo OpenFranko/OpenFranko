@@ -1,6 +1,6 @@
 #include "FotoSequence.h"
 
-#include "AmigaDisplay.h"
+#include "../color/AmigaDisplay.h"
 
 #include <utility>
 
