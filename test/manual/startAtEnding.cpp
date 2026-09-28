@@ -1,7 +1,7 @@
 #include "../../src/engine/Engine.h"
-#include "../../src/engine/effects/GameOptions.h"
-#include "../../src/engine/street/scenes/BossStage.h"
+#include "../../src/engine/effects/core/GameOptions.h"
 #include "../../src/engine/street/core/StageFrame.h"
+#include "../../src/engine/street/scenes/BossStage.h"
 #include "../../src/engine/street/ui/StatusPanel.h"
 #include "../../src/systems/Bitmap.h"
 
