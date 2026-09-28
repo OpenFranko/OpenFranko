@@ -1,6 +1,6 @@
 #include "Level1State.h"
 
-#include "StreetControls.h"
+#include "../shared/StreetControls.h"
 
 namespace openfranko::src::engine::states::level1 {
 
