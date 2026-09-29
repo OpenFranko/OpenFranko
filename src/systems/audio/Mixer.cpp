@@ -243,23 +243,19 @@ void Mixer::render(int16_t *stereo, int frames) {
   }
 
   const int musicLevel = m_silencing ? 0 : m_musicVolume;
-  for (std::size_t frame = 0; frame < static_cast<std::size_t>(frames);
-       ++frame) {
-    int16_t *out = stereo + frame * Mixer::STEREO;
-    for (std::size_t channel = 0; channel < Mixer::STEREO; ++channel) {
-      out[channel] =
-          clampSample(m_musicBuffer[frame * Mixer::STEREO + channel] *
-                      musicLevel / MAX_VOLUME);
-    }
-    for (int voice = 0; voice < VOICES; ++voice) {
-      Voice &playing = m_voices[static_cast<std::size_t>(voice)];
-      if (!playing.sound) {
-        continue;
-      }
+  for (std::size_t sample = 0; sample < samples; ++sample) {
+    stereo[sample] =
+        clampSample(m_musicBuffer[sample] * musicLevel / MAX_VOLUME);
+  }
+  for (int voice = 0; voice < VOICES; ++voice) {
+    Voice &playing = m_voices[static_cast<std::size_t>(voice)];
+    int16_t *side = stereo + (isLeftVoice(voice) ? 0 : 1);
+    for (std::size_t frame = 0;
+         playing.sound && frame < static_cast<std::size_t>(frames); ++frame) {
       const int sample =
           nextSample(playing) * SAMPLE_VOLUME / MAX_VOLUME / VOICES_PER_SIDE;
-      int16_t &side = out[isLeftVoice(voice) ? 0 : 1];
-      side = clampSample(side + sample);
+      int16_t &out = side[frame * Mixer::STEREO];
+      out = clampSample(out + sample);
     }
   }
   filter(stereo, frames);
@@ -378,6 +374,15 @@ int Mixer::nextSample(Voice &voice) {
 
 void Mixer::filter(int16_t *stereo, int frames) {
   const std::size_t samples = static_cast<std::size_t>(frames) * Mixer::STEREO;
+  if (!m_filterOn) {
+    for (std::size_t i = samples - std::min<std::size_t>(samples, 2 * STEREO);
+         i < samples; ++i) {
+      std::array<double, 4> &history = m_filterHistory[i % Mixer::STEREO];
+      history = {static_cast<double>(stereo[i]), history[0],
+                 static_cast<double>(stereo[i]), history[2]};
+    }
+    return;
+  }
   for (std::size_t i = 0; i < samples; ++i) {
     std::array<double, 4> &history = m_filterHistory[i % Mixer::STEREO];
     const double input = stereo[i];
@@ -385,9 +390,7 @@ void Mixer::filter(int16_t *stereo, int frames) {
                           m_lowPass.b2 * history[1] -
                           m_lowPass.a1 * history[2] - m_lowPass.a2 * history[3];
     history = {input, history[0], output, history[2]};
-    if (m_filterOn) {
-      stereo[i] = clampSample(::lround(output));
-    }
+    stereo[i] = clampSample(::lround(output));
   }
 }
 

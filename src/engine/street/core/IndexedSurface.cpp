@@ -1,6 +1,7 @@
 #include "IndexedSurface.h"
 
 #include <algorithm>
+#include <cstring>
 #include <stdexcept>
 
 namespace openfranko::src::engine::street::core {
@@ -77,15 +78,14 @@ void IndexedSurface::copy(const IndexedSurface &source, int x1, int y1, int x2,
   width = std::min(width, m_width - x);
   height = std::min(height, m_height - y);
 
-  std::vector<uint8_t> block(static_cast<std::size_t>(width * height));
-  for (int row = 0; row < height; ++row) {
-    const auto from =
-        source.m_pixels.begin() + (y1 + row) * source.m_width + x1;
-    std::copy(from, from + width, block.begin() + row * width);
-  }
-  for (int row = 0; row < height; ++row) {
-    const auto from = block.begin() + row * width;
-    std::copy(from, from + width, m_pixels.begin() + (y + row) * m_width + x);
+  const bool upward = &source == this && y > y1;
+  for (int step = 0; step < height; ++step) {
+    const int row = upward ? height - 1 - step : step;
+    std::memmove(
+        m_pixels.data() + static_cast<std::ptrdiff_t>(y + row) * m_width + x,
+        source.m_pixels.data() +
+            static_cast<std::ptrdiff_t>(y1 + row) * source.m_width + x1,
+        static_cast<std::size_t>(width));
   }
 }
 
@@ -112,21 +112,36 @@ bool IndexedSurface::intersects(int left, int top, int width,
 
 void IndexedSurface::draw(const Picture &picture, int left, int top, bool flipX,
                           bool flipY, bool opaque) {
-  for (int row = 0; row < picture.height; ++row) {
-    const int y = top + row;
-    if (y < 0 || y >= m_height) {
-      continue;
-    }
+  const int firstColumn = std::max(0, -left);
+  const int lastColumn = std::min(picture.width, m_width - left);
+  const int firstRow = std::max(0, -top);
+  const int lastRow = std::min(picture.height, m_height - top);
+  if (firstColumn >= lastColumn || firstRow >= lastRow) {
+    return;
+  }
+  for (int row = firstRow; row < lastRow; ++row) {
     const int sourceRow = flipY ? picture.height - 1 - row : row;
-    for (int column = 0; column < picture.width; ++column) {
-      const int x = left + column;
-      if (x < 0 || x >= m_width) {
-        continue;
+    const uint8_t *source =
+        picture.pixels.data() +
+        static_cast<std::ptrdiff_t>(sourceRow) * picture.width;
+    uint8_t *target =
+        m_pixels.data() + static_cast<std::ptrdiff_t>(top + row) * m_width;
+    if (flipX) {
+      for (int column = firstColumn; column < lastColumn; ++column) {
+        const uint8_t value = source[picture.width - 1 - column];
+        if (value != 0 || opaque) {
+          target[left + column] = value;
+        }
       }
-      const int sourceColumn = flipX ? picture.width - 1 - column : column;
-      const uint8_t value = picture.at(sourceColumn, sourceRow);
-      if (value != 0 || opaque) {
-        m_pixels[static_cast<std::size_t>(y * m_width + x)] = value;
+    } else if (opaque) {
+      std::copy(source + firstColumn, source + lastColumn,
+                target + left + firstColumn);
+    } else {
+      for (int column = firstColumn; column < lastColumn; ++column) {
+        const uint8_t value = source[column];
+        if (value != 0) {
+          target[left + column] = value;
+        }
       }
     }
   }

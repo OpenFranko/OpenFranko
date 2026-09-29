@@ -109,15 +109,16 @@ DOSBox-X (`flatpak run com.dosbox_x.DOSBox-X -conf build-dos/game/dosbox.conf`).
 DOS has no long file names, so the game reads its assets from the archive;
 every build does that when `assets.tar` sits next to it instead of `assets`.
 On a real PC, copy the first three files into one directory and run `franko`.
-It needs a VESA card with a 640x480 high colour mode and, for sound, a Sound
-Blaster compatible card. Ctrl+C or Ctrl+Break quits it.
+It needs a VGA card and, for sound, a Sound Blaster compatible card. Ctrl+C or
+Ctrl+Break quits it.
 
-The game starts on any 486 with a floating point unit, but its logic is tied to
-the frame rate, so on a slow PC it runs in slow motion and the music stutters.
-Full speed (50 frames a second) needs a PC faster than a 300 MHz K6-2. In
-DOSBox-X with its CPU speed presets, Level 1 runs at 40 frames a second on a
-K6-2 300, 18 on a Pentium 166 MMX, 11 on a Pentium 100 and 4 on a 486DX2-66,
-and it takes about 260000 cycles to keep 50.
+The game shows the Amiga picture pixel for pixel in a 376x282 256-colour VGA
+mode (Mode X); high resolution screens are shown at half their width. It needs
+a 486 with a floating point unit, and its logic is tied to the frame rate, so a
+slower PC plays it in slow motion. In DOSBox-X with its CPU speed presets,
+Level 1 keeps its 50 frames a second on a 486DX4-100, averages about 47 on a
+486DX2-66, which slows down briefly while the street scrolls, and runs at about
+23 on a 486DX-33.
 
 To build with an installed DJGPP instead, like the AUR packages `djgpp-gcc`,
 `djgpp-allegro4` and `djgpp-cmake`, build libxmp with its CMake wrapper and

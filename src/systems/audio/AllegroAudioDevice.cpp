@@ -15,6 +15,7 @@ constexpr int SAMPLE_BITS = 16;
 constexpr int STREAM_VOLUME = 255;
 constexpr int STREAM_PAN = 128;
 constexpr int UNSCALED_VOICE_VOLUME = 0;
+constexpr int PLAIN_16_BIT_MIXING = 1;
 constexpr uint16_t UNSIGNED_SAMPLE_BIAS = 0x8000;
 
 [[noreturn]] void throwError(const std::string &cause) {
@@ -35,6 +36,7 @@ AudioDevice::AudioDevice(int rate, int frames, Render render)
   m_stream->render = std::move(render);
   m_stream->frames = frames;
   set_volume_per_voice(UNSCALED_VOICE_VOLUME);
+  set_mixer_quality(PLAIN_16_BIT_MIXING);
   if (install_sound(DIGI_AUTODETECT, MIDI_NONE, nullptr) != 0) {
     throwError("Allegro sound");
   }

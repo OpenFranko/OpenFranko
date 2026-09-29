@@ -5,6 +5,8 @@ add_library(Graphics
     Canvas.h
     Display.cpp
     Display.h
+    IndexedRasterizer.cpp
+    IndexedRasterizer.h
     Monitor.h)
 target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 

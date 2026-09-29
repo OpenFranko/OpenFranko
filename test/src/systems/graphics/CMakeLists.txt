@@ -18,3 +18,11 @@ add_executable(${DISPLAY_TEST_TARGET}
 target_link_libraries(${DISPLAY_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain Graphics)
 add_test(NAME ${DISPLAY_TEST_TARGET} COMMAND ${DISPLAY_TEST_TARGET})
+
+set(INDEXED_RASTERIZER_TEST_TARGET indexedRasterizerTest)
+add_executable(${INDEXED_RASTERIZER_TEST_TARGET}
+    indexedRasterizerTest.cpp)
+target_link_libraries(${INDEXED_RASTERIZER_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Graphics)
+add_test(NAME ${INDEXED_RASTERIZER_TEST_TARGET}
+    COMMAND ${INDEXED_RASTERIZER_TEST_TARGET})
