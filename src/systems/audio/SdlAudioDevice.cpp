@@ -56,4 +56,10 @@ AudioDevice::~AudioDevice() {
   SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
+void AudioDevice::lock() { SDL_LockAudioDevice(m_stream->device); }
+
+void AudioDevice::unlock() { SDL_UnlockAudioDevice(m_stream->device); }
+
+void AudioDevice::update() {}
+
 } // namespace openfranko::src::systems::audio

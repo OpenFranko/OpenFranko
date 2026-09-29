@@ -20,6 +20,10 @@ public:
   AudioDevice(const AudioDevice &) = delete;
   AudioDevice &operator=(const AudioDevice &) = delete;
 
+  void lock();
+  void unlock();
+  void update();
+
 private:
   struct Stream;
 

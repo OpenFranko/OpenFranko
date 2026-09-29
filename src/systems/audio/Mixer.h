@@ -6,7 +6,6 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <set>
 #include <utility>
@@ -93,7 +92,6 @@ private:
   int nextSample(Voice &voice);
   void filter(int16_t *stereo, int frames);
 
-  mutable std::mutex m_mutex;
   int m_rate;
   std::unique_ptr<Module> m_module;
   bool m_moduleLoaded = false;

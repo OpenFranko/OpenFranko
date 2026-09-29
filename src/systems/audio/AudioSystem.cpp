@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <iterator>
+#include <mutex>
 #include <stdexcept>
 #include <vector>
 
@@ -32,12 +33,14 @@ void AudioSystem::loadMusic(const std::string &path) {
   std::ifstream file(path, std::ios::binary);
   const std::vector<char> module{std::istreambuf_iterator<char>(file),
                                  std::istreambuf_iterator<char>()};
+  std::lock_guard<AudioDevice> lock(*m_output->device);
   if (m_output->mixer.loadModule(module)) {
     m_output->musicPath = path;
   }
 }
 
 void AudioSystem::clearMusic() {
+  std::lock_guard<AudioDevice> lock(*m_output->device);
   m_output->mixer.releaseModule();
   m_output->musicPath.clear();
 }
@@ -60,6 +63,7 @@ void AudioSystem::clearSample(const std::string &name) {
   if (sound == m_output->sounds.end()) {
     return;
   }
+  std::lock_guard<AudioDevice> lock(*m_output->device);
   m_output->mixer.stop(*sound->second);
   m_output->sounds.erase(sound);
 }
@@ -68,18 +72,24 @@ void AudioSystem::playMusic() { startMusic(true); }
 
 void AudioSystem::playMusicOnce() { startMusic(false); }
 
-void AudioSystem::stopMusic() { m_output->mixer.stopModule(); }
+void AudioSystem::stopMusic() {
+  std::lock_guard<AudioDevice> lock(*m_output->device);
+  m_output->mixer.stopModule();
+}
 
 void AudioSystem::setMusicVolume(int volume) {
+  std::lock_guard<AudioDevice> lock(*m_output->device);
   m_output->mixer.setMusicVolume(volume);
 }
 
 void AudioSystem::setMusicTempoScale(double scale) {
+  std::lock_guard<AudioDevice> lock(*m_output->device);
   m_output->tempoScale = scale;
   applyTempo();
 }
 
 void AudioSystem::setMusicTempo(int tempo) {
+  std::lock_guard<AudioDevice> lock(*m_output->device);
   m_output->mixer.overrideModuleTempo(tempo);
 }
 
@@ -87,15 +97,20 @@ void AudioSystem::setVblRate(int hertz) {
   if (hertz == m_output->vblRate) {
     return;
   }
+  std::lock_guard<AudioDevice> lock(*m_output->device);
   m_output->vblRate = hertz;
   applyTempo();
 }
 
-void AudioSystem::setLowPassFilter(bool on) { m_output->mixer.setFilter(on); }
+void AudioSystem::setLowPassFilter(bool on) {
+  std::lock_guard<AudioDevice> lock(*m_output->device);
+  m_output->mixer.setFilter(on);
+}
 
 void AudioSystem::playSample(const std::string &name, int voiceMask) {
   const auto sound = m_output->sounds.find(name);
   if (sound != m_output->sounds.end()) {
+    std::lock_guard<AudioDevice> lock(*m_output->device);
     m_output->mixer.play(*sound->second, voiceMask, 0, m_output->sampleLooping);
   }
 }
@@ -104,6 +119,7 @@ void AudioSystem::playSampleAt(const std::string &name, int voiceMask,
                                int frequency) {
   const auto sound = m_output->sounds.find(name);
   if (sound != m_output->sounds.end() && frequency > 0) {
+    std::lock_guard<AudioDevice> lock(*m_output->device);
     m_output->mixer.play(*sound->second, voiceMask, frequency,
                          m_output->sampleLooping);
   }
@@ -112,15 +128,24 @@ void AudioSystem::playSampleAt(const std::string &name, int voiceMask,
 void AudioSystem::setSampleLooping(bool looping) {
   m_output->sampleLooping = looping;
   if (!looping) {
+    std::lock_guard<AudioDevice> lock(*m_output->device);
     m_output->mixer.endLoops();
   }
 }
 
-void AudioSystem::stopSamples() { m_output->mixer.stopAll(); }
+void AudioSystem::stopSamples() {
+  std::lock_guard<AudioDevice> lock(*m_output->device);
+  m_output->mixer.stopAll();
+}
 
-void AudioSystem::update() { m_output->mixer.update(); }
+void AudioSystem::update() {
+  m_output->device->update();
+  std::lock_guard<AudioDevice> lock(*m_output->device);
+  m_output->mixer.update();
+}
 
 void AudioSystem::startMusic(bool looping) {
+  std::lock_guard<AudioDevice> lock(*m_output->device);
   m_output->tempoScale = 1.0;
   m_output->mixer.startModule(looping);
   applyTempo();

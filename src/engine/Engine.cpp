@@ -24,8 +24,6 @@
 #include "states/titleAndStory/TitleAndStoryState.h"
 #include "states/worldSoftware/WorldSoftwareState.h"
 
-#include <chrono>
-#include <thread>
 #include <utility>
 
 namespace openfranko::src::engine {
@@ -276,24 +274,9 @@ void Engine::update() {
 }
 
 void Engine::run() {
-  using Clock = std::chrono::steady_clock;
-  Clock::time_point nextFrame = Clock::now();
-
   while (isRunning()) {
     update();
-
-    const auto frameTime = std::chrono::duration_cast<Clock::duration>(
-        std::chrono::duration<double>(1.0 / refreshRate()));
-    nextFrame += frameTime;
-    const Clock::time_point now = Clock::now();
-    if (nextFrame > now) {
-      std::this_thread::sleep_until(nextFrame);
-    } else if (now - nextFrame > frameTime) {
-      nextFrame = now;
-    }
   }
 }
-
-int Engine::refreshRate() const { return m_videoSystem.refreshRate(); }
 
 } // namespace openfranko::src::engine

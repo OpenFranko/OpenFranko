@@ -84,6 +84,73 @@ any extra DLLs. Like on Linux, the game has to be started from the directory
 that holds `assets`, e.g. copy `build/src/OpenFranko.exe` next to `assets` and
 double-click it.
 
+## DOS (DJGPP)
+
+The DOS version is cross-compiled with DJGPP and uses Allegro 4 instead of
+SDL2. The tools and tests are not built for DOS; extract the game data with a
+Linux or Windows build of FrankoExtract.
+
+Install the DJGPP cross compiler, Allegro 4 and the CMake wrapper (Arch, from
+the AUR):
+
+```
+yay -S djgpp-gcc djgpp-allegro4 djgpp-cmake
+```
+
+libxmp has no DJGPP package, so build it and install it into the DJGPP
+directory:
+
+```
+curl -LO https://github.com/libxmp/libxmp/releases/download/libxmp-4.7.3/libxmp-4.7.3.tar.gz
+tar xzf libxmp-4.7.3.tar.gz
+cd libxmp-4.7.3
+i686-pc-msdosdjgpp-cmake -B build -DBUILD_SHARED=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-march=i586
+cmake --build build -j $(nproc)
+sudo cmake --install build
+```
+
+Compilation:
+
+```
+git clone https://github.com/OpenFranko/OpenFranko.git
+cd OpenFranko
+mkdir build-dos && cd build-dos
+i686-pc-msdosdjgpp-cmake ..
+cmake --build . -j $(nproc)
+```
+
+The game is built as `build-dos/src/franko.exe`, as DOS needs 8.3 file names.
+It carries debug information; `i686-pc-msdosdjgpp-strip src/franko.exe`
+shrinks it from about 27 MB to 3 MB.
+
+To play, put `franko.exe`, `CWSDPMI.EXE` (the DPMI host from
+[csdpmi7b.zip](http://www.delorie.com/pub/djgpp/current/v2misc/csdpmi7b.zip))
+and `assets` in one directory and run `franko` from it. The game needs:
+
+- long file names, as the asset names are not 8.3: DOS 7.1 under Windows
+  95/98, the DOSLFN driver on MS-DOS or FreeDOS, or DOSBox-X,
+- a Pentium Pro/II class CPU, as the DJGPP C++ library is built for it,
+- a VESA card with a 640x480 high colour mode,
+- a Sound Blaster compatible card for sound (optional).
+
+Ctrl+C or Ctrl+Break quits the game.
+
+DOSBox and DOSBox Staging can't run it, as they emulate neither the Pentium
+Pro nor long file names. In DOSBox-X, set:
+
+```
+[cpu]
+cputype=pentium_ii
+cycles=max
+
+[dos]
+ver=7.1
+```
+
+The game's own code and libxmp are compiled for the Pentium (`-march=i586`),
+because DOSBox-X's fast CPU core mis-emulates the Pentium Pro floating point
+comparisons.
+
 # FrankoExtract
 
 it's a tool to extract graphics/sounds/music/levels from original franko game data.

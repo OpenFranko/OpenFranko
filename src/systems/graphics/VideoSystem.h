@@ -31,6 +31,9 @@ public:
 private:
   struct Window;
 
+  void present();
+  void waitVbl();
+
   std::unique_ptr<Window> m_window;
   Display m_shown;
   std::vector<uint32_t> m_frame;

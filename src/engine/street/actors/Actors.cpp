@@ -1,6 +1,5 @@
 #include "Actors.h"
 
-#include <cstdint>
 #include <cstdio>
 
 namespace openfranko::src::engine::street::actors {
@@ -9,7 +8,7 @@ int amosBool(bool condition) { return condition ? -1 : 0; }
 
 std::string hex(int value) {
   char digits[16];
-  std::snprintf(digits, sizeof(digits), "%X", static_cast<uint32_t>(value));
+  std::snprintf(digits, sizeof(digits), "%X", static_cast<unsigned>(value));
   return std::string("$") + digits;
 }
 

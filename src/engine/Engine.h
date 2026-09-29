@@ -29,8 +29,6 @@ public:
   void update();
   void run();
 
-  int refreshRate() const;
-
 private:
   void updateState();
 

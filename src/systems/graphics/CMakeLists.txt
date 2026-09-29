@@ -8,7 +8,16 @@ add_library(Graphics
     Monitor.h)
 target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-add_library(VideoSystem
-    VideoSystem.cpp
-    VideoSystem.h)
-target_link_libraries(VideoSystem PUBLIC Graphics PRIVATE ${SDL2_TARGET})
+if(DJGPP)
+    add_library(VideoSystem
+        AllegroVideoSystem.cpp
+        VideoSystem.cpp
+        VideoSystem.h)
+    target_link_libraries(VideoSystem PUBLIC Graphics PRIVATE ${ALLEGRO_TARGET})
+else()
+    add_library(VideoSystem
+        SdlVideoSystem.cpp
+        VideoSystem.cpp
+        VideoSystem.h)
+    target_link_libraries(VideoSystem PUBLIC Graphics PRIVATE ${SDL2_TARGET})
+endif()
