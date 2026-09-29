@@ -105,12 +105,12 @@ add_executable(${AMAL_MACHINE_TEST_TARGET}
 target_link_libraries(${AMAL_MACHINE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${AMAL_MACHINE_TEST_TARGET} COMMAND ${AMAL_MACHINE_TEST_TARGET})
 
-set(AMAL_ACTORS_TEST_TARGET amalActorsTest)
-add_executable(${AMAL_ACTORS_TEST_TARGET}
-    engine/street/actors/amalActorsTest.cpp
+set(STREET_ACTORS_TEST_TARGET streetActorsTest)
+add_executable(${STREET_ACTORS_TEST_TARGET}
+    engine/street/actors/streetActorsTest.cpp
 )
-target_link_libraries(${AMAL_ACTORS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
-add_test(NAME ${AMAL_ACTORS_TEST_TARGET} COMMAND ${AMAL_ACTORS_TEST_TARGET})
+target_link_libraries(${STREET_ACTORS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${STREET_ACTORS_TEST_TARGET} COMMAND ${STREET_ACTORS_TEST_TARGET})
 
 set(INDEXED_SURFACE_TEST_TARGET indexedSurfaceTest)
 add_executable(${INDEXED_SURFACE_TEST_TARGET}
@@ -256,21 +256,21 @@ set(CONTROLLER_SYSTEM_TEST_TARGET controllerSystemTest)
 add_executable(${CONTROLLER_SYSTEM_TEST_TARGET}
     systems/input/controllerSystemTest.cpp
 )
-target_link_libraries(${CONTROLLER_SYSTEM_TEST_TARGET} PRIVATE Catch2::Catch2WithMain ControllerSystem)
+target_link_libraries(${CONTROLLER_SYSTEM_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Input)
 add_test(NAME ${CONTROLLER_SYSTEM_TEST_TARGET} COMMAND ${CONTROLLER_SYSTEM_TEST_TARGET})
 
 set(WAVE_TEST_TARGET waveTest)
 add_executable(${WAVE_TEST_TARGET}
     systems/audio/waveTest.cpp
 )
-target_link_libraries(${WAVE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Mixer)
+target_link_libraries(${WAVE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Audio)
 add_test(NAME ${WAVE_TEST_TARGET} COMMAND ${WAVE_TEST_TARGET})
 
 set(MIXER_TEST_TARGET mixerTest)
 add_executable(${MIXER_TEST_TARGET}
     systems/audio/mixerTest.cpp
 )
-target_link_libraries(${MIXER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Mixer)
+target_link_libraries(${MIXER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Audio)
 add_test(NAME ${MIXER_TEST_TARGET} COMMAND ${MIXER_TEST_TARGET})
 
 set(DISPLAY_TEST_TARGET displayTest)
