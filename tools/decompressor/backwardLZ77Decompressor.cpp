@@ -13,9 +13,9 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.option("-i");
+  const auto inputOption = parser.option("-i");
 
-  if (!inputOptional.has_value()) {
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0] << " -i <input_file> -o <output_file>"
               << std::endl;
     std::cerr << "Unpacks a Franko 1.0 data file, or the squashed block of a "
@@ -24,14 +24,14 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputFilePath = inputOptional.value();
+  std::string inputFilePath = inputOption.value();
 
   std::string outputFilePath = inputFilePath + ".dec";
 
-  const auto outputOptional = parser.option("-o");
+  const auto outputOption = parser.option("-o");
 
-  if (outputOptional.has_value()) {
-    outputFilePath = outputOptional.value();
+  if (outputOption.has_value()) {
+    outputFilePath = outputOption.value();
   }
 
   try {

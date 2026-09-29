@@ -29,8 +29,8 @@ struct AudioDevice::Stream {
 };
 
 AudioDevice::AudioDevice(int rate, int frames, Render render)
-    : stream(std::make_unique<Stream>()) {
-  stream->render = std::move(render);
+    : m_stream(std::make_unique<Stream>()) {
+  m_stream->render = std::move(render);
   if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
     throwError("SDL");
   }
@@ -41,17 +41,17 @@ AudioDevice::AudioDevice(int rate, int frames, Render render)
   wanted.channels = STEREO;
   wanted.samples = static_cast<Uint16>(frames);
   wanted.callback = &Stream::fill;
-  wanted.userdata = stream.get();
-  stream->device = SDL_OpenAudioDevice(nullptr, 0, &wanted, nullptr, 0);
-  if (stream->device == 0) {
+  wanted.userdata = m_stream.get();
+  m_stream->device = SDL_OpenAudioDevice(nullptr, 0, &wanted, nullptr, 0);
+  if (m_stream->device == 0) {
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
     throwError("OpenAudioDevice");
   }
-  SDL_PauseAudioDevice(stream->device, 0);
+  SDL_PauseAudioDevice(m_stream->device, 0);
 }
 
 AudioDevice::~AudioDevice() {
-  SDL_CloseAudioDevice(stream->device);
+  SDL_CloseAudioDevice(m_stream->device);
   SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 

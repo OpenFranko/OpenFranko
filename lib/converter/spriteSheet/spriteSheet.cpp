@@ -104,20 +104,20 @@ SpriteSheet convertToSheet(const std::vector<uint8_t> &data,
                    static_cast<size_t>(header.descriptors[i].wordOffset) * 2;
 
     try {
-      auto img = decodeAmosBitmap(data, bmPos, palette.data(),
-                                  static_cast<int>(palette.size()));
-      if (!img.pixels.empty()) {
-        if (img.width > maxW) {
-          maxW = img.width;
+      auto image = decodeAmosBitmap(data, bmPos, palette.data(),
+                                    static_cast<int>(palette.size()));
+      if (!image.pixels.empty()) {
+        if (image.width > maxW) {
+          maxW = image.width;
         }
-        if (img.height > maxH) {
-          maxH = img.height;
+        if (image.height > maxH) {
+          maxH = image.height;
         }
         okCount++;
       } else {
         spriteErrors[i] = "Sprite decoded to an empty image";
       }
-      sprites.push_back(std::move(img));
+      sprites.push_back(std::move(image));
     } catch (const std::exception &e) {
       spriteErrors[i] = e.what();
       sprites.push_back({});
@@ -173,11 +173,11 @@ convertToIndividual(const std::vector<uint8_t> &data,
         BANK_HEADER_SIZE + static_cast<size_t>(descriptor.wordOffset) * 2;
 
     try {
-      auto img = decodeAmosBitmap(data, bmPos, palette.data(),
-                                  static_cast<int>(palette.size()));
-      if (!img.pixels.empty()) {
-        auto bmp = bmpWriter::pixelsToBmp(img.width, img.height,
-                                          img.pixels.data(), palette.data(),
+      auto image = decodeAmosBitmap(data, bmPos, palette.data(),
+                                    static_cast<int>(palette.size()));
+      if (!image.pixels.empty()) {
+        auto bmp = bmpWriter::pixelsToBmp(image.width, image.height,
+                                          image.pixels.data(), palette.data(),
                                           static_cast<int>(palette.size()));
         embedBmpHotspot(bmp, descriptor.hotspotX, descriptor.hotspotY);
         results.push_back({std::move(bmp), {}});

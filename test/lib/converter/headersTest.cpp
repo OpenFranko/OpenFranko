@@ -42,28 +42,28 @@ SCENARIO("parseSpackHeader reads all fields from big-endian data") {
     putBigEndian16(data, 28, 0x00F0);
 
     WHEN("parseSpackHeader is called") {
-      auto hdr = parseSpackHeader(data);
+      auto header = parseSpackHeader(data);
 
       THEN("screen dimensions are correct") {
-        REQUIRE(hdr.screenWidth == 320);
-        REQUIRE(hdr.screenHeight == 256);
+        REQUIRE(header.screenWidth == 320);
+        REQUIRE(header.screenHeight == 256);
       }
 
       THEN("window position and size are correct") {
-        REQUIRE(hdr.windowX == 10);
-        REQUIRE(hdr.windowY == 20);
-        REQUIRE(hdr.windowWidth == 300);
-        REQUIRE(hdr.windowHeight == 200);
+        REQUIRE(header.windowX == 10);
+        REQUIRE(header.windowY == 20);
+        REQUIRE(header.windowWidth == 300);
+        REQUIRE(header.windowHeight == 200);
       }
 
       THEN("color info is correct") {
-        REQUIRE(hdr.numberOfColors == 16);
-        REQUIRE(hdr.numberOfBitplanes == 4);
+        REQUIRE(header.numberOfColors == 16);
+        REQUIRE(header.numberOfBitplanes == 4);
       }
 
       THEN("palette values are read") {
-        REQUIRE(hdr.amigaPalette[0] == 0x0F00);
-        REQUIRE(hdr.amigaPalette[1] == 0x00F0);
+        REQUIRE(header.amigaPalette[0] == 0x0F00);
+        REQUIRE(header.amigaPalette[1] == 0x00F0);
       }
     }
   }
@@ -82,25 +82,27 @@ SCENARIO("parseBitmapHeader reads all fields from big-endian data") {
     putBigEndian32(data, 20, 0x2000);
 
     WHEN("parseBitmapHeader is called") {
-      auto hdr = parseBitmapHeader(data);
+      auto header = parseBitmapHeader(data);
 
       THEN("signed offsets are correct") {
-        REQUIRE(hdr.xOffset == -5);
-        REQUIRE(hdr.yOffset == 10);
+        REQUIRE(header.xOffset == -5);
+        REQUIRE(header.yOffset == 10);
       }
 
       THEN("grid dimensions are correct") {
-        REQUIRE(hdr.gridX == 16);
-        REQUIRE(hdr.gridY == 16);
+        REQUIRE(header.gridX == 16);
+        REQUIRE(header.gridY == 16);
       }
 
-      THEN("tile height is correct") { REQUIRE(hdr.tileHeight == 32); }
+      THEN("tile height is correct") { REQUIRE(header.tileHeight == 32); }
 
-      THEN("bitplane count is correct") { REQUIRE(hdr.numberOfBitplanes == 5); }
+      THEN("bitplane count is correct") {
+        REQUIRE(header.numberOfBitplanes == 5);
+      }
 
       THEN("data offsets are correct") {
-        REQUIRE(hdr.offsetToByteTable2 == 0x1000);
-        REQUIRE(hdr.offsetToPointerBitstream == 0x2000);
+        REQUIRE(header.offsetToByteTable2 == 0x1000);
+        REQUIRE(header.offsetToPointerBitstream == 0x2000);
       }
     }
   }
@@ -139,22 +141,22 @@ SCENARIO("SPACK header parsing extracts all fields correctly") {
     data[29] = 0x00;
 
     WHEN("Parsing the header") {
-      auto hdr = parseSpackHeader(data);
+      auto header = parseSpackHeader(data);
 
       THEN("All fields are correct") {
-        REQUIRE(hdr.screenWidth == 320);
-        REQUIRE(hdr.screenHeight == 200);
-        REQUIRE(hdr.windowX == 16);
-        REQUIRE(hdr.windowY == 32);
-        REQUIRE(hdr.windowWidth == 304);
-        REQUIRE(hdr.windowHeight == 184);
-        REQUIRE(hdr.viewX == 5);
-        REQUIRE(hdr.viewY == 10);
-        REQUIRE(hdr.displayModeFlags == 0x8000);
-        REQUIRE(hdr.numberOfColors == 16);
-        REQUIRE(hdr.numberOfBitplanes == 4);
-        REQUIRE(hdr.amigaPalette[0] == 0x000);
-        REQUIRE(hdr.amigaPalette[1] == 0xF00);
+        REQUIRE(header.screenWidth == 320);
+        REQUIRE(header.screenHeight == 200);
+        REQUIRE(header.windowX == 16);
+        REQUIRE(header.windowY == 32);
+        REQUIRE(header.windowWidth == 304);
+        REQUIRE(header.windowHeight == 184);
+        REQUIRE(header.viewX == 5);
+        REQUIRE(header.viewY == 10);
+        REQUIRE(header.displayModeFlags == 0x8000);
+        REQUIRE(header.numberOfColors == 16);
+        REQUIRE(header.numberOfBitplanes == 4);
+        REQUIRE(header.amigaPalette[0] == 0x000);
+        REQUIRE(header.amigaPalette[1] == 0xF00);
       }
     }
   }
@@ -168,17 +170,17 @@ SCENARIO("Bitmap header parsing extracts all fields correctly") {
     };
 
     WHEN("Parsing the header") {
-      auto hdr = parseBitmapHeader(data);
+      auto header = parseBitmapHeader(data);
 
       THEN("All fields are correct including signed offsets") {
-        REQUIRE(hdr.xOffset == -2);
-        REQUIRE(hdr.yOffset == 3);
-        REQUIRE(hdr.gridX == 40);
-        REQUIRE(hdr.gridY == 10);
-        REQUIRE(hdr.tileHeight == 16);
-        REQUIRE(hdr.numberOfBitplanes == 4);
-        REQUIRE(hdr.offsetToByteTable2 == 0x1234);
-        REQUIRE(hdr.offsetToPointerBitstream == 0x5678);
+        REQUIRE(header.xOffset == -2);
+        REQUIRE(header.yOffset == 3);
+        REQUIRE(header.gridX == 40);
+        REQUIRE(header.gridY == 10);
+        REQUIRE(header.tileHeight == 16);
+        REQUIRE(header.numberOfBitplanes == 4);
+        REQUIRE(header.offsetToByteTable2 == 0x1234);
+        REQUIRE(header.offsetToPointerBitstream == 0x5678);
       }
     }
   }

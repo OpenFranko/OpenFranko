@@ -35,16 +35,16 @@ private:
   states::EngineStateId versionState(states::EngineStateId state) const;
   void switchState(states::EngineStateId nextState);
 
-  systems::input::Platform platform;
-  systems::graphics::VideoSystem videoSystem;
-  systems::audio::AudioSystem audioSystem;
-  systems::input::ControllerSystem controllerSystem;
-  GameOptions options;
-  street::session::GameSession session;
+  systems::input::Platform m_platform;
+  systems::graphics::VideoSystem m_videoSystem;
+  systems::audio::AudioSystem m_audioSystem;
+  systems::input::ControllerSystem m_controllerSystem;
+  GameOptions m_options;
+  street::session::GameSession m_session;
 
-  std::unique_ptr<states::EngineState> currentState;
-  bool running;
-  bool booting = false;
+  std::unique_ptr<states::EngineState> m_currentState;
+  bool m_running;
+  bool m_booting = false;
 };
 
 } // namespace engine

@@ -12,8 +12,8 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.option("-i");
-  if (!inputOptional.has_value()) {
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0]
               << " -i <input_file> [-o <output_dir>] [-m <mode>]" << std::endl;
     std::cerr << "Extracts audio samples from a Franko data file to WAV."
@@ -27,14 +27,14 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOptional.value();
+  std::string inputPath = inputOption.value();
 
   std::string outDir = ".";
-  const auto outputOptional = parser.option("-o");
-  if (outputOptional.has_value())
-    outDir = outputOptional.value();
+  const auto outputOption = parser.option("-o");
+  if (outputOption.has_value())
+    outDir = outputOption.value();
 
-  const auto modeOptional = parser.option("-m");
+  const auto modeOption = parser.option("-m");
 
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
@@ -43,11 +43,12 @@ int main(int argc, char **argv) {
         std::filesystem::path(inputPath).filename().string(), raw);
     const std::string &fileId = resource.fileId;
 
-    const auto &dec = resource.data;
-    std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
+    const auto &decompressed = resource.data;
+    std::cerr << "Decompressed to " << decompressed.size() << " bytes"
+              << std::endl;
 
-    const bool embedded = modeOptional.has_value()
-                              ? modeOptional.value() == "embedded"
+    const bool embedded = modeOption.has_value()
+                              ? modeOption.value() == "embedded"
                               : resource.resourceType ==
                                     converter::gameData::resourceTypes::SPRITES;
 
@@ -55,9 +56,11 @@ int main(int argc, char **argv) {
 
     std::vector<converter::audioExtractor::ExtractedAudio> samples;
     if (embedded) {
-      samples = converter::audioExtractor::extractEmbeddedSamBank(dec, fileId);
+      samples = converter::audioExtractor::extractEmbeddedSamBank(decompressed,
+                                                                  fileId);
     } else {
-      samples = converter::audioExtractor::extractStandaloneSamBank(dec, fileId);
+      samples = converter::audioExtractor::extractStandaloneSamBank(
+          decompressed, fileId);
     }
 
     for (const auto &s : samples) {

@@ -11,8 +11,8 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.option("-i");
-  if (!inputOptional.has_value()) {
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0] << " -i <input_file> [-o <output.bmp>]"
               << std::endl;
     std::cerr
@@ -22,8 +22,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOptional.value();
-  const auto outputOptional = parser.option("-o");
+  std::string inputPath = inputOption.value();
+  const auto outputOption = parser.option("-o");
 
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
     auto resource = converter::fileContainer::unpack(
         std::filesystem::path(inputPath).filename().string(), raw);
     const std::string &fileId = resource.fileId;
-    std::string outputPath = outputOptional.value_or(fileId + ".bmp");
+    std::string outputPath = outputOption.value_or(fileId + ".bmp");
 
     auto bmp = converter::amosCompact::decompress(resource.data);
     filesystem::writeFile::writeFile(outputPath, bmp);

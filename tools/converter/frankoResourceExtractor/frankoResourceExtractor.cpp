@@ -171,7 +171,7 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
     return 1;
   }
   const std::string &fileId = resource.fileId;
-  const std::vector<uint8_t> &dec = resource.data;
+  const std::vector<uint8_t> &decompressed = resource.data;
 
   std::cerr << fileId << " ["
             << lib::converter::gameData::resourceTypes::name(
@@ -184,7 +184,7 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
   if (resource.resourceType ==
       lib::converter::gameData::resourceTypes::SCREEN_PACKAGE) {
     try {
-      auto bmpData = lib::converter::amosCompact::decompress(dec);
+      auto bmpData = lib::converter::amosCompact::decompress(decompressed);
       outputs.push_back({fileId + ".bmp", std::move(bmpData)});
     } catch (const std::exception &e) {
       std::cerr << "  SPACK error: " << e.what() << std::endl;
@@ -194,14 +194,15 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
     return failed ? 1 : 0;
   }
 
-  std::cerr << "  decompressed: " << dec.size() << " bytes" << std::endl;
+  std::cerr << "  decompressed: " << decompressed.size() << " bytes"
+            << std::endl;
 
   switch (resource.resourceType) {
   case lib::converter::gameData::resourceTypes::SPRITES: {
     try {
       auto palette = lib::converter::spriteSheet::selectPalette(fileId);
-      auto sprites =
-          lib::converter::spriteSheet::convertToIndividual(dec, palette);
+      auto sprites = lib::converter::spriteSheet::convertToIndividual(
+          decompressed, palette);
       lib::converter::spriteSheet::applySpritePaletteFixes(fileId, sprites);
       applyScreenPalette(inputPath, fileId, sprites);
       std::vector<int> skipped;
@@ -229,10 +230,10 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
       failed = true;
     }
     try {
-      auto samBank = embeddedSamBank(dec);
+      auto samBank = embeddedSamBank(decompressed);
       if (!samBank.empty()) {
-        auto samples =
-            lib::converter::audioExtractor::extractEmbeddedSamBank(dec, fileId);
+        auto samples = lib::converter::audioExtractor::extractEmbeddedSamBank(
+            decompressed, fileId);
         for (auto &s : samples) {
           outputs.push_back({std::move(s.name), std::move(s.data)});
         }
@@ -247,7 +248,7 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
   case lib::converter::gameData::resourceTypes::ICONS: {
     if (isLevelFile(fileId)) {
       try {
-        auto level = lib::converter::levelScript::parse(dec);
+        auto level = lib::converter::levelScript::parse(decompressed);
         outputs.push_back({fileId + ".json",
                            lib::converter::levelScript::toJson(level, fileId)});
       } catch (const std::exception &e) {
@@ -257,11 +258,12 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
       break;
     }
     try {
-      auto bitmaps = lib::converter::bitmapExtractor::extract(dec, fileId);
+      auto bitmaps =
+          lib::converter::bitmapExtractor::extract(decompressed, fileId);
       size_t skipped = 0;
-      for (auto &bm : bitmaps) {
-        if (bm.error.empty()) {
-          outputs.push_back({bm.name + ".bmp", std::move(bm.bmpData)});
+      for (auto &bitmap : bitmaps) {
+        if (bitmap.error.empty()) {
+          outputs.push_back({bitmap.name + ".bmp", std::move(bitmap.bmpData)});
         } else {
           skipped++;
         }
@@ -269,9 +271,10 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
       if (skipped > 0) {
         std::cerr << "  skipped " << skipped << " of " << bitmaps.size()
                   << " bitmaps:" << std::endl;
-        for (const auto &bm : bitmaps) {
-          if (!bm.error.empty()) {
-            std::cerr << "    " << bm.name << ": " << bm.error << std::endl;
+        for (const auto &bitmap : bitmaps) {
+          if (!bitmap.error.empty()) {
+            std::cerr << "    " << bitmap.name << ": " << bitmap.error
+                      << std::endl;
           }
         }
       }
@@ -289,7 +292,7 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
                                   ? codeCards::consts::VERSION12_CARD_SIZE
                                   : codeCards::consts::CARD_SIZE;
       try {
-        auto codes = codeCards::parse(dec, cardSize);
+        auto codes = codeCards::parse(decompressed, cardSize);
         outputs.push_back(
             {fileId + "_codecards.json", codeCards::toJson(codes)});
       } catch (const std::exception &e) {
@@ -299,10 +302,10 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
       const size_t start = codeCards::consts::FIRST_CARD_OFFSET;
       const size_t end =
           start + codeCards::consts::CARD_COUNT * cardSize * cardSize;
-      if (dec.size() >= end) {
-        outputs.push_back(
-            {fileId + "_cards.bin",
-             std::vector<uint8_t>(dec.begin() + start, dec.begin() + end)});
+      if (decompressed.size() >= end) {
+        outputs.push_back({fileId + "_cards.bin",
+                           std::vector<uint8_t>(decompressed.begin() + start,
+                                                decompressed.begin() + end)});
       }
     }
     break;
@@ -310,8 +313,8 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
 
   case lib::converter::gameData::resourceTypes::SAMPLES: {
     try {
-      auto samples =
-          lib::converter::audioExtractor::extractStandaloneSamBank(dec, fileId);
+      auto samples = lib::converter::audioExtractor::extractStandaloneSamBank(
+          decompressed, fileId);
       for (auto &s : samples) {
         outputs.push_back({std::move(s.name), std::move(s.data)});
       }
@@ -327,7 +330,8 @@ int extractFile(const std::string &inputPath, const std::string &outDir) {
 
   case lib::converter::gameData::resourceTypes::MUSIC: {
     try {
-      auto abk = lib::converter::audioExtractor::wrapMusicBank(dec, fileId);
+      auto abk =
+          lib::converter::audioExtractor::wrapMusicBank(decompressed, fileId);
       auto s3mData = lib::converter::abkToS3m::convert(abk.data);
       outputs.push_back({fileId + ".s3m", std::move(s3mData)});
     } catch (const std::exception &e) {

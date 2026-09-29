@@ -11,9 +11,9 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.option("-i");
+  const auto inputOption = parser.option("-i");
 
-  if (!inputOptional.has_value()) {
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0]
               << " -i <input_file> [-o <output.bmp>] [-p <palette>]"
               << std::endl;
@@ -23,9 +23,9 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputFilePath = inputOptional.value();
-  const auto outputOptional = parser.option("-o");
-  const auto paletteOptional = parser.option("-p");
+  std::string inputFilePath = inputOption.value();
+  const auto outputOption = parser.option("-o");
+  const auto paletteOption = parser.option("-p");
 
   try {
     auto compressedData = filesystem::readFile::readFile(inputFilePath);
@@ -34,10 +34,10 @@ int main(int argc, char **argv) {
         compressedData);
     const std::string &fileId = resource.fileId;
 
-    std::string outputFilePath = outputOptional.value_or(fileId + "_sheet.bmp");
+    std::string outputFilePath = outputOption.value_or(fileId + "_sheet.bmp");
     auto palette =
-        paletteOptional.has_value()
-            ? converter::gameData::palettes::byName(paletteOptional.value())
+        paletteOption.has_value()
+            ? converter::gameData::palettes::byName(paletteOption.value())
             : converter::spriteSheet::selectPalette(fileId);
 
     std::cerr << "Decompressing " << inputFilePath << " (" << compressedData.size()

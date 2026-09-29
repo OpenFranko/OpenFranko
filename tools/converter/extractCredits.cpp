@@ -9,8 +9,8 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.option("-i");
-  if (!inputOptional.has_value()) {
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0]
               << " -i <game executable> [-o <credits.json>] [-t <intro.json>]"
               << std::endl;
@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
   const std::string outputPath = parser.option("-o").value_or("credits.json");
 
   try {
-    const auto executable = filesystem::readFile::readFile(*inputOptional);
+    const auto executable = filesystem::readFile::readFile(*inputOption);
     const auto pages = converter::endingCredits::extract(executable);
     std::size_t lines = 0;
     for (const auto &page : pages) {

@@ -12,8 +12,8 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.option("-i");
-  if (!inputOptional.has_value()) {
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0]
               << " -i <input_file> [-o <output_dir>] [-p <palette>]"
               << std::endl;
@@ -26,14 +26,14 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOptional.value();
+  std::string inputPath = inputOption.value();
 
   std::string outDir = ".";
-  const auto outputOptional = parser.option("-o");
-  if (outputOptional.has_value())
-    outDir = outputOptional.value();
+  const auto outputOption = parser.option("-o");
+  if (outputOption.has_value())
+    outDir = outputOption.value();
 
-  const auto paletteOptional = parser.option("-p");
+  const auto paletteOption = parser.option("-p");
 
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
@@ -43,21 +43,23 @@ int main(int argc, char **argv) {
     const std::string &fileId = resource.fileId;
 
     auto palette =
-        paletteOptional.has_value()
-            ? converter::gameData::palettes::byName(paletteOptional.value())
+        paletteOption.has_value()
+            ? converter::gameData::palettes::byName(paletteOption.value())
             : converter::spriteSheet::selectPalette(fileId);
 
-    const auto &dec = resource.data;
-    std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
+    const auto &decompressed = resource.data;
+    std::cerr << "Decompressed to " << decompressed.size() << " bytes"
+              << std::endl;
 
-    auto header = converter::spriteSheet::parseHeader(dec);
+    auto header = converter::spriteSheet::parseHeader(decompressed);
     std::cerr << "Sprite bank: " << header.count << " sprites, max "
               << header.maxWidth << "x" << header.maxHeight << std::endl;
 
     std::filesystem::create_directories(outDir);
 
-    auto sprites = converter::spriteSheet::convertToIndividual(dec, palette);
-    if (!paletteOptional.has_value()) {
+    auto sprites =
+        converter::spriteSheet::convertToIndividual(decompressed, palette);
+    if (!paletteOption.has_value()) {
       converter::spriteSheet::applySpritePaletteFixes(fileId, sprites);
       const std::string screen(converter::spriteSheet::paletteScreen(fileId));
       if (!screen.empty()) {

@@ -104,29 +104,30 @@ std::vector<uint16_t> readSpackPalette(const std::vector<uint8_t> &data,
   }
   std::vector<uint8_t> slice(data.begin() + static_cast<std::ptrdiff_t>(offset),
                              data.end());
-  auto hdr = headers::parseSpackHeader(slice);
-  return {std::begin(hdr.amigaPalette), std::end(hdr.amigaPalette)};
+  auto header = headers::parseSpackHeader(slice);
+  return {std::begin(header.amigaPalette), std::end(header.amigaPalette)};
 }
 
-std::string skipReason(const DecodedImage &img) {
-  if (img.pixels.empty()) {
+std::string skipReason(const DecodedImage &image) {
+  if (image.pixels.empty()) {
     return "Bitmap decoded to an empty image";
   }
-  return "Bitmap is only " + std::to_string(img.width) + "x" +
-         std::to_string(img.height) + " pixels";
+  return "Bitmap is only " + std::to_string(image.width) + "x" +
+         std::to_string(image.height) + " pixels";
 }
 
 ExtractedBitmap convertBitmap(const std::vector<uint8_t> &data, size_t offset,
                               const std::vector<uint16_t> &palette,
                               const std::string &name, bool skipTiny) {
   try {
-    auto img = decodeAmosBitmap(data, offset, palette.data(),
-                                static_cast<int>(palette.size()));
-    if (img.pixels.empty() || (skipTiny && (img.width < 2 || img.height < 2))) {
-      return {name, {}, skipReason(img)};
+    auto image = decodeAmosBitmap(data, offset, palette.data(),
+                                  static_cast<int>(palette.size()));
+    if (image.pixels.empty() ||
+        (skipTiny && (image.width < 2 || image.height < 2))) {
+      return {name, {}, skipReason(image)};
     }
-    auto bmp = bmpWriter::pixelsToBmp(img.width, img.height, img.pixels.data(),
-                                      palette.data(),
+    auto bmp = bmpWriter::pixelsToBmp(image.width, image.height,
+                                      image.pixels.data(), palette.data(),
                                       static_cast<int>(palette.size()));
     return {name, std::move(bmp), {}};
   } catch (const std::exception &e) {

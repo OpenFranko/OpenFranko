@@ -11,8 +11,8 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.option("-i");
-  if (!inputOptional.has_value()) {
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0] << " -i <input_file> [-o <output.abk>]"
               << std::endl;
     std::cerr
@@ -22,8 +22,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOptional.value();
-  const auto outputOptional = parser.option("-o");
+  std::string inputPath = inputOption.value();
+  const auto outputOption = parser.option("-o");
 
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
@@ -31,12 +31,13 @@ int main(int argc, char **argv) {
     auto resource = converter::fileContainer::unpack(
         std::filesystem::path(inputPath).filename().string(), raw);
     const std::string &fileId = resource.fileId;
-    std::string outputPath = outputOptional.value_or(fileId + ".abk");
+    std::string outputPath = outputOption.value_or(fileId + ".abk");
 
-    const auto &dec = resource.data;
-    std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
+    const auto &decompressed = resource.data;
+    std::cerr << "Decompressed to " << decompressed.size() << " bytes"
+              << std::endl;
 
-    auto abk = converter::audioExtractor::wrapMusicBank(dec, fileId);
+    auto abk = converter::audioExtractor::wrapMusicBank(decompressed, fileId);
     filesystem::writeFile::writeFile(outputPath, abk.data);
     std::cerr << "Wrote " << outputPath << " (" << abk.data.size()
               << " bytes)" << std::endl;

@@ -23,7 +23,7 @@ public:
 private:
   struct Stream;
 
-  std::unique_ptr<Stream> stream;
+  std::unique_ptr<Stream> m_stream;
 };
 
 } // namespace audio

@@ -55,26 +55,26 @@ SCENARIO("parseHeader reads sprite bank header and descriptors") {
     auto data = buildBankHeader(2, 64, 32, 16, 0x1000, descs);
 
     WHEN("parseHeader is called") {
-      auto hdr = parseHeader(data);
+      auto header = parseHeader(data);
 
       THEN("The header fields are correct") {
-        REQUIRE(hdr.count == 2);
-        REQUIRE(hdr.maxWidth == 64);
-        REQUIRE(hdr.maxHeight == 32);
-        REQUIRE(hdr.numColors == 16);
-        REQUIRE(hdr.samBankOffset == 0x1000);
+        REQUIRE(header.count == 2);
+        REQUIRE(header.maxWidth == 64);
+        REQUIRE(header.maxHeight == 32);
+        REQUIRE(header.numColors == 16);
+        REQUIRE(header.samBankOffset == 0x1000);
       }
 
       THEN("The descriptors are correct") {
-        REQUIRE(hdr.descriptors.size() == 2);
-        REQUIRE(hdr.descriptors[0].wordOffset == 100);
-        REQUIRE(hdr.descriptors[0].widthWords == 4);
-        REQUIRE(hdr.descriptors[0].height == 32);
-        REQUIRE(hdr.descriptors[0].hotspotX == 8);
-        REQUIRE(hdr.descriptors[0].hotspotY == 16);
-        REQUIRE(hdr.descriptors[1].wordOffset == 200);
-        REQUIRE(hdr.descriptors[1].widthWords == 2);
-        REQUIRE(hdr.descriptors[1].height == 16);
+        REQUIRE(header.descriptors.size() == 2);
+        REQUIRE(header.descriptors[0].wordOffset == 100);
+        REQUIRE(header.descriptors[0].widthWords == 4);
+        REQUIRE(header.descriptors[0].height == 32);
+        REQUIRE(header.descriptors[0].hotspotX == 8);
+        REQUIRE(header.descriptors[0].hotspotY == 16);
+        REQUIRE(header.descriptors[1].wordOffset == 200);
+        REQUIRE(header.descriptors[1].widthWords == 2);
+        REQUIRE(header.descriptors[1].height == 16);
       }
     }
   }

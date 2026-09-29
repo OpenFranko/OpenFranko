@@ -14,8 +14,8 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.option("-i");
-  if (!inputOptional.has_value()) {
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0] << " -i <input_file> [-o <output.json>]"
               << std::endl;
     std::cerr << "Converts a Franko level script (files 0385-0387, or p1-p3 "
@@ -24,8 +24,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOptional.value();
-  const auto outputOptional = parser.option("-o");
+  std::string inputPath = inputOption.value();
+  const auto outputOption = parser.option("-o");
 
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
     auto resource = converter::fileContainer::unpack(
         std::filesystem::path(inputPath).filename().string(), raw);
     const std::string &fileId = resource.fileId;
-    std::string outputPath = outputOptional.value_or(fileId + ".json");
+    std::string outputPath = outputOption.value_or(fileId + ".json");
 
     const auto &levelFiles = converter::gameData::fileIds::LEVEL_FILES;
     if (std::find(levelFiles.begin(), levelFiles.end(),
@@ -42,10 +42,11 @@ int main(int argc, char **argv) {
                 << " is not one of the level script files (0385-0387, p1-p3)"
                 << std::endl;
 
-    const auto &dec = resource.data;
-    std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
+    const auto &decompressed = resource.data;
+    std::cerr << "Decompressed to " << decompressed.size() << " bytes"
+              << std::endl;
 
-    auto level = converter::levelScript::parse(dec);
+    auto level = converter::levelScript::parse(decompressed);
     std::cerr << "Level script: " << level.lengthInColumns << " columns, "
               << level.waves.size() << " waves" << std::endl;
 

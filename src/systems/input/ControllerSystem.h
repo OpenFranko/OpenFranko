@@ -77,17 +77,17 @@ private:
   bool isJoystickKey(Key key) const;
   bool isHeld(Key key) const;
 
-  KeyMode keyMode = KeyMode::FrontEnd;
-  bool fireLatched = false;
-  bool mouseButtonHeld = false;
-  bool mouseButtonDown = false;
-  bool deleteHeld = false;
-  std::array<bool, KEYS> heldKeys{};
-  std::string receivedKeys;
-  std::string typed;
-  std::set<int> typingKeys;
-  std::optional<FunctionKey> receivedKeyEvent;
-  std::optional<FunctionKey> keyEvent;
+  KeyMode m_keyMode = KeyMode::FrontEnd;
+  bool m_fireLatched = false;
+  bool m_mouseButtonHeld = false;
+  bool m_mouseButtonDown = false;
+  bool m_deleteHeld = false;
+  std::array<bool, KEYS> m_heldKeys{};
+  std::string m_receivedKeys;
+  std::string m_typed;
+  std::set<int> m_typingKeys;
+  std::optional<FunctionKey> m_receivedKeyEvent;
+  std::optional<FunctionKey> m_keyEvent;
 };
 
 } // namespace input

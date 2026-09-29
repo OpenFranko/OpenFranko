@@ -17,7 +17,7 @@ public:
   std::optional<std::string> option(const std::string &name) const;
 
 private:
-  std::vector<std::string> inputStrings;
+  std::vector<std::string> m_inputStrings;
 };
 
 } // namespace argumentParser

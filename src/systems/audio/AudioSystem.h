@@ -44,7 +44,7 @@ private:
   void startMusic(bool looping);
   void applyTempo();
 
-  std::unique_ptr<Output> output;
+  std::unique_ptr<Output> m_output;
 };
 
 } // namespace audio

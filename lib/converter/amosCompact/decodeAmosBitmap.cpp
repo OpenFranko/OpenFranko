@@ -22,24 +22,25 @@ DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
 
   std::vector<uint8_t> slice(data.begin() + static_cast<std::ptrdiff_t>(offset),
                              data.end());
-  std::vector<uint16_t> palVec(palette, palette + numberOfColors);
+  std::vector<uint16_t> paletteColors(palette, palette + numberOfColors);
 
-  auto hdr = headers::parseBitmapHeader(slice);
-  auto bm = detail::unpackBitmap(slice, hdr, palVec);
+  auto header = headers::parseBitmapHeader(slice);
+  auto bitmap = detail::unpackBitmap(slice, header, paletteColors);
 
-  DecodedImage img;
-  img.width = bm.width;
-  img.height = bm.height;
-  if (!bm.chunkyPixels.empty() && bm.width > 0 && bm.height > 0) {
-    size_t n = static_cast<size_t>(bm.width) * bm.height;
-    if (bm.chunkyPixels.size() < n) {
+  DecodedImage image;
+  image.width = bitmap.width;
+  image.height = bitmap.height;
+  if (!bitmap.chunkyPixels.empty() && bitmap.width > 0 && bitmap.height > 0) {
+    size_t n = static_cast<size_t>(bitmap.width) * bitmap.height;
+    if (bitmap.chunkyPixels.size() < n) {
       throw std::runtime_error(
           "Unpacked bitmap is smaller than its dimensions");
     }
-    img.pixels.assign(bm.chunkyPixels.begin(), bm.chunkyPixels.begin() + n);
+    image.pixels.assign(bitmap.chunkyPixels.begin(),
+                        bitmap.chunkyPixels.begin() + n);
   }
 
-  return img;
+  return image;
 }
 
 } // namespace openfranko::lib::converter::amosCompact

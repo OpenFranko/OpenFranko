@@ -30,11 +30,11 @@ public:
 private:
   struct Window;
 
-  std::unique_ptr<Window> window;
-  Display shown;
-  std::vector<uint32_t> frame;
-  bool frameChanged = false;
-  bool ntsc = false;
+  std::unique_ptr<Window> m_window;
+  Display m_shown;
+  std::vector<uint32_t> m_frame;
+  bool m_frameChanged = false;
+  bool m_ntsc = false;
 };
 
 } // namespace graphics

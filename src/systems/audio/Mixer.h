@@ -89,25 +89,25 @@ private:
   int nextSample(Voice &voice);
   void filter(int16_t *stereo, int frames);
 
-  mutable std::mutex mutex;
-  int rate;
-  std::unique_ptr<Module> module;
-  bool moduleLoaded = false;
-  bool modulePlaying = false;
-  int moduleLoops = 0;
-  double moduleTempoFactor = 1.0;
-  int tempoOverride = 0;
-  RowPosition overridePosition{-1, -1};
-  RowPosition lastPosition{-1, -1};
-  ModuleTiming overrideTiming{0, 0};
-  std::set<RowPosition> tempoRows;
-  int musicVolume;
-  std::vector<int16_t> musicBuffer;
-  std::array<Voice, VOICES> voices;
-  std::optional<Playing> silencing;
-  bool filterOn = false;
-  Biquad lowPass;
-  std::array<std::array<double, 4>, 2> filterHistory{};
+  mutable std::mutex m_mutex;
+  int m_rate;
+  std::unique_ptr<Module> m_module;
+  bool m_moduleLoaded = false;
+  bool m_modulePlaying = false;
+  int m_moduleLoops = 0;
+  double m_moduleTempoFactor = 1.0;
+  int m_tempoOverride = 0;
+  RowPosition m_overridePosition{-1, -1};
+  RowPosition m_lastPosition{-1, -1};
+  ModuleTiming m_overrideTiming{0, 0};
+  std::set<RowPosition> m_tempoRows;
+  int m_musicVolume;
+  std::vector<int16_t> m_musicBuffer;
+  std::array<Voice, VOICES> m_voices;
+  std::optional<Playing> m_silencing;
+  bool m_filterOn = false;
+  Biquad m_lowPass;
+  std::array<std::array<double, 4>, 2> m_filterHistory{};
 };
 
 } // namespace audio

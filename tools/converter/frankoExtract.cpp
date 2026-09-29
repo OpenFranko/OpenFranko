@@ -11,8 +11,8 @@ namespace extractor = openfranko::tools::converter::frankoResourceExtractor;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.option("-i");
-  if (!inputOptional.has_value()) {
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0]
               << " -i <file_or_dir> [-o <output_dir>] [-e <game executable>]"
               << std::endl;
@@ -39,11 +39,11 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOptional.value();
+  std::string inputPath = inputOption.value();
   std::string outDir = "extracted";
-  const auto outputOptional = parser.option("-o");
-  if (outputOptional.has_value()) {
-    outDir = outputOptional.value();
+  const auto outputOption = parser.option("-o");
+  if (outputOption.has_value()) {
+    outDir = outputOption.value();
   }
 
   try {

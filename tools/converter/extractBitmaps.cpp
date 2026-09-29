@@ -11,8 +11,8 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.option("-i");
-  if (!inputOptional.has_value()) {
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0] << " -i <input_file> [-o <output_dir>]"
               << std::endl;
     std::cerr << "Extracts bitmaps from a Franko icon/bitmap file (type "
@@ -22,12 +22,12 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOptional.value();
+  std::string inputPath = inputOption.value();
 
   std::string outDir = ".";
-  const auto outputOptional = parser.option("-o");
-  if (outputOptional.has_value())
-    outDir = outputOptional.value();
+  const auto outputOption = parser.option("-o");
+  if (outputOption.has_value())
+    outDir = outputOption.value();
 
   try {
     auto raw = filesystem::readFile::readFile(inputPath);
@@ -36,21 +36,23 @@ int main(int argc, char **argv) {
         std::filesystem::path(inputPath).filename().string(), raw);
     const std::string &fileId = resource.fileId;
 
-    const auto &dec = resource.data;
-    std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
+    const auto &decompressed = resource.data;
+    std::cerr << "Decompressed to " << decompressed.size() << " bytes"
+              << std::endl;
 
     std::filesystem::create_directories(outDir);
 
-    auto bitmaps = converter::bitmapExtractor::extract(dec, fileId);
+    auto bitmaps = converter::bitmapExtractor::extract(decompressed, fileId);
     size_t written = 0;
-    for (const auto &bm : bitmaps) {
-      if (!bm.error.empty()) {
-        std::cerr << "Skipped " << bm.name << ": " << bm.error << std::endl;
+    for (const auto &bitmap : bitmaps) {
+      if (!bitmap.error.empty()) {
+        std::cerr << "Skipped " << bitmap.name << ": " << bitmap.error
+                  << std::endl;
         continue;
       }
-      std::string path = outDir + "/" + bm.name + ".bmp";
-      filesystem::writeFile::writeFile(path, bm.bmpData);
-      std::cerr << "  -> " << path << " (" << bm.bmpData.size() << " bytes)"
+      std::string path = outDir + "/" + bitmap.name + ".bmp";
+      filesystem::writeFile::writeFile(path, bitmap.bmpData);
+      std::cerr << "  -> " << path << " (" << bitmap.bmpData.size() << " bytes)"
                 << std::endl;
       written++;
     }
