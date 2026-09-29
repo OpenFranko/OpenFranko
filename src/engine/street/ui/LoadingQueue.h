@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_UI_LOADINGMOCK_H_
-#define ENGINE_STREET_UI_LOADINGMOCK_H_
+#ifndef ENGINE_STREET_UI_LOADINGQUEUE_H_
+#define ENGINE_STREET_UI_LOADINGQUEUE_H_
 
 #include "StatusPanel.h"
 
@@ -12,7 +12,7 @@ namespace engine {
 namespace street {
 namespace ui {
 
-class LoadingMock {
+class LoadingQueue {
 public:
   static constexpr int READ_FRAMES = 25;
   static constexpr int UNPACK_FRAMES = 25;
@@ -35,4 +35,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_UI_LOADINGMOCK_H_
+#endif // ENGINE_STREET_UI_LOADINGQUEUE_H_

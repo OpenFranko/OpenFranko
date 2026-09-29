@@ -104,7 +104,7 @@ std::vector<uint16_t> readSPACKPalette(const std::vector<uint8_t> &data,
   }
   std::vector<uint8_t> slice(data.begin() + static_cast<std::ptrdiff_t>(offset),
                              data.end());
-  auto hdr = headers::parseSPACKHeader(slice);
+  auto hdr = headers::parseSpackHeader(slice);
   return {std::begin(hdr.amigaPalette), std::end(hdr.amigaPalette)};
 }
 

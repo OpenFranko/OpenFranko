@@ -28,7 +28,7 @@ constexpr int16_t JOY_FIRE = 16;
 constexpr int PASSWORD_FRAMES = 6;
 constexpr int SKIP_FRAME = PASSWORD_FRAMES + 1;
 constexpr int LOADED_FRAME =
-    SKIP_FRAME + CarStage::FILES * LoadingMock::FILE_FRAMES;
+    SKIP_FRAME + CarStage::FILES * LoadingQueue::FILE_FRAMES;
 constexpr int SCREEN_CLOSE = 4;
 constexpr int ROAD_SCREENS = 1 + 1 + SCREEN_CLOSE;
 constexpr int DRIVE_FRAME = LOADED_FRAME + ROAD_SCREENS;

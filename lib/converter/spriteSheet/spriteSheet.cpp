@@ -222,7 +222,7 @@ void applyScreenPalette(const std::string &fileId,
           headers::SPACK_SCREEN_HEADER) {
     throw std::runtime_error("Not a packed screen");
   }
-  const auto header = headers::parseSPACKHeader(screen);
+  const auto header = headers::parseSpackHeader(screen);
   const int colours = std::min<int>(
       header.numberOfColors, static_cast<int>(headers::SPACK_PALETTE_SIZE));
   for (int i = LOGO_REFLECTION_FIRST_SPRITE;

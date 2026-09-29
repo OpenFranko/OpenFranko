@@ -110,10 +110,10 @@ SpiderLogoState::~SpiderLogoState() {
   m_audioSystem.clearSFX(JINGLE_SAMPLE);
 }
 
-std::optional<EngineStateEnum> SpiderLogoState::update() {
+std::optional<EngineStateId> SpiderLogoState::update() {
   if (m_foto && m_foto->isFinished()) {
     m_audioSystem.stopMusic();
-    return EngineStateEnum::Adverts;
+    return EngineStateId::Adverts;
   }
   if (m_logoStart) {
     logo();

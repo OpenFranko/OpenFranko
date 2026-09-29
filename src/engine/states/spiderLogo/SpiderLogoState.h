@@ -8,7 +8,7 @@
 #include "../../AmigaDisplay.h"
 #include "../../amal/Machine.h"
 #include "../../effects/sequences/FotoSequence.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 
 #include <optional>
 #include <vector>
@@ -19,13 +19,13 @@ namespace engine {
 namespace states {
 namespace spiderLogo {
 
-class SpiderLogoState : public IEngineState {
+class SpiderLogoState : public EngineState {
 public:
   SpiderLogoState(systems::graphics::VideoSystem &videoSystem,
                   systems::audio::AudioSystem &audioSystem);
   ~SpiderLogoState();
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   void walk();

@@ -20,7 +20,7 @@ constexpr size_t SPACK_PALETTE_SIZE = 32;
 
 constexpr size_t PACKED_BITMAP_HEADER_SIZE = 24;
 
-struct SPACKHeader {
+struct SpackHeader {
   uint16_t screenWidth;
   uint16_t screenHeight;
   uint16_t windowX;
@@ -35,7 +35,7 @@ struct SPACKHeader {
   uint16_t amigaPalette[32];
 };
 
-SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data);
+SpackHeader parseSpackHeader(const std::vector<uint8_t> &data);
 
 struct BitmapHeader {
   int16_t xOffset;

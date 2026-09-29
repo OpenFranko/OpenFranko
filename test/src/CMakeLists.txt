@@ -91,12 +91,12 @@ add_executable(${AMAL_ANIM_TEST_TARGET}
 target_link_libraries(${AMAL_ANIM_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${AMAL_ANIM_TEST_TARGET} COMMAND ${AMAL_ANIM_TEST_TARGET})
 
-set(CHARACTER_SELECTION_TEST_TARGET characterSelectionTest)
-add_executable(${CHARACTER_SELECTION_TEST_TARGET}
-    engine/effects/sequences/characterSelectionTest.cpp
+set(CHARACTER_SELECTION_SEQUENCE_TEST_TARGET characterSelectionSequenceTest)
+add_executable(${CHARACTER_SELECTION_SEQUENCE_TEST_TARGET}
+    engine/effects/sequences/characterSelectionSequenceTest.cpp
 )
-target_link_libraries(${CHARACTER_SELECTION_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
-add_test(NAME ${CHARACTER_SELECTION_TEST_TARGET} COMMAND ${CHARACTER_SELECTION_TEST_TARGET})
+target_link_libraries(${CHARACTER_SELECTION_SEQUENCE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+add_test(NAME ${CHARACTER_SELECTION_SEQUENCE_TEST_TARGET} COMMAND ${CHARACTER_SELECTION_SEQUENCE_TEST_TARGET})
 
 set(MACHINE_TEST_TARGET machineTest)
 add_executable(${MACHINE_TEST_TARGET}
@@ -154,12 +154,12 @@ add_executable(${BOSS_STAGE_TEST_TARGET}
 target_link_libraries(${BOSS_STAGE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${BOSS_STAGE_TEST_TARGET} COMMAND ${BOSS_STAGE_TEST_TARGET})
 
-set(LOADING_MOCK_TEST_TARGET loadingMockTest)
-add_executable(${LOADING_MOCK_TEST_TARGET}
-    engine/street/ui/loadingMockTest.cpp
+set(LOADING_QUEUE_TEST_TARGET loadingQueueTest)
+add_executable(${LOADING_QUEUE_TEST_TARGET}
+    engine/street/ui/loadingQueueTest.cpp
 )
-target_link_libraries(${LOADING_MOCK_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
-add_test(NAME ${LOADING_MOCK_TEST_TARGET} COMMAND ${LOADING_MOCK_TEST_TARGET})
+target_link_libraries(${LOADING_QUEUE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${LOADING_QUEUE_TEST_TARGET} COMMAND ${LOADING_QUEUE_TEST_TARGET})
 
 set(RAINBOW_TEST_TARGET rainbowTest)
 add_executable(${RAINBOW_TEST_TARGET}

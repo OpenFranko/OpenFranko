@@ -7,7 +7,7 @@
 #include "../../GameOptions.h"
 #include "../../street/scenes/HighScoreScene.h"
 #include "../../street/session/GameSession.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 #include "../shared/EngineStreetHost.h"
 
 namespace openfranko {
@@ -16,13 +16,13 @@ namespace engine {
 namespace states {
 namespace highScore {
 
-class HighScoreState : public IEngineState {
+class HighScoreState : public EngineState {
 public:
   HighScoreState(systems::graphics::VideoSystem &videoSystem,
                  systems::audio::AudioSystem &audioSystem, GameOptions &options,
                  street::session::GameSession &session);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
   const street::scenes::HighScoreScene &scene() const;
 

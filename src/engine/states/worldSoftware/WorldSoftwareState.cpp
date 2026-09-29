@@ -47,9 +47,9 @@ WorldSoftwareState::WorldSoftwareState(
 
 WorldSoftwareState::~WorldSoftwareState() { m_audioSystem.clearSFX(SAMPLE); }
 
-std::optional<EngineStateEnum> WorldSoftwareState::update() {
+std::optional<EngineStateId> WorldSoftwareState::update() {
   if (m_sequence.isFinished()) {
-    return EngineStateEnum::KneeAnimation;
+    return EngineStateId::KneeAnimation;
   }
 
   if (m_sequence.frame() == m_sequence.holdStart()) {

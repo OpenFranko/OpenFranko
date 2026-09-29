@@ -52,7 +52,7 @@ std::vector<systems::graphics::IndexedBitmap> loadSprites(GameVersion version) {
   return sprites;
 }
 
-effects::sequences::CharacterSelection::Joystick
+effects::sequences::CharacterSelectionSequence::Joystick
 joystickFrom(const systems::input::ControllerSystem::ControllerStates &states) {
   return {states.left, states.right, states.button};
 }
@@ -87,7 +87,7 @@ CharacterSelectionState::~CharacterSelectionState() {
   }
 }
 
-std::optional<EngineStateEnum> CharacterSelectionState::update() {
+std::optional<EngineStateId> CharacterSelectionState::update() {
   if (m_selection.isFinished()) {
     return firstStreet();
   }
@@ -121,14 +121,14 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
   return std::nullopt;
 }
 
-EngineStateEnum CharacterSelectionState::firstStreet() const {
+EngineStateId CharacterSelectionState::firstStreet() const {
   switch (m_session.registers[RO] + 1) {
   case SECOND_STAGE:
-    return EngineStateEnum::Level2;
+    return EngineStateId::Level2;
   case THIRD_STAGE:
-    return EngineStateEnum::StageProtectionCheck;
+    return EngineStateId::StageProtectionCheck;
   default:
-    return EngineStateEnum::Level1;
+    return EngineStateId::Level1;
   }
 }
 
@@ -138,7 +138,7 @@ void CharacterSelectionState::draw() {
   } else {
     m_screen.setPalette(m_picture.palette);
     m_screen.draw(m_picture, 0, -m_rows.first);
-    for (const effects::sequences::CharacterSelection::Bob *bob :
+    for (const effects::sequences::CharacterSelectionSequence::Bob *bob :
          {&m_selection.face(), &m_selection.hand()}) {
       const int sprite = bob->image - FIRST_SPRITE_IMAGE;
       if (bob->shown && bob->image != HIDDEN_IMAGE && sprite >= 0 &&

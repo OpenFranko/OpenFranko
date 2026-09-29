@@ -14,18 +14,18 @@ Level2State::Level2State(systems::graphics::VideoSystem &videoSystem,
       m_options(options), m_host(audioSystem, session.version),
       m_stage(m_host, session, options) {}
 
-std::optional<EngineStateEnum> Level2State::update() {
+std::optional<EngineStateId> Level2State::update() {
   m_stage.advance(
       shared::readStreetInput(m_controllerSystem, m_host.version()));
   shared::showStageFrame(m_videoSystem, m_stage.output(), m_options);
 
   switch (m_stage.outcome()) {
   case street::scenes::StreetStage::Outcome::GameOver:
-    return EngineStateEnum::GameOver;
+    return EngineStateId::GameOver;
   case street::scenes::StreetStage::Outcome::Quit:
-    return EngineStateEnum::HighScore;
+    return EngineStateId::HighScore;
   case street::scenes::StreetStage::Outcome::LevelFinished:
-    return EngineStateEnum::Level2Boss;
+    return EngineStateId::Level2Boss;
   case street::scenes::StreetStage::Outcome::Playing:
     break;
   }

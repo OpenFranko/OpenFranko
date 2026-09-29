@@ -8,7 +8,7 @@
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
 #include "../session/GameSession.h"
-#include "../ui/LoadingMock.h"
+#include "../ui/LoadingQueue.h"
 #include "../ui/StageFrame.h"
 #include "../ui/StatusPanel.h"
 #include "StreetHost.h"
@@ -175,7 +175,7 @@ private:
   effects::color::AmigaPalette m_palette;
   effects::color::AmigaPalette m_panelPalette;
   std::vector<core::Picture> m_columns;
-  ui::LoadingMock m_loading;
+  ui::LoadingQueue m_loading;
   std::optional<core::ScreenBlock> m_block;
 
   Step m_step = Step::Init;

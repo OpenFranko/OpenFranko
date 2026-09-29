@@ -9,7 +9,7 @@
 #include "../core/HighScoreTable.h"
 #include "../core/IndexedSurface.h"
 #include "../session/GameSession.h"
-#include "../ui/LoadingMock.h"
+#include "../ui/LoadingQueue.h"
 #include "StreetHost.h"
 
 #include <cstdint>
@@ -94,7 +94,7 @@ private:
   session::GameSession &m_session;
   const GameOptions &m_options;
   Save m_save;
-  ui::LoadingMock m_loading;
+  ui::LoadingQueue m_loading;
   core::ImageBank m_images;
   core::BobLayer m_bobs;
   core::Picture m_picture;

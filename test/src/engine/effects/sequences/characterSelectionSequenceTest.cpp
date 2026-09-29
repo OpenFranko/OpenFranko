@@ -1,4 +1,4 @@
-#include "../../../../../src/engine/effects/sequences/CharacterSelection.h"
+#include "../../../../../src/engine/effects/sequences/CharacterSelectionSequence.h"
 #include <catch2/catch_all.hpp>
 
 using namespace openfranko::src::engine;
@@ -6,29 +6,30 @@ using namespace openfranko::src::engine::effects::sequences;
 
 namespace {
 
-using Joystick = CharacterSelection::Joystick;
+using Joystick = CharacterSelectionSequence::Joystick;
 
 const Joystick NOTHING{};
 const Joystick LEFT{true, false, false};
 const Joystick RIGHT{false, true, false};
 const Joystick FIRE{false, false, true};
 
-void run(CharacterSelection &selection, int frames,
+void run(CharacterSelectionSequence &selection, int frames,
          const Joystick &joystick = NOTHING) {
   for (int frame = 0; frame < frames; ++frame) {
     selection.advance(joystick);
   }
 }
 
-void unpack(CharacterSelection &selection) { run(selection, 1); }
+void unpack(CharacterSelectionSequence &selection) { run(selection, 1); }
 
 } // namespace
 
-SCENARIO("CharacterSelection chooses between Franko and Alex as TWARZ does") {
+SCENARIO("CharacterSelectionSequence chooses between Franko and Alex as TWARZ "
+         "does") {
   GIVEN("A new selection") {
     GameOptions options;
     options.character = Character::Alex;
-    CharacterSelection selection(options);
+    CharacterSelectionSequence selection(options);
 
     THEN("The hand points at Franko, and Franko is chosen") {
       REQUIRE(options.character == Character::Franko);
@@ -71,11 +72,11 @@ SCENARIO("CharacterSelection chooses between Franko and Alex as TWARZ does") {
   }
 }
 
-SCENARIO("CharacterSelection plays the confirmation as TWARZ does") {
+SCENARIO("CharacterSelectionSequence plays the confirmation as TWARZ does") {
   GIVEN("Franko confirmed with the music option off") {
     GameOptions options;
     options.music = false;
-    CharacterSelection selection(options);
+    CharacterSelectionSequence selection(options);
     unpack(selection);
     selection.advance(FIRE);
 
@@ -151,7 +152,7 @@ SCENARIO("CharacterSelection plays the confirmation as TWARZ does") {
   GIVEN("Alex confirmed with the music option on") {
     GameOptions options;
     options.music = true;
-    CharacterSelection selection(options);
+    CharacterSelectionSequence selection(options);
     unpack(selection);
     selection.advance(RIGHT);
     selection.advance(FIRE);
@@ -211,7 +212,7 @@ SCENARIO("_CLOSE also shuts the screen the hiscore table left open") {
   GIVEN("Screen 7 still open and Franko confirmed with the music off") {
     GameOptions options;
     options.music = false;
-    CharacterSelection selection(options, 1);
+    CharacterSelectionSequence selection(options, 1);
     unpack(selection);
     selection.advance(FIRE);
     run(selection, 90);

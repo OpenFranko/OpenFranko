@@ -5,7 +5,7 @@
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../effects/sequences/BlyskSequence.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 #include "../shared/IntroStrip.h"
 #include "../shared/MusicFadeOut.h"
 
@@ -17,13 +17,13 @@ namespace engine {
 namespace states {
 namespace presents {
 
-class PresentsState : public IEngineState {
+class PresentsState : public EngineState {
 public:
   PresentsState(systems::graphics::VideoSystem &videoSystem,
                 systems::audio::AudioSystem &audioSystem,
                 systems::input::ControllerSystem &controllerSystem);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   systems::audio::AudioSystem &m_audioSystem;

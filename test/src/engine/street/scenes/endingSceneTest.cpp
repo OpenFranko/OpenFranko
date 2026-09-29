@@ -40,7 +40,7 @@ constexpr int PANEL_ROW = 270 - EndingScene::DISPLAY_LINE;
 constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
 
-constexpr int LOADED = 3 + EndingScene::FILES * LoadingMock::FILE_FRAMES + 1;
+constexpr int LOADED = 3 + EndingScene::FILES * LoadingQueue::FILE_FRAMES + 1;
 constexpr int SCREEN_CLOSE = 4;
 constexpr int SCREEN_CLOSE_SHOWN = 2;
 constexpr int STILL_SHOWN = LOADED + SCREEN_CLOSE + SCREEN_CLOSE + 2;

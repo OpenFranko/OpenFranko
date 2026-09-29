@@ -10,7 +10,7 @@
 #include "../core/EndingCredits.h"
 #include "../core/IndexedSurface.h"
 #include "../session/GameSession.h"
-#include "../ui/LoadingMock.h"
+#include "../ui/LoadingQueue.h"
 #include "../ui/StatusPanel.h"
 #include "StreetHost.h"
 
@@ -133,7 +133,7 @@ private:
   StreetHost &m_host;
   session::GameSession &m_session;
   amal::Machine m_machine;
-  ui::LoadingMock m_loading;
+  ui::LoadingQueue m_loading;
   core::ImageBank m_images;
   core::ImageBank m_parked;
   core::BobLayer m_bobs;

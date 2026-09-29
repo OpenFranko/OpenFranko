@@ -1,4 +1,4 @@
-#include "../../../../../src/engine/street/ui/LoadingMock.h"
+#include "../../../../../src/engine/street/ui/LoadingQueue.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
@@ -29,7 +29,7 @@ Picture artwork() {
 SCENARIO("Each mocked file is read under LADUJ, then unpacked under CZEKAJ") {
   GIVEN("Two files queued") {
     StatusPanel panel(loadingStrip(), artwork());
-    LoadingMock loading;
+    LoadingQueue loading;
     std::vector<int> loaded;
     loading.queue([&] { loaded.push_back(1); });
     loading.queue([&] { loaded.push_back(2); });
@@ -44,7 +44,7 @@ SCENARIO("Each mocked file is read under LADUJ, then unpacked under CZEKAJ") {
       }
 
       AND_WHEN("Its read time has passed") {
-        for (int frame = 1; frame < LoadingMock::READ_FRAMES; ++frame) {
+        for (int frame = 1; frame < LoadingQueue::READ_FRAMES; ++frame) {
           REQUIRE_FALSE(loading.advance(&panel));
         }
         REQUIRE(panel.surface().pixel(101, 10) == STRIP_COLOR);
@@ -58,7 +58,7 @@ SCENARIO("Each mocked file is read under LADUJ, then unpacked under CZEKAJ") {
       }
 
       AND_WHEN("The whole first file has taken its frames") {
-        for (int frame = 1; frame < LoadingMock::FILE_FRAMES; ++frame) {
+        for (int frame = 1; frame < LoadingQueue::FILE_FRAMES; ++frame) {
           REQUIRE_FALSE(loading.advance(&panel));
         }
         const bool next = loading.advance(&panel);
@@ -70,7 +70,7 @@ SCENARIO("Each mocked file is read under LADUJ, then unpacked under CZEKAJ") {
         }
 
         AND_WHEN("The second file has taken its frames too") {
-          for (int frame = 1; frame < LoadingMock::FILE_FRAMES; ++frame) {
+          for (int frame = 1; frame < LoadingQueue::FILE_FRAMES; ++frame) {
             REQUIRE_FALSE(loading.advance(&panel));
           }
 
@@ -83,14 +83,14 @@ SCENARIO("Each mocked file is read under LADUJ, then unpacked under CZEKAJ") {
   }
 
   GIVEN("A file loaded while no stage is running") {
-    LoadingMock loading;
+    LoadingQueue loading;
     int loaded = 0;
     loading.queue([&] { ++loaded; });
 
     THEN("It takes the same time with no panel to draw on") {
       REQUIRE_FALSE(loading.advance(nullptr));
       REQUIRE(loaded == 1);
-      for (int frame = 1; frame < LoadingMock::FILE_FRAMES; ++frame) {
+      for (int frame = 1; frame < LoadingQueue::FILE_FRAMES; ++frame) {
         REQUIRE_FALSE(loading.advance(nullptr));
       }
       REQUIRE(loading.advance(nullptr));
@@ -99,7 +99,7 @@ SCENARIO("Each mocked file is read under LADUJ, then unpacked under CZEKAJ") {
 
   GIVEN("Nothing queued") {
     StatusPanel panel(loadingStrip(), artwork());
-    LoadingMock loading;
+    LoadingQueue loading;
 
     THEN("Loading is over at once and the panel is left alone") {
       REQUIRE(loading.advance(&panel));

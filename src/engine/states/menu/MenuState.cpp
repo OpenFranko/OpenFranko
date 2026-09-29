@@ -138,7 +138,7 @@ MenuState::MenuState(systems::graphics::VideoSystem &videoSystem,
   }
 }
 
-std::optional<EngineStateEnum> MenuState::update() {
+std::optional<EngineStateId> MenuState::update() {
   const effects::sequences::MenuSequence::Joystick joystick =
       joystickFrom(m_controllerSystem.states);
   if (m_musicWait > 0 && --m_musicWait == 0) {
@@ -180,7 +180,7 @@ std::optional<EngineStateEnum> MenuState::update() {
   if (m_menu.isFinished()) {
     m_session.registers[RO] = 0;
     street::session::applyCheatCodes(m_session);
-    return EngineStateEnum::CharacterSelection;
+    return EngineStateId::CharacterSelectionSequence;
   }
 
   if (m_menu.isAttractDue()) {

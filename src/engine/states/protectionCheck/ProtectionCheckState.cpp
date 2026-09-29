@@ -1,6 +1,6 @@
 #include "ProtectionCheckState.h"
 
-#include "../../street/ui/LoadingMock.h"
+#include "../../street/ui/LoadingQueue.h"
 
 #include <algorithm>
 #include <array>
@@ -98,20 +98,20 @@ ProtectionCheckState::ProtectionCheckState(
       m_keyboard(keyboard), m_kind(check), m_check(makeCheck(check)),
       m_loadingFrames(check == Check::Stage3
                           ? STAGE_CHECK_FILES *
-                                street::ui::LoadingMock::FILE_FRAMES
+                                street::ui::LoadingQueue::FILE_FRAMES
                           : 0),
       m_resumeFrame(SCREEN_OPEN_VBLS),
       m_screen(QUESTION_SCREEN_WIDTH, QUESTION_SCREEN_HEIGHT),
       m_border(check == Check::Stage3 ? STAGE_BORDER : BLACK) {}
 
-std::optional<EngineStateEnum> ProtectionCheckState::update() {
+std::optional<EngineStateId> ProtectionCheckState::update() {
   if (m_loadingFrames > 0) {
     --m_loadingFrames;
     m_screen.fill(m_border);
     show();
     return std::nullopt;
   }
-  const std::optional<EngineStateEnum> next = runCheck();
+  const std::optional<EngineStateId> next = runCheck();
   if (m_questionShown) {
     m_flasher.tick(m_questionPalette);
   }
@@ -123,7 +123,7 @@ std::optional<EngineStateEnum> ProtectionCheckState::update() {
   return std::nullopt;
 }
 
-std::optional<EngineStateEnum> ProtectionCheckState::runCheck() {
+std::optional<EngineStateId> ProtectionCheckState::runCheck() {
   while (m_frame >= m_resumeFrame) {
     switch (m_step) {
     case Step::Unpack:
@@ -148,8 +148,8 @@ std::optional<EngineStateEnum> ProtectionCheckState::runCheck() {
         m_resumeFrame = m_frame + SCREEN_OPEN_VBLS;
         m_step = Step::Unpack;
       } else if (m_check.isPassed()) {
-        return m_kind == Check::Stage3 ? EngineStateEnum::Level3
-                                       : EngineStateEnum::HighScore;
+        return m_kind == Check::Stage3 ? EngineStateId::Level3
+                                       : EngineStateId::HighScore;
       } else {
         showFailure();
         m_resumeFrame = m_frame + (m_kind == Check::Stage3 ? SCREEN_REOPEN_VBLS

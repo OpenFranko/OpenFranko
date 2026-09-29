@@ -14,16 +14,16 @@ PresentsState::PresentsState(systems::graphics::VideoSystem &videoSystem,
   m_controllerSystem.clearFireLatch();
 }
 
-std::optional<EngineStateEnum> PresentsState::update() {
+std::optional<EngineStateId> PresentsState::update() {
   if (m_musicFade) {
     m_strip.showBlack();
     if (m_musicFade->advance(m_audioSystem)) {
-      return EngineStateEnum::HighScore;
+      return EngineStateId::HighScore;
     }
     return std::nullopt;
   }
   if (m_sequence.isFinished()) {
-    return EngineStateEnum::KneeAnimation;
+    return EngineStateId::KneeAnimation;
   }
   m_sequence.advance(m_controllerSystem.isFireLatched());
   if (m_sequence.isSkipped()) {

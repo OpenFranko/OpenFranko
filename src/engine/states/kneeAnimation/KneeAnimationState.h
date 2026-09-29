@@ -7,7 +7,7 @@
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../GameVersion.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 
 #include <vector>
 
@@ -17,7 +17,7 @@ namespace engine {
 namespace states {
 namespace kneeAnimation {
 
-class KneeAnimationState : public IEngineState {
+class KneeAnimationState : public EngineState {
 public:
   KneeAnimationState(systems::graphics::VideoSystem &videoSystem,
                      systems::audio::AudioSystem &audioSystem,
@@ -25,7 +25,7 @@ public:
                      GameVersion version = GameVersion::V10);
   ~KneeAnimationState();
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   systems::graphics::VideoSystem &m_videoSystem;

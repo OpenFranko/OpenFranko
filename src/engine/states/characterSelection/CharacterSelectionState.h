@@ -8,9 +8,9 @@
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../AmigaDisplay.h"
 #include "../../GameOptions.h"
-#include "../../effects/sequences/CharacterSelection.h"
+#include "../../effects/sequences/CharacterSelectionSequence.h"
 #include "../../street/session/GameSession.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 
 #include <vector>
 
@@ -20,7 +20,7 @@ namespace engine {
 namespace states {
 namespace characterSelection {
 
-class CharacterSelectionState : public IEngineState {
+class CharacterSelectionState : public EngineState {
 public:
   CharacterSelectionState(systems::graphics::VideoSystem &videoSystem,
                           systems::audio::AudioSystem &audioSystem,
@@ -29,17 +29,17 @@ public:
                           street::session::GameSession &session);
   ~CharacterSelectionState();
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   void draw();
-  EngineStateEnum firstStreet() const;
+  EngineStateId firstStreet() const;
 
   systems::graphics::VideoSystem &m_videoSystem;
   systems::audio::AudioSystem &m_audioSystem;
   systems::input::ControllerSystem &m_controllerSystem;
   street::session::GameSession &m_session;
-  effects::sequences::CharacterSelection m_selection;
+  effects::sequences::CharacterSelectionSequence m_selection;
   VisibleRows m_rows;
   systems::graphics::IndexedBitmap m_picture;
   effects::color::AmigaPalette m_screenPalette;

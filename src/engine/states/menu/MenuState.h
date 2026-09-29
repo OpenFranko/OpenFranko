@@ -10,7 +10,7 @@
 #include "../../effects/sequences/AttractSequence.h"
 #include "../../effects/sequences/MenuSequence.h"
 #include "../../street/session/GameSession.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 
 #include <optional>
 #include <vector>
@@ -21,14 +21,14 @@ namespace engine {
 namespace states {
 namespace menu {
 
-class MenuState : public IEngineState {
+class MenuState : public EngineState {
 public:
   MenuState(systems::graphics::VideoSystem &videoSystem,
             systems::audio::AudioSystem &audioSystem,
             systems::input::ControllerSystem &controllerSystem,
             GameOptions &options, street::session::GameSession &session);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   void

@@ -16,13 +16,13 @@ GameOverState::GameOverState(systems::graphics::VideoSystem &videoSystem,
   m_videoSystem.setNtsc(options.ntsc);
 }
 
-std::optional<EngineStateEnum> GameOverState::update() {
+std::optional<EngineStateId> GameOverState::update() {
   m_scene.advance(m_controllerSystem.joystick());
   systems::graphics::Display output = m_scene.output();
   systems::graphics::cropRows(output, m_rows.first, m_rows.count);
   m_videoSystem.show(output);
   if (m_scene.isFinished()) {
-    return EngineStateEnum::HighScore;
+    return EngineStateId::HighScore;
   }
   return std::nullopt;
 }

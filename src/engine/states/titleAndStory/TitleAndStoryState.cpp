@@ -92,16 +92,16 @@ TitleAndStoryState::TitleAndStoryState(
   }
 }
 
-std::optional<EngineStateEnum> TitleAndStoryState::update() {
+std::optional<EngineStateId> TitleAndStoryState::update() {
   m_stripShown = false;
-  const std::optional<EngineStateEnum> next = runTitle();
+  const std::optional<EngineStateId> next = runTitle();
   if (!next && !m_stripShown) {
     m_videoSystem.show(m_screen.output());
   }
   return next;
 }
 
-std::optional<EngineStateEnum> TitleAndStoryState::runTitle() {
+std::optional<EngineStateId> TitleAndStoryState::runTitle() {
   if (m_phase == Phase::Title) {
     if (!m_title.isFinished()) {
       m_title.advance();
@@ -131,7 +131,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::runTitle() {
   return runStory();
 }
 
-std::optional<EngineStateEnum> TitleAndStoryState::runPages() {
+std::optional<EngineStateId> TitleAndStoryState::runPages() {
   if (m_phase == Phase::Pages) {
     m_pages->advance(m_controllerSystem.isFireLatched());
     if (m_pages->isSkipped()) {
@@ -156,11 +156,11 @@ std::optional<EngineStateEnum> TitleAndStoryState::runPages() {
   return runStory();
 }
 
-std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
+std::optional<EngineStateId> TitleAndStoryState::runStory() {
   if (m_phase == Phase::MusicFade) {
     m_screen.fill(m_background);
     if (m_musicFade.advance(m_audioSystem)) {
-      return EngineStateEnum::HighScore;
+      return EngineStateId::HighScore;
     }
     return std::nullopt;
   }
@@ -201,9 +201,9 @@ std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
   return std::nullopt;
 }
 
-std::optional<EngineStateEnum> TitleAndStoryState::leave() {
+std::optional<EngineStateId> TitleAndStoryState::leave() {
   if (m_version != GameVersion::V12) {
-    return EngineStateEnum::ProtectionCheck;
+    return EngineStateId::ProtectionCheck;
   }
   m_phase = Phase::MusicFade;
   return runStory();

@@ -1,12 +1,12 @@
-#ifndef ENGINE_STATES_ENGINESTATEENUM_H_
-#define ENGINE_STATES_ENGINESTATEENUM_H_
+#ifndef ENGINE_STATES_ENGINESTATEID_H_
+#define ENGINE_STATES_ENGINESTATEID_H_
 
 namespace openfranko {
 namespace src {
 namespace engine {
 namespace states {
 
-enum class EngineStateEnum {
+enum class EngineStateId {
   Mirage,
   SpiderLogo,
   Adverts,
@@ -16,7 +16,7 @@ enum class EngineStateEnum {
   TitleAndStory,
   ProtectionCheck,
   Menu,
-  CharacterSelection,
+  CharacterSelectionSequence,
   Level1,
   Level1Boss,
   Level1Car,
@@ -37,4 +37,4 @@ enum class EngineStateEnum {
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_ENGINESTATEENUM_H_
+#endif // ENGINE_STATES_ENGINESTATEID_H_

@@ -7,7 +7,7 @@
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../AmigaDisplay.h"
 #include "../../effects/sequences/FotoSequence.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 
 namespace openfranko {
 namespace src {
@@ -15,13 +15,13 @@ namespace engine {
 namespace states {
 namespace worldSoftware {
 
-class WorldSoftwareState : public IEngineState {
+class WorldSoftwareState : public EngineState {
 public:
   WorldSoftwareState(systems::graphics::VideoSystem &videoSystem,
                      systems::audio::AudioSystem &audioSystem);
   ~WorldSoftwareState();
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   systems::graphics::VideoSystem &m_videoSystem;

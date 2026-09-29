@@ -9,7 +9,7 @@
 #include "../../InkeyBuffer.h"
 #include "../../effects/color/PaletteFlasher.h"
 #include "../../effects/protection/CodeCardCheck.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 
 namespace openfranko {
 namespace src {
@@ -17,7 +17,7 @@ namespace engine {
 namespace states {
 namespace protectionCheck {
 
-class ProtectionCheckState : public IEngineState {
+class ProtectionCheckState : public EngineState {
 public:
   enum class Check { Title, Stage3 };
 
@@ -25,14 +25,14 @@ public:
                        systems::audio::AudioSystem &audioSystem,
                        InkeyBuffer &keyboard, Check check = Check::Title);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
   const effects::protection::CodeCardCheck &check() const;
 
 private:
   enum class Step { Unpack, Ask, Hidden, Closed, FailureUnpacked, Hang };
 
-  std::optional<EngineStateEnum> runCheck();
+  std::optional<EngineStateId> runCheck();
   bool takeAnswer();
   void showQuestion();
   void showFailure();

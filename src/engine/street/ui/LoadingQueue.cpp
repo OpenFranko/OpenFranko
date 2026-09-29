@@ -1,14 +1,14 @@
-#include "LoadingMock.h"
+#include "LoadingQueue.h"
 
 #include <utility>
 
 namespace openfranko::src::engine::street::ui {
 
-void LoadingMock::queue(std::function<void()> load) {
+void LoadingQueue::queue(std::function<void()> load) {
   m_files.push_back(std::move(load));
 }
 
-bool LoadingMock::advance(StatusPanel *panel) {
+bool LoadingQueue::advance(StatusPanel *panel) {
   if (m_phase != Phase::Idle && --m_countdown > 0) {
     return false;
   }

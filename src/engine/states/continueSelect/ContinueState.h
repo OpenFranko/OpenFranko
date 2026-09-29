@@ -8,7 +8,7 @@
 #include "../../GameOptions.h"
 #include "../../street/scenes/ContinueScene.h"
 #include "../../street/session/GameSession.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 #include "../shared/EngineStreetHost.h"
 
 namespace openfranko {
@@ -17,7 +17,7 @@ namespace engine {
 namespace states {
 namespace continueSelect {
 
-class ContinueState : public IEngineState {
+class ContinueState : public EngineState {
 public:
   ContinueState(systems::graphics::VideoSystem &videoSystem,
                 systems::audio::AudioSystem &audioSystem,
@@ -25,7 +25,7 @@ public:
                 const GameOptions &options,
                 street::session::GameSession &session);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
   const street::scenes::ContinueScene &scene() const;
 

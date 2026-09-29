@@ -50,7 +50,7 @@ constexpr uint8_t BOSS_COLOR = 2;
 constexpr uint8_t STRIP_COLOR = 7;
 constexpr uint8_t WAIT_WORD_COLOR = 5;
 constexpr int BOSS_FILES = 6;
-constexpr int READY_FRAMES = 1 + BOSS_FILES * LoadingMock::FILE_FRAMES;
+constexpr int READY_FRAMES = 1 + BOSS_FILES * LoadingQueue::FILE_FRAMES;
 
 Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
   return Picture{
@@ -249,9 +249,9 @@ SCENARIO("The boss stage reloads the cast over the street's last screen") {
     }
 
     WHEN("The tune's file has been read and unpacked") {
-      duel.run(LoadingMock::READ_FRAMES);
+      duel.run(LoadingQueue::READ_FRAMES);
       const uint8_t unpacking = duel.panelPixel(101, 10);
-      duel.run(LoadingMock::UNPACK_FRAMES);
+      duel.run(LoadingQueue::UNPACK_FRAMES);
 
       THEN("CZEKAJ showed the wait word, then MUZON started the tune") {
         REQUIRE(unpacking == WAIT_WORD_COLOR);

@@ -7,7 +7,7 @@
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../AmigaDisplay.h"
 #include "../../effects/color/PaletteFader.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 
 #include <optional>
 #include <vector>
@@ -18,7 +18,7 @@ namespace engine {
 namespace states {
 namespace adverts {
 
-class AdvertsState : public IEngineState {
+class AdvertsState : public EngineState {
 public:
   static constexpr int SLIDES = 6;
   static constexpr int KLIKER_FRAMES = 100;
@@ -27,7 +27,7 @@ public:
   AdvertsState(systems::graphics::VideoSystem &videoSystem,
                systems::input::ControllerSystem &controllerSystem);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   enum class Step {

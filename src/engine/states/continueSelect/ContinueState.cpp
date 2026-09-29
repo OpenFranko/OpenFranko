@@ -16,7 +16,7 @@ ContinueState::ContinueState(systems::graphics::VideoSystem &videoSystem,
   m_videoSystem.setNtsc(options.ntsc);
 }
 
-std::optional<EngineStateEnum> ContinueState::update() {
+std::optional<EngineStateId> ContinueState::update() {
   m_scene.advance(m_controllerSystem.joystick());
   systems::graphics::Display output = m_scene.output();
   systems::graphics::cropRows(output, m_rows.first, m_rows.count);
@@ -24,9 +24,9 @@ std::optional<EngineStateEnum> ContinueState::update() {
 
   switch (m_scene.outcome()) {
   case street::scenes::ContinueScene::Outcome::Continue:
-    return EngineStateEnum::CharacterSelection;
+    return EngineStateId::CharacterSelectionSequence;
   case street::scenes::ContinueScene::Outcome::NewGame:
-    return EngineStateEnum::Menu;
+    return EngineStateId::Menu;
   case street::scenes::ContinueScene::Outcome::Choosing:
     break;
   }

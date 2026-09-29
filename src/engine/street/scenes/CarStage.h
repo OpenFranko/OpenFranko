@@ -8,7 +8,7 @@
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
 #include "../session/GameSession.h"
-#include "../ui/LoadingMock.h"
+#include "../ui/LoadingQueue.h"
 #include "../ui/StageFrame.h"
 #include "../ui/StatusPanel.h"
 #include "StreetHost.h"
@@ -144,7 +144,7 @@ private:
   ui::StageDisplay m_copper;
   effects::color::AmigaPalette m_palette;
   effects::color::AmigaPalette m_panelPalette;
-  ui::LoadingMock m_loading;
+  ui::LoadingQueue m_loading;
 
   Step m_step = Step::Password;
   Step m_afterLoading = Step::Finished;

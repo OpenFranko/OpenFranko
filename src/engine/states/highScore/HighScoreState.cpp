@@ -23,7 +23,7 @@ HighScoreState::HighScoreState(systems::graphics::VideoSystem &videoSystem,
   m_videoSystem.setNtsc(options.ntsc);
 }
 
-std::optional<EngineStateEnum> HighScoreState::update() {
+std::optional<EngineStateId> HighScoreState::update() {
   m_scene.advance();
   systems::graphics::Display output = m_scene.output();
   systems::graphics::cropRows(output, m_rows.first, m_rows.count);
@@ -31,9 +31,9 @@ std::optional<EngineStateEnum> HighScoreState::update() {
 
   switch (m_scene.outcome()) {
   case street::scenes::HighScoreScene::Outcome::Menu:
-    return EngineStateEnum::Menu;
+    return EngineStateId::Menu;
   case street::scenes::HighScoreScene::Outcome::Continue:
-    return EngineStateEnum::Continue;
+    return EngineStateId::Continue;
   case street::scenes::HighScoreScene::Outcome::Running:
     break;
   }

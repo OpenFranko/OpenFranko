@@ -19,7 +19,7 @@ namespace {
 constexpr int OBJECTS = 0x36;
 constexpr int GRAVEYARD = 0x3BB;
 constexpr int TUNE = 0x262;
-constexpr int OPEN_FRAME = 1 + GameOverScene::FILES * LoadingMock::FILE_FRAMES;
+constexpr int OPEN_FRAME = 1 + GameOverScene::FILES * LoadingQueue::FILE_FRAMES;
 constexpr int OPENED_FRAME = OPEN_FRAME + 1 + 3;
 constexpr uint32_t GREY = 0xFF555555u;
 constexpr uint32_t BLACK = 0xFF000000u;
@@ -166,10 +166,10 @@ SCENARIO("Game over loads its three files while the screens are closed") {
       REQUIRE(graveyard.host.spriteSets ==
               std::vector<std::pair<int, int>>{{OBJECTS, 0}});
       REQUIRE(graveyard.host.pictures.empty());
-      graveyard.run(LoadingMock::FILE_FRAMES);
+      graveyard.run(LoadingQueue::FILE_FRAMES);
       REQUIRE(graveyard.host.pictures == std::vector<int>{GRAVEYARD});
       REQUIRE(graveyard.host.music.empty());
-      graveyard.run(LoadingMock::FILE_FRAMES);
+      graveyard.run(LoadingQueue::FILE_FRAMES);
       REQUIRE(graveyard.host.music == std::vector<int>{TUNE});
       REQUIRE(graveyard.host.musicStarts == 0);
     }

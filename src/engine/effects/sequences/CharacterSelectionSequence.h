@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_SEQUENCES_CHARACTERSELECTION_H_
-#define ENGINE_EFFECTS_SEQUENCES_CHARACTERSELECTION_H_
+#ifndef ENGINE_EFFECTS_SEQUENCES_CHARACTERSELECTIONSEQUENCE_H_
+#define ENGINE_EFFECTS_SEQUENCES_CHARACTERSELECTIONSEQUENCE_H_
 
 #include "../../GameOptions.h"
 #include "../../GameVersion.h"
@@ -15,7 +15,7 @@ namespace engine {
 namespace effects {
 namespace sequences {
 
-class CharacterSelection {
+class CharacterSelectionSequence {
 public:
   struct Joystick {
     bool left = false;
@@ -31,8 +31,9 @@ public:
     bool flipped = false;
   };
 
-  explicit CharacterSelection(GameOptions &options, int otherScreens = 0,
-                              GameVersion version = GameVersion::V10);
+  explicit CharacterSelectionSequence(GameOptions &options,
+                                      int otherScreens = 0,
+                                      GameVersion version = GameVersion::V10);
 
   void advance(const Joystick &joystick);
 
@@ -72,4 +73,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_SEQUENCES_CHARACTERSELECTION_H_
+#endif // ENGINE_EFFECTS_SEQUENCES_CHARACTERSELECTIONSEQUENCE_H_

@@ -6,7 +6,7 @@
 #include "../systems/input/ControllerSystem.h"
 #include "../systems/input/Platform.h"
 #include "GameOptions.h"
-#include "states/IEngineState.h"
+#include "states/EngineState.h"
 #include "street/session/GameSession.h"
 
 #include <memory>
@@ -18,7 +18,7 @@ namespace engine {
 class Engine {
 public:
   Engine();
-  Engine(states::EngineStateEnum firstState,
+  Engine(states::EngineStateId firstState,
          street::session::GameSession startingSession);
   ~Engine();
 
@@ -32,8 +32,8 @@ public:
 private:
   void updateState();
 
-  states::EngineStateEnum versionState(states::EngineStateEnum state) const;
-  void switchState(states::EngineStateEnum nextState);
+  states::EngineStateId versionState(states::EngineStateId state) const;
+  void switchState(states::EngineStateId nextState);
 
   systems::input::Platform platform;
   systems::graphics::VideoSystem videoSystem;
@@ -42,7 +42,7 @@ private:
   GameOptions options;
   street::session::GameSession session;
 
-  std::unique_ptr<states::IEngineState> currentState;
+  std::unique_ptr<states::EngineState> currentState;
   bool running;
   bool booting = false;
 };

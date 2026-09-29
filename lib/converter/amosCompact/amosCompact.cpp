@@ -48,7 +48,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
       throw std::runtime_error("File is too small to be a valid SPACK screen");
     }
 
-    auto spackHeader = headers::parseSPACKHeader(data);
+    auto spackHeader = headers::parseSpackHeader(data);
     palette = std::vector<uint16_t>(std::begin(spackHeader.amigaPalette),
                                     std::end(spackHeader.amigaPalette));
     data = std::vector<uint8_t>(data.begin() + headers::SPACK_HEADER_SIZE,

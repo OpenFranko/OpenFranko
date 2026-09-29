@@ -51,7 +51,7 @@ int main() {
   street::session::GameSession session;
   session.registers[RO] = LAST_STAGE;
   session.bossExit.emplace(lastBossExit(session.registers));
-  Engine engine(states::EngineStateEnum::Ending, std::move(session));
+  Engine engine(states::EngineStateId::Ending, std::move(session));
   engine.run();
   return 0;
 }

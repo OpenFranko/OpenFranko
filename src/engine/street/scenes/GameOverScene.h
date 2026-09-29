@@ -8,7 +8,7 @@
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
-#include "../ui/LoadingMock.h"
+#include "../ui/LoadingQueue.h"
 #include "StreetHost.h"
 
 #include <cstdint>
@@ -75,7 +75,7 @@ private:
 
   StreetHost &m_host;
   session::GameSession &m_session;
-  ui::LoadingMock m_loading;
+  ui::LoadingQueue m_loading;
   core::ImageBank m_images;
   core::BobLayer m_bobs;
   core::Picture m_picture;

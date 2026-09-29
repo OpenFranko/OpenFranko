@@ -20,8 +20,8 @@ constexpr int RG = 6;
 constexpr int RN = 13;
 constexpr int RO = 14;
 
-constexpr int MUSIC = 1 + LoadingMock::FILE_FRAMES;
-constexpr int LOADED = MUSIC + 2 + 3 * LoadingMock::FILE_FRAMES;
+constexpr int MUSIC = 1 + LoadingQueue::FILE_FRAMES;
+constexpr int LOADED = MUSIC + 2 + 3 * LoadingQueue::FILE_FRAMES;
 constexpr int OPENED = LOADED + 2;
 constexpr int DIMMED = OPENED + 13;
 constexpr int RELIT = OPENED + 16;
@@ -315,7 +315,7 @@ SCENARIO("After the title check, the menu tune is still loaded") {
 
     THEN("Length(3) is not 0, so only the picture and the letters load before "
          "Goto MENU") {
-      board.run(2 * LoadingMock::FILE_FRAMES);
+      board.run(2 * LoadingQueue::FILE_FRAMES);
       REQUIRE(board.scene.outcome() == HighScoreScene::Outcome::Running);
       board.run(1);
       REQUIRE(board.scene.outcome() == HighScoreScene::Outcome::Menu);

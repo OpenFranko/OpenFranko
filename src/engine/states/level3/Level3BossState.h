@@ -7,7 +7,7 @@
 #include "../../GameOptions.h"
 #include "../../street/scenes/BossStage.h"
 #include "../../street/session/GameSession.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 #include "../shared/EngineStreetHost.h"
 
 namespace openfranko {
@@ -16,14 +16,14 @@ namespace engine {
 namespace states {
 namespace level3 {
 
-class Level3BossState : public IEngineState {
+class Level3BossState : public EngineState {
 public:
   Level3BossState(systems::graphics::VideoSystem &videoSystem,
                   systems::audio::AudioSystem &audioSystem,
                   systems::input::ControllerSystem &controllerSystem,
                   GameOptions &options, street::session::GameSession &session);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
   const street::scenes::BossStage &stage() const;
 

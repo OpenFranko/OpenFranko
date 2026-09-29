@@ -7,7 +7,7 @@
 #include "../../AmigaDisplay.h"
 #include "../../GameOptions.h"
 #include "../../street/scenes/GameOverScene.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 #include "../shared/EngineStreetHost.h"
 
 namespace openfranko {
@@ -16,7 +16,7 @@ namespace engine {
 namespace states {
 namespace gameOver {
 
-class GameOverState : public IEngineState {
+class GameOverState : public EngineState {
 public:
   GameOverState(systems::graphics::VideoSystem &videoSystem,
                 systems::audio::AudioSystem &audioSystem,
@@ -24,7 +24,7 @@ public:
                 const GameOptions &options,
                 street::session::GameSession &session);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
   const street::scenes::GameOverScene &scene() const;
 

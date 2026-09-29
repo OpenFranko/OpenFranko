@@ -10,7 +10,7 @@
 #include "../../effects/sequences/BlyskSequence.h"
 #include "../../effects/sequences/FotoSequence.h"
 #include "../../effects/sequences/StorySequence.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 #include "../shared/IntroStrip.h"
 #include "../shared/MusicFadeOut.h"
 
@@ -23,14 +23,14 @@ namespace engine {
 namespace states {
 namespace titleAndStory {
 
-class TitleAndStoryState : public IEngineState {
+class TitleAndStoryState : public EngineState {
 public:
   TitleAndStoryState(systems::graphics::VideoSystem &videoSystem,
                      systems::audio::AudioSystem &audioSystem,
                      systems::input::ControllerSystem &controllerSystem,
                      GameVersion version = GameVersion::V10);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   enum class Phase {
@@ -51,10 +51,10 @@ private:
     systems::graphics::IndexedBitmap bitmap;
   };
 
-  std::optional<EngineStateEnum> runTitle();
-  std::optional<EngineStateEnum> runPages();
-  std::optional<EngineStateEnum> runStory();
-  std::optional<EngineStateEnum> leave();
+  std::optional<EngineStateId> runTitle();
+  std::optional<EngineStateId> runPages();
+  std::optional<EngineStateId> runStory();
+  std::optional<EngineStateId> leave();
   void drawStory(const effects::sequences::StorySequence::View &view);
   void drawStoryImage(StoryImage &image, int index, int x, int y, bool masked);
 

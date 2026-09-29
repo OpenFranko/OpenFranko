@@ -36,9 +36,9 @@ AdvertsState::AdvertsState(systems::graphics::VideoSystem &videoSystem,
   }
 }
 
-std::optional<EngineStateEnum> AdvertsState::update() {
+std::optional<EngineStateId> AdvertsState::update() {
   if (m_step == Step::Finished) {
-    return EngineStateEnum::Presents;
+    return EngineStateId::Presents;
   }
   m_fader.tick(m_palette);
   runBasic(m_controllerSystem.states.button);

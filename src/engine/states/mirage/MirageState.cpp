@@ -32,9 +32,9 @@ MirageState::MirageState(systems::graphics::VideoSystem &videoSystem)
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_sequence(screenPalette(m_picture), TIMINGS) {}
 
-std::optional<EngineStateEnum> MirageState::update() {
+std::optional<EngineStateId> MirageState::update() {
   if (m_sequence.isFinished()) {
-    return EngineStateEnum::WorldSoftware;
+    return EngineStateId::WorldSoftware;
   }
 
   m_sequence.advance();

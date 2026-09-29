@@ -24,7 +24,7 @@ void putBE16S(std::vector<uint8_t> &buf, size_t off, int16_t v) {
 
 } // namespace
 
-SCENARIO("parseSPACKHeader reads all fields from big-endian data") {
+SCENARIO("parseSpackHeader reads all fields from big-endian data") {
   GIVEN("A buffer with known SPACK header values") {
     std::vector<uint8_t> data(90, 0);
     putBE16(data, 4, 320);
@@ -41,8 +41,8 @@ SCENARIO("parseSPACKHeader reads all fields from big-endian data") {
     putBE16(data, 26, 0x0F00);
     putBE16(data, 28, 0x00F0);
 
-    WHEN("parseSPACKHeader is called") {
-      auto hdr = parseSPACKHeader(data);
+    WHEN("parseSpackHeader is called") {
+      auto hdr = parseSpackHeader(data);
 
       THEN("screen dimensions are correct") {
         REQUIRE(hdr.screenWidth == 320);
@@ -139,7 +139,7 @@ SCENARIO("SPACK header parsing extracts all fields correctly") {
     data[29] = 0x00;
 
     WHEN("Parsing the header") {
-      auto hdr = parseSPACKHeader(data);
+      auto hdr = parseSpackHeader(data);
 
       THEN("All fields are correct") {
         REQUIRE(hdr.screenWidth == 320);

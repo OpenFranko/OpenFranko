@@ -14,18 +14,18 @@ Level1CarState::Level1CarState(
       m_options(options), m_host(audioSystem, session.version),
       m_stage(m_host, session, options) {}
 
-std::optional<EngineStateEnum> Level1CarState::update() {
+std::optional<EngineStateId> Level1CarState::update() {
   m_stage.advance(
       shared::readStreetInput(m_controllerSystem, m_host.version()));
   shared::showStageFrame(m_videoSystem, m_stage.output(), m_options);
 
   switch (m_stage.outcome()) {
   case street::scenes::CarStage::Outcome::GameOver:
-    return EngineStateEnum::GameOver;
+    return EngineStateId::GameOver;
   case street::scenes::CarStage::Outcome::Quit:
-    return EngineStateEnum::HighScore;
+    return EngineStateId::HighScore;
   case street::scenes::CarStage::Outcome::DriveFinished:
-    return EngineStateEnum::Level2;
+    return EngineStateId::Level2;
   case street::scenes::CarStage::Outcome::Playing:
     break;
   }

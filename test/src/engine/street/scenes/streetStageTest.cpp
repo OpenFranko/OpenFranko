@@ -37,7 +37,7 @@ constexpr uint8_t WAIT_WORD_COLOR = 5;
 constexpr int OPENING_FILES = 5;
 constexpr int GAME_INIT_FRAMES = 1 + 3 + 1;
 constexpr int STAGE_OPENING_FRAMES =
-    1 + OPENING_FILES * LoadingMock::FILE_FRAMES + 3;
+    1 + OPENING_FILES * LoadingQueue::FILE_FRAMES + 3;
 constexpr int OPENING_FRAMES = GAME_INIT_FRAMES + STAGE_OPENING_FRAMES;
 constexpr int SCREEN_SHOW_FRAMES = 2;
 
@@ -303,7 +303,7 @@ SCENARIO("A new game opens the street as states 09 and 10 do") {
       }
 
       AND_WHEN("Its file is in") {
-        street.run(LoadingMock::FILE_FRAMES);
+        street.run(LoadingQueue::FILE_FRAMES);
 
         THEN("SCORE redraws the panel and the actors run again") {
           REQUIRE_FALSE(stage.machine().isFrozen(1));
@@ -721,7 +721,7 @@ SCENARIO("The run ends as state 11 and SYS decide") {
   GIVEN("A street being walked") {
     Street street(emptyStreet(600));
     StreetStage &stage = street.start();
-    street.run(OPENING_FRAMES + 1 + LoadingMock::FILE_FRAMES);
+    street.run(OPENING_FRAMES + 1 + LoadingQueue::FILE_FRAMES);
 
     THEN("Escape starts _CLOSE at once and quits once both screens have "
          "closed") {
@@ -753,7 +753,7 @@ SCENARIO("The run ends as state 11 and SYS decide") {
 }
 
 SCENARIO("SYS reads the CIA key register, which keeps the last key event") {
-  constexpr int WALKING = OPENING_FRAMES + 1 + LoadingMock::FILE_FRAMES + 5;
+  constexpr int WALKING = OPENING_FRAMES + 1 + LoadingQueue::FILE_FRAMES + 5;
 
   GIVEN("A new game loading its stage files, when SYS is not called") {
     Street street(emptyStreet(600));
@@ -915,7 +915,7 @@ SCENARIO("F4 and F3 switch the display as SYS does") {
   GIVEN("A PAL street being walked") {
     Street street(emptyStreet(600));
     StreetStage &stage = street.start();
-    street.run(OPENING_FRAMES + 1 + LoadingMock::FILE_FRAMES);
+    street.run(OPENING_FRAMES + 1 + LoadingQueue::FILE_FRAMES);
     std::vector<uint32_t> pal;
     stage.compose(pal);
 
@@ -1021,7 +1021,7 @@ SCENARIO("A stage's files load one by one as LADUJ and CZEKAJ show them") {
     }
 
     WHEN("The file has been read") {
-      street.run(LoadingMock::READ_FRAMES);
+      street.run(LoadingQueue::READ_FRAMES);
 
       THEN("CZEKAJ puts the wait word over the strip while it unpacks") {
         REQUIRE(street.panelPixel(101, 10) == WAIT_WORD_COLOR);
@@ -1031,7 +1031,7 @@ SCENARIO("A stage's files load one by one as LADUJ and CZEKAJ show them") {
     }
 
     WHEN("The tune has loaded") {
-      street.run(LoadingMock::FILE_FRAMES);
+      street.run(LoadingQueue::FILE_FRAMES);
 
       THEN("MUZON starts it and the blood's file is read next") {
         REQUIRE(street.host.musicStarts == 1);
@@ -1043,7 +1043,7 @@ SCENARIO("A stage's files load one by one as LADUJ and CZEKAJ show them") {
     }
 
     WHEN("All five files are in") {
-      street.run(OPENING_FILES * LoadingMock::FILE_FRAMES);
+      street.run(OPENING_FILES * LoadingQueue::FILE_FRAMES);
 
       THEN("The unpack of the opening screen stalls three VBLs. CZEKAJ's "
            "test point then comes before Screen Show 0, so the copper list "
@@ -1090,10 +1090,10 @@ SCENARIO("A wave's missing sprite set loads with the player stamped down") {
 
       AND_WHEN("The file is in") {
         const int fighting = street.runUntil([&] { return stage.isFighting(); },
-                                             LoadingMock::FILE_FRAMES + 1);
+                                             LoadingQueue::FILE_FRAMES + 1);
 
         THEN("Put Block takes the stamp back and the fight starts") {
-          REQUIRE(fighting == LoadingMock::FILE_FRAMES);
+          REQUIRE(fighting == LoadingQueue::FILE_FRAMES);
           REQUIRE(stage.screen().pixel(x, y - 2) != 1);
           REQUIRE(stage.bobs().isActive(1));
           REQUIRE(stage.wavesSpawned() == 1);

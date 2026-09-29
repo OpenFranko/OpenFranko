@@ -1,4 +1,4 @@
-#include "CharacterSelection.h"
+#include "CharacterSelectionSequence.h"
 
 #include "../../AmigaDisplay.h"
 
@@ -41,13 +41,14 @@ const Pose &poseOf(Character character) {
 
 } // namespace
 
-CharacterSelection::CharacterSelection(GameOptions &options, int otherScreens,
-                                       GameVersion version)
+CharacterSelectionSequence::CharacterSelectionSequence(GameOptions &options,
+                                                       int otherScreens,
+                                                       GameVersion version)
     : m_options(options), m_version(version), m_otherScreens(otherScreens) {
   choose(Character::Franko);
 }
 
-void CharacterSelection::advance(const Joystick &joystick) {
+void CharacterSelectionSequence::advance(const Joystick &joystick) {
   m_sample.reset();
   m_musicVolume.reset();
   m_stopsMusic = false;
@@ -86,33 +87,37 @@ void CharacterSelection::advance(const Joystick &joystick) {
   ++m_frame;
 }
 
-const CharacterSelection::Bob &CharacterSelection::hand() const {
+const CharacterSelectionSequence::Bob &
+CharacterSelectionSequence::hand() const {
   return m_hand;
 }
 
-const CharacterSelection::Bob &CharacterSelection::face() const {
+const CharacterSelectionSequence::Bob &
+CharacterSelectionSequence::face() const {
   return m_face;
 }
 
-std::optional<int> CharacterSelection::sample() const { return m_sample; }
+std::optional<int> CharacterSelectionSequence::sample() const {
+  return m_sample;
+}
 
-std::optional<int> CharacterSelection::musicVolume() const {
+std::optional<int> CharacterSelectionSequence::musicVolume() const {
   return m_musicVolume;
 }
 
-bool CharacterSelection::stopsMusic() const { return m_stopsMusic; }
+bool CharacterSelectionSequence::stopsMusic() const { return m_stopsMusic; }
 
-bool CharacterSelection::isScreenShown() const { return m_screenShown; }
+bool CharacterSelectionSequence::isScreenShown() const { return m_screenShown; }
 
-bool CharacterSelection::isFinished() const { return m_finished; }
+bool CharacterSelectionSequence::isFinished() const { return m_finished; }
 
-void CharacterSelection::choose(Character character) {
+void CharacterSelectionSequence::choose(Character character) {
   m_options.character = character;
   const Pose &pose = poseOf(character);
   m_hand = {true, pose.handX, HAND_Y, HAND_IMAGE, pose.handFlipped};
 }
 
-void CharacterSelection::runScript(int time) {
+void CharacterSelectionSequence::runScript(int time) {
   if (m_closedAt) {
     if (time == *m_closedAt + SCREEN_CLOSE_SHOWN_VBLS) {
       m_screenShown = false;
@@ -157,6 +162,6 @@ void CharacterSelection::runScript(int time) {
   }
 }
 
-void CharacterSelection::close(int time) { m_closedAt = time; }
+void CharacterSelectionSequence::close(int time) { m_closedAt = time; }
 
 } // namespace openfranko::src::engine::effects::sequences

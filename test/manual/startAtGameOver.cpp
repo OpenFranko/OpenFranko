@@ -15,7 +15,7 @@ int main() {
   street::session::GameSession session;
   session.stageReached = FIRST_STAGE;
   session.border = street::ui::STAGE_BORDER;
-  Engine engine(states::EngineStateEnum::GameOver, std::move(session));
+  Engine engine(states::EngineStateId::GameOver, std::move(session));
   engine.run();
   return 0;
 }

@@ -3,10 +3,10 @@
 
 namespace openfranko::lib::converter::headers {
 
-SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data) {
+SpackHeader parseSpackHeader(const std::vector<uint8_t> &data) {
   binary::BigEndianReader reader(data);
 
-  SPACKHeader header;
+  SpackHeader header;
   header.screenWidth = reader.readUint16(4);
   header.screenHeight = reader.readUint16(6);
   header.windowX = reader.readUint16(8);

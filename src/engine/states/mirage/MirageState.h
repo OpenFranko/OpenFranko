@@ -6,7 +6,7 @@
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../AmigaDisplay.h"
 #include "../../effects/sequences/FotoSequence.h"
-#include "../IEngineState.h"
+#include "../EngineState.h"
 
 namespace openfranko {
 namespace src {
@@ -14,11 +14,11 @@ namespace engine {
 namespace states {
 namespace mirage {
 
-class MirageState : public IEngineState {
+class MirageState : public EngineState {
 public:
   explicit MirageState(systems::graphics::VideoSystem &videoSystem);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   systems::graphics::VideoSystem &m_videoSystem;

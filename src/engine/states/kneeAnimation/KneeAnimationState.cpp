@@ -70,10 +70,10 @@ KneeAnimationState::KneeAnimationState(
 
 KneeAnimationState::~KneeAnimationState() { m_audioSystem.clearSFX(SAMPLE); }
 
-std::optional<EngineStateEnum> KneeAnimationState::update() {
+std::optional<EngineStateId> KneeAnimationState::update() {
   const int time = m_frame - OPEN_FRAMES;
   if (time == CLOSED_FRAME) {
-    return EngineStateEnum::TitleAndStory;
+    return EngineStateId::TitleAndStory;
   }
 
   const bool version12 = m_version == GameVersion::V12;
