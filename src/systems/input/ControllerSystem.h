@@ -11,6 +11,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace input {
 
 enum class FunctionKey { F1, F2, F3, F4, Escape, Other };
 
@@ -89,6 +90,7 @@ private:
   std::optional<FunctionKey> keyEvent;
 };
 
+} // namespace input
 } // namespace systems
 } // namespace src
 } // namespace openfranko

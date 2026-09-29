@@ -4,9 +4,9 @@
 
 namespace openfranko::src::engine::states::level1 {
 
-Level1State::Level1State(systems::VideoSystem &videoSystem,
-                         systems::AudioSystem &audioSystem,
-                         systems::ControllerSystem &controllerSystem,
+Level1State::Level1State(systems::graphics::VideoSystem &videoSystem,
+                         systems::audio::AudioSystem &audioSystem,
+                         systems::input::ControllerSystem &controllerSystem,
                          effects::core::GameOptions &options,
                          street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),

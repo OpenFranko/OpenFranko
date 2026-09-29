@@ -18,9 +18,9 @@ namespace level3 {
 
 class Level3BossState : public IEngineState {
 public:
-  Level3BossState(systems::VideoSystem &videoSystem,
-                  systems::AudioSystem &audioSystem,
-                  systems::ControllerSystem &controllerSystem,
+  Level3BossState(systems::graphics::VideoSystem &videoSystem,
+                  systems::audio::AudioSystem &audioSystem,
+                  systems::input::ControllerSystem &controllerSystem,
                   effects::core::GameOptions &options,
                   street::ui::GameSession &session);
 
@@ -29,8 +29,8 @@ public:
   const street::scenes::BossStage &stage() const;
 
 private:
-  systems::VideoSystem &m_videoSystem;
-  systems::ControllerSystem &m_controllerSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
+  systems::input::ControllerSystem &m_controllerSystem;
   const effects::core::GameOptions &m_options;
   shared::EngineStreetHost m_host;
   street::scenes::BossStage m_stage;

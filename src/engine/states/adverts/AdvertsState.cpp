@@ -17,7 +17,7 @@ constexpr effects::color::AmigaColor BLACK = 0x000;
 constexpr int SCREENS = 2;
 
 effects::color::AmigaPalette
-screenPalette(const systems::IndexedBitmap &picture) {
+screenPalette(const systems::graphics::IndexedBitmap &picture) {
   effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
@@ -25,14 +25,14 @@ screenPalette(const systems::IndexedBitmap &picture) {
 
 } // namespace
 
-AdvertsState::AdvertsState(systems::VideoSystem &videoSystem,
-                           systems::ControllerSystem &controllerSystem)
+AdvertsState::AdvertsState(systems::graphics::VideoSystem &videoSystem,
+                           systems::input::ControllerSystem &controllerSystem)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_rows(effects::color::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
                                          videoSystem.isNtsc())),
       m_screen(SCREEN_WIDTH, m_rows.count), m_palette(SCREEN_COLORS, BLACK) {
   for (int slide = 0; slide < SLIDES; ++slide) {
-    m_slides.push_back(systems::loadIndexedBitmap(
+    m_slides.push_back(systems::graphics::loadIndexedBitmap(
         assets::picturePath("p" + std::to_string(FIRST_SLIDE + slide))));
   }
 }

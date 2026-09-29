@@ -24,8 +24,8 @@ public:
   static constexpr int KLIKER_FRAMES = 100;
   static constexpr int FADE_SPEED = 7;
 
-  AdvertsState(systems::VideoSystem &videoSystem,
-               systems::ControllerSystem &controllerSystem);
+  AdvertsState(systems::graphics::VideoSystem &videoSystem,
+               systems::input::ControllerSystem &controllerSystem);
 
   std::optional<EngineStateEnum> update() override;
 
@@ -44,11 +44,11 @@ private:
   void wait(int frames, Step next);
   void show();
 
-  systems::VideoSystem &m_videoSystem;
-  systems::ControllerSystem &m_controllerSystem;
-  std::vector<systems::IndexedBitmap> m_slides;
+  systems::graphics::VideoSystem &m_videoSystem;
+  systems::input::ControllerSystem &m_controllerSystem;
+  std::vector<systems::graphics::IndexedBitmap> m_slides;
   effects::color::VisibleRows m_rows;
-  systems::Canvas m_screen;
+  systems::graphics::Canvas m_screen;
   effects::color::AmigaPalette m_palette;
   effects::color::PaletteFader m_fader;
   Step m_step = Step::Open;

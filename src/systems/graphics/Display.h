@@ -7,6 +7,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace graphics {
 
 struct RowColor {
   int row = 0;
@@ -46,6 +47,7 @@ void cropRows(Display &display, int first, int count);
 uint32_t toArgb(uint16_t color);
 void rasterize(const Display &display, std::vector<uint32_t> &argb);
 
+} // namespace graphics
 } // namespace systems
 } // namespace src
 } // namespace openfranko

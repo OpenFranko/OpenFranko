@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <vector>
 
-namespace openfranko::src::systems {
+namespace openfranko::src::systems::audio {
 namespace {
 
 constexpr int OUTPUT_RATE = 22050;
@@ -130,4 +130,4 @@ void AudioSystem::applyTempo() {
                                (output->vblRate * output->tempoScale));
 }
 
-} // namespace openfranko::src::systems
+} // namespace openfranko::src::systems::audio

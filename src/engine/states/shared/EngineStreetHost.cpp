@@ -18,7 +18,7 @@ namespace {
 constexpr int PANEL_RESOURCE = 0x384;
 constexpr auto CREDITS_FILE = "credits.json";
 
-street::core::Picture toPicture(systems::IndexedBitmap bitmap) {
+street::core::Picture toPicture(systems::graphics::IndexedBitmap bitmap) {
   street::core::Picture picture;
   picture.width = bitmap.width;
   picture.height = bitmap.height;
@@ -48,7 +48,7 @@ std::optional<int> numberAfter(const std::string &text,
 
 } // namespace
 
-EngineStreetHost::EngineStreetHost(systems::AudioSystem &audioSystem,
+EngineStreetHost::EngineStreetHost(systems::audio::AudioSystem &audioSystem,
                                    GameVersion version, std::string directory)
     : m_audioSystem(audioSystem), m_version(version),
       m_directory(std::move(directory)), m_random(std::random_device{}()) {}
@@ -72,11 +72,13 @@ EngineStreetHost::loadSpriteSet(int resource, int sampleBank) {
 }
 
 street::core::Picture EngineStreetHost::loadPicture(int resource) {
-  return toPicture(systems::loadIndexedBitmap(resourcePath(resource) + ".bmp"));
+  return toPicture(
+      systems::graphics::loadIndexedBitmap(resourcePath(resource) + ".bmp"));
 }
 
 effects::color::AmigaPalette EngineStreetHost::loadPalette(int resource) {
-  return systems::loadIndexedBitmap(resourcePath(resource) + ".bmp").palette;
+  return systems::graphics::loadIndexedBitmap(resourcePath(resource) + ".bmp")
+      .palette;
 }
 
 std::vector<street::core::Picture> EngineStreetHost::loadScenery(int resource) {
@@ -106,7 +108,7 @@ street::scenes::EndingCredits EngineStreetHost::loadEndingCredits() {
 }
 
 street::core::Picture EngineStreetHost::loadPanelPicture(int part) {
-  return toPicture(systems::loadIndexedBitmap(
+  return toPicture(systems::graphics::loadIndexedBitmap(
       assets::partPath(resourceName(PANEL_RESOURCE), part, m_directory)));
 }
 
@@ -186,7 +188,7 @@ EngineStreetHost::loadFrames(int resource) const {
       frames.resize(static_cast<std::size_t>(*index) + 1);
     }
     frames[static_cast<std::size_t>(*index)] =
-        toPicture(systems::loadIndexedBitmap(entry.path().string()));
+        toPicture(systems::graphics::loadIndexedBitmap(entry.path().string()));
   }
   if (frames.empty()) {
     throw std::runtime_error("No frames found in " + directory.string());

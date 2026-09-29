@@ -6,7 +6,7 @@
 #include <iterator>
 #include <stdexcept>
 
-namespace openfranko::src::systems {
+namespace openfranko::src::systems::graphics {
 namespace {
 
 constexpr std::size_t HOTSPOT_X = 6;
@@ -133,4 +133,4 @@ IndexedBitmap loadIndexedBitmap(const std::string &path) {
   }
 }
 
-} // namespace openfranko::src::systems
+} // namespace openfranko::src::systems::graphics

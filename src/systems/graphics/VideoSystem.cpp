@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace openfranko::src::systems {
+namespace openfranko::src::systems::graphics {
 namespace {
 
 [[noreturn]] void throwError(const std::string &cause) {
@@ -137,4 +137,4 @@ bool VideoSystem::isNtsc() const { return ntsc; }
 
 int VideoSystem::refreshRate() const { return ntsc ? NTSC_HERTZ : PAL_HERTZ; }
 
-} // namespace openfranko::src::systems
+} // namespace openfranko::src::systems::graphics

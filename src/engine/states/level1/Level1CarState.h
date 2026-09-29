@@ -18,9 +18,9 @@ namespace level1 {
 
 class Level1CarState : public IEngineState {
 public:
-  Level1CarState(systems::VideoSystem &videoSystem,
-                 systems::AudioSystem &audioSystem,
-                 systems::ControllerSystem &controllerSystem,
+  Level1CarState(systems::graphics::VideoSystem &videoSystem,
+                 systems::audio::AudioSystem &audioSystem,
+                 systems::input::ControllerSystem &controllerSystem,
                  effects::core::GameOptions &options,
                  street::ui::GameSession &session);
 
@@ -29,8 +29,8 @@ public:
   const street::scenes::CarStage &stage() const;
 
 private:
-  systems::VideoSystem &m_videoSystem;
-  systems::ControllerSystem &m_controllerSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
+  systems::input::ControllerSystem &m_controllerSystem;
   const effects::core::GameOptions &m_options;
   shared::EngineStreetHost m_host;
   street::scenes::CarStage m_stage;

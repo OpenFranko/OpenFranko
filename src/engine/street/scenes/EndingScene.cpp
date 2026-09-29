@@ -139,11 +139,11 @@ void EndingScene::advance(int16_t joystick) {
 }
 
 void EndingScene::compose(std::vector<uint32_t> &frame) const {
-  systems::rasterize(output(), frame);
+  systems::graphics::rasterize(output(), frame);
 }
 
-systems::Display EndingScene::output() const {
-  systems::Display display;
+systems::graphics::Display EndingScene::output() const {
+  systems::graphics::Display display;
   display.width = WIDTH;
   display.height = HEIGHT;
   display.displayHeight = HEIGHT;
@@ -151,7 +151,7 @@ systems::Display EndingScene::output() const {
   if (m_stageShown && m_stage) {
     const core::IndexedSurface &shown = m_stage->buffer.shown();
     const int rowsPerLine = m_stage->laced ? 2 : 1;
-    systems::Layer stage;
+    systems::graphics::Layer stage;
     stage.pixels = shown.pixels().data();
     stage.stride = shown.width();
     stage.sourceColumns = shown.width();
@@ -166,7 +166,7 @@ systems::Display EndingScene::output() const {
     display.layers.push_back(std::move(stage));
   }
   if (const core::IndexedSurface *shown = panel()) {
-    systems::Layer layer;
+    systems::graphics::Layer layer;
     layer.pixels = shown->pixels().data();
     layer.stride = shown->width();
     layer.sourceColumns = shown->width();
@@ -186,7 +186,7 @@ systems::Display EndingScene::output() const {
         number == 1 && m_dancerBuffer
             ? m_dancerBuffer->shown()
             : (number == m_bobScreen ? m_display : screen.surface);
-    systems::Layer layer;
+    systems::graphics::Layer layer;
     layer.pixels = surface.pixels().data();
     layer.stride = surface.width();
     layer.sourceColumns = surface.width();

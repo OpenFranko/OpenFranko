@@ -13,7 +13,7 @@ class MusicFadeOut {
 public:
   static constexpr int FULL_VOLUME = 63;
 
-  bool advance(systems::AudioSystem &audioSystem);
+  bool advance(systems::audio::AudioSystem &audioSystem);
 
 private:
   int m_volume = FULL_VOLUME;

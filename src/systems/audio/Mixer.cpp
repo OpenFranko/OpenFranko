@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <xmp.h>
 
-namespace openfranko::src::systems {
+namespace openfranko::src::systems::audio {
 namespace {
 
 constexpr int DEFAULT_MUSIC_VOLUME = 56;
@@ -423,4 +423,4 @@ void Mixer::filter(int16_t *stereo, int frames) {
   }
 }
 
-} // namespace openfranko::src::systems
+} // namespace openfranko::src::systems::audio

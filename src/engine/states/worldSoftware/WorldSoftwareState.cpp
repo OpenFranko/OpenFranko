@@ -26,7 +26,7 @@ const effects::color::FlashSteps EYES_FLASH = {
     {0xB00, 4}, {0xC00, 4}, {0xD00, 4}, {0xE00, 4}};
 
 effects::color::AmigaPalette
-screenPalette(const systems::IndexedBitmap &picture) {
+screenPalette(const systems::graphics::IndexedBitmap &picture) {
   effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
@@ -34,12 +34,13 @@ screenPalette(const systems::IndexedBitmap &picture) {
 
 } // namespace
 
-WorldSoftwareState::WorldSoftwareState(systems::VideoSystem &videoSystem,
-                                       systems::AudioSystem &audioSystem)
+WorldSoftwareState::WorldSoftwareState(
+    systems::graphics::VideoSystem &videoSystem,
+    systems::audio::AudioSystem &audioSystem)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_rows(effects::color::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
                                          videoSystem.isNtsc())),
-      m_picture(systems::loadIndexedBitmap(PICTURE_PATH)),
+      m_picture(systems::graphics::loadIndexedBitmap(PICTURE_PATH)),
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_sequence(screenPalette(m_picture), TIMINGS) {
   m_audioSystem.loadSFX(SAMPLE, SAMPLE_PATH);
@@ -54,7 +55,7 @@ std::optional<EngineStateEnum> WorldSoftwareState::update() {
 
   if (m_sequence.frame() == m_sequence.holdStart()) {
     m_sequence.flash(EYES_COLOR, EYES_FLASH);
-    m_audioSystem.playSample(SAMPLE, systems::AudioSystem::ALL_VOICES);
+    m_audioSystem.playSample(SAMPLE, systems::audio::AudioSystem::ALL_VOICES);
   }
 
   m_sequence.advance();

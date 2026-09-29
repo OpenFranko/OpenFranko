@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace openfranko::src::systems {
+namespace openfranko::src::systems::graphics {
 namespace {
 
 constexpr uint8_t TRANSPARENT_INDEX = 0;
@@ -83,4 +83,4 @@ void Canvas::blit(const IndexedBitmap &image, int x, int y, bool masked,
   }
 }
 
-} // namespace openfranko::src::systems
+} // namespace openfranko::src::systems::graphics

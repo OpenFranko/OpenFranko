@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace openfranko::src::systems {
+namespace openfranko::src::systems::input {
 namespace {
 
 constexpr SDL_Keycode FIRST_PRINTABLE = '!';
@@ -112,4 +112,4 @@ bool Platform::pollEvents(ControllerSystem &controller) {
   return open;
 }
 
-} // namespace openfranko::src::systems
+} // namespace openfranko::src::systems::input

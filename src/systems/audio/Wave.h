@@ -8,6 +8,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace audio {
 
 struct Sound {
   int rate = 0;
@@ -17,6 +18,7 @@ struct Sound {
 Sound readWave(const std::vector<uint8_t> &file);
 Sound loadWave(const std::string &path);
 
+} // namespace audio
 } // namespace systems
 } // namespace src
 } // namespace openfranko

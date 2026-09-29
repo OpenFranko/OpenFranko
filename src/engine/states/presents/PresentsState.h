@@ -19,15 +19,15 @@ namespace presents {
 
 class PresentsState : public IEngineState {
 public:
-  PresentsState(systems::VideoSystem &videoSystem,
-                systems::AudioSystem &audioSystem,
-                systems::ControllerSystem &controllerSystem);
+  PresentsState(systems::graphics::VideoSystem &videoSystem,
+                systems::audio::AudioSystem &audioSystem,
+                systems::input::ControllerSystem &controllerSystem);
 
   std::optional<EngineStateEnum> update() override;
 
 private:
-  systems::AudioSystem &m_audioSystem;
-  systems::ControllerSystem &m_controllerSystem;
+  systems::audio::AudioSystem &m_audioSystem;
+  systems::input::ControllerSystem &m_controllerSystem;
   shared::IntroStrip m_strip;
   effects::sequences::BlyskSequence m_sequence;
   std::optional<shared::MusicFadeOut> m_musicFade;

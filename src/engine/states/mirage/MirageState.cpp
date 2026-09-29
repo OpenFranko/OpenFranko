@@ -17,7 +17,7 @@ constexpr effects::sequences::FotoSequence ::Timings TIMINGS{5, 200, 5, 70,
                                                              true};
 
 effects::color::AmigaPalette
-screenPalette(const systems::IndexedBitmap &picture) {
+screenPalette(const systems::graphics::IndexedBitmap &picture) {
   effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
@@ -25,11 +25,11 @@ screenPalette(const systems::IndexedBitmap &picture) {
 
 } // namespace
 
-MirageState::MirageState(systems::VideoSystem &videoSystem)
+MirageState::MirageState(systems::graphics::VideoSystem &videoSystem)
     : m_videoSystem(videoSystem),
       m_rows(effects::color::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
                                          videoSystem.isNtsc())),
-      m_picture(systems::loadIndexedBitmap(PICTURE_PATH)),
+      m_picture(systems::graphics::loadIndexedBitmap(PICTURE_PATH)),
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_sequence(screenPalette(m_picture), TIMINGS) {}
 

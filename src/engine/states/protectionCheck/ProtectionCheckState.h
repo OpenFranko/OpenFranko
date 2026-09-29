@@ -21,8 +21,8 @@ class ProtectionCheckState : public IEngineState {
 public:
   enum class Check { Title, Stage3 };
 
-  ProtectionCheckState(systems::VideoSystem &videoSystem,
-                       systems::AudioSystem &audioSystem,
+  ProtectionCheckState(systems::graphics::VideoSystem &videoSystem,
+                       systems::audio::AudioSystem &audioSystem,
                        effects::core::InkeyBuffer &keyboard,
                        Check check = Check::Title);
 
@@ -40,8 +40,8 @@ private:
   void draw();
   void show();
 
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
+  systems::audio::AudioSystem &m_audioSystem;
   effects::core::InkeyBuffer &m_keyboard;
   Check m_kind;
   effects::sequences::CodeCardCheck m_check;
@@ -51,9 +51,9 @@ private:
   int m_resumeFrame;
   bool m_questionShown = false;
   bool m_failureShown = false;
-  systems::Canvas m_screen;
-  systems::IndexedBitmap m_question;
-  systems::IndexedBitmap m_failure;
+  systems::graphics::Canvas m_screen;
+  systems::graphics::IndexedBitmap m_question;
+  systems::graphics::IndexedBitmap m_failure;
   effects::color::AmigaPalette m_questionPalette;
   effects::color::AmigaColor m_border;
   effects::color::PaletteFlasher m_flasher;

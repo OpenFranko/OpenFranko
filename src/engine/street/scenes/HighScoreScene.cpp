@@ -89,11 +89,11 @@ void HighScoreScene::advance() {
 }
 
 void HighScoreScene::compose(std::vector<uint32_t> &frame) const {
-  systems::rasterize(output(), frame);
+  systems::graphics::rasterize(output(), frame);
 }
 
-systems::Display HighScoreScene::output() const {
-  systems::Display display;
+systems::graphics::Display HighScoreScene::output() const {
+  systems::graphics::Display display;
   display.width = WIDTH;
   display.height = HEIGHT;
   display.displayHeight = HEIGHT;
@@ -101,7 +101,7 @@ systems::Display HighScoreScene::output() const {
   if (!m_shown) {
     return display;
   }
-  systems::Layer layer;
+  systems::graphics::Layer layer;
   layer.pixels = m_display.pixels().data();
   layer.stride = WIDTH;
   layer.sourceColumns = WIDTH;

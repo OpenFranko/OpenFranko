@@ -13,6 +13,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace audio {
 
 struct AudioSystem::Output {
   explicit Output(int rate) : mixer(rate) {}
@@ -26,6 +27,7 @@ struct AudioSystem::Output {
   std::unique_ptr<AudioDevice> device;
 };
 
+} // namespace audio
 } // namespace systems
 } // namespace src
 } // namespace openfranko

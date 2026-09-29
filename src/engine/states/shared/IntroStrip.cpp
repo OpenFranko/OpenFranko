@@ -40,7 +40,7 @@ loadPages(const std::string &directory) {
 
 } // namespace
 
-IntroStrip::IntroStrip(systems::VideoSystem &videoSystem,
+IntroStrip::IntroStrip(systems::graphics::VideoSystem &videoSystem,
                        const std::string &directory)
     : m_videoSystem(videoSystem), m_directory(directory),
       m_pages(loadPages(directory)),
@@ -67,14 +67,14 @@ void IntroStrip::show(const effects::sequences::BlyskSequence &sequence) {
   m_frame.setPalette(sequence.palette());
   m_frame.draw(m_strip, STRIP_LEFT,
                STRIP_DISPLAY_LINE - FRAME_DISPLAY_LINE - m_rows.first);
-  systems::Display display = m_frame.output();
+  systems::graphics::Display display = m_frame.output();
   display.displayHeight = 2 * display.height;
   m_videoSystem.show(display);
 }
 
 void IntroStrip::showBlack() {
   m_frame.fill(BLACK);
-  systems::Display display = m_frame.output();
+  systems::graphics::Display display = m_frame.output();
   display.displayHeight = 2 * display.height;
   m_videoSystem.show(display);
 }
@@ -91,7 +91,7 @@ void IntroStrip::paste(int page) {
       const int image = static_cast<unsigned char>(
                             line.text[static_cast<std::size_t>(i - 1)]) +
                         GLYPH_OFFSET;
-      const systems::IndexedBitmap *bitmap = glyph(image);
+      const systems::graphics::IndexedBitmap *bitmap = glyph(image);
       if (bitmap == nullptr) {
         continue;
       }
@@ -114,14 +114,14 @@ void IntroStrip::paste(int page) {
   }
 }
 
-const systems::IndexedBitmap *IntroStrip::glyph(int image) {
+const systems::graphics::IndexedBitmap *IntroStrip::glyph(int image) {
   auto found = m_glyphs.find(image);
   if (found == m_glyphs.end()) {
-    std::optional<systems::IndexedBitmap> bitmap;
+    std::optional<systems::graphics::IndexedBitmap> bitmap;
     const std::string path =
         assets::imagePath(FONT_BOBS, image - 1, m_directory);
     if (std::filesystem::exists(path)) {
-      bitmap = systems::loadIndexedBitmap(path);
+      bitmap = systems::graphics::loadIndexedBitmap(path);
     }
     found = m_glyphs.emplace(image, std::move(bitmap)).first;
   }

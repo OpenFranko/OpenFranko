@@ -23,9 +23,9 @@ namespace menu {
 
 class MenuState : public IEngineState {
 public:
-  MenuState(systems::VideoSystem &videoSystem,
-            systems::AudioSystem &audioSystem,
-            systems::ControllerSystem &controllerSystem,
+  MenuState(systems::graphics::VideoSystem &videoSystem,
+            systems::audio::AudioSystem &audioSystem,
+            systems::input::ControllerSystem &controllerSystem,
             effects::core::GameOptions &options,
             street::ui::GameSession &session);
 
@@ -40,20 +40,20 @@ private:
   void drawAttract();
   void drawAttractPicture();
   void drawHiscoreRow(int row);
-  void show(const systems::Canvas &screen);
+  void show(const systems::graphics::Canvas &screen);
 
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
-  systems::ControllerSystem &m_controllerSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
+  systems::audio::AudioSystem &m_audioSystem;
+  systems::input::ControllerSystem &m_controllerSystem;
   effects::core::GameOptions &m_options;
   street::ui::GameSession &m_session;
-  systems::IndexedBitmap m_backdrop;
-  systems::IndexedBitmap m_title;
-  systems::IndexedBitmap m_hiscores;
-  std::vector<systems::IndexedBitmap> m_menuBobs;
-  std::vector<systems::IndexedBitmap> m_letters;
-  systems::Canvas m_menuScreen;
-  systems::Canvas m_attractScreen;
+  systems::graphics::IndexedBitmap m_backdrop;
+  systems::graphics::IndexedBitmap m_title;
+  systems::graphics::IndexedBitmap m_hiscores;
+  std::vector<systems::graphics::IndexedBitmap> m_menuBobs;
+  std::vector<systems::graphics::IndexedBitmap> m_letters;
+  systems::graphics::Canvas m_menuScreen;
+  systems::graphics::Canvas m_attractScreen;
   effects::sequences::MenuSequence m_menu;
   effects::color::AmigaPalette m_titlePalette;
   effects::color::AmigaPalette m_hiscorePalette;

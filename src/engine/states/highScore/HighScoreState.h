@@ -18,8 +18,8 @@ namespace highScore {
 
 class HighScoreState : public IEngineState {
 public:
-  HighScoreState(systems::VideoSystem &videoSystem,
-                 systems::AudioSystem &audioSystem,
+  HighScoreState(systems::graphics::VideoSystem &videoSystem,
+                 systems::audio::AudioSystem &audioSystem,
                  effects::core::GameOptions &options,
                  street::ui::GameSession &session);
 
@@ -28,7 +28,7 @@ public:
   const street::scenes::HighScoreScene &scene() const;
 
 private:
-  systems::VideoSystem &m_videoSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
   shared::EngineStreetHost m_host;
   street::scenes::HighScoreScene m_scene;
   effects::color::VisibleRows m_rows;

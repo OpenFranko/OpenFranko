@@ -4,11 +4,11 @@
 
 namespace openfranko::src::engine::states::level1 {
 
-Level1CarState::Level1CarState(systems::VideoSystem &videoSystem,
-                               systems::AudioSystem &audioSystem,
-                               systems::ControllerSystem &controllerSystem,
-                               effects::core::GameOptions &options,
-                               street::ui::GameSession &session)
+Level1CarState::Level1CarState(
+    systems::graphics::VideoSystem &videoSystem,
+    systems::audio::AudioSystem &audioSystem,
+    systems::input::ControllerSystem &controllerSystem,
+    effects::core::GameOptions &options, street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_options(options), m_host(audioSystem, session.version),
       m_stage(m_host, session, options) {}

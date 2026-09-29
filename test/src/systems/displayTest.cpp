@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-using namespace openfranko::src::systems;
+using namespace openfranko::src::systems::graphics;
 
 namespace {
 

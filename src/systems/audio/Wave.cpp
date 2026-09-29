@@ -8,7 +8,7 @@
 #include <optional>
 #include <stdexcept>
 
-namespace openfranko::src::systems {
+namespace openfranko::src::systems::audio {
 namespace {
 
 constexpr std::size_t RIFF_HEADER_SIZE = 12;
@@ -121,4 +121,4 @@ Sound loadWave(const std::string &path) {
   }
 }
 
-} // namespace openfranko::src::systems
+} // namespace openfranko::src::systems::audio

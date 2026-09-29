@@ -4,9 +4,9 @@
 
 namespace openfranko::src::engine::states::presents {
 
-PresentsState::PresentsState(systems::VideoSystem &videoSystem,
-                             systems::AudioSystem &audioSystem,
-                             systems::ControllerSystem &controllerSystem)
+PresentsState::PresentsState(systems::graphics::VideoSystem &videoSystem,
+                             systems::audio::AudioSystem &audioSystem,
+                             systems::input::ControllerSystem &controllerSystem)
     : m_audioSystem(audioSystem), m_controllerSystem(controllerSystem),
       m_strip(videoSystem),
       m_sequence(

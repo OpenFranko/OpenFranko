@@ -5,7 +5,7 @@
 #include <string>
 #include <utility>
 
-namespace openfranko::src::systems {
+namespace openfranko::src::systems::audio {
 namespace {
 
 constexpr int STEREO = 2;
@@ -55,4 +55,4 @@ AudioDevice::~AudioDevice() {
   SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
-} // namespace openfranko::src::systems
+} // namespace openfranko::src::systems::audio

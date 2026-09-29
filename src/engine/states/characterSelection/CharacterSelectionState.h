@@ -22,9 +22,9 @@ namespace characterSelection {
 
 class CharacterSelectionState : public IEngineState {
 public:
-  CharacterSelectionState(systems::VideoSystem &videoSystem,
-                          systems::AudioSystem &audioSystem,
-                          systems::ControllerSystem &controllerSystem,
+  CharacterSelectionState(systems::graphics::VideoSystem &videoSystem,
+                          systems::audio::AudioSystem &audioSystem,
+                          systems::input::ControllerSystem &controllerSystem,
                           effects::core::GameOptions &options,
                           street::ui::GameSession &session);
   ~CharacterSelectionState();
@@ -35,16 +35,16 @@ private:
   void draw();
   EngineStateEnum firstStreet() const;
 
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
-  systems::ControllerSystem &m_controllerSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
+  systems::audio::AudioSystem &m_audioSystem;
+  systems::input::ControllerSystem &m_controllerSystem;
   street::ui::GameSession &m_session;
   effects::animation::CharacterSelection m_selection;
   effects::color::VisibleRows m_rows;
-  systems::IndexedBitmap m_picture;
+  systems::graphics::IndexedBitmap m_picture;
   effects::color::AmigaPalette m_screenPalette;
-  std::vector<systems::IndexedBitmap> m_sprites;
-  systems::Canvas m_screen;
+  std::vector<systems::graphics::IndexedBitmap> m_sprites;
+  systems::graphics::Canvas m_screen;
 };
 
 } // namespace characterSelection

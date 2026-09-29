@@ -140,11 +140,11 @@ void GameOverScene::advance(int16_t joystick) {
 }
 
 void GameOverScene::compose(std::vector<uint32_t> &frame) const {
-  systems::rasterize(output(), frame);
+  systems::graphics::rasterize(output(), frame);
 }
 
-systems::Display GameOverScene::output() const {
-  systems::Display display;
+systems::graphics::Display GameOverScene::output() const {
+  systems::graphics::Display display;
   display.width = WIDTH;
   display.height = HEIGHT;
   display.displayHeight = HEIGHT;
@@ -153,7 +153,7 @@ systems::Display GameOverScene::output() const {
     return display;
   }
   const core::IndexedSurface &shown = m_buffer->shown();
-  systems::Layer layer;
+  systems::graphics::Layer layer;
   layer.pixels = shown.pixels().data();
   layer.stride = shown.width();
   layer.sourceColumns = PICTURE_WIDTH;

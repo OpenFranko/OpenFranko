@@ -8,6 +8,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace audio {
 
 class AudioDevice {
 public:
@@ -25,6 +26,7 @@ private:
   std::unique_ptr<Stream> stream;
 };
 
+} // namespace audio
 } // namespace systems
 } // namespace src
 } // namespace openfranko

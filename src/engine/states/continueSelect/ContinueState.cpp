@@ -2,9 +2,9 @@
 
 namespace openfranko::src::engine::states::continueSelect {
 
-ContinueState::ContinueState(systems::VideoSystem &videoSystem,
-                             systems::AudioSystem &audioSystem,
-                             systems::ControllerSystem &controllerSystem,
+ContinueState::ContinueState(systems::graphics::VideoSystem &videoSystem,
+                             systems::audio::AudioSystem &audioSystem,
+                             systems::input::ControllerSystem &controllerSystem,
                              const effects::core::GameOptions &options,
                              street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
@@ -18,8 +18,8 @@ ContinueState::ContinueState(systems::VideoSystem &videoSystem,
 
 std::optional<EngineStateEnum> ContinueState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  systems::Display output = m_scene.output();
-  systems::cropRows(output, m_rows.first, m_rows.count);
+  systems::graphics::Display output = m_scene.output();
+  systems::graphics::cropRows(output, m_rows.first, m_rows.count);
   m_videoSystem.show(output);
 
   switch (m_scene.outcome()) {

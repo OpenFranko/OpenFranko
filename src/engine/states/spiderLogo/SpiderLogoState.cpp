@@ -62,15 +62,16 @@ constexpr int JINGLE_WAIT = 10;
 constexpr effects::sequences::FotoSequence ::Timings LOGO_TIMINGS{3, 210, 3, 45,
                                                                   false};
 
-systems::IndexedBitmap filled(int width, int height, uint8_t color) {
-  systems::IndexedBitmap bitmap;
+systems::graphics::IndexedBitmap filled(int width, int height, uint8_t color) {
+  systems::graphics::IndexedBitmap bitmap;
   bitmap.width = width;
   bitmap.height = height;
   bitmap.pixels.assign(static_cast<std::size_t>(width) * height, color);
   return bitmap;
 }
 
-effects::color::AmigaPalette logoPalette(const systems::IndexedBitmap &logo) {
+effects::color::AmigaPalette
+logoPalette(const systems::graphics::IndexedBitmap &logo) {
   effects::color::AmigaPalette palette = logo.palette;
   palette.resize(LOGO_COLORS);
   return palette;
@@ -78,10 +79,10 @@ effects::color::AmigaPalette logoPalette(const systems::IndexedBitmap &logo) {
 
 } // namespace
 
-SpiderLogoState::SpiderLogoState(systems::VideoSystem &videoSystem,
-                                 systems::AudioSystem &audioSystem)
+SpiderLogoState::SpiderLogoState(systems::graphics::VideoSystem &videoSystem,
+                                 systems::audio::AudioSystem &audioSystem)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_logo(systems::loadIndexedBitmap(assets::picturePath(LOGO))),
+      m_logo(systems::graphics::loadIndexedBitmap(assets::picturePath(LOGO))),
       m_water(filled(WALK_WIDTH, WALK_HEIGHT - WATER_TOP, WATER_COLOR)),
       m_reflectionArea(
           filled(LOGO_WIDTH, REFLECTION_BOTTOM - REFLECTION_TOP, 0)),
@@ -94,7 +95,7 @@ SpiderLogoState::SpiderLogoState(systems::VideoSystem &videoSystem,
       m_logoScreen(LOGO_WIDTH, m_logoRows.count) {
   for (int index = 0; index < IMAGES; ++index) {
     m_images.push_back(
-        systems::loadIndexedBitmap(assets::imagePath(BOBS, index)));
+        systems::graphics::loadIndexedBitmap(assets::imagePath(BOBS, index)));
   }
   m_audioSystem.loadSFX(STEP_SAMPLE,
                         assets::samplePath(BOBS, STEP_SAMPLE_NUMBER));
@@ -196,7 +197,7 @@ void SpiderLogoState::showWalk() {
   m_walkScreen.setPalette(WALK_PALETTE);
   m_walkScreen.draw(m_water, 0, WATER_TOP - m_walkRows.first);
   drawBob(m_walkScreen, m_walkRows.first);
-  systems::Display display = m_walkScreen.output();
+  systems::graphics::Display display = m_walkScreen.output();
   display.displayHeight = 2 * display.height;
   m_videoSystem.show(display);
 }
@@ -209,16 +210,17 @@ void SpiderLogoState::showLogo() {
   m_videoSystem.show(m_logoScreen.output());
 }
 
-void SpiderLogoState::showBlack(systems::Canvas &screen, bool hires) {
+void SpiderLogoState::showBlack(systems::graphics::Canvas &screen, bool hires) {
   screen.fill(BLACK);
-  systems::Display display = screen.output();
+  systems::graphics::Display display = screen.output();
   if (hires) {
     display.displayHeight = 2 * display.height;
   }
   m_videoSystem.show(display);
 }
 
-void SpiderLogoState::drawBob(systems::Canvas &screen, int top) const {
+void SpiderLogoState::drawBob(systems::graphics::Canvas &screen,
+                              int top) const {
   const int image = m_shownBob.image - 1;
   if (image >= 0 && image < static_cast<int>(m_images.size())) {
     screen.drawMasked(m_images[static_cast<std::size_t>(image)], m_shownBob.x,

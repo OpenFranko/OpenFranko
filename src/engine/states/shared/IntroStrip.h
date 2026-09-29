@@ -23,7 +23,7 @@ class IntroStrip {
 public:
   static constexpr int PAGES_BEFORE_KNEE = 2;
 
-  explicit IntroStrip(systems::VideoSystem &videoSystem,
+  explicit IntroStrip(systems::graphics::VideoSystem &videoSystem,
                       const std::string &directory = "assets");
 
   int pages() const;
@@ -32,15 +32,15 @@ public:
 
 private:
   void paste(int page);
-  const systems::IndexedBitmap *glyph(int image);
+  const systems::graphics::IndexedBitmap *glyph(int image);
 
-  systems::VideoSystem &m_videoSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
   std::string m_directory;
   std::vector<street::scenes::CreditPage> m_pages;
-  std::map<int, std::optional<systems::IndexedBitmap>> m_glyphs;
+  std::map<int, std::optional<systems::graphics::IndexedBitmap>> m_glyphs;
   effects::color::VisibleRows m_rows;
-  systems::Canvas m_frame;
-  systems::IndexedBitmap m_strip;
+  systems::graphics::Canvas m_frame;
+  systems::graphics::IndexedBitmap m_strip;
   std::optional<int> m_pasted;
 };
 

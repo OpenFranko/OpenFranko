@@ -7,6 +7,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace audio {
 
 class AudioSystem {
 public:
@@ -46,6 +47,7 @@ private:
   std::unique_ptr<Output> output;
 };
 
+} // namespace audio
 } // namespace systems
 } // namespace src
 } // namespace openfranko

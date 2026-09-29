@@ -10,8 +10,8 @@ void save(const street::scenes::HighScoreTable &table) {
 
 } // namespace
 
-HighScoreState::HighScoreState(systems::VideoSystem &videoSystem,
-                               systems::AudioSystem &audioSystem,
+HighScoreState::HighScoreState(systems::graphics::VideoSystem &videoSystem,
+                               systems::audio::AudioSystem &audioSystem,
                                effects::core::GameOptions &options,
                                street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_host(audioSystem, session.version),
@@ -25,8 +25,8 @@ HighScoreState::HighScoreState(systems::VideoSystem &videoSystem,
 
 std::optional<EngineStateEnum> HighScoreState::update() {
   m_scene.advance();
-  systems::Display output = m_scene.output();
-  systems::cropRows(output, m_rows.first, m_rows.count);
+  systems::graphics::Display output = m_scene.output();
+  systems::graphics::cropRows(output, m_rows.first, m_rows.count);
   m_videoSystem.show(output);
 
   switch (m_scene.outcome()) {

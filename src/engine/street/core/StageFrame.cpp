@@ -97,16 +97,17 @@ int StageDisplay::panelY(bool laced) const {
   return panelDisplayY({m_live.ntsc, laced});
 }
 
-systems::Display stageOutput(const IndexedSurface *display,
-                             const effects::color::AmigaPalette &palette,
-                             const amal::Object &screenDisplay, int offsetX,
-                             const ui::StatusPanel *panel, int panelY,
-                             const effects::color::AmigaPalette &panelColors,
-                             const StageLayout &window) {
+systems::graphics::Display
+stageOutput(const IndexedSurface *display,
+            const effects::color::AmigaPalette &palette,
+            const amal::Object &screenDisplay, int offsetX,
+            const ui::StatusPanel *panel, int panelY,
+            const effects::color::AmigaPalette &panelColors,
+            const StageLayout &window) {
   const int rows = frameRows(window);
   const int perLine = rowsPerLine(window);
   const int top = frameTop(window);
-  systems::Display output;
+  systems::graphics::Display output;
   output.width = FRAME_WIDTH;
   output.height = rows;
   output.displayHeight = FRAME_HEIGHT;
@@ -115,7 +116,7 @@ systems::Display stageOutput(const IndexedSurface *display,
     return output;
   }
   if (display) {
-    systems::Layer screen;
+    systems::graphics::Layer screen;
     screen.pixels = display->pixels().data();
     screen.stride = display->width();
     screen.sourceColumns = display->width();
@@ -128,7 +129,7 @@ systems::Display stageOutput(const IndexedSurface *display,
     output.layers.push_back(std::move(screen));
   }
   const IndexedSurface &panelSurface = panel->surface();
-  systems::Layer panelLayer;
+  systems::graphics::Layer panelLayer;
   panelLayer.pixels = panelSurface.pixels().data();
   panelLayer.stride = panelSurface.width();
   panelLayer.sourceColumns = panelSurface.width();
@@ -139,7 +140,7 @@ systems::Display stageOutput(const IndexedSurface *display,
   panelLayer.rows = ui::StatusPanel::VISIBLE_HEIGHT * perLine;
   panelLayer.palette = panelColors;
   output.layers.push_back(std::move(panelLayer));
-  output.layers.push_back(systems::solidLayer(
+  output.layers.push_back(systems::graphics::solidLayer(
       0x000, 0, (effects::color::FIRST_VISIBLE_LINE - top) * perLine,
       FRAME_WIDTH));
   return output;
@@ -151,9 +152,10 @@ void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const ui::StatusPanel *panel, int panelY,
                   const effects::color::AmigaPalette &panelColors,
                   const StageLayout &window) {
-  systems::rasterize(stageOutput(display, palette, screenDisplay, offsetX,
-                                 panel, panelY, panelColors, window),
-                     frame);
+  systems::graphics::rasterize(stageOutput(display, palette, screenDisplay,
+                                           offsetX, panel, panelY, panelColors,
+                                           window),
+                               frame);
 }
 
 } // namespace openfranko::src::engine::street::core

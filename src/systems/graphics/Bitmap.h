@@ -8,6 +8,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace graphics {
 
 struct IndexedBitmap {
   int width = 0;
@@ -21,6 +22,7 @@ struct IndexedBitmap {
 IndexedBitmap readIndexedBitmap(const std::vector<uint8_t> &file);
 IndexedBitmap loadIndexedBitmap(const std::string &path);
 
+} // namespace graphics
 } // namespace systems
 } // namespace src
 } // namespace openfranko

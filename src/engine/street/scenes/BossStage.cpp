@@ -179,10 +179,10 @@ core::StageCopper BossStage::registers() const {
 }
 
 void BossStage::compose(std::vector<uint32_t> &frame) const {
-  systems::rasterize(output(), frame);
+  systems::graphics::rasterize(output(), frame);
 }
 
-systems::Display BossStage::output() const {
+systems::graphics::Display BossStage::output() const {
   const core::StageCopper &live = m_copper.live();
   return stageOutput(live.screenShown ? &m_buffer.shown() : nullptr, m_palette,
                      live.screenDisplay, m_screenOffsetX,

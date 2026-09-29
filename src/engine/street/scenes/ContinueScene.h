@@ -31,7 +31,7 @@ public:
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
-  systems::Display output() const;
+  systems::graphics::Display output() const;
 
   Outcome outcome() const;
   bool isShown() const;

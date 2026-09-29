@@ -36,32 +36,33 @@ constexpr int SECOND_STAGE = 2;
 constexpr int THIRD_STAGE = 3;
 
 effects::color::AmigaPalette
-screenPalette(const systems::IndexedBitmap &picture) {
+screenPalette(const systems::graphics::IndexedBitmap &picture) {
   effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
 
-std::vector<systems::IndexedBitmap> loadSprites(GameVersion version) {
+std::vector<systems::graphics::IndexedBitmap> loadSprites(GameVersion version) {
   const std::string name = assets::resourceName(SPRITE_SET, version);
-  std::vector<systems::IndexedBitmap> sprites;
+  std::vector<systems::graphics::IndexedBitmap> sprites;
   for (int index = 0; index < SPRITES; ++index) {
     sprites.push_back(
-        systems::loadIndexedBitmap(assets::imagePath(name, index)));
+        systems::graphics::loadIndexedBitmap(assets::imagePath(name, index)));
   }
   return sprites;
 }
 
 effects::animation::CharacterSelection::Joystick
-joystickFrom(const systems::ControllerSystem::ControllerStates &states) {
+joystickFrom(const systems::input::ControllerSystem::ControllerStates &states) {
   return {states.left, states.right, states.button};
 }
 
 } // namespace
 
 CharacterSelectionState::CharacterSelectionState(
-    systems::VideoSystem &videoSystem, systems::AudioSystem &audioSystem,
-    systems::ControllerSystem &controllerSystem,
+    systems::graphics::VideoSystem &videoSystem,
+    systems::audio::AudioSystem &audioSystem,
+    systems::input::ControllerSystem &controllerSystem,
     effects::core::GameOptions &options, street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_session(session),
@@ -69,7 +70,7 @@ CharacterSelectionState::CharacterSelectionState(
       m_rows(effects::color::visibleRows(
           effects::color::pictureLine(DISPLAY_LINE, options.ntsc),
           SCREEN_HEIGHT, options.ntsc)),
-      m_picture(systems::loadIndexedBitmap(
+      m_picture(systems::graphics::loadIndexedBitmap(
           assets::picturePath(assets::resourceName(PICTURE, session.version)))),
       m_screenPalette(screenPalette(m_picture)),
       m_sprites(loadSprites(session.version)),
@@ -101,7 +102,8 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
   if (const auto sample = m_selection.sample()) {
     for (const Voice &voice : VOICES) {
       if (voice.sample == *sample) {
-        m_audioSystem.playSample(voice.name, systems::AudioSystem::ALL_VOICES);
+        m_audioSystem.playSample(voice.name,
+                                 systems::audio::AudioSystem::ALL_VOICES);
       }
     }
   }

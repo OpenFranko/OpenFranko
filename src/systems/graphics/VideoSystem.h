@@ -10,6 +10,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace graphics {
 
 class VideoSystem {
 public:
@@ -36,6 +37,7 @@ private:
   bool ntsc = false;
 };
 
+} // namespace graphics
 } // namespace systems
 } // namespace src
 } // namespace openfranko

@@ -35,10 +35,10 @@ private:
   states::EngineStateEnum versionState(states::EngineStateEnum state) const;
   void switchState(states::EngineStateEnum nextState);
 
-  systems::Platform platform;
-  systems::VideoSystem videoSystem;
-  systems::AudioSystem audioSystem;
-  systems::ControllerSystem controllerSystem;
+  systems::input::Platform platform;
+  systems::graphics::VideoSystem videoSystem;
+  systems::audio::AudioSystem audioSystem;
+  systems::input::ControllerSystem controllerSystem;
   effects::core::GameOptions options;
   street::ui::GameSession session;
 

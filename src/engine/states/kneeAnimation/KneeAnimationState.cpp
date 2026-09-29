@@ -46,8 +46,9 @@ constexpr int CLOSED_FRAME =
 } // namespace
 
 KneeAnimationState::KneeAnimationState(
-    systems::VideoSystem &videoSystem, systems::AudioSystem &audioSystem,
-    systems::ControllerSystem &controllerSystem, GameVersion version)
+    systems::graphics::VideoSystem &videoSystem,
+    systems::audio::AudioSystem &audioSystem,
+    systems::input::ControllerSystem &controllerSystem, GameVersion version)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_version(version), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT) {
   const bool version12 = m_version == GameVersion::V12;
@@ -57,7 +58,7 @@ KneeAnimationState::KneeAnimationState(
   const std::string images = assets::resourceName(IMAGES, m_version);
   for (int image = 0; image < IMAGE_COUNT; ++image) {
     m_images.push_back(
-        systems::loadIndexedBitmap(assets::partPath(images, image)));
+        systems::graphics::loadIndexedBitmap(assets::partPath(images, image)));
   }
   m_audioSystem.loadSFX(
       SAMPLE,
@@ -79,9 +80,9 @@ std::optional<EngineStateEnum> KneeAnimationState::update() {
 
   const bool version12 = m_version == GameVersion::V12;
   if (time == SAMPLE_FRAME) {
-    m_audioSystem.playSample(SAMPLE, version12
-                                         ? VERSION12_SAMPLE_VOICES
-                                         : systems::AudioSystem::ALL_VOICES);
+    m_audioSystem.playSample(
+        SAMPLE, version12 ? VERSION12_SAMPLE_VOICES
+                          : systems::audio::AudioSystem::ALL_VOICES);
   }
   if (time == MUSIC_FRAME) {
     m_audioSystem.playMusic();
@@ -96,7 +97,7 @@ std::optional<EngineStateEnum> KneeAnimationState::update() {
   } else if (copied == 0) {
     m_screen.fill(BACKGROUND_GREY);
   } else {
-    const systems::IndexedBitmap &image = m_images[copied - 1];
+    const systems::graphics::IndexedBitmap &image = m_images[copied - 1];
     m_screen.setPalette(image.palette);
     m_screen.draw(image, 0, 0);
   }

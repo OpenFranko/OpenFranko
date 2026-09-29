@@ -25,9 +25,9 @@ namespace titleAndStory {
 
 class TitleAndStoryState : public IEngineState {
 public:
-  TitleAndStoryState(systems::VideoSystem &videoSystem,
-                     systems::AudioSystem &audioSystem,
-                     systems::ControllerSystem &controllerSystem,
+  TitleAndStoryState(systems::graphics::VideoSystem &videoSystem,
+                     systems::audio::AudioSystem &audioSystem,
+                     systems::input::ControllerSystem &controllerSystem,
                      GameVersion version = GameVersion::V10);
 
   std::optional<EngineStateEnum> update() override;
@@ -48,7 +48,7 @@ private:
 
     std::string resource;
     int index = -1;
-    systems::IndexedBitmap bitmap;
+    systems::graphics::IndexedBitmap bitmap;
   };
 
   std::optional<EngineStateEnum> runTitle();
@@ -58,15 +58,15 @@ private:
   void drawStory(const effects::sequences::StorySequence::View &view);
   void drawStoryImage(StoryImage &image, int index, int x, int y, bool masked);
 
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
-  systems::ControllerSystem &m_controllerSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
+  systems::audio::AudioSystem &m_audioSystem;
+  systems::input::ControllerSystem &m_controllerSystem;
   GameVersion m_version;
-  systems::IndexedBitmap m_titlePicture;
+  systems::graphics::IndexedBitmap m_titlePicture;
   StoryImage m_frame;
   StoryImage m_picture;
   StoryImage m_text;
-  systems::Canvas m_screen;
+  systems::graphics::Canvas m_screen;
   effects::sequences::FotoSequence m_title;
   effects::sequences::StorySequence m_story;
   std::optional<shared::IntroStrip> m_strip;

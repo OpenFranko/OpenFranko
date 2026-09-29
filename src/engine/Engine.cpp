@@ -30,7 +30,7 @@
 namespace openfranko::src::engine {
 namespace {
 
-systems::KeyMode keyMode(states::EngineStateEnum state) {
+systems::input::KeyMode keyMode(states::EngineStateEnum state) {
   switch (state) {
   case states::EngineStateEnum::Level1:
   case states::EngineStateEnum::Level1Boss:
@@ -40,9 +40,9 @@ systems::KeyMode keyMode(states::EngineStateEnum state) {
   case states::EngineStateEnum::Level2Car:
   case states::EngineStateEnum::Level3:
   case states::EngineStateEnum::Level3Boss:
-    return systems::KeyMode::Game;
+    return systems::input::KeyMode::Game;
   case states::EngineStateEnum::HighScore:
-    return systems::KeyMode::NameEntry;
+    return systems::input::KeyMode::NameEntry;
   case states::EngineStateEnum::Mirage:
   case states::EngineStateEnum::SpiderLogo:
   case states::EngineStateEnum::Adverts:
@@ -59,7 +59,7 @@ systems::KeyMode keyMode(states::EngineStateEnum state) {
   case states::EngineStateEnum::Continue:
     break;
   }
-  return systems::KeyMode::FrontEnd;
+  return systems::input::KeyMode::FrontEnd;
 }
 
 } // namespace

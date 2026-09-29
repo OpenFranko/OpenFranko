@@ -18,8 +18,8 @@ namespace shared {
 
 class EngineStreetHost : public street::scenes::StreetHost {
 public:
-  EngineStreetHost(systems::AudioSystem &audioSystem, GameVersion version,
-                   std::string directory = "assets");
+  EngineStreetHost(systems::audio::AudioSystem &audioSystem,
+                   GameVersion version, std::string directory = "assets");
   ~EngineStreetHost() override;
 
   std::vector<street::core::Picture> loadSpriteSet(int resource,
@@ -53,7 +53,7 @@ private:
   void loadSamples(int resource, int bank);
   void clearSamples(int bank);
 
-  systems::AudioSystem &m_audioSystem;
+  systems::audio::AudioSystem &m_audioSystem;
   GameVersion m_version;
   std::string m_directory;
   std::mt19937 m_random;

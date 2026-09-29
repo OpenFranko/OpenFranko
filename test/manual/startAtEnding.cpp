@@ -22,8 +22,8 @@ constexpr int16_t LAST_STAGE = 3;
 constexpr auto PANEL_DIRECTORY = "assets/0384/";
 
 street::core::Picture panelPicture(const std::string &file) {
-  systems::IndexedBitmap bitmap =
-      systems::loadIndexedBitmap(PANEL_DIRECTORY + file);
+  systems::graphics::IndexedBitmap bitmap =
+      systems::graphics::loadIndexedBitmap(PANEL_DIRECTORY + file);
   return street::core::Picture{bitmap.width, bitmap.height, bitmap.hotspotX,
                                bitmap.hotspotY, std::move(bitmap.pixels)};
 }

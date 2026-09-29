@@ -73,8 +73,8 @@ effects::sequences::CodeCardCheck makeCheck(ProtectionCheckState::Check check) {
   return effects::sequences::CodeCardCheck(loadCards(), randomCells<Cells>());
 }
 
-void xorRect(systems::IndexedBitmap &image, int x, int y, int width, int height,
-             uint8_t mask) {
+void xorRect(systems::graphics::IndexedBitmap &image, int x, int y, int width,
+             int height, uint8_t mask) {
   const int left = std::max(x, 0);
   const int top = std::max(y, 0);
   const int right = std::min(x + width, image.width);
@@ -89,10 +89,10 @@ void xorRect(systems::IndexedBitmap &image, int x, int y, int width, int height,
 
 } // namespace
 
-ProtectionCheckState::ProtectionCheckState(systems::VideoSystem &videoSystem,
-                                           systems::AudioSystem &audioSystem,
-                                           effects::core::InkeyBuffer &keyboard,
-                                           Check check)
+ProtectionCheckState::ProtectionCheckState(
+    systems::graphics::VideoSystem &videoSystem,
+    systems::audio::AudioSystem &audioSystem,
+    effects::core::InkeyBuffer &keyboard, Check check)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_keyboard(keyboard), m_kind(check), m_check(makeCheck(check)),
       m_loadingFrames(check == Check::Stage3
@@ -202,7 +202,7 @@ const effects::sequences::CodeCardCheck &ProtectionCheckState::check() const {
 }
 
 void ProtectionCheckState::showQuestion() {
-  m_question = systems::loadIndexedBitmap(QUESTION_PATH);
+  m_question = systems::graphics::loadIndexedBitmap(QUESTION_PATH);
   m_questionPalette = m_question.palette;
   m_border = m_questionPalette[0];
   m_flasher.start(BOX_INK, BOX_FLASH);
@@ -217,8 +217,8 @@ void ProtectionCheckState::showFailure() {
       effects::color::pictureLine(FAILURE_DISPLAY_LINE, ntsc),
       FAILURE_SCREEN_HEIGHT, ntsc);
   m_failureTop = rows.first;
-  m_screen = systems::Canvas(FAILURE_SCREEN_WIDTH, rows.count);
-  m_failure = systems::loadIndexedBitmap(FAILURE_PATH);
+  m_screen = systems::graphics::Canvas(FAILURE_SCREEN_WIDTH, rows.count);
+  m_failure = systems::graphics::loadIndexedBitmap(FAILURE_PATH);
 }
 
 } // namespace openfranko::src::engine::states::protectionCheck

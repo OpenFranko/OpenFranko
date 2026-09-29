@@ -6,6 +6,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace input {
 
 class Platform {
 public:
@@ -18,6 +19,7 @@ public:
   bool pollEvents(ControllerSystem &controller);
 };
 
+} // namespace input
 } // namespace systems
 } // namespace src
 } // namespace openfranko

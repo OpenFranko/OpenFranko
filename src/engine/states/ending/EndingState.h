@@ -19,9 +19,9 @@ namespace ending {
 
 class EndingState : public IEngineState {
 public:
-  EndingState(systems::VideoSystem &videoSystem,
-              systems::AudioSystem &audioSystem,
-              systems::ControllerSystem &controllerSystem,
+  EndingState(systems::graphics::VideoSystem &videoSystem,
+              systems::audio::AudioSystem &audioSystem,
+              systems::input::ControllerSystem &controllerSystem,
               const effects::core::GameOptions &options,
               street::ui::GameSession &session);
 
@@ -30,8 +30,8 @@ public:
   const street::scenes::EndingScene &scene() const;
 
 private:
-  systems::VideoSystem &m_videoSystem;
-  systems::ControllerSystem &m_controllerSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
+  systems::input::ControllerSystem &m_controllerSystem;
   shared::EngineStreetHost m_host;
   street::scenes::EndingScene m_scene;
   effects::color::VisibleRows m_rows;

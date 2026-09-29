@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 
-namespace openfranko::src::systems {
+namespace openfranko::src::systems::graphics {
 namespace {
 
 constexpr uint32_t OPAQUE = 0xFF000000u;
@@ -94,4 +94,4 @@ void rasterize(const Display &display, std::vector<uint32_t> &argb) {
   }
 }
 
-} // namespace openfranko::src::systems
+} // namespace openfranko::src::systems::graphics

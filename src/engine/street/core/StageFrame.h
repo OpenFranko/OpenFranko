@@ -64,12 +64,11 @@ void switchStandard(effects::core::GameOptions &options,
 const effects::color::AmigaPalette &levelPalette(bool mono);
 const effects::color::AmigaPalette &panelPalette();
 
-systems::Display stageOutput(const IndexedSurface *display,
-                             const effects::color::AmigaPalette &palette,
-                             const amal::Object &screenDisplay, int offsetX,
-                             const ui::StatusPanel *panel, int panelY,
-                             const effects::color::AmigaPalette &panelColors,
-                             const StageLayout &window);
+systems::graphics::Display stageOutput(
+    const IndexedSurface *display, const effects::color::AmigaPalette &palette,
+    const amal::Object &screenDisplay, int offsetX,
+    const ui::StatusPanel *panel, int panelY,
+    const effects::color::AmigaPalette &panelColors, const StageLayout &window);
 void composeFrame(std::vector<uint32_t> &frame, const IndexedSurface *display,
                   const effects::color::AmigaPalette &palette,
                   const amal::Object &screenDisplay, int offsetX,

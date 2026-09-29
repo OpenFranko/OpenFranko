@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace openfranko::src::systems {
+namespace openfranko::src::systems::input {
 namespace {
 
 constexpr char TYPED_SPACE = ' ';
@@ -134,4 +134,4 @@ int16_t ControllerSystem::joystick() const {
                               (states.button ? 16 : 0));
 }
 
-} // namespace openfranko::src::systems
+} // namespace openfranko::src::systems::input

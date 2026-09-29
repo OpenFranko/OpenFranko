@@ -133,10 +133,10 @@ core::StageCopper StreetStage::registers() const {
 }
 
 void StreetStage::compose(std::vector<uint32_t> &frame) const {
-  systems::rasterize(output(), frame);
+  systems::graphics::rasterize(output(), frame);
 }
 
-systems::Display StreetStage::output() const {
+systems::graphics::Display StreetStage::output() const {
   const core::StageCopper &live = m_copper.live();
   return core::stageOutput(live.screenShown ? &m_buffer.shown() : nullptr,
                            m_palette, live.screenDisplay, m_screenOffsetX,

@@ -14,10 +14,10 @@ namespace states {
 namespace shared {
 
 street::scenes::StreetInput
-readStreetInput(const systems::ControllerSystem &controller,
+readStreetInput(const systems::input::ControllerSystem &controller,
                 GameVersion version);
-void showStageFrame(systems::VideoSystem &videoSystem,
-                    const systems::Display &frame,
+void showStageFrame(systems::graphics::VideoSystem &videoSystem,
+                    const systems::graphics::Display &frame,
                     const effects::core::GameOptions &options);
 
 } // namespace shared

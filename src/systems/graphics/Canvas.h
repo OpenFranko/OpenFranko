@@ -10,6 +10,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace graphics {
 
 class Canvas {
 public:
@@ -40,6 +41,7 @@ private:
   std::vector<uint16_t> m_palette = std::vector<uint16_t>(256, 0);
 };
 
+} // namespace graphics
 } // namespace systems
 } // namespace src
 } // namespace openfranko

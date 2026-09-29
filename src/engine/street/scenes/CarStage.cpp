@@ -177,10 +177,10 @@ core::StageCopper CarStage::registers() const {
 }
 
 void CarStage::compose(std::vector<uint32_t> &frame) const {
-  systems::rasterize(output(), frame);
+  systems::graphics::rasterize(output(), frame);
 }
 
-systems::Display CarStage::output() const {
+systems::graphics::Display CarStage::output() const {
   const core::StageCopper &live = m_copper.live();
   return core::stageOutput(live.screenShown ? &m_buffer.shown() : nullptr,
                            m_palette, live.screenDisplay, m_screenOffsetX,

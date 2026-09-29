@@ -47,25 +47,26 @@ constexpr int ROW_PITCH = 20;
 
 constexpr int RO = 14;
 
-systems::Canvas menuScreen(bool ntscDisplay) {
-  return systems::Canvas(MENU_SCREEN_WIDTH,
-                         effects::color::visibleRows(
+systems::graphics::Canvas menuScreen(bool ntscDisplay) {
+  return systems::graphics::Canvas(
+      MENU_SCREEN_WIDTH, effects::color::visibleRows(
                              MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay)
                              .count);
 }
 
-systems::IndexedBitmap loadPicture(int resource, GameVersion version) {
-  return systems::loadIndexedBitmap(
+systems::graphics::IndexedBitmap loadPicture(int resource,
+                                             GameVersion version) {
+  return systems::graphics::loadIndexedBitmap(
       assets::picturePath(assets::resourceName(resource, version)));
 }
 
-std::vector<systems::IndexedBitmap> loadSprites(int resource, int count,
-                                                GameVersion version) {
+std::vector<systems::graphics::IndexedBitmap>
+loadSprites(int resource, int count, GameVersion version) {
   const std::string name = assets::resourceName(resource, version);
-  std::vector<systems::IndexedBitmap> sprites;
+  std::vector<systems::graphics::IndexedBitmap> sprites;
   for (int index = 0; index < count; ++index) {
     sprites.push_back(
-        systems::loadIndexedBitmap(assets::imagePath(name, index)));
+        systems::graphics::loadIndexedBitmap(assets::imagePath(name, index)));
   }
   return sprites;
 }
@@ -81,9 +82,9 @@ int menuImages(GameVersion version) {
              : LAST_MENU_IMAGE - FIRST_MENU_IMAGE + 1;
 }
 
-const systems::IndexedBitmap *
-findImage(const std::vector<systems::IndexedBitmap> &images, int firstImage,
-          int image) {
+const systems::graphics::IndexedBitmap *
+findImage(const std::vector<systems::graphics::IndexedBitmap> &images,
+          int firstImage, int image) {
   const int index = image - firstImage;
   if (index < 0 || index >= static_cast<int>(images.size())) {
     return nullptr;
@@ -98,7 +99,7 @@ effects::color::AmigaPalette resized(effects::color::AmigaPalette palette,
 }
 
 effects::sequences::MenuSequence::Joystick
-joystickFrom(const systems::ControllerSystem::ControllerStates &states) {
+joystickFrom(const systems::input::ControllerSystem::ControllerStates &states) {
   return {states.up, states.down, states.left, states.right, states.button};
 }
 
@@ -109,9 +110,9 @@ bool isTouched(const effects::sequences::MenuSequence::Joystick &joystick) {
 
 } // namespace
 
-MenuState::MenuState(systems::VideoSystem &videoSystem,
-                     systems::AudioSystem &audioSystem,
-                     systems::ControllerSystem &controllerSystem,
+MenuState::MenuState(systems::graphics::VideoSystem &videoSystem,
+                     systems::audio::AudioSystem &audioSystem,
+                     systems::input::ControllerSystem &controllerSystem,
                      effects::core::GameOptions &options,
                      street::ui::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
@@ -225,7 +226,7 @@ void MenuState::startAttract() {
       effects::color::pictureLine(ATTRACT_DISPLAY_Y, m_options.ntsc),
       ATTRACT_SCREEN_HEIGHT, m_videoSystem.isNtsc());
   m_attractTop = rows.first;
-  m_attractScreen = systems::Canvas(ATTRACT_SCREEN_WIDTH, rows.count);
+  m_attractScreen = systems::graphics::Canvas(ATTRACT_SCREEN_WIDTH, rows.count);
   const effects::sequences::AttractSequence::Kind kind = m_nextAttract;
   const bool title = kind == effects::sequences::AttractSequence::Kind::Title;
   m_nextAttract = title ? effects::sequences::AttractSequence::Kind::Hiscores
@@ -243,7 +244,7 @@ void MenuState::drawMenu() {
   m_menuScreen.setPalette(m_menu.palette());
   m_menuScreen.draw(m_backdrop, 0, 0);
   for (const effects::sequences::MenuSequence::Bob &bob : m_menu.shownBobs()) {
-    const systems::IndexedBitmap *image =
+    const systems::graphics::IndexedBitmap *image =
         findImage(m_menuBobs, firstMenuImage(m_session.version), bob.image);
     if (bob.shown && image) {
       m_menuScreen.drawMasked(*image, bob.x, bob.y, bob.flipped);
@@ -284,7 +285,7 @@ void MenuState::drawHiscoreRow(int row) {
   for (int column = 0; column < street::scenes::HighScoreTable::NAME_LENGTH;
        ++column) {
     const int letter = table.letter(row, column);
-    const systems::IndexedBitmap *image =
+    const systems::graphics::IndexedBitmap *image =
         findImage(m_letters, FIRST_LETTER_IMAGE, letter + LETTER_A_IMAGE);
     if (letter < street::scenes::HighScoreTable::LETTERS && image) {
       m_attractScreen.drawMasked(*image, NAME_X + column * CHARACTER_PITCH, y);
@@ -296,7 +297,7 @@ void MenuState::drawHiscoreRow(int row) {
       SCORE_RIGHT - CHARACTER_PITCH * static_cast<int>(score.size());
   for (int i = 1; i <= SCORE_CHARACTERS; ++i) {
     const char character = score[i - 1];
-    const systems::IndexedBitmap *image = findImage(
+    const systems::graphics::IndexedBitmap *image = findImage(
         m_letters, FIRST_LETTER_IMAGE, character - DIGIT_IMAGE_OFFSET);
     if (character > ' ' && image) {
       m_attractScreen.drawMasked(*image, scoreX + i * CHARACTER_PITCH, y);
@@ -304,7 +305,7 @@ void MenuState::drawHiscoreRow(int row) {
   }
 }
 
-void MenuState::show(const systems::Canvas &screen) {
+void MenuState::show(const systems::graphics::Canvas &screen) {
   m_videoSystem.show(screen.output());
 }
 

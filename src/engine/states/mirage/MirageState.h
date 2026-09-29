@@ -16,15 +16,15 @@ namespace mirage {
 
 class MirageState : public IEngineState {
 public:
-  explicit MirageState(systems::VideoSystem &videoSystem);
+  explicit MirageState(systems::graphics::VideoSystem &videoSystem);
 
   std::optional<EngineStateEnum> update() override;
 
 private:
-  systems::VideoSystem &m_videoSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
   effects::color::VisibleRows m_rows;
-  systems::IndexedBitmap m_picture;
-  systems::Canvas m_screen;
+  systems::graphics::IndexedBitmap m_picture;
+  systems::graphics::Canvas m_screen;
   effects::sequences::FotoSequence m_sequence;
 };
 

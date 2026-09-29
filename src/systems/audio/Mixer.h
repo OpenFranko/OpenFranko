@@ -15,6 +15,7 @@
 namespace openfranko {
 namespace src {
 namespace systems {
+namespace audio {
 
 class Mixer {
 public:
@@ -109,6 +110,7 @@ private:
   std::array<std::array<double, 4>, 2> filterHistory{};
 };
 
+} // namespace audio
 } // namespace systems
 } // namespace src
 } // namespace openfranko

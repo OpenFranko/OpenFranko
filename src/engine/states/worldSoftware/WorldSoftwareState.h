@@ -17,18 +17,18 @@ namespace worldSoftware {
 
 class WorldSoftwareState : public IEngineState {
 public:
-  WorldSoftwareState(systems::VideoSystem &videoSystem,
-                     systems::AudioSystem &audioSystem);
+  WorldSoftwareState(systems::graphics::VideoSystem &videoSystem,
+                     systems::audio::AudioSystem &audioSystem);
   ~WorldSoftwareState();
 
   std::optional<EngineStateEnum> update() override;
 
 private:
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
+  systems::graphics::VideoSystem &m_videoSystem;
+  systems::audio::AudioSystem &m_audioSystem;
   effects::color::VisibleRows m_rows;
-  systems::IndexedBitmap m_picture;
-  systems::Canvas m_screen;
+  systems::graphics::IndexedBitmap m_picture;
+  systems::graphics::Canvas m_screen;
   effects::sequences::FotoSequence m_sequence;
 };
 

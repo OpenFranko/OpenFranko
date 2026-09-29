@@ -21,8 +21,8 @@ namespace spiderLogo {
 
 class SpiderLogoState : public IEngineState {
 public:
-  SpiderLogoState(systems::VideoSystem &videoSystem,
-                  systems::AudioSystem &audioSystem);
+  SpiderLogoState(systems::graphics::VideoSystem &videoSystem,
+                  systems::audio::AudioSystem &audioSystem);
   ~SpiderLogoState();
 
   std::optional<EngineStateEnum> update() override;
@@ -32,23 +32,23 @@ private:
   void logo();
   void showWalk();
   void showLogo();
-  void showBlack(systems::Canvas &screen, bool hires);
-  void drawBob(systems::Canvas &screen, int top) const;
+  void showBlack(systems::graphics::Canvas &screen, bool hires);
+  void drawBob(systems::graphics::Canvas &screen, int top) const;
 
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
-  std::vector<systems::IndexedBitmap> m_images;
-  systems::IndexedBitmap m_logo;
-  systems::IndexedBitmap m_water;
-  systems::IndexedBitmap m_reflectionArea;
+  systems::graphics::VideoSystem &m_videoSystem;
+  systems::audio::AudioSystem &m_audioSystem;
+  std::vector<systems::graphics::IndexedBitmap> m_images;
+  systems::graphics::IndexedBitmap m_logo;
+  systems::graphics::IndexedBitmap m_water;
+  systems::graphics::IndexedBitmap m_reflectionArea;
   amal::Registers m_registers{};
   amal::Machine m_machine;
   amal::Object m_bob;
   amal::Object m_shownBob;
   effects::color::VisibleRows m_walkRows;
   effects::color::VisibleRows m_logoRows;
-  systems::Canvas m_walkScreen;
-  systems::Canvas m_logoScreen;
+  systems::graphics::Canvas m_walkScreen;
+  systems::graphics::Canvas m_logoScreen;
   std::optional<effects::sequences::FotoSequence> m_foto;
   int m_frame = 0;
   int m_timer = 0;

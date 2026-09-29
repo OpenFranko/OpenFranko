@@ -8,7 +8,7 @@
 using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
-using openfranko::src::systems::toArgb;
+using openfranko::src::systems::graphics::toArgb;
 
 namespace {
 

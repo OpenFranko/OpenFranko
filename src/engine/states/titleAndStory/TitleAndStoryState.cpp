@@ -52,14 +52,14 @@ constexpr effects::color::AmigaColor STORY_BACKGROUND_GREY = 0x444;
 constexpr int STORY_SCREENS = 2;
 
 effects::color::AmigaPalette
-screenPalette(const systems::IndexedBitmap &picture) {
+screenPalette(const systems::graphics::IndexedBitmap &picture) {
   effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
 
 bool isJoystickTouched(
-    const systems::ControllerSystem::ControllerStates &states) {
+    const systems::input::ControllerSystem::ControllerStates &states) {
   return states.up || states.down || states.left || states.right ||
          states.button;
 }
@@ -70,11 +70,12 @@ TitleAndStoryState::StoryImage::StoryImage(int resourceId, GameVersion version)
     : resource(assets::resourceName(resourceId, version)) {}
 
 TitleAndStoryState::TitleAndStoryState(
-    systems::VideoSystem &videoSystem, systems::AudioSystem &audioSystem,
-    systems::ControllerSystem &controllerSystem, GameVersion version)
+    systems::graphics::VideoSystem &videoSystem,
+    systems::audio::AudioSystem &audioSystem,
+    systems::input::ControllerSystem &controllerSystem, GameVersion version)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_version(version),
-      m_titlePicture(systems::loadIndexedBitmap(
+      m_titlePicture(systems::graphics::loadIndexedBitmap(
           assets::picturePath(assets::resourceName(TITLE, version)))),
       m_frame(STORY_FRAMES, version), m_picture(STORY_PICTURES, version),
       m_text(STORY_TEXTS, version), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
@@ -112,7 +113,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::runTitle() {
       }
       return std::nullopt;
     }
-    m_titlePicture = systems::IndexedBitmap{};
+    m_titlePicture = systems::graphics::IndexedBitmap{};
     if (m_controllerSystem.isFireLatched()) {
       return leave();
     }
@@ -230,8 +231,8 @@ void TitleAndStoryState::drawStory(
 void TitleAndStoryState::drawStoryImage(StoryImage &image, int index, int x,
                                         int y, bool masked) {
   if (image.index != index) {
-    image.bitmap =
-        systems::loadIndexedBitmap(assets::partPath(image.resource, index));
+    image.bitmap = systems::graphics::loadIndexedBitmap(
+        assets::partPath(image.resource, index));
     image.index = index;
   }
   m_screen.setPalette(image.bitmap.palette);
