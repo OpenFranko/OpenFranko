@@ -1,2 +1,3 @@
-add_library(readFile readFile.cpp readFile.h)
-
+add_library(readFile
+    readFile.cpp
+    readFile.h)

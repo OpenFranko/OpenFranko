@@ -1,2 +1,7 @@
-add_library(frankoResourceExtractor frankoResourceExtractor.cpp frankoResourceExtractor.h)
-target_link_libraries(frankoResourceExtractor readFile writeFile backwardLZ77 amosCompact spriteSheet bitmapExtractor audioExtractor fileContainer abkToS3m levelScript codeCards endingCredits gameData)
+add_library(frankoResourceExtractor
+    frankoResourceExtractor.cpp
+    frankoResourceExtractor.h)
+target_link_libraries(frankoResourceExtractor
+    PRIVATE abkToS3m amosCompact audioExtractor binary bitmapExtractor
+            codeCards endingCredits fileContainer gameData levelScript readFile
+            spriteSheet writeFile)

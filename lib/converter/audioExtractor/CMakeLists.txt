@@ -1,2 +1,4 @@
-add_library(audioExtractor audioExtractor.cpp audioExtractor.h)
-target_link_libraries(audioExtractor binary gameData)
+add_library(audioExtractor
+    audioExtractor.cpp
+    audioExtractor.h)
+target_link_libraries(audioExtractor PRIVATE binary gameData)

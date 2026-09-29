@@ -1,2 +1,4 @@
-add_library(abkToS3m abkToS3m.cpp abkToS3m.h)
-target_link_libraries(abkToS3m binary gameData)
+add_library(abkToS3m
+    abkToS3m.cpp
+    abkToS3m.h)
+target_link_libraries(abkToS3m PRIVATE binary gameData)

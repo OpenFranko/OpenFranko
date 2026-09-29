@@ -1,5 +1,3 @@
-add_library(States INTERFACE)
-
 add_subdirectory(adverts)
 add_subdirectory(characterSelection)
 add_subdirectory(continueSelect)
@@ -18,3 +16,5 @@ add_subdirectory(shared)
 add_subdirectory(spiderLogo)
 add_subdirectory(titleAndStory)
 add_subdirectory(worldSoftware)
+
+add_library(States INTERFACE)

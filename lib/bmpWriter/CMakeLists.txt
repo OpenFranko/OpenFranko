@@ -1,2 +1,4 @@
-add_library(bmpWriter bmpWriter.cpp bmpWriter.h)
-target_link_libraries(bmpWriter binary)
+add_library(bmpWriter
+    bmpWriter.cpp
+    bmpWriter.h)
+target_link_libraries(bmpWriter PRIVATE binary)

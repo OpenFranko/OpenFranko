@@ -1,2 +1,4 @@
-add_library(levelScript levelScript.cpp levelScript.h)
-target_link_libraries(levelScript binary)
+add_library(levelScript
+    levelScript.cpp
+    levelScript.h)
+target_link_libraries(levelScript PRIVATE binary)

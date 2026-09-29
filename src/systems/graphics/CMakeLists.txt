@@ -10,5 +10,4 @@ target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 add_library(VideoSystem
     VideoSystem.cpp
     VideoSystem.h)
-target_link_libraries(VideoSystem PRIVATE ${SDL2_TARGET} PUBLIC Graphics)
-target_include_directories(VideoSystem PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_link_libraries(VideoSystem PUBLIC Graphics PRIVATE ${SDL2_TARGET})

@@ -1,2 +1,3 @@
-add_library(binary binary.cpp binary.h)
-
+add_library(binary
+    binary.cpp
+    binary.h)
