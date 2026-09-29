@@ -30,9 +30,8 @@ constexpr int LOGO_DISPLAY_LINE = 42;
 constexpr int REFLECTION_TOP = 133;
 constexpr int REFLECTION_BOTTOM = 200;
 constexpr std::size_t LOGO_COLORS = 16;
-constexpr effects::AmigaColor BLACK = 0x000;
 
-const effects::AmigaPalette WALK_PALETTE = {
+const effects::color::AmigaPalette WALK_PALETTE = {
     0x000, 0x600, 0x333, 0x550, 0x444, 0x770, 0x008, 0x009,
     0x00A, 0x00B, 0x00C, 0x00D, 0x222, 0x003, 0xFFF, 0xFFF};
 
@@ -49,69 +48,67 @@ constexpr int16_t REFLECTION_IMAGE = 7;
 constexpr auto REFLECTION_PROGRAM =
     "A 0,(5,12)(6,12)(7,12)(8,12)(9,12)(10,12);";
 
-constexpr int DOUBLE_BUFFER_VBLS = 3;
-constexpr int AUTOBACK_VBLS = 3;
 constexpr int WALK_SETUP =
-    effects::SCREEN_REOPEN_VBLS + DOUBLE_BUFFER_VBLS + 2 * AUTOBACK_VBLS - 1;
+    SCREEN_REOPEN_VBLS + DOUBLE_BUFFER_VBLS + 2 * AUTOBACK_VBLS - 1;
 constexpr int TEMPO_WAIT = 2;
 constexpr int STEP_TIMER = 10;
 constexpr int WALK_TEMPO = 14;
 constexpr int LOGO_SETUP =
-    effects::SCREEN_OPEN_VBLS + DOUBLE_BUFFER_VBLS + AUTOBACK_VBLS - 1;
+    SCREEN_OPEN_VBLS + DOUBLE_BUFFER_VBLS + AUTOBACK_VBLS - 1;
 constexpr int JINGLE_WAIT = 10;
-constexpr effects::FotoSequence::Timings LOGO_TIMINGS{3, 210, 3, 45, false};
+constexpr effects::sequences::FotoSequence ::Timings LOGO_TIMINGS{3, 210, 3, 45,
+                                                                  false};
 
-systems::IndexedBitmap filled(int width, int height, uint8_t color) {
-  systems::IndexedBitmap bitmap;
+systems::graphics::IndexedBitmap filled(int width, int height, uint8_t color) {
+  systems::graphics::IndexedBitmap bitmap;
   bitmap.width = width;
   bitmap.height = height;
   bitmap.pixels.assign(static_cast<std::size_t>(width) * height, color);
   return bitmap;
 }
 
-effects::AmigaPalette logoPalette(const systems::IndexedBitmap &logo) {
-  effects::AmigaPalette palette = logo.palette;
+effects::color::AmigaPalette
+logoPalette(const systems::graphics::IndexedBitmap &logo) {
+  effects::color::AmigaPalette palette = logo.palette;
   palette.resize(LOGO_COLORS);
   return palette;
 }
 
 } // namespace
 
-SpiderLogoState::SpiderLogoState(systems::VideoSystem &videoSystem,
-                                 systems::AudioSystem &audioSystem)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_logo(systems::loadIndexedBitmap(assets::picturePath(LOGO))),
+SpiderLogoState::SpiderLogoState(systems::graphics::Monitor &monitor,
+                                 systems::audio::Speaker &speaker,
+                                 assets::Files &files)
+    : m_monitor(monitor), m_speaker(speaker),
+      m_logo(files.loadBitmap(assets::picturePath(LOGO))),
       m_water(filled(WALK_WIDTH, WALK_HEIGHT - WATER_TOP, WATER_COLOR)),
       m_reflectionArea(
           filled(LOGO_WIDTH, REFLECTION_BOTTOM - REFLECTION_TOP, 0)),
       m_machine(m_registers),
-      m_walkRows(effects::visibleRows(WALK_DISPLAY_LINE, WALK_HEIGHT,
-                                      videoSystem.isNtsc())),
-      m_logoRows(effects::visibleRows(LOGO_DISPLAY_LINE, LOGO_HEIGHT,
-                                      videoSystem.isNtsc())),
+      m_walkRows(visibleRows(WALK_DISPLAY_LINE, WALK_HEIGHT, monitor.isNtsc())),
+      m_logoRows(visibleRows(LOGO_DISPLAY_LINE, LOGO_HEIGHT, monitor.isNtsc())),
       m_walkScreen(WALK_WIDTH, m_walkRows.count),
       m_logoScreen(LOGO_WIDTH, m_logoRows.count) {
   for (int index = 0; index < IMAGES; ++index) {
-    m_images.push_back(
-        systems::loadIndexedBitmap(assets::imagePath(BOBS, index)));
+    m_images.push_back(files.loadBitmap(assets::imagePath(BOBS, index)));
   }
-  m_audioSystem.loadSFX(STEP_SAMPLE,
-                        assets::samplePath(BOBS, STEP_SAMPLE_NUMBER));
-  m_audioSystem.loadSFX(JINGLE_SAMPLE,
-                        assets::samplePath(BOBS, JINGLE_SAMPLE_NUMBER));
-  m_audioSystem.loadMusic(assets::musicPath(TUNE));
+  m_speaker.loadSample(STEP_SAMPLE,
+                       assets::samplePath(files, BOBS, STEP_SAMPLE_NUMBER));
+  m_speaker.loadSample(JINGLE_SAMPLE,
+                       assets::samplePath(files, BOBS, JINGLE_SAMPLE_NUMBER));
+  m_speaker.loadMusic(assets::musicPath(TUNE));
   m_machine.bind(BOB_CHANNEL, &m_bob);
 }
 
 SpiderLogoState::~SpiderLogoState() {
-  m_audioSystem.clearSFX(STEP_SAMPLE);
-  m_audioSystem.clearSFX(JINGLE_SAMPLE);
+  m_speaker.clearSample(STEP_SAMPLE);
+  m_speaker.clearSample(JINGLE_SAMPLE);
 }
 
-std::optional<EngineStateEnum> SpiderLogoState::update() {
+std::optional<EngineStateId> SpiderLogoState::update() {
   if (m_foto && m_foto->isFinished()) {
-    m_audioSystem.stopMusic();
-    return EngineStateEnum::Adverts;
+    m_speaker.stopMusic();
+    return EngineStateId::Adverts;
   }
   if (m_logoStart) {
     logo();
@@ -132,7 +129,7 @@ void SpiderLogoState::walk() {
     m_machine.create(BOB_CHANNEL, WALK_PROGRAM);
     m_machine.startAll();
     m_timer = 0;
-    m_audioSystem.playMusicOnce();
+    m_speaker.playMusicOnce();
     showBlack(m_walkScreen, true);
     return;
   }
@@ -141,23 +138,23 @@ void SpiderLogoState::walk() {
   m_machine.tick();
   ++m_timer;
   if (m_frame == WALK_SETUP + TEMPO_WAIT) {
-    m_audioSystem.setMusicTempo(WALK_TEMPO);
+    m_speaker.setMusicTempo(WALK_TEMPO);
   }
   if (m_frame >= WALK_SETUP + TEMPO_WAIT && !m_walkEnd) {
     if (!m_machine.isRunning(BOB_CHANNEL)) {
       m_walkEnd = m_frame;
     } else if (m_timer > STEP_TIMER) {
-      m_audioSystem.playSample(STEP_SAMPLE, STEP_VOICES);
+      m_speaker.playSample(STEP_SAMPLE, STEP_VOICES);
       m_timer = 0;
     }
   }
 
-  if (!m_walkEnd || m_frame < *m_walkEnd + effects::SCREEN_CLOSE_SHOWN_VBLS) {
+  if (!m_walkEnd || m_frame < *m_walkEnd + SCREEN_CLOSE_SHOWN_VBLS) {
     showWalk();
   } else {
     showBlack(m_walkScreen, true);
   }
-  if (m_walkEnd && m_frame == *m_walkEnd + effects::SCREEN_CLOSE_VBLS) {
+  if (m_walkEnd && m_frame == *m_walkEnd + SCREEN_CLOSE_VBLS) {
     m_logoStart = m_frame + 1;
     m_machine.destroyAll();
   }
@@ -179,7 +176,7 @@ void SpiderLogoState::logo() {
     return;
   }
   if (m_foto->frame() == m_foto->holdStart() + JINGLE_WAIT) {
-    m_audioSystem.playSample(JINGLE_SAMPLE, JINGLE_VOICES);
+    m_speaker.playSample(JINGLE_SAMPLE, JINGLE_VOICES);
   }
   m_foto->advance();
   if (m_foto->isShown()) {
@@ -190,13 +187,13 @@ void SpiderLogoState::logo() {
 }
 
 void SpiderLogoState::showWalk() {
-  m_walkScreen.fill(BLACK);
+  m_walkScreen.fill(effects::color::BLACK);
   m_walkScreen.setPalette(WALK_PALETTE);
   m_walkScreen.draw(m_water, 0, WATER_TOP - m_walkRows.first);
   drawBob(m_walkScreen, m_walkRows.first);
-  systems::Display display = m_walkScreen.output();
+  systems::graphics::Display display = m_walkScreen.output();
   display.displayHeight = 2 * display.height;
-  m_videoSystem.show(display);
+  m_monitor.show(display);
 }
 
 void SpiderLogoState::showLogo() {
@@ -204,19 +201,20 @@ void SpiderLogoState::showLogo() {
   m_logoScreen.draw(m_logo, 0, -m_logoRows.first);
   m_logoScreen.draw(m_reflectionArea, 0, REFLECTION_TOP - m_logoRows.first);
   drawBob(m_logoScreen, m_logoRows.first);
-  m_videoSystem.show(m_logoScreen.output());
+  m_monitor.show(m_logoScreen.output());
 }
 
-void SpiderLogoState::showBlack(systems::Canvas &screen, bool hires) {
-  screen.fill(BLACK);
-  systems::Display display = screen.output();
+void SpiderLogoState::showBlack(systems::graphics::Canvas &screen, bool hires) {
+  screen.fill(effects::color::BLACK);
+  systems::graphics::Display display = screen.output();
   if (hires) {
     display.displayHeight = 2 * display.height;
   }
-  m_videoSystem.show(display);
+  m_monitor.show(display);
 }
 
-void SpiderLogoState::drawBob(systems::Canvas &screen, int top) const {
+void SpiderLogoState::drawBob(systems::graphics::Canvas &screen,
+                              int top) const {
   const int image = m_shownBob.image - 1;
   if (image >= 0 && image < static_cast<int>(m_images.size())) {
     screen.drawMasked(m_images[static_cast<std::size_t>(image)], m_shownBob.x,

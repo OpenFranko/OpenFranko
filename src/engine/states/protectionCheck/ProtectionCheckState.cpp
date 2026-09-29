@@ -1,14 +1,13 @@
 #include "ProtectionCheckState.h"
 
-#include "../../street/LoadingMock.h"
+#include "../../street/ui/LoadingQueue.h"
+#include "../../street/ui/StageFrame.h"
 
 #include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
-#include <fstream>
-#include <iterator>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -17,10 +16,10 @@
 namespace openfranko::src::engine::states::protectionCheck {
 namespace {
 
-using Cells =
-    std::array<effects::CodeCardCheck::Cell, effects::CodeCardCheck::CARDS>;
-using Tries = std::array<effects::CodeCardCheck::Cell,
-                         effects::CodeCardCheck::STAGE_TRIES>;
+using Cells = std::array<effects::protection::CodeCardCheck::Cell,
+                         effects::protection::CodeCardCheck::CARDS>;
+using Tries = std::array<effects::protection::CodeCardCheck::Cell,
+                         effects::protection::CodeCardCheck::STAGE_TRIES>;
 
 constexpr auto QUESTION_PATH = "assets/03C1.bmp";
 constexpr auto FAILURE_PATH = "assets/03C2.bmp";
@@ -33,48 +32,47 @@ constexpr int FAILURE_SCREEN_HEIGHT = 256;
 constexpr int FAILURE_DISPLAY_LINE = 50;
 
 constexpr int STAGE_CHECK_FILES = 2;
-constexpr effects::AmigaColor STAGE_BORDER = 0x555;
-constexpr effects::AmigaColor BLACK = 0x000;
 
 constexpr int CELL_PITCH = 15;
 constexpr int BOX_OFFSET = 11;
 constexpr int BOX_SIZE = 13;
 constexpr uint8_t BOX_INK = 15;
-const effects::FlashSteps BOX_FLASH = {{0xFFF, 5}, {0x000, 5}};
+const effects::color::FlashSteps BOX_FLASH = {{0xFFF, 5}, {0x000, 5}};
 
-std::vector<uint8_t> loadCards() {
-  std::ifstream file(CARDS_PATH, std::ios::binary);
-  if (!file) {
-    throw std::runtime_error(std::string("Missing code cards: ") + CARDS_PATH);
+std::vector<uint8_t> loadCards(assets::Files &files) {
+  if (!files.exists(CARDS_PATH)) {
+    throw std::runtime_error(std::string("Failed to open code cards: ") +
+                             CARDS_PATH);
   }
-  return {std::istreambuf_iterator<char>(file),
-          std::istreambuf_iterator<char>()};
+  return files.read(CARDS_PATH);
 }
 
 template <typename CellArray> CellArray randomCells() {
   std::random_device seed;
   std::mt19937 random(seed());
   std::uniform_int_distribution<int> coordinate(
-      0, effects::CodeCardCheck::CARD_SIZE - 1);
+      0, effects::protection::CodeCardCheck::CARD_SIZE - 1);
 
   CellArray cells{};
-  for (effects::CodeCardCheck::Cell &cell : cells) {
+  for (effects::protection::CodeCardCheck::Cell &cell : cells) {
     cell.x = coordinate(random);
     cell.y = coordinate(random);
   }
   return cells;
 }
 
-effects::CodeCardCheck makeCheck(ProtectionCheckState::Check check) {
+effects::protection::CodeCardCheck
+makeCheck(assets::Files &files, ProtectionCheckState::Check check) {
   if (check == ProtectionCheckState::Check::Stage3) {
-    return effects::CodeCardCheck::stageCheck(loadCards(),
-                                              randomCells<Tries>());
+    return effects::protection::CodeCardCheck::stageCheck(loadCards(files),
+                                                          randomCells<Tries>());
   }
-  return effects::CodeCardCheck(loadCards(), randomCells<Cells>());
+  return effects::protection::CodeCardCheck(loadCards(files),
+                                            randomCells<Cells>());
 }
 
-void xorRect(systems::IndexedBitmap &image, int x, int y, int width, int height,
-             uint8_t mask) {
+void xorRect(systems::graphics::IndexedBitmap &image, int x, int y, int width,
+             int height, uint8_t mask) {
   const int left = std::max(x, 0);
   const int top = std::max(y, 0);
   const int right = std::min(x + width, image.width);
@@ -89,29 +87,30 @@ void xorRect(systems::IndexedBitmap &image, int x, int y, int width, int height,
 
 } // namespace
 
-ProtectionCheckState::ProtectionCheckState(systems::VideoSystem &videoSystem,
-                                           systems::AudioSystem &audioSystem,
-                                           effects::InkeyBuffer &keyboard,
-                                           Check check)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_keyboard(keyboard), m_kind(check), m_check(makeCheck(check)),
+ProtectionCheckState::ProtectionCheckState(systems::graphics::Monitor &monitor,
+                                           systems::audio::Speaker &speaker,
+                                           assets::Files &files,
+                                           InkeyBuffer &keyboard, Check check)
+    : m_monitor(monitor), m_speaker(speaker), m_files(files),
+      m_keyboard(keyboard), m_kind(check), m_check(makeCheck(files, check)),
       m_loadingFrames(check == Check::Stage3
-                          ? STAGE_CHECK_FILES * street::LoadingMock::FILE_FRAMES
+                          ? STAGE_CHECK_FILES *
+                                street::ui::LoadingQueue::FILE_FRAMES
                           : 0),
-      m_resumeFrame(effects::SCREEN_OPEN_VBLS),
       m_screen(QUESTION_SCREEN_WIDTH, QUESTION_SCREEN_HEIGHT),
-      m_border(check == Check::Stage3 ? STAGE_BORDER : BLACK) {}
+      m_border(check == Check::Stage3 ? street::ui::STAGE_BORDER
+                                      : effects::color::BLACK) {}
 
-std::optional<EngineStateEnum> ProtectionCheckState::update() {
+std::optional<EngineStateId> ProtectionCheckState::update() {
   if (m_loadingFrames > 0) {
     --m_loadingFrames;
     m_screen.fill(m_border);
     show();
     return std::nullopt;
   }
-  const std::optional<EngineStateEnum> next = runCheck();
+  const std::optional<EngineStateId> next = runCheck();
   if (m_questionShown) {
-    m_flasher.tick(m_questionPalette);
+    m_flasher.advance(m_questionPalette);
   }
   ++m_frame;
   if (next) {
@@ -121,7 +120,7 @@ std::optional<EngineStateEnum> ProtectionCheckState::update() {
   return std::nullopt;
 }
 
-std::optional<EngineStateEnum> ProtectionCheckState::runCheck() {
+std::optional<EngineStateId> ProtectionCheckState::runCheck() {
   while (m_frame >= m_resumeFrame) {
     switch (m_step) {
     case Step::Unpack:
@@ -133,31 +132,30 @@ std::optional<EngineStateEnum> ProtectionCheckState::runCheck() {
       if (!takeAnswer()) {
         return std::nullopt;
       }
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_SHOWN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_SHOWN_VBLS;
       m_step = Step::Hidden;
       break;
     case Step::Hidden:
       m_questionShown = false;
-      m_resumeFrame = m_frame + effects::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::Closed;
       break;
     case Step::Closed:
       if (!m_check.isFinished()) {
-        m_resumeFrame = m_frame + effects::SCREEN_OPEN_VBLS;
+        m_resumeFrame = m_frame + SCREEN_OPEN_VBLS;
         m_step = Step::Unpack;
       } else if (m_check.isPassed()) {
-        return m_kind == Check::Stage3 ? EngineStateEnum::Level3
-                                       : EngineStateEnum::HighScore;
+        return m_kind == Check::Stage3 ? EngineStateId::Level3
+                                       : EngineStateId::HighScore;
       } else {
         showFailure();
-        m_resumeFrame =
-            m_frame + (m_kind == Check::Stage3 ? effects::SCREEN_REOPEN_VBLS
-                                               : effects::SCREEN_OPEN_VBLS);
+        m_resumeFrame = m_frame + (m_kind == Check::Stage3 ? SCREEN_REOPEN_VBLS
+                                                           : SCREEN_OPEN_VBLS);
         m_step = Step::FailureUnpacked;
       }
       break;
     case Step::FailureUnpacked:
-      m_audioSystem.stopMusic();
+      m_speaker.stopMusic();
       m_failureShown = true;
       m_step = Step::Hang;
       break;
@@ -172,8 +170,8 @@ bool ProtectionCheckState::takeAnswer() {
   while (const std::optional<char> key = m_keyboard.inkey()) {
     const char letter =
         static_cast<char>(std::toupper(static_cast<unsigned char>(*key)));
-    if (letter >= effects::CodeCardCheck::FIRST_ANSWER &&
-        letter <= effects::CodeCardCheck::LAST_ANSWER) {
+    if (letter >= effects::protection::CodeCardCheck::FIRST_ANSWER &&
+        letter <= effects::protection::CodeCardCheck::LAST_ANSWER) {
       m_check.answer(letter);
       return true;
     }
@@ -194,30 +192,29 @@ void ProtectionCheckState::draw() {
   show();
 }
 
-void ProtectionCheckState::show() { m_videoSystem.show(m_screen.output()); }
+void ProtectionCheckState::show() { m_monitor.show(m_screen.output()); }
 
-const effects::CodeCardCheck &ProtectionCheckState::check() const {
+const effects::protection::CodeCardCheck &ProtectionCheckState::check() const {
   return m_check;
 }
 
 void ProtectionCheckState::showQuestion() {
-  m_question = systems::loadIndexedBitmap(QUESTION_PATH);
+  m_question = m_files.loadBitmap(QUESTION_PATH);
   m_questionPalette = m_question.palette;
   m_border = m_questionPalette[0];
   m_flasher.start(BOX_INK, BOX_FLASH);
-  const effects::CodeCardCheck::Cell cell = m_check.cell();
+  const effects::protection::CodeCardCheck::Cell cell = m_check.cell();
   xorRect(m_question, CELL_PITCH * cell.x + BOX_OFFSET,
           CELL_PITCH * cell.y + BOX_OFFSET, BOX_SIZE, BOX_SIZE, BOX_INK);
 }
 
 void ProtectionCheckState::showFailure() {
-  const bool ntsc = m_videoSystem.isNtsc();
-  const effects::VisibleRows rows =
-      effects::visibleRows(effects::pictureLine(FAILURE_DISPLAY_LINE, ntsc),
-                           FAILURE_SCREEN_HEIGHT, ntsc);
+  const bool ntsc = m_monitor.isNtsc();
+  const VisibleRows rows = visibleRows(pictureLine(FAILURE_DISPLAY_LINE, ntsc),
+                                       FAILURE_SCREEN_HEIGHT, ntsc);
   m_failureTop = rows.first;
-  m_screen = systems::Canvas(FAILURE_SCREEN_WIDTH, rows.count);
-  m_failure = systems::loadIndexedBitmap(FAILURE_PATH);
+  m_screen = systems::graphics::Canvas(FAILURE_SCREEN_WIDTH, rows.count);
+  m_failure = m_files.loadBitmap(FAILURE_PATH);
 }
 
 } // namespace openfranko::src::engine::states::protectionCheck

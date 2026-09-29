@@ -1,2 +1,5 @@
-add_library(spriteSheet spriteSheet.cpp spriteSheet.h Palettes.h)
-target_link_libraries(spriteSheet decodeImage bmpWriter gameData)
+add_library(spriteSheet
+    spriteSheet.cpp
+    spriteSheet.h)
+target_link_libraries(spriteSheet
+    PRIVATE amosCompact binary bmpWriter gameData headers)

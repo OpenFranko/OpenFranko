@@ -1,65 +1,70 @@
 #include "backwardLZ77.h"
-#include "../../helpers/helpers.h"
-#include "BitReader.h"
-#include "Consts.h"
+
+#include "../../binary/binary.h"
+#include "consts.h"
+#include "detail/BitReader.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
 
 namespace openfranko::lib::decompressor::backwardLZ77 {
-
 namespace {
 
-void applyMatch(std::vector<uint8_t> &out, size_t &writePtr, size_t offset,
-                int count, size_t outputSize) {
-  for (int i = 0; i < count && writePtr > 0; ++i) {
-    writePtr--;
-    size_t sourcePos = writePtr + offset;
-    out[writePtr] = (sourcePos < outputSize) ? out[sourcePos] : 0;
+constexpr std::size_t TRAILER_CHECKSUM_OFFSET = 4;
+constexpr std::size_t TRAILER_UNPACKED_SIZE_OFFSET = 8;
+
+void applyMatch(std::vector<uint8_t> &out, std::size_t &writePos,
+                std::size_t offset, int count, std::size_t outputSize) {
+  for (int i = 0; i < count && writePos > 0; ++i) {
+    --writePos;
+    std::size_t sourcePos = writePos + offset;
+    out[writePos] = (sourcePos < outputSize) ? out[sourcePos] : 0;
   }
 }
 
-void applyLiteralRun(std::vector<uint8_t> &out, size_t &writePtr,
-                     BitReader &reader, int count) {
-  for (int i = 0; i < count && writePtr > 0; ++i) {
-    writePtr--;
-    out[writePtr] = reader.readRawByte();
+void applyLiteralRun(std::vector<uint8_t> &out, std::size_t &writePos,
+                     detail::BitReader &reader, int count) {
+  for (int i = 0; i < count && writePos > 0; ++i) {
+    --writePos;
+    out[writePos] = reader.readRawByte();
   }
 }
 
-void processDecompression(BitReader &reader, std::vector<uint8_t> &out,
-                          size_t unpackedSize) {
-  size_t writePtr = unpackedSize;
+void processDecompression(detail::BitReader &reader, std::vector<uint8_t> &out,
+                          std::size_t unpackedSize) {
+  std::size_t writePos = unpackedSize;
 
-  while (writePtr > 0) {
-    bool isComplexCommand = reader.getBit();
+  while (writePos > 0) {
+    bool isComplexCommand = reader.readBit();
 
     if (isComplexCommand) {
-      uint32_t type = reader.getBits(2);
+      uint32_t type = reader.readBits(2);
 
       if (type < 2) {
-        applyMatch(out, writePtr, reader.getBits(9 + type), type + 3,
+        applyMatch(out, writePos, reader.readBits(9 + type), type + 3,
                    unpackedSize);
       } else if (type == 2) {
-        int length = reader.getBits(8);
-        applyMatch(out, writePtr, reader.getBits(12), length + 1, unpackedSize);
+        int length = reader.readBits(8);
+        applyMatch(out, writePos, reader.readBits(12), length + 1,
+                   unpackedSize);
       } else {
-        applyLiteralRun(out, writePtr, reader, reader.getBits(8) + 9);
+        applyLiteralRun(out, writePos, reader, reader.readBits(8) + 9);
       }
     } else {
-      bool isShortMatch = reader.getBit();
+      bool isShortMatch = reader.readBit();
 
       if (isShortMatch) {
-        applyMatch(out, writePtr, reader.getBits(8), 2, unpackedSize);
+        applyMatch(out, writePos, reader.readBits(8), 2, unpackedSize);
       } else {
-        applyLiteralRun(out, writePtr, reader, reader.getBits(3) + 1);
+        applyLiteralRun(out, writePos, reader, reader.readBits(3) + 1);
       }
     }
   }
 }
 
-} // anonymous namespace
+} // namespace
 
 std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   if (compressedData.size() < consts::FOOTER_SIZE) {
@@ -77,12 +82,14 @@ std::vector<uint8_t> decompressStream(const std::vector<uint8_t> &stream) {
     throw std::runtime_error("Stream too small to contain its trailer");
   }
 
-  const size_t trailerStart = stream.size() - consts::TRAILER_SIZE;
-  helpers::BigEndianReader trailerReader(stream);
+  const std::size_t trailerStart = stream.size() - consts::TRAILER_SIZE;
+  binary::BigEndianReader trailerReader(stream);
 
-  uint32_t unpackedSize = trailerReader.readUint32(trailerStart + 8);
-  uint32_t xorChecksum = trailerReader.readUint32(trailerStart + 4);
-  uint32_t initialBits = trailerReader.readUint32(trailerStart + 0);
+  uint32_t unpackedSize =
+      trailerReader.readUint32(trailerStart + TRAILER_UNPACKED_SIZE_OFFSET);
+  uint32_t xorChecksum =
+      trailerReader.readUint32(trailerStart + TRAILER_CHECKSUM_OFFSET);
+  uint32_t initialBits = trailerReader.readUint32(trailerStart);
 
   if (unpackedSize == 0) {
     throw std::runtime_error("Unpacked size is zero");
@@ -90,8 +97,8 @@ std::vector<uint8_t> decompressStream(const std::vector<uint8_t> &stream) {
 
   std::vector<uint8_t> out(unpackedSize, 0);
 
-  BitReader reader(stream, trailerStart, initialBits,
-                   xorChecksum ^ initialBits);
+  detail::BitReader reader(stream, trailerStart, initialBits,
+                           xorChecksum ^ initialBits);
 
   processDecompression(reader, out, unpackedSize);
 

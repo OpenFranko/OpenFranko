@@ -1,5 +1,7 @@
 #include "../../../lib/converter/codeCards/codeCards.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <string>
 #include <vector>
 
@@ -9,7 +11,7 @@ namespace {
 
 std::vector<uint8_t> buildCardData() {
   std::vector<uint8_t> data(10, 0xEE);
-  for (size_t i = 0; i < 200; i++) {
+  for (std::size_t i = 0; i < 200; ++i) {
     data.push_back(static_cast<uint8_t>(i % 11));
   }
   return data;
@@ -64,8 +66,8 @@ SCENARIO("parse reads both code cards row by row") {
 SCENARIO("toJson writes the cards as rows of color letters") {
   GIVEN("Card 1 with diagonal stripes and card 2 all black") {
     CodeCards cards;
-    for (size_t y = 0; y < consts::CARD_SIZE; y++) {
-      for (size_t x = 0; x < consts::CARD_SIZE; x++) {
+    for (std::size_t y = 0; y < consts::CARD_SIZE; ++y) {
+      for (std::size_t x = 0; x < consts::CARD_SIZE; ++x) {
         cards[0].rows[y][x] = static_cast<uint8_t>((x + y) % 11);
       }
     }
@@ -131,7 +133,7 @@ SCENARIO("toJson writes the cards as rows of color letters") {
 SCENARIO("parse reads the 5x5 cards of version 1.2") {
   GIVEN("Two 5x5 cards after a 10-byte prefix") {
     std::vector<uint8_t> data(10, 0xEE);
-    for (size_t i = 0; i < 50; i++) {
+    for (std::size_t i = 0; i < 50; ++i) {
       data.push_back(static_cast<uint8_t>(i % 11));
     }
 

@@ -1,18 +1,19 @@
-#ifndef ENGINE_STATES_TITLEANDSTORYSTATE_H_
-#define ENGINE_STATES_TITLEANDSTORYSTATE_H_
+#ifndef ENGINE_STATES_TITLEANDSTORY_TITLEANDSTORYSTATE_H_
+#define ENGINE_STATES_TITLEANDSTORY_TITLEANDSTORYSTATE_H_
 
-#include "../../../systems/AudioSystem.h"
-#include "../../../systems/Bitmap.h"
-#include "../../../systems/Canvas.h"
-#include "../../../systems/ControllerSystem.h"
-#include "../../../systems/VideoSystem.h"
+#include "../../../systems/audio/Speaker.h"
+#include "../../../systems/graphics/Bitmap.h"
+#include "../../../systems/graphics/Canvas.h"
+#include "../../../systems/graphics/Monitor.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../GameVersion.h"
-#include "../../effects/BlyskSequence.h"
-#include "../../effects/FotoSequence.h"
-#include "../../effects/StorySequence.h"
-#include "../IEngineState.h"
-#include "../presents/IntroStrip.h"
-#include "../presents/MusicFadeOut.h"
+#include "../../assets/Files.h"
+#include "../../effects/sequences/BlyskSequence.h"
+#include "../../effects/sequences/FotoSequence.h"
+#include "../../effects/sequences/StorySequence.h"
+#include "../EngineState.h"
+#include "../shared/IntroStrip.h"
+#include "../shared/MusicFadeOut.h"
 
 #include <optional>
 #include <string>
@@ -23,14 +24,15 @@ namespace engine {
 namespace states {
 namespace titleAndStory {
 
-class TitleAndStoryState : public IEngineState {
+class TitleAndStoryState : public EngineState {
 public:
-  TitleAndStoryState(systems::VideoSystem &videoSystem,
-                     systems::AudioSystem &audioSystem,
-                     systems::ControllerSystem &controllerSystem,
+  TitleAndStoryState(systems::graphics::Monitor &monitor,
+                     systems::audio::Speaker &speaker,
+                     systems::input::ControllerSystem &controllerSystem,
+                     assets::Files &files,
                      GameVersion version = GameVersion::V10);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   enum class Phase {
@@ -44,39 +46,40 @@ private:
   };
 
   struct StoryImage {
-    StoryImage(int resource, GameVersion version);
+    StoryImage(int resourceId, GameVersion version);
 
     std::string resource;
     int index = -1;
-    systems::IndexedBitmap bitmap;
+    systems::graphics::IndexedBitmap bitmap;
   };
 
-  std::optional<EngineStateEnum> runTitle();
-  std::optional<EngineStateEnum> runPages();
-  std::optional<EngineStateEnum> runStory();
-  std::optional<EngineStateEnum> leave();
-  void drawStory(const effects::StorySequence::View &view);
+  std::optional<EngineStateId> runTitle();
+  std::optional<EngineStateId> runPages();
+  std::optional<EngineStateId> runStory();
+  std::optional<EngineStateId> leave();
+  void drawStory(const effects::sequences::StorySequence::View &view);
   void drawStoryImage(StoryImage &image, int index, int x, int y, bool masked);
 
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
-  systems::ControllerSystem &m_controllerSystem;
+  systems::graphics::Monitor &m_monitor;
+  systems::audio::Speaker &m_speaker;
+  systems::input::ControllerSystem &m_controllerSystem;
+  assets::Files &m_files;
   GameVersion m_version;
-  systems::IndexedBitmap m_titlePicture;
+  systems::graphics::IndexedBitmap m_titlePicture;
   StoryImage m_frame;
   StoryImage m_picture;
   StoryImage m_text;
-  systems::Canvas m_screen;
-  effects::FotoSequence m_title;
-  effects::StorySequence m_story;
-  std::optional<presents::IntroStrip> m_strip;
-  std::optional<effects::BlyskSequence> m_pages;
-  presents::MusicFadeOut m_musicFade;
+  systems::graphics::Canvas m_screen;
+  effects::sequences::FotoSequence m_title;
+  effects::sequences::StorySequence m_story;
+  std::optional<shared::IntroStrip> m_strip;
+  std::optional<effects::sequences::BlyskSequence> m_pages;
+  shared::MusicFadeOut m_musicFade;
   Phase m_phase = Phase::Title;
   int m_phaseFrames = 0;
   bool m_stripShown = false;
-  effects::AmigaColor m_background = 0x000;
-  effects::StorySequence::View m_lastView;
+  effects::color::AmigaColor m_background = 0x000;
+  effects::sequences::StorySequence::View m_lastView;
 };
 
 } // namespace titleAndStory
@@ -85,4 +88,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_TITLEANDSTORYSTATE_H_
+#endif // ENGINE_STATES_TITLEANDSTORY_TITLEANDSTORYSTATE_H_

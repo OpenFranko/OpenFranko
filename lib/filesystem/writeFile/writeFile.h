@@ -12,7 +12,7 @@ namespace writeFile {
 
 void writeFile(const std::string &filePath, const std::vector<uint8_t> &data);
 
-}
+} // namespace writeFile
 } // namespace filesystem
 } // namespace lib
 } // namespace openfranko

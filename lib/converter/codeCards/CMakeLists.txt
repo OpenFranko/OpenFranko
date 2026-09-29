@@ -1,1 +1,3 @@
-add_library(codeCards codeCards.cpp codeCards.h)
+add_library(codeCards
+    codeCards.cpp
+    codeCards.h)

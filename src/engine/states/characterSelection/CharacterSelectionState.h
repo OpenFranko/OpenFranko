@@ -1,16 +1,17 @@
-#ifndef ENGINE_STATES_CHARACTERSELECTIONSTATE_H_
-#define ENGINE_STATES_CHARACTERSELECTIONSTATE_H_
+#ifndef ENGINE_STATES_CHARACTERSELECTION_CHARACTERSELECTIONSTATE_H_
+#define ENGINE_STATES_CHARACTERSELECTION_CHARACTERSELECTIONSTATE_H_
 
-#include "../../../systems/AudioSystem.h"
-#include "../../../systems/Bitmap.h"
-#include "../../../systems/Canvas.h"
-#include "../../../systems/ControllerSystem.h"
-#include "../../../systems/VideoSystem.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../effects/CharacterSelection.h"
-#include "../../effects/GameOptions.h"
-#include "../../street/GameSession.h"
-#include "../IEngineState.h"
+#include "../../../systems/audio/Speaker.h"
+#include "../../../systems/graphics/Bitmap.h"
+#include "../../../systems/graphics/Canvas.h"
+#include "../../../systems/graphics/Monitor.h"
+#include "../../../systems/input/ControllerSystem.h"
+#include "../../AmigaDisplay.h"
+#include "../../GameOptions.h"
+#include "../../assets/Files.h"
+#include "../../effects/sequences/CharacterSelectionSequence.h"
+#include "../../street/session/GameSession.h"
+#include "../EngineState.h"
 
 #include <vector>
 
@@ -20,31 +21,31 @@ namespace engine {
 namespace states {
 namespace characterSelection {
 
-class CharacterSelectionState : public IEngineState {
+class CharacterSelectionState : public EngineState {
 public:
-  CharacterSelectionState(systems::VideoSystem &videoSystem,
-                          systems::AudioSystem &audioSystem,
-                          systems::ControllerSystem &controllerSystem,
-                          effects::GameOptions &options,
-                          street::GameSession &session);
-  ~CharacterSelectionState();
+  CharacterSelectionState(systems::graphics::Monitor &monitor,
+                          systems::audio::Speaker &speaker,
+                          systems::input::ControllerSystem &controllerSystem,
+                          assets::Files &files, GameOptions &options,
+                          street::session::GameSession &session);
+  ~CharacterSelectionState() override;
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   void draw();
-  EngineStateEnum firstStreet() const;
+  EngineStateId firstStreet() const;
 
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
-  systems::ControllerSystem &m_controllerSystem;
-  street::GameSession &m_session;
-  effects::CharacterSelection m_selection;
-  effects::VisibleRows m_rows;
-  systems::IndexedBitmap m_picture;
-  effects::AmigaPalette m_screenPalette;
-  std::vector<systems::IndexedBitmap> m_sprites;
-  systems::Canvas m_screen;
+  systems::graphics::Monitor &m_monitor;
+  systems::audio::Speaker &m_speaker;
+  systems::input::ControllerSystem &m_controllerSystem;
+  street::session::GameSession &m_session;
+  effects::sequences::CharacterSelectionSequence m_selection;
+  VisibleRows m_rows;
+  systems::graphics::IndexedBitmap m_picture;
+  effects::color::AmigaPalette m_screenPalette;
+  std::vector<systems::graphics::IndexedBitmap> m_sprites;
+  systems::graphics::Canvas m_screen;
 };
 
 } // namespace characterSelection
@@ -53,4 +54,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_CHARACTERSELECTIONSTATE_H_
+#endif // ENGINE_STATES_CHARACTERSELECTION_CHARACTERSELECTIONSTATE_H_

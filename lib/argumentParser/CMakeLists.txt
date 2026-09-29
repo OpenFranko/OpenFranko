@@ -1,2 +1,3 @@
-add_library(argumentParser ArgumentParser.cpp ArgumentParser.h)
-
+add_library(argumentParser
+    ArgumentParser.cpp
+    ArgumentParser.h)

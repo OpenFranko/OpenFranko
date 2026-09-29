@@ -1,13 +1,11 @@
-#ifndef ENGINE_STATES_WORLDSOFTWARESTATE_H_
-#define ENGINE_STATES_WORLDSOFTWARESTATE_H_
+#ifndef ENGINE_STATES_WORLDSOFTWARE_WORLDSOFTWARESTATE_H_
+#define ENGINE_STATES_WORLDSOFTWARE_WORLDSOFTWARESTATE_H_
 
-#include "../../../systems/AudioSystem.h"
-#include "../../../systems/Bitmap.h"
-#include "../../../systems/Canvas.h"
-#include "../../../systems/VideoSystem.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../effects/FotoSequence.h"
-#include "../IEngineState.h"
+#include "../../../systems/audio/Speaker.h"
+#include "../../../systems/graphics/Monitor.h"
+#include "../../assets/Files.h"
+#include "../EngineState.h"
+#include "../shared/FotoScreen.h"
 
 namespace openfranko {
 namespace src {
@@ -15,21 +13,17 @@ namespace engine {
 namespace states {
 namespace worldSoftware {
 
-class WorldSoftwareState : public IEngineState {
+class WorldSoftwareState : public EngineState {
 public:
-  WorldSoftwareState(systems::VideoSystem &videoSystem,
-                     systems::AudioSystem &audioSystem);
-  ~WorldSoftwareState();
+  WorldSoftwareState(systems::graphics::Monitor &monitor,
+                     systems::audio::Speaker &speaker, assets::Files &files);
+  ~WorldSoftwareState() override;
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
-  effects::VisibleRows m_rows;
-  systems::IndexedBitmap m_picture;
-  systems::Canvas m_screen;
-  effects::FotoSequence m_sequence;
+  systems::audio::Speaker &m_speaker;
+  shared::FotoScreen m_foto;
 };
 
 } // namespace worldSoftware
@@ -38,4 +32,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_WORLDSOFTWARESTATE_H_
+#endif // ENGINE_STATES_WORLDSOFTWARE_WORLDSOFTWARESTATE_H_

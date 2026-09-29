@@ -1,5 +1,6 @@
 #include "CharacterSelectionState.h"
 
+#include "../../../systems/audio/Mixer.h"
 #include "../../assets/Assets.h"
 
 #include <array>
@@ -8,7 +9,6 @@
 namespace openfranko::src::engine::states::characterSelection {
 namespace {
 
-constexpr int PICTURE = 0x3B9;
 constexpr int SPRITE_SET = 0x35;
 constexpr int SPRITES = 3;
 
@@ -20,8 +20,8 @@ constexpr std::size_t SCREEN_COLORS = 32;
 constexpr int FIRST_SPRITE_IMAGE = 1;
 
 struct Voice {
-  int sample;
-  const char *name;
+  int sample = 0;
+  const char *name = nullptr;
 };
 
 constexpr std::array<Voice, 2> VOICES = {{
@@ -31,62 +31,62 @@ constexpr std::array<Voice, 2> VOICES = {{
 
 constexpr int HIDDEN_IMAGE = 0;
 
-constexpr int RO = 14;
 constexpr int SECOND_STAGE = 2;
 constexpr int THIRD_STAGE = 3;
 
-effects::AmigaPalette screenPalette(const systems::IndexedBitmap &picture) {
-  effects::AmigaPalette palette = picture.palette;
+effects::color::AmigaPalette
+screenPalette(const systems::graphics::IndexedBitmap &picture) {
+  effects::color::AmigaPalette palette = picture.palette;
   palette.resize(SCREEN_COLORS);
   return palette;
 }
 
-std::vector<systems::IndexedBitmap> loadSprites(GameVersion version) {
+std::vector<systems::graphics::IndexedBitmap> loadSprites(assets::Files &files,
+                                                          GameVersion version) {
   const std::string name = assets::resourceName(SPRITE_SET, version);
-  std::vector<systems::IndexedBitmap> sprites;
+  std::vector<systems::graphics::IndexedBitmap> sprites;
   for (int index = 0; index < SPRITES; ++index) {
-    sprites.push_back(
-        systems::loadIndexedBitmap(assets::imagePath(name, index)));
+    sprites.push_back(files.loadBitmap(assets::imagePath(name, index)));
   }
   return sprites;
 }
 
-effects::CharacterSelection::Joystick
-joystickFrom(const systems::ControllerSystem::ControllerStates &states) {
+effects::sequences::CharacterSelectionSequence::Joystick
+joystickFrom(const systems::input::ControllerSystem::ControllerStates &states) {
   return {states.left, states.right, states.button};
 }
 
 } // namespace
 
 CharacterSelectionState::CharacterSelectionState(
-    systems::VideoSystem &videoSystem, systems::AudioSystem &audioSystem,
-    systems::ControllerSystem &controllerSystem, effects::GameOptions &options,
-    street::GameSession &session)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
+    systems::graphics::Monitor &monitor, systems::audio::Speaker &speaker,
+    systems::input::ControllerSystem &controllerSystem, assets::Files &files,
+    GameOptions &options, street::session::GameSession &session)
+    : m_monitor(monitor), m_speaker(speaker),
       m_controllerSystem(controllerSystem), m_session(session),
       m_selection(options, session.nameScreenOpen ? 1 : 0, session.version),
-      m_rows(
-          effects::visibleRows(effects::pictureLine(DISPLAY_LINE, options.ntsc),
-                               SCREEN_HEIGHT, options.ntsc)),
-      m_picture(systems::loadIndexedBitmap(
-          assets::picturePath(assets::resourceName(PICTURE, session.version)))),
+      m_rows(visibleRows(pictureLine(DISPLAY_LINE, options.ntsc), SCREEN_HEIGHT,
+                         options.ntsc)),
+      m_picture(files.loadBitmap(assets::picturePath(
+          assets::resourceName(assets::HISCORE_LETTERS, session.version)))),
       m_screenPalette(screenPalette(m_picture)),
-      m_sprites(loadSprites(session.version)),
+      m_sprites(loadSprites(files, session.version)),
       m_screen(SCREEN_WIDTH, m_rows.count) {
-  m_videoSystem.setNtsc(options.ntsc);
+  m_monitor.setNtsc(options.ntsc);
   const std::string voices = assets::resourceName(SPRITE_SET, session.version);
   for (const Voice &voice : VOICES) {
-    m_audioSystem.loadSFX(voice.name, assets::samplePath(voices, voice.sample));
+    m_speaker.loadSample(voice.name,
+                         assets::samplePath(files, voices, voice.sample));
   }
 }
 
 CharacterSelectionState::~CharacterSelectionState() {
   for (const Voice &voice : VOICES) {
-    m_audioSystem.clearSFX(voice.name);
+    m_speaker.clearSample(voice.name);
   }
 }
 
-std::optional<EngineStateEnum> CharacterSelectionState::update() {
+std::optional<EngineStateId> CharacterSelectionState::update() {
   if (m_selection.isFinished()) {
     return firstStreet();
   }
@@ -100,15 +100,15 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
   if (const auto sample = m_selection.sample()) {
     for (const Voice &voice : VOICES) {
       if (voice.sample == *sample) {
-        m_audioSystem.playSample(voice.name, systems::AudioSystem::ALL_VOICES);
+        m_speaker.playSample(voice.name, systems::audio::Mixer::ALL_VOICES);
       }
     }
   }
   if (m_selection.stopsMusic()) {
-    m_audioSystem.stopMusic();
+    m_speaker.stopMusic();
   }
   if (const auto volume = m_selection.musicVolume()) {
-    m_audioSystem.setMusicVolume(*volume);
+    m_speaker.setMusicVolume(*volume);
   }
 
   if (m_selection.isFinished()) {
@@ -119,14 +119,14 @@ std::optional<EngineStateEnum> CharacterSelectionState::update() {
   return std::nullopt;
 }
 
-EngineStateEnum CharacterSelectionState::firstStreet() const {
-  switch (m_session.registers[RO] + 1) {
+EngineStateId CharacterSelectionState::firstStreet() const {
+  switch (m_session.registers[amal::RO] + 1) {
   case SECOND_STAGE:
-    return EngineStateEnum::Level2;
+    return EngineStateId::Level2;
   case THIRD_STAGE:
-    return EngineStateEnum::StageProtectionCheck;
+    return EngineStateId::StageProtectionCheck;
   default:
-    return EngineStateEnum::Level1;
+    return EngineStateId::Level1;
   }
 }
 
@@ -136,7 +136,7 @@ void CharacterSelectionState::draw() {
   } else {
     m_screen.setPalette(m_picture.palette);
     m_screen.draw(m_picture, 0, -m_rows.first);
-    for (const effects::CharacterSelection::Bob *bob :
+    for (const effects::animation::Bob *bob :
          {&m_selection.face(), &m_selection.hand()}) {
       const int sprite = bob->image - FIRST_SPRITE_IMAGE;
       if (bob->shown && bob->image != HIDDEN_IMAGE && sprite >= 0 &&
@@ -146,7 +146,7 @@ void CharacterSelectionState::draw() {
       }
     }
   }
-  m_videoSystem.show(m_screen.output());
+  m_monitor.show(m_screen.output());
 }
 
 } // namespace openfranko::src::engine::states::characterSelection

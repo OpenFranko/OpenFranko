@@ -1,31 +1,33 @@
 #include "EndingState.h"
 
+#include "../shared/StreetVideo.h"
+
 namespace openfranko::src::engine::states::ending {
 
-EndingState::EndingState(systems::VideoSystem &videoSystem,
-                         systems::AudioSystem &audioSystem,
-                         systems::ControllerSystem &controllerSystem,
-                         const effects::GameOptions &options,
-                         street::GameSession &session)
-    : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_host(audioSystem, session.version),
-      m_scene(m_host, session, options.ntsc),
-      m_rows(effects::visibleRows(m_scene.displayLine(),
-                                  street::EndingScene::HEIGHT, options.ntsc)) {
-  m_videoSystem.setNtsc(options.ntsc);
+EndingState::EndingState(systems::graphics::Monitor &monitor,
+                         street::scenes::StreetHost &host,
+                         systems::input::ControllerSystem &controllerSystem,
+                         const GameOptions &options,
+                         street::session::GameSession &session)
+    : m_monitor(monitor), m_controllerSystem(controllerSystem),
+      m_scene(host, session, options.ntsc),
+      m_rows(visibleRows(m_scene.displayLine(),
+                         street::scenes::EndingScene::SCREEN_HEIGHT,
+                         options.ntsc)) {
+  m_monitor.setNtsc(options.ntsc);
 }
 
-std::optional<EngineStateEnum> EndingState::update() {
+std::optional<EngineStateId> EndingState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  systems::Display output = m_scene.output();
-  systems::cropRows(output, m_rows.first, m_rows.count);
-  m_videoSystem.show(output);
+  shared::showSceneFrame(m_monitor, m_scene.output(), m_rows);
   if (m_scene.isFinished()) {
-    return EngineStateEnum::HighScore;
+    return EngineStateId::HighScore;
   }
   return std::nullopt;
 }
 
-const street::EndingScene &EndingState::scene() const { return m_scene; }
+const street::scenes::EndingScene &EndingState::scene() const {
+  return m_scene;
+}
 
 } // namespace openfranko::src::engine::states::ending

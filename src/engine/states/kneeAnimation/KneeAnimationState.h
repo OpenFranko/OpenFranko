@@ -1,13 +1,14 @@
-#ifndef ENGINE_STATES_KNEEANIMATIONSTATE_H_
-#define ENGINE_STATES_KNEEANIMATIONSTATE_H_
+#ifndef ENGINE_STATES_KNEEANIMATION_KNEEANIMATIONSTATE_H_
+#define ENGINE_STATES_KNEEANIMATION_KNEEANIMATIONSTATE_H_
 
-#include "../../../systems/AudioSystem.h"
-#include "../../../systems/Bitmap.h"
-#include "../../../systems/Canvas.h"
-#include "../../../systems/ControllerSystem.h"
-#include "../../../systems/VideoSystem.h"
+#include "../../../systems/audio/Speaker.h"
+#include "../../../systems/graphics/Bitmap.h"
+#include "../../../systems/graphics/Canvas.h"
+#include "../../../systems/graphics/Monitor.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../GameVersion.h"
-#include "../IEngineState.h"
+#include "../../assets/Files.h"
+#include "../EngineState.h"
 
 #include <vector>
 
@@ -17,22 +18,23 @@ namespace engine {
 namespace states {
 namespace kneeAnimation {
 
-class KneeAnimationState : public IEngineState {
+class KneeAnimationState : public EngineState {
 public:
-  KneeAnimationState(systems::VideoSystem &videoSystem,
-                     systems::AudioSystem &audioSystem,
-                     systems::ControllerSystem &controllerSystem,
+  KneeAnimationState(systems::graphics::Monitor &monitor,
+                     systems::audio::Speaker &speaker,
+                     systems::input::ControllerSystem &controllerSystem,
+                     assets::Files &files,
                      GameVersion version = GameVersion::V10);
-  ~KneeAnimationState();
+  ~KneeAnimationState() override;
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
+  systems::graphics::Monitor &m_monitor;
+  systems::audio::Speaker &m_speaker;
   GameVersion m_version;
-  std::vector<systems::IndexedBitmap> m_images;
-  systems::Canvas m_screen;
+  std::vector<systems::graphics::IndexedBitmap> m_images;
+  systems::graphics::Canvas m_screen;
   int m_frame = 0;
 };
 
@@ -42,4 +44,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_KNEEANIMATIONSTATE_H_
+#endif // ENGINE_STATES_KNEEANIMATION_KNEEANIMATIONSTATE_H_

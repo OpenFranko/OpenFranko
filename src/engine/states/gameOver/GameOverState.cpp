@@ -1,32 +1,34 @@
 #include "GameOverState.h"
 
+#include "../shared/StreetVideo.h"
+
 namespace openfranko::src::engine::states::gameOver {
 
-GameOverState::GameOverState(systems::VideoSystem &videoSystem,
-                             systems::AudioSystem &audioSystem,
-                             systems::ControllerSystem &controllerSystem,
-                             const effects::GameOptions &options,
-                             street::GameSession &session)
-    : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_host(audioSystem, session.version), m_scene(m_host, session),
-      m_rows(effects::visibleRows(
-          effects::pictureLine(street::GameOverScene::DISPLAY_LINE,
-                               options.ntsc),
-          street::GameOverScene::HEIGHT, options.ntsc)) {
-  m_videoSystem.setNtsc(options.ntsc);
+GameOverState::GameOverState(systems::graphics::Monitor &monitor,
+                             street::scenes::StreetHost &host,
+                             systems::input::ControllerSystem &controllerSystem,
+                             const GameOptions &options,
+                             street::session::GameSession &session)
+    : m_monitor(monitor), m_controllerSystem(controllerSystem),
+      m_scene(host, session),
+      m_rows(visibleRows(
+          pictureLine(street::scenes::GameOverScene::DISPLAY_LINE,
+                      options.ntsc),
+          street::scenes::GameOverScene::SCREEN_HEIGHT, options.ntsc)) {
+  m_monitor.setNtsc(options.ntsc);
 }
 
-std::optional<EngineStateEnum> GameOverState::update() {
+std::optional<EngineStateId> GameOverState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  systems::Display output = m_scene.output();
-  systems::cropRows(output, m_rows.first, m_rows.count);
-  m_videoSystem.show(output);
+  shared::showSceneFrame(m_monitor, m_scene.output(), m_rows);
   if (m_scene.isFinished()) {
-    return EngineStateEnum::HighScore;
+    return EngineStateId::HighScore;
   }
   return std::nullopt;
 }
 
-const street::GameOverScene &GameOverState::scene() const { return m_scene; }
+const street::scenes::GameOverScene &GameOverState::scene() const {
+  return m_scene;
+}
 
 } // namespace openfranko::src::engine::states::gameOver

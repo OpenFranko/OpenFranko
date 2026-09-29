@@ -4,25 +4,27 @@
 
 namespace openfranko::src::engine::states::presents {
 
-PresentsState::PresentsState(systems::VideoSystem &videoSystem,
-                             systems::AudioSystem &audioSystem,
-                             systems::ControllerSystem &controllerSystem)
-    : m_audioSystem(audioSystem), m_controllerSystem(controllerSystem),
-      m_strip(videoSystem),
-      m_sequence(0, std::min(IntroStrip::PAGES_BEFORE_KNEE, m_strip.pages())) {
+PresentsState::PresentsState(systems::graphics::Monitor &monitor,
+                             systems::audio::Speaker &speaker,
+                             systems::input::ControllerSystem &controllerSystem,
+                             assets::Files &files)
+    : m_speaker(speaker), m_controllerSystem(controllerSystem),
+      m_strip(monitor, files),
+      m_sequence(
+          0, std::min(shared::IntroStrip::PAGES_BEFORE_KNEE, m_strip.pages())) {
   m_controllerSystem.clearFireLatch();
 }
 
-std::optional<EngineStateEnum> PresentsState::update() {
+std::optional<EngineStateId> PresentsState::update() {
   if (m_musicFade) {
     m_strip.showBlack();
-    if (m_musicFade->advance(m_audioSystem)) {
-      return EngineStateEnum::HighScore;
+    if (m_musicFade->advance(m_speaker)) {
+      return EngineStateId::HighScore;
     }
     return std::nullopt;
   }
   if (m_sequence.isFinished()) {
-    return EngineStateEnum::KneeAnimation;
+    return EngineStateId::KneeAnimation;
   }
   m_sequence.advance(m_controllerSystem.isFireLatched());
   if (m_sequence.isSkipped()) {

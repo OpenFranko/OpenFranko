@@ -1,8 +1,10 @@
 #include "MenuState.h"
 
+#include "../../AmigaDisplay.h"
+#include "../../MenuTempo.h"
 #include "../../assets/Assets.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../street/CheatCodes.h"
+#include "../../street/scenes/HighScoreScene.h"
+#include "../../street/session/CheatCodes.h"
 
 #include <cstddef>
 #include <string>
@@ -11,11 +13,7 @@ namespace openfranko::src::engine::states::menu {
 namespace {
 
 constexpr int BACKDROP = 0x3B8;
-constexpr int TITLE = 0x3BA;
-constexpr int HISCORES = 0x3B9;
 constexpr int MENU_BOBS = 0x34;
-constexpr int LETTERS = 0x35;
-constexpr int MENU_TUNE = 0x261;
 
 constexpr int MENU_SCREEN_WIDTH = 368;
 constexpr int MENU_SCREEN_HEIGHT = 290;
@@ -32,40 +30,29 @@ constexpr int VERSION12_FIRST_MENU_IMAGE = 1;
 constexpr int VERSION12_LAST_MENU_IMAGE = 25;
 constexpr int FIRST_LETTER_IMAGE = 1;
 constexpr int LETTER_IMAGES = 41;
-constexpr int LETTER_A_IMAGE = 14;
-constexpr int DIGIT_IMAGE_OFFSET = 44;
 
 constexpr int MUSIC_ON_VOLUME = 63;
-constexpr int VERSION12_MUSIC_WAIT = 2;
 
-constexpr int NAME_X = 56;
-constexpr int SCORE_RIGHT = 272;
-constexpr int CHARACTER_PITCH = 10;
-constexpr int SCORE_CHARACTERS = 4;
-constexpr int FIRST_ROW_Y = 32;
-constexpr int ROW_PITCH = 20;
-
-constexpr int RO = 14;
-
-systems::Canvas menuScreen(bool ntscDisplay) {
-  return systems::Canvas(
+systems::graphics::Canvas menuScreen(bool ntscDisplay) {
+  return systems::graphics::Canvas(
       MENU_SCREEN_WIDTH,
-      effects::visibleRows(MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay)
-          .count);
+      visibleRows(MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay).count);
 }
 
-systems::IndexedBitmap loadPicture(int resource, GameVersion version) {
-  return systems::loadIndexedBitmap(
+systems::graphics::IndexedBitmap loadPicture(assets::Files &files, int resource,
+                                             GameVersion version) {
+  return files.loadBitmap(
       assets::picturePath(assets::resourceName(resource, version)));
 }
 
-std::vector<systems::IndexedBitmap> loadSprites(int resource, int count,
-                                                GameVersion version) {
+std::vector<systems::graphics::IndexedBitmap> loadSprites(assets::Files &files,
+                                                          int resource,
+                                                          int count,
+                                                          GameVersion version) {
   const std::string name = assets::resourceName(resource, version);
-  std::vector<systems::IndexedBitmap> sprites;
+  std::vector<systems::graphics::IndexedBitmap> sprites;
   for (int index = 0; index < count; ++index) {
-    sprites.push_back(
-        systems::loadIndexedBitmap(assets::imagePath(name, index)));
+    sprites.push_back(files.loadBitmap(assets::imagePath(name, index)));
   }
   return sprites;
 }
@@ -81,9 +68,9 @@ int menuImages(GameVersion version) {
              : LAST_MENU_IMAGE - FIRST_MENU_IMAGE + 1;
 }
 
-const systems::IndexedBitmap *
-findImage(const std::vector<systems::IndexedBitmap> &images, int firstImage,
-          int image) {
+const systems::graphics::IndexedBitmap *
+findImage(const std::vector<systems::graphics::IndexedBitmap> &images,
+          int firstImage, int image) {
   const int index = image - firstImage;
   if (index < 0 || index >= static_cast<int>(images.size())) {
     return nullptr;
@@ -91,58 +78,60 @@ findImage(const std::vector<systems::IndexedBitmap> &images, int firstImage,
   return &images[static_cast<std::size_t>(index)];
 }
 
-effects::AmigaPalette resized(effects::AmigaPalette palette,
-                              std::size_t colors) {
+effects::color::AmigaPalette resized(effects::color::AmigaPalette palette,
+                                     std::size_t colors) {
   palette.resize(colors);
   return palette;
 }
 
-effects::MenuSequence::Joystick
-joystickFrom(const systems::ControllerSystem::ControllerStates &states) {
+effects::sequences::MenuSequence::Joystick
+joystickFrom(const systems::input::ControllerSystem::ControllerStates &states) {
   return {states.up, states.down, states.left, states.right, states.button};
 }
 
-bool isTouched(const effects::MenuSequence::Joystick &joystick) {
+bool isTouched(const effects::sequences::MenuSequence::Joystick &joystick) {
   return joystick.up || joystick.down || joystick.left || joystick.right ||
          joystick.fire;
 }
 
 } // namespace
 
-MenuState::MenuState(systems::VideoSystem &videoSystem,
-                     systems::AudioSystem &audioSystem,
-                     systems::ControllerSystem &controllerSystem,
-                     effects::GameOptions &options,
-                     street::GameSession &session)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
+MenuState::MenuState(systems::graphics::Monitor &monitor,
+                     systems::audio::Speaker &speaker,
+                     systems::input::ControllerSystem &controllerSystem,
+                     assets::Files &files, GameOptions &options,
+                     street::session::GameSession &session)
+    : m_monitor(monitor), m_speaker(speaker),
       m_controllerSystem(controllerSystem), m_options(options),
-      m_session(session), m_backdrop(loadPicture(BACKDROP, session.version)),
-      m_title(loadPicture(TITLE, session.version)),
-      m_hiscores(loadPicture(HISCORES, session.version)),
-      m_menuBobs(
-          loadSprites(MENU_BOBS, menuImages(session.version), session.version)),
-      m_letters(loadSprites(LETTERS, LETTER_IMAGES, session.version)),
+      m_session(session),
+      m_backdrop(loadPicture(files, BACKDROP, session.version)),
+      m_title(loadPicture(files, assets::TITLE_SCREEN, session.version)),
+      m_hiscores(loadPicture(files, assets::HISCORE_LETTERS, session.version)),
+      m_menuBobs(loadSprites(files, MENU_BOBS, menuImages(session.version),
+                             session.version)),
+      m_letters(loadSprites(files, assets::LETTER_SET, LETTER_IMAGES,
+                            session.version)),
       m_menuScreen(menuScreen(options.ntsc)),
       m_menu(options, resized(m_backdrop.palette, MENU_COLORS),
              session.keyboard, session.version),
       m_titlePalette(resized(m_title.palette, ATTRACT_COLORS)),
       m_hiscorePalette(resized(m_hiscores.palette, ATTRACT_COLORS)) {
-  m_videoSystem.setNtsc(options.ntsc);
+  m_monitor.setNtsc(options.ntsc);
   m_session.nameScreenOpen = false;
   if (session.version == GameVersion::V12) {
-    m_audioSystem.loadMusic(
-        assets::musicPath(assets::resourceName(MENU_TUNE, session.version)));
-    m_audioSystem.playMusic();
-    m_musicWait = VERSION12_MUSIC_WAIT;
+    m_speaker.loadMusic(assets::musicPath(
+        assets::resourceName(assets::MENU_TUNE, session.version)));
+    m_speaker.playMusic();
+    m_musicWait = effects::sequences::MenuSequence::VERSION12_MUSIC_WAIT;
   }
 }
 
-std::optional<EngineStateEnum> MenuState::update() {
-  const effects::MenuSequence::Joystick joystick =
+std::optional<EngineStateId> MenuState::update() {
+  const effects::sequences::MenuSequence::Joystick joystick =
       joystickFrom(m_controllerSystem.states);
   if (m_musicWait > 0 && --m_musicWait == 0) {
-    m_audioSystem.setMusicTempo(effects::CONVERTED_MENU_TEMPO);
-    m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
+    m_speaker.setMusicTempo(CONVERTED_MENU_TEMPO);
+    m_speaker.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
   }
 
   if (m_attract && m_attractClosing == 0) {
@@ -152,7 +141,7 @@ std::optional<EngineStateEnum> MenuState::update() {
       return std::nullopt;
     }
     m_menu.resumeAfterAttract();
-    m_attractClosing = effects::SCREEN_CLOSE_SHOWN_VBLS;
+    m_attractClosing = SCREEN_CLOSE_SHOWN_VBLS;
   }
 
   const bool music = m_options.music;
@@ -165,21 +154,21 @@ std::optional<EngineStateEnum> MenuState::update() {
     m_session.border = m_menu.palette()[0];
   }
   for (const char key : m_menu.keysRead()) {
-    street::typeCheatKey(m_session.textBuffer, key);
+    street::session::typeCheatKey(m_session.textBuffer, key);
   }
   if (m_options.music != music) {
-    m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
+    m_speaker.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
   }
   if (m_options.bass != bass) {
-    m_audioSystem.setLowPassFilter(m_options.bass);
+    m_speaker.setLowPassFilter(m_options.bass);
   }
   if (m_options.ntsc != ntsc) {
     switchStandard();
   }
   if (m_menu.isFinished()) {
-    m_session.registers[RO] = 0;
-    street::applyCheatCodes(m_session);
-    return EngineStateEnum::CharacterSelection;
+    m_session.registers[amal::RO] = 0;
+    street::session::applyCheatCodes(m_session);
+    return EngineStateId::CharacterSelectionSequence;
   }
 
   if (m_menu.isAttractDue()) {
@@ -202,7 +191,7 @@ std::optional<EngineStateEnum> MenuState::update() {
 }
 
 void MenuState::advanceAttract(
-    const effects::MenuSequence::Joystick &joystick) {
+    const effects::sequences::MenuSequence::Joystick &joystick) {
   m_attract->advance(isTouched(joystick));
   if (m_attract->isWaiting()) {
     m_session.keyboard.sleep();
@@ -210,26 +199,25 @@ void MenuState::advanceAttract(
 }
 
 void MenuState::switchStandard() {
-  m_videoSystem.setNtsc(m_options.ntsc);
+  m_monitor.setNtsc(m_options.ntsc);
   if (m_session.version == GameVersion::V12) {
-    m_audioSystem.setMusicTempo(effects::menuTempo(m_options.ntsc));
+    m_speaker.setMusicTempo(menuTempo(m_options.ntsc));
   } else {
-    m_audioSystem.setMusicTempoScale(
-        effects::menuTuneScale(effects::menuTempo(m_options.ntsc)));
+    m_speaker.setMusicTempoScale(menuTuneScale(menuTempo(m_options.ntsc)));
   }
   m_menuScreen = menuScreen(m_options.ntsc);
 }
 
 void MenuState::startAttract() {
-  const effects::VisibleRows rows = effects::visibleRows(
-      effects::pictureLine(ATTRACT_DISPLAY_Y, m_options.ntsc),
-      ATTRACT_SCREEN_HEIGHT, m_videoSystem.isNtsc());
+  const VisibleRows rows =
+      visibleRows(pictureLine(ATTRACT_DISPLAY_Y, m_options.ntsc),
+                  ATTRACT_SCREEN_HEIGHT, m_monitor.isNtsc());
   m_attractTop = rows.first;
-  m_attractScreen = systems::Canvas(ATTRACT_SCREEN_WIDTH, rows.count);
-  const effects::AttractSequence::Kind kind = m_nextAttract;
-  const bool title = kind == effects::AttractSequence::Kind::Title;
-  m_nextAttract = title ? effects::AttractSequence::Kind::Hiscores
-                        : effects::AttractSequence::Kind::Title;
+  m_attractScreen = systems::graphics::Canvas(ATTRACT_SCREEN_WIDTH, rows.count);
+  const effects::sequences::AttractSequence::Kind kind = m_nextAttract;
+  const bool title = kind == effects::sequences::AttractSequence::Kind::Title;
+  m_nextAttract = title ? effects::sequences::AttractSequence::Kind::Hiscores
+                        : effects::sequences::AttractSequence::Kind::Title;
   m_attract.emplace(kind, title ? m_titlePalette : m_hiscorePalette);
 }
 
@@ -242,8 +230,8 @@ void MenuState::drawMenu() {
 
   m_menuScreen.setPalette(m_menu.palette());
   m_menuScreen.draw(m_backdrop, 0, 0);
-  for (const effects::MenuSequence::Bob &bob : m_menu.shownBobs()) {
-    const systems::IndexedBitmap *image =
+  for (const effects::animation::Bob &bob : m_menu.shownBobs()) {
+    const systems::graphics::IndexedBitmap *image =
         findImage(m_menuBobs, firstMenuImage(m_session.version), bob.image);
     if (bob.shown && image) {
       m_menuScreen.drawMasked(*image, bob.x, bob.y, bob.flipped);
@@ -261,7 +249,7 @@ void MenuState::drawAttract() {
 }
 
 void MenuState::drawAttractPicture() {
-  if (m_attract->kind() == effects::AttractSequence::Kind::Title) {
+  if (m_attract->kind() == effects::sequences::AttractSequence::Kind::Title) {
     m_attractScreen.setPalette(m_title.palette);
     m_attractScreen.draw(m_title, 0, -m_attractTop);
     show(m_attractScreen);
@@ -271,39 +259,25 @@ void MenuState::drawAttractPicture() {
   m_attractScreen.setPalette(m_attract->palette());
   m_attractScreen.draw(m_hiscores, 0, -m_attractTop);
   for (int drawn = 0; drawn < m_attract->rowsShown(); ++drawn) {
-    drawHiscoreRow(effects::AttractSequence::HISCORE_ROWS - 1 - drawn);
+    drawHiscoreRow(effects::sequences::AttractSequence::HISCORE_ROWS - 1 -
+                   drawn);
   }
   show(m_attractScreen);
 }
 
 void MenuState::drawHiscoreRow(int row) {
-  const street::HighScoreTable &table = m_session.highScores;
-  const int y = FIRST_ROW_Y + row * ROW_PITCH - m_attractTop;
-
-  for (int column = 0; column < street::HighScoreTable::NAME_LENGTH; ++column) {
-    const int letter = table.letter(row, column);
-    const systems::IndexedBitmap *image =
-        findImage(m_letters, FIRST_LETTER_IMAGE, letter + LETTER_A_IMAGE);
-    if (letter < street::HighScoreTable::LETTERS && image) {
-      m_attractScreen.drawMasked(*image, NAME_X + column * CHARACTER_PITCH, y);
-    }
-  }
-
-  const std::string score = " " + std::to_string(table.score(row)) + "   ";
-  const int scoreX =
-      SCORE_RIGHT - CHARACTER_PITCH * static_cast<int>(score.size());
-  for (int i = 1; i <= SCORE_CHARACTERS; ++i) {
-    const char character = score[i - 1];
-    const systems::IndexedBitmap *image = findImage(
-        m_letters, FIRST_LETTER_IMAGE, character - DIGIT_IMAGE_OFFSET);
-    if (character > ' ' && image) {
-      m_attractScreen.drawMasked(*image, scoreX + i * CHARACTER_PITCH, y);
-    }
-  }
+  street::scenes::HighScoreScene::pasteRow(
+      m_session.highScores, row, [this](int x, int y, int image) {
+        const systems::graphics::IndexedBitmap *bitmap =
+            findImage(m_letters, FIRST_LETTER_IMAGE, image);
+        if (bitmap) {
+          m_attractScreen.drawMasked(*bitmap, x, y - m_attractTop);
+        }
+      });
 }
 
-void MenuState::show(const systems::Canvas &screen) {
-  m_videoSystem.show(screen.output());
+void MenuState::show(const systems::graphics::Canvas &screen) {
+  m_monitor.show(screen.output());
 }
 
 } // namespace openfranko::src::engine::states::menu

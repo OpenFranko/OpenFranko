@@ -11,11 +11,11 @@ namespace converter {
 namespace fileContainer {
 
 struct FileInfo {
-  uint32_t unpackSize;
-  uint16_t fileId;
-  uint16_t resourceType;
-  uint8_t bankType;
-  bool compressed;
+  uint32_t unpackSize = 0;
+  uint16_t fileId = 0;
+  uint16_t resourceType = 0;
+  uint8_t bankType = 0;
+  bool compressed = false;
 };
 
 struct Resource {

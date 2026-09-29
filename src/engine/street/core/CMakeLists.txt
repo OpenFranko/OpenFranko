@@ -1,0 +1,22 @@
+add_library(StreetCore
+    Bobs.cpp
+    Bobs.h
+    DoubleBuffer.cpp
+    DoubleBuffer.h
+    EndingCredits.cpp
+    EndingCredits.h
+    Font.cpp
+    Font.h
+    HighScoreTable.cpp
+    HighScoreTable.h
+    IndexedSurface.cpp
+    IndexedSurface.h
+    Json.cpp
+    Json.h
+    LevelScript.cpp
+    LevelScript.h
+    SystemText.cpp
+    SystemText.h
+    UpdateHold.cpp
+    UpdateHold.h)
+target_link_libraries(StreetCore PUBLIC Amal Common)

@@ -1,14 +1,15 @@
-#ifndef ENGINE_STATES_SPIDERLOGOSTATE_H_
-#define ENGINE_STATES_SPIDERLOGOSTATE_H_
+#ifndef ENGINE_STATES_SPIDERLOGO_SPIDERLOGOSTATE_H_
+#define ENGINE_STATES_SPIDERLOGO_SPIDERLOGOSTATE_H_
 
-#include "../../../systems/AudioSystem.h"
-#include "../../../systems/Bitmap.h"
-#include "../../../systems/Canvas.h"
-#include "../../../systems/VideoSystem.h"
+#include "../../../systems/audio/Speaker.h"
+#include "../../../systems/graphics/Bitmap.h"
+#include "../../../systems/graphics/Canvas.h"
+#include "../../../systems/graphics/Monitor.h"
+#include "../../AmigaDisplay.h"
 #include "../../amal/Machine.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../effects/FotoSequence.h"
-#include "../IEngineState.h"
+#include "../../assets/Files.h"
+#include "../../effects/sequences/FotoSequence.h"
+#include "../EngineState.h"
 
 #include <optional>
 #include <vector>
@@ -19,37 +20,37 @@ namespace engine {
 namespace states {
 namespace spiderLogo {
 
-class SpiderLogoState : public IEngineState {
+class SpiderLogoState : public EngineState {
 public:
-  SpiderLogoState(systems::VideoSystem &videoSystem,
-                  systems::AudioSystem &audioSystem);
-  ~SpiderLogoState();
+  SpiderLogoState(systems::graphics::Monitor &monitor,
+                  systems::audio::Speaker &speaker, assets::Files &files);
+  ~SpiderLogoState() override;
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
   void walk();
   void logo();
   void showWalk();
   void showLogo();
-  void showBlack(systems::Canvas &screen, bool hires);
-  void drawBob(systems::Canvas &screen, int top) const;
+  void showBlack(systems::graphics::Canvas &screen, bool hires);
+  void drawBob(systems::graphics::Canvas &screen, int top) const;
 
-  systems::VideoSystem &m_videoSystem;
-  systems::AudioSystem &m_audioSystem;
-  std::vector<systems::IndexedBitmap> m_images;
-  systems::IndexedBitmap m_logo;
-  systems::IndexedBitmap m_water;
-  systems::IndexedBitmap m_reflectionArea;
+  systems::graphics::Monitor &m_monitor;
+  systems::audio::Speaker &m_speaker;
+  std::vector<systems::graphics::IndexedBitmap> m_images;
+  systems::graphics::IndexedBitmap m_logo;
+  systems::graphics::IndexedBitmap m_water;
+  systems::graphics::IndexedBitmap m_reflectionArea;
   amal::Registers m_registers{};
   amal::Machine m_machine;
   amal::Object m_bob;
   amal::Object m_shownBob;
-  effects::VisibleRows m_walkRows;
-  effects::VisibleRows m_logoRows;
-  systems::Canvas m_walkScreen;
-  systems::Canvas m_logoScreen;
-  std::optional<effects::FotoSequence> m_foto;
+  VisibleRows m_walkRows;
+  VisibleRows m_logoRows;
+  systems::graphics::Canvas m_walkScreen;
+  systems::graphics::Canvas m_logoScreen;
+  std::optional<effects::sequences::FotoSequence> m_foto;
   int m_frame = 0;
   int m_timer = 0;
   std::optional<int> m_walkEnd;
@@ -62,4 +63,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_SPIDERLOGOSTATE_H_
+#endif // ENGINE_STATES_SPIDERLOGO_SPIDERLOGOSTATE_H_

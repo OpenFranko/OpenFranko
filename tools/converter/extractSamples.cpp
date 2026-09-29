@@ -4,16 +4,18 @@
 #include "../../lib/converter/gameData/gameData.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
+
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 using namespace openfranko::lib;
 
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.getCmdOption("-i");
-  if (!inputOptional.has_value()) {
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0]
               << " -i <input_file> [-o <output_dir>] [-m <mode>]" << std::endl;
     std::cerr << "Extracts audio samples from a Franko data file to WAV."
@@ -27,50 +29,57 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOptional.value();
-
-  std::string outDir = ".";
-  const auto outputOptional = parser.getCmdOption("-o");
-  if (outputOptional.has_value())
-    outDir = outputOptional.value();
-
-  const auto modeOptional = parser.getCmdOption("-m");
+  const std::string inputPath = inputOption.value();
+  const auto outputOption = parser.option("-o");
+  const auto modeOption = parser.option("-m");
 
   try {
-    auto raw = filesystem::readFile::readFile(inputPath);
+    const auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
-    auto resource = converter::fileContainer::unpack(
+    const auto resource = converter::fileContainer::unpack(
         std::filesystem::path(inputPath).filename().string(), raw);
     const std::string &fileId = resource.fileId;
-
-    const auto &dec = resource.data;
-    std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
-
-    const bool embedded = modeOptional.has_value()
-                              ? modeOptional.value() == "embedded"
+    const bool embedded = modeOption.has_value()
+                              ? modeOption.value() == "embedded"
                               : resource.resourceType ==
                                     converter::gameData::resourceTypes::SPRITES;
-
-    std::filesystem::create_directories(outDir);
-
-    std::vector<converter::audioExtractor::ExtractedAudio> samples;
-    if (embedded) {
-      samples = converter::audioExtractor::extractEmbeddedSamBank(dec, fileId);
-    } else {
-      samples = converter::audioExtractor::extractStandaloneSamBank(dec, fileId);
+    if (embedded &&
+        resource.resourceType != converter::gameData::resourceTypes::SPRITES) {
+      std::cerr << "Warning: " << fileId
+                << " is not a sprite bank (type 0x0000, or a version 1.2 s "
+                   "file)"
+                << std::endl;
+    }
+    if (!embedded &&
+        resource.resourceType != converter::gameData::resourceTypes::SAMPLES) {
+      std::cerr << "Warning: " << fileId
+                << " is not a sample bank (type 0x0300)" << std::endl;
     }
 
-    for (const auto &s : samples) {
-      std::string path = outDir + "/" + s.name;
-      filesystem::writeFile::writeFile(path, s.data);
-      std::cerr << "  -> " << path << " (" << s.data.size() << " bytes)"
+    const auto &decompressed = resource.data;
+    std::cerr << "Decompressed to " << decompressed.size() << " bytes"
+              << std::endl;
+
+    const std::string outputDir = outputOption.value_or("extracted");
+    std::filesystem::create_directories(outputDir);
+
+    const auto samples =
+        embedded
+            ? converter::audioExtractor::extractEmbeddedSamBank(decompressed,
+                                                                fileId)
+            : converter::audioExtractor::extractStandaloneSamBank(decompressed,
+                                                                  fileId);
+    for (const auto &sample : samples) {
+      const std::string path = outputDir + "/" + sample.name;
+      filesystem::writeFile::writeFile(path, sample.data);
+      std::cerr << "Wrote " << path << " (" << sample.data.size() << " bytes)"
                 << std::endl;
     }
 
     if (samples.empty()) {
-      std::cerr << "(no samples found)" << std::endl;
+      std::cerr << "No samples extracted." << std::endl;
     } else {
-      std::cerr << "Wrote " << samples.size() << " samples to " << outDir
+      std::cerr << "Wrote " << samples.size() << " samples to " << outputDir
                 << std::endl;
     }
   } catch (const std::exception &e) {

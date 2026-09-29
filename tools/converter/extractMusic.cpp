@@ -1,45 +1,55 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "../../lib/converter/audioExtractor/audioExtractor.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
+#include "../../lib/converter/gameData/gameData.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
+
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 using namespace openfranko::lib;
 
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.getCmdOption("-i");
-  if (!inputOptional.has_value()) {
-    std::cerr << "Usage: " << argv[0] << " -i <input_file> [-o <output.abk>]"
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
+    std::cerr << "Usage: " << argv[0] << " -i <input_file> [-o <output_file>]"
               << std::endl;
-    std::cerr
-        << "Extracts a Franko music bank (type 0x0400, or a version 1.2 m "
-           "file) to ABK format."
-        << std::endl;
+    std::cerr << "Extracts a Franko music bank (type 0x0400, or a version 1.2 "
+                 "m file) to ABK format."
+              << std::endl;
     return 1;
   }
 
-  std::string inputPath = inputOptional.value();
-  const auto outputOptional = parser.getCmdOption("-o");
+  const std::string inputPath = inputOption.value();
+  const auto outputOption = parser.option("-o");
 
   try {
-    auto raw = filesystem::readFile::readFile(inputPath);
+    const auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
-    auto resource = converter::fileContainer::unpack(
+    const auto resource = converter::fileContainer::unpack(
         std::filesystem::path(inputPath).filename().string(), raw);
     const std::string &fileId = resource.fileId;
-    std::string outputPath = outputOptional.value_or(fileId + ".abk");
+    if (resource.resourceType != converter::gameData::resourceTypes::MUSIC) {
+      std::cerr << "Warning: " << fileId
+                << " is not a music bank (type 0x0400, or a version 1.2 m "
+                   "file)"
+                << std::endl;
+    }
 
-    const auto &dec = resource.data;
-    std::cerr << "Decompressed to " << dec.size() << " bytes" << std::endl;
+    const auto &decompressed = resource.data;
+    std::cerr << "Decompressed to " << decompressed.size() << " bytes"
+              << std::endl;
 
-    auto abk = converter::audioExtractor::wrapMusicBank(dec, fileId);
+    const auto abk =
+        converter::audioExtractor::wrapMusicBank(decompressed, fileId);
+    const std::string outputPath = outputOption.value_or(fileId + ".abk");
     filesystem::writeFile::writeFile(outputPath, abk.data);
-    std::cerr << "Wrote " << outputPath << " (" << abk.data.size()
-              << " bytes)" << std::endl;
+    std::cerr << "Wrote " << outputPath << " (" << abk.data.size() << " bytes)"
+              << std::endl;
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return 1;

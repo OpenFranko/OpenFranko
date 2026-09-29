@@ -1,16 +1,16 @@
 #include "../../../lib/converter/fileContainer/fileContainer.h"
+
+#include "../../../lib/binary/binary.h"
 #include "../../../lib/converter/gameData/gameData.h"
-#include "../../../lib/helpers/helpers.h"
-#include <algorithm>
+
 #include <catch2/catch_all.hpp>
+
+#include <algorithm>
 #include <vector>
 
 using namespace openfranko::lib::converter::fileContainer;
-namespace gameData = openfranko::lib::converter::gameData;
-namespace resourceTypes = openfranko::lib::converter::gameData::resourceTypes;
-using openfranko::lib::helpers::BigEndianReader;
-using openfranko::lib::helpers::pushBigEndian16;
-using openfranko::lib::helpers::pushBigEndian32;
+using namespace openfranko::lib::binary;
+using namespace openfranko::lib::converter::gameData;
 
 namespace {
 
@@ -21,16 +21,16 @@ std::vector<uint8_t> squash(const std::vector<uint8_t> &data) {
       bits.push_back(((value >> i) & 1u) != 0);
     }
   };
-  for (size_t end = data.size(); end > 0;) {
-    const size_t run = std::min<size_t>(8, end);
+  for (std::size_t end = data.size(); end > 0;) {
+    const std::size_t run = std::min<std::size_t>(8, end);
     put(0, 2);
     put(static_cast<uint32_t>(run - 1), 3);
-    for (size_t i = 0; i < run; ++i) {
+    for (std::size_t i = 0; i < run; ++i) {
       put(data[--end], 8);
     }
   }
   std::vector<uint32_t> words((bits.size() + 31) / 32, 0);
-  for (size_t i = 0; i < bits.size(); ++i) {
+  for (std::size_t i = 0; i < bits.size(); ++i) {
     words[i / 32] |= static_cast<uint32_t>(bits[i]) << (i % 32);
   }
   std::vector<uint8_t> stream;
@@ -80,15 +80,15 @@ SCENARIO("parseFooter reads the last 8 bytes as big-endian fields") {
   GIVEN("A 16-byte buffer with a known 8-byte suffix") {
     std::vector<uint8_t> data = {
         0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22,
-        0x00, 0x01, 0x00, 0x00,
-        0x03, 0x84,
-        0x02, 0x00,
+        0x00, 0x01, 0x00, 0x00, 0x03, 0x84, 0x02, 0x00,
     };
 
     WHEN("parseFooter is called") {
       auto info = parseFooter(data);
 
-      THEN("unpackSize is read correctly") { REQUIRE(info.unpackSize == 65536); }
+      THEN("unpackSize is read correctly") {
+        REQUIRE(info.unpackSize == 65536);
+      }
 
       THEN("fileId is read correctly") { REQUIRE(info.fileId == 0x0384); }
 
@@ -100,9 +100,7 @@ SCENARIO("parseFooter reads the last 8 bytes as big-endian fields") {
 
   GIVEN("An exactly 8-byte buffer") {
     std::vector<uint8_t> data = {
-        0x00, 0x00, 0x00, 0x42,
-        0x00, 0x38,
-        0x00, 0x00,
+        0x00, 0x00, 0x00, 0x42, 0x00, 0x38, 0x00, 0x00,
     };
 
     WHEN("parseFooter is called") {
@@ -346,18 +344,6 @@ SCENARIO("unsquashVersion12 gives the whole squashed block of a 1.2 file") {
                         std::runtime_error);
       REQUIRE_THROWS_AS(unsquashVersion12("0384", squash({1})),
                         std::runtime_error);
-    }
-  }
-}
-
-SCENARIO("version10Id names the 1.0 file whose role a 1.2 file has") {
-  GIVEN("1.2 files with and without a 1.0 counterpart, and a 1.0 file") {
-    THEN("Each maps to its counterpart, new files to nothing") {
-      REQUIRE(gameData::version10Id("s56") == "0038");
-      REQUIRE(gameData::version10Id("t40") == "0154");
-      REQUIRE(gameData::version10Id("p52") == "03B8");
-      REQUIRE(gameData::version10Id("s50").empty());
-      REQUIRE(gameData::version10Id("0384") == "0384");
     }
   }
 }

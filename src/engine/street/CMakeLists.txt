@@ -1,0 +1,5 @@
+add_subdirectory(actors)
+add_subdirectory(core)
+add_subdirectory(scenes)
+add_subdirectory(session)
+add_subdirectory(ui)

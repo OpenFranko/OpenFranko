@@ -1,0 +1,126 @@
+#ifndef GAMEDATA_PALETTES_H_
+#define GAMEDATA_PALETTES_H_
+
+#include "gameData.h"
+
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace openfranko {
+namespace lib {
+namespace converter {
+namespace gameData {
+namespace palettes {
+
+inline constexpr std::array<uint16_t, 16> LEVEL = {
+    0x555, 0xAAA, 0x666, 0xFAA, 0x083, 0x902, 0xB95, 0x760,
+    0x063, 0x000, 0x520, 0x17A, 0x09E, 0x4DF, 0x777, 0xDDD};
+
+inline constexpr std::array<uint16_t, 16> SUNSET = {
+    0x000, 0x06F, 0x730, 0x840, 0x950, 0xA60, 0xB70, 0xC80,
+    0xD90, 0xEA0, 0xFB0, 0xFC1, 0xFD2, 0xFE3, 0xFF4, 0xFFF};
+
+inline constexpr std::array<uint16_t, 32> STORY = {
+    0x000, 0x100, 0x050, 0x060, 0x800, 0x540, 0x444, 0x752, 0x555, 0x863, 0x06B,
+    0x666, 0x08D, 0x777, 0xA84, 0x888, 0x0BF, 0x999, 0xAAA, 0xDB7, 0xBBB, 0xCCC,
+    0xFFF, 0xFFF, 0xFFF, 0xFFF, 0xFFF, 0xFFF, 0xFFF, 0xFFF, 0xFFF, 0x000};
+
+inline constexpr std::array<uint16_t, 16> MENU = {
+    0x000, 0x111, 0x333, 0x444, 0x555, 0x666, 0x06F, 0xF00,
+    0x0F0, 0x0FF, 0xBBB, 0xFFF, 0x000, 0x760, 0xB95, 0xFC0};
+
+inline constexpr std::array<uint16_t, 32> MENU_35 = {
+    0x555, 0x000, 0x333, 0x555, 0x666, 0x888, 0xF0F, 0x00F, 0xF00, 0x000, 0xAAA,
+    0x04C, 0x000, 0x864, 0xB95, 0xED0, 0x975, 0xB95, 0xAAA, 0x000, 0x000, 0xEC8,
+    0x000, 0x000, 0xDDD, 0xEEE, 0x000, 0x000, 0x000, 0x769, 0xB95, 0xFC0};
+
+inline constexpr std::array<uint16_t, 32> CEMETERY = {
+    0xF0F, 0x000, 0xF00, 0xEEB, 0xDD9, 0xDC7, 0xCB5, 0xDB5, 0xDA4, 0xB90, 0x980,
+    0x600, 0x44F, 0x00F, 0x08F, 0x009, 0x600, 0x700, 0x0B0, 0x090, 0x070, 0xF0F,
+    0xF0F, 0x555, 0x666, 0x777, 0x888, 0x999, 0xAAA, 0xBBB, 0xDDD, 0xC00};
+
+inline constexpr std::array<uint16_t, 16> TITLE = {
+    0x555, 0xAAA, 0x753, 0x864, 0x974, 0xB95, 0xDB7, 0xFFF,
+    0x600, 0x000, 0x520, 0x07A, 0x09E, 0x4DF, 0x999, 0x777};
+
+inline constexpr std::array<uint16_t, 32> PAL24 = {
+    0x444, 0x555, 0x333, 0x008, 0x060, 0x070, 0x090, 0xAAA, 0x753, 0x666, 0x864,
+    0x974, 0x777, 0x888, 0xB95, 0x999, 0x000, 0xCA8, 0xDB7, 0xCCC, 0xDDD, 0xEEE,
+    0xFFF, 0x333, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000};
+
+inline constexpr std::array<uint16_t, 16> HUD = {
+    0x555, 0x000, 0xF10, 0x666, 0x888, 0x999, 0xAAA, 0xDDD,
+    0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000};
+
+inline constexpr std::array<uint16_t, 2> BW_MAGENTA = {0xF0F, 0x000};
+
+inline constexpr std::array<uint16_t, 16> WORLD_SOFTWARE = {
+    0x000, 0x600, 0x333, 0x550, 0x444, 0x770, 0x008, 0x009,
+    0x00A, 0x00B, 0x00C, 0x00D, 0x222, 0x003, 0xFFF, 0xFFF};
+
+inline std::vector<uint16_t> selectPalette(const std::string &fileId) {
+  if (fileId == gameData::version12::fileIds::WORLD_SOFTWARE_PALETTE) {
+    return {WORLD_SOFTWARE.begin(), WORLD_SOFTWARE.end()};
+  }
+
+  const std::string_view id = gameData::version10Id(fileId);
+
+  if (id == gameData::fileIds::SUNSET_PALETTE) {
+    return {SUNSET.begin(), SUNSET.end()};
+  }
+  if (id == gameData::fileIds::STORY_PALETTE) {
+    return {STORY.begin(), STORY.end()};
+  }
+  if (id == gameData::fileIds::MENU_PALETTE) {
+    return {MENU.begin(), MENU.end()};
+  }
+  if (id == gameData::fileIds::MENU_35_PALETTE) {
+    return {MENU_35.begin(), MENU_35.end()};
+  }
+  if (id == gameData::fileIds::CEMETERY_PALETTE) {
+    return {CEMETERY.begin(), CEMETERY.end()};
+  }
+  if (id == gameData::fileIds::TITLE_PALETTE) {
+    return {TITLE.begin(), TITLE.end()};
+  }
+  if (id == gameData::fileIds::CEMETERY_PICTURE) {
+    return {BW_MAGENTA.begin(), BW_MAGENTA.end()};
+  }
+  if (std::find(gameData::fileIds::PAL24_FILES.begin(),
+                gameData::fileIds::PAL24_FILES.end(),
+                id) != gameData::fileIds::PAL24_FILES.end()) {
+    return {PAL24.begin(), PAL24.end()};
+  }
+  return {LEVEL.begin(), LEVEL.end()};
+}
+
+inline std::vector<uint16_t> byName(const std::string &name) {
+  if (name == "sunset") {
+    return {SUNSET.begin(), SUNSET.end()};
+  }
+  if (name == "story") {
+    return {STORY.begin(), STORY.end()};
+  }
+  if (name == "menu") {
+    return {MENU.begin(), MENU.end()};
+  }
+  if (name == "menu35") {
+    return {MENU_35.begin(), MENU_35.end()};
+  }
+  if (name == "cemetery") {
+    return {CEMETERY.begin(), CEMETERY.end()};
+  }
+  return {LEVEL.begin(), LEVEL.end()};
+}
+
+} // namespace palettes
+} // namespace gameData
+} // namespace converter
+} // namespace lib
+} // namespace openfranko
+
+#endif // GAMEDATA_PALETTES_H_

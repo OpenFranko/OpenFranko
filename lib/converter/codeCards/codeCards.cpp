@@ -1,23 +1,24 @@
 #include "codeCards.h"
+
 #include <stdexcept>
 #include <string>
 
 namespace openfranko::lib::converter::codeCards {
 
-CodeCards parse(const std::vector<uint8_t> &decompressedData, size_t cardSize) {
-  const size_t end =
+CodeCards parse(const std::vector<uint8_t> &data, std::size_t cardSize) {
+  const std::size_t end =
       consts::FIRST_CARD_OFFSET + consts::CARD_COUNT * cardSize * cardSize;
-  if (decompressedData.size() < end) {
+  if (data.size() < end) {
     throw std::runtime_error("Data too small for the code cards");
   }
 
   CodeCards cards;
-  size_t pos = consts::FIRST_CARD_OFFSET;
+  std::size_t pos = consts::FIRST_CARD_OFFSET;
   for (auto &card : cards) {
     card.rows.assign(cardSize, std::vector<uint8_t>(cardSize));
     for (auto &row : card.rows) {
       for (auto &cell : row) {
-        cell = decompressedData[pos++];
+        cell = data[pos++];
         if (cell >= consts::COLOR_COUNT) {
           throw std::runtime_error("Code card color out of range: " +
                                    std::to_string(cell));
@@ -42,12 +43,12 @@ std::vector<uint8_t> toJson(const CodeCards &cards) {
   out += "  },\n";
   out += "  \"cards\": [\n";
 
-  for (size_t n = 0; n < cards.size(); ++n) {
+  for (std::size_t i = 0; i < cards.size(); ++i) {
     out += "    {\n";
-    out += "      \"card\": " + std::to_string(n + 1) + ",\n";
+    out += "      \"card\": " + std::to_string(i + 1) + ",\n";
     out += "      \"rows\": [\n";
-    const auto &rows = cards[n].rows;
-    for (size_t y = 0; y < rows.size(); ++y) {
+    const auto &rows = cards[i].rows;
+    for (std::size_t y = 0; y < rows.size(); ++y) {
       out += "        \"";
       for (uint8_t cell : rows[y]) {
         out += static_cast<char>('A' + cell);
@@ -55,7 +56,7 @@ std::vector<uint8_t> toJson(const CodeCards &cards) {
       out += (y + 1 < rows.size()) ? "\",\n" : "\"\n";
     }
     out += "      ]\n";
-    out += (n + 1 < cards.size()) ? "    },\n" : "    }\n";
+    out += (i + 1 < cards.size()) ? "    },\n" : "    }\n";
   }
 
   out += "  ]\n";

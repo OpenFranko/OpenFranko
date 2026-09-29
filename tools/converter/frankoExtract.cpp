@@ -1,27 +1,29 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
-#include "frankoResourceExtractor.h"
+#include "frankoResourceExtractor/frankoResourceExtractor.h"
+
 #include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
 
 using namespace openfranko::lib;
-namespace extractor = openfranko::tools::converter::frankoResourceExtractor;
+using namespace openfranko::tools::converter::frankoResourceExtractor;
 
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.getCmdOption("-i");
-  if (!inputOptional.has_value()) {
+  const auto inputOption = parser.option("-i");
+  if (!inputOption.has_value()) {
     std::cerr << "Usage: " << argv[0]
-              << " -i <file_or_dir> [-o <output_dir>] [-e <game executable>]"
+              << " -i <input_file_or_dir> [-o <output_dir>] [-e "
+                 "<game_executable>]"
               << std::endl;
     std::cerr << "Extracts all Franko game data files to standard formats."
               << std::endl;
     std::cerr << "Reads version 1.0 files (0000-03C3) and version 1.2 files "
                  "(m1-m11, p0-p85, s0-s255, t11-t40)."
               << std::endl;
-    std::cerr << "  Sprites (0x0000) -> sheet BMP + embedded WAV samples"
+    std::cerr << "  Sprites (0x0000) -> BMP per sprite + embedded WAV samples"
               << std::endl;
     std::cerr << "  Icons   (0x0200) -> BMP (screens, tiles, bitmaps)"
               << std::endl;
@@ -39,22 +41,20 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOptional.value();
-  std::string outDir = "extracted";
-  const auto outputOptional = parser.getCmdOption("-o");
-  if (outputOptional.has_value()) {
-    outDir = outputOptional.value();
-  }
+  const std::string inputPath = inputOption.value();
+  const auto outputOption = parser.option("-o");
+  const auto executableOption = parser.option("-e");
 
   try {
-    std::filesystem::create_directories(outDir);
+    const std::string outputDir = outputOption.value_or("extracted");
+    std::filesystem::create_directories(outputDir);
 
     int errors = 0;
 
     if (std::filesystem::is_directory(inputPath)) {
-      const std::vector<std::string> files = extractor::dataFiles(inputPath);
+      const std::vector<std::string> files = dataFiles(inputPath);
 
-      int missing = extractor::validateDirectory(inputPath);
+      const int missing = validateDirectory(inputPath);
       if (missing > 0) {
         std::cerr << missing << " expected game data file(s) missing."
                   << std::endl;
@@ -63,17 +63,17 @@ int main(int argc, char **argv) {
 
       std::cerr << "Processing " << files.size() << " data files..."
                 << std::endl;
-      for (const auto &f : files) {
-        errors += extractor::processFile(f, outDir);
+      for (const auto &file : files) {
+        errors += processFile(file, outputDir);
       }
 
       std::cerr << "\nDone. " << files.size() << " files processed, " << errors
                 << " errors." << std::endl;
     } else {
-      errors = extractor::processFile(inputPath, outDir);
+      errors = processFile(inputPath, outputDir);
     }
 
-    std::string executable = parser.getCmdOption("-e").value_or("");
+    std::string executable = executableOption.value_or("");
     const auto bundled = std::filesystem::path(inputPath) / "game";
     if (executable.empty() && std::filesystem::is_directory(inputPath) &&
         std::filesystem::is_regular_file(bundled)) {
@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
                    "not extracted."
                 << std::endl;
     } else {
-      errors += extractor::processExecutable(executable, outDir);
+      errors += processExecutable(executable, outputDir);
     }
 
     return errors > 0 ? 1 : 0;

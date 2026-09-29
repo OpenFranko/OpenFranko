@@ -4,16 +4,15 @@ namespace openfranko::lib::argumentParser {
 
 ArgumentParser::ArgumentParser(int argc, char **argv) {
   for (int i = 1; i < argc; ++i) {
-    this->inputStrings.push_back(std::string(argv[i]));
+    m_inputStrings.push_back(std::string(argv[i]));
   }
 }
 
 std::optional<std::string>
-ArgumentParser::getCmdOption(const std::string &option) const {
-  auto itr =
-      std::find(this->inputStrings.begin(), this->inputStrings.end(), option);
-  if (itr != this->inputStrings.end() && ++itr != this->inputStrings.end()) {
-    return *itr;
+ArgumentParser::option(const std::string &name) const {
+  auto found = std::find(m_inputStrings.begin(), m_inputStrings.end(), name);
+  if (found != m_inputStrings.end() && ++found != m_inputStrings.end()) {
+    return *found;
   }
   return std::nullopt;
 }

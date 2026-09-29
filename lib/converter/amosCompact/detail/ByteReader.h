@@ -12,13 +12,13 @@ namespace detail {
 
 class ByteReader {
 public:
-  ByteReader(const std::vector<uint8_t> &data, size_t offset);
+  ByteReader(const std::vector<uint8_t> &data, std::size_t offset);
 
   int read();
 
 private:
   const std::vector<uint8_t> &m_data;
-  size_t m_offset;
+  std::size_t m_offset;
 };
 
 } // namespace detail

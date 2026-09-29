@@ -1,4 +1,5 @@
 #include "Engine.h"
+
 #include "assets/Assets.h"
 #include "states/adverts/AdvertsState.h"
 #include "states/characterSelection/CharacterSelectionState.h"
@@ -30,218 +31,248 @@
 namespace openfranko::src::engine {
 namespace {
 
-systems::KeyMode keyMode(states::EngineStateEnum state) {
+systems::input::KeyMode keyMode(states::EngineStateId state) {
   switch (state) {
-  case states::EngineStateEnum::Level1:
-  case states::EngineStateEnum::Level1Boss:
-  case states::EngineStateEnum::Level1Car:
-  case states::EngineStateEnum::Level2:
-  case states::EngineStateEnum::Level2Boss:
-  case states::EngineStateEnum::Level2Car:
-  case states::EngineStateEnum::Level3:
-  case states::EngineStateEnum::Level3Boss:
-    return systems::KeyMode::Game;
-  case states::EngineStateEnum::HighScore:
-    return systems::KeyMode::NameEntry;
-  case states::EngineStateEnum::Mirage:
-  case states::EngineStateEnum::SpiderLogo:
-  case states::EngineStateEnum::Adverts:
-  case states::EngineStateEnum::Presents:
-  case states::EngineStateEnum::WorldSoftware:
-  case states::EngineStateEnum::KneeAnimation:
-  case states::EngineStateEnum::TitleAndStory:
-  case states::EngineStateEnum::ProtectionCheck:
-  case states::EngineStateEnum::Menu:
-  case states::EngineStateEnum::CharacterSelection:
-  case states::EngineStateEnum::StageProtectionCheck:
-  case states::EngineStateEnum::Ending:
-  case states::EngineStateEnum::GameOver:
-  case states::EngineStateEnum::Continue:
+  case states::EngineStateId::Level1:
+  case states::EngineStateId::Level1Boss:
+  case states::EngineStateId::Level1Car:
+  case states::EngineStateId::Level2:
+  case states::EngineStateId::Level2Boss:
+  case states::EngineStateId::Level2Car:
+  case states::EngineStateId::Level3:
+  case states::EngineStateId::Level3Boss:
+    return systems::input::KeyMode::Game;
+  case states::EngineStateId::HighScore:
+    return systems::input::KeyMode::NameEntry;
+  case states::EngineStateId::Mirage:
+  case states::EngineStateId::SpiderLogo:
+  case states::EngineStateId::Adverts:
+  case states::EngineStateId::Presents:
+  case states::EngineStateId::WorldSoftware:
+  case states::EngineStateId::KneeAnimation:
+  case states::EngineStateId::TitleAndStory:
+  case states::EngineStateId::ProtectionCheck:
+  case states::EngineStateId::Menu:
+  case states::EngineStateId::CharacterSelectionSequence:
+  case states::EngineStateId::StageProtectionCheck:
+  case states::EngineStateId::Ending:
+  case states::EngineStateId::GameOver:
+  case states::EngineStateId::Continue:
     break;
   }
-  return systems::KeyMode::FrontEnd;
+  return systems::input::KeyMode::FrontEnd;
+}
+
+void saveHighScores(const street::core::HighScoreTable &table) {
+  street::core::writeHighScoreFile(table,
+                                   street::core::HighScoreTable::FILE_NAME);
 }
 
 } // namespace
 
 Engine::Engine()
-    : Engine(states::EngineStateEnum::Mirage, street::GameSession{}) {}
+    : Engine(states::EngineStateId::Mirage, street::session::GameSession{}) {}
 
-Engine::Engine(states::EngineStateEnum firstState,
-               street::GameSession startingSession)
-    : session(std::move(startingSession)), running(true) {
-  session.version = assets::detectVersion();
-  session.highScores =
-      street::readHighScoreFile(street::HighScoreTable::FILE_NAME)
-          .value_or(street::HighScoreTable(session.version));
+Engine::Engine(states::EngineStateId firstState,
+               street::session::GameSession startingSession)
+    : m_session(std::move(startingSession)), m_running(true) {
+  m_session.version = assets::detectVersion();
+  m_session.highScores =
+      street::core::readHighScoreFile(street::core::HighScoreTable::FILE_NAME)
+          .value_or(street::core::HighScoreTable(m_session.version));
   switchState(firstState);
 }
 
-Engine::~Engine() { currentState.reset(); }
+Engine::~Engine() { m_currentState.reset(); }
 
 bool Engine::isRunning() {
-  if (!platform.pollEvents(controllerSystem)) {
-    running = false;
+  if (!m_platform.pollEvents(m_controllerSystem)) {
+    m_running = false;
   }
-  return running;
+  return m_running;
 }
 
 void Engine::updateState() {
-  if (!currentState) {
+  if (!m_currentState) {
     return;
   }
-  std::optional<states::EngineStateEnum> nextState = currentState->update();
+  std::optional<states::EngineStateId> nextState = m_currentState->update();
   while (nextState) {
     switchState(*nextState);
-    nextState = currentState->update();
+    nextState = m_currentState->update();
   }
 }
 
-states::EngineStateEnum
-Engine::versionState(states::EngineStateEnum state) const {
-  if (session.version != GameVersion::V12) {
+states::EngineStateId Engine::versionState(states::EngineStateId state) const {
+  if (m_session.version != GameVersion::V12) {
     return state;
   }
   switch (state) {
-  case states::EngineStateEnum::Mirage:
-    return states::EngineStateEnum::SpiderLogo;
-  case states::EngineStateEnum::ProtectionCheck:
-    return states::EngineStateEnum::HighScore;
-  case states::EngineStateEnum::StageProtectionCheck:
-    return states::EngineStateEnum::Level3;
+  case states::EngineStateId::Mirage:
+    return states::EngineStateId::SpiderLogo;
+  case states::EngineStateId::ProtectionCheck:
+    return states::EngineStateId::HighScore;
+  case states::EngineStateId::StageProtectionCheck:
+    return states::EngineStateId::Level3;
   default:
     return state;
   }
 }
 
-void Engine::switchState(states::EngineStateEnum nextState) {
+void Engine::switchState(states::EngineStateId nextState) {
   nextState = versionState(nextState);
 #ifdef SKIP_COPY_PROTECTION
-  if (nextState == states::EngineStateEnum::ProtectionCheck) {
-    nextState = states::EngineStateEnum::HighScore;
-  } else if (nextState == states::EngineStateEnum::StageProtectionCheck) {
-    nextState = states::EngineStateEnum::Level3;
+  if (nextState == states::EngineStateId::ProtectionCheck) {
+    nextState = states::EngineStateId::HighScore;
+  } else if (nextState == states::EngineStateId::StageProtectionCheck) {
+    nextState = states::EngineStateId::Level3;
   }
 #endif
-  videoSystem.clear();
-  currentState.reset();
-  booting = nextState == states::EngineStateEnum::Mirage;
-  controllerSystem.setKeyMode(keyMode(nextState));
-  if (nextState != states::EngineStateEnum::Menu) {
-    session.keyboard.permit();
+  m_videoSystem.clear();
+  m_currentState.reset();
+  m_streetHost.reset();
+  m_booting = nextState == states::EngineStateId::Mirage;
+  m_controllerSystem.setKeyMode(keyMode(nextState));
+  if (nextState != states::EngineStateId::Menu) {
+    m_session.keyboard.permit();
   }
 
   switch (nextState) {
-  case states::EngineStateEnum::Mirage:
-    currentState = std::make_unique<states::mirage::MirageState>(videoSystem);
+  case states::EngineStateId::Mirage:
+    m_currentState =
+        std::make_unique<states::mirage::MirageState>(m_videoSystem, m_files);
     break;
-  case states::EngineStateEnum::SpiderLogo:
-    currentState = std::make_unique<states::spiderLogo::SpiderLogoState>(
-        videoSystem, audioSystem);
+  case states::EngineStateId::SpiderLogo:
+    m_currentState = std::make_unique<states::spiderLogo::SpiderLogoState>(
+        m_videoSystem, m_audioSystem, m_files);
     break;
-  case states::EngineStateEnum::Adverts:
-    currentState = std::make_unique<states::adverts::AdvertsState>(
-        videoSystem, controllerSystem);
+  case states::EngineStateId::Adverts:
+    m_currentState = std::make_unique<states::adverts::AdvertsState>(
+        m_videoSystem, m_controllerSystem, m_files);
     break;
-  case states::EngineStateEnum::Presents:
-    currentState = std::make_unique<states::presents::PresentsState>(
-        videoSystem, audioSystem, controllerSystem);
+  case states::EngineStateId::Presents:
+    m_currentState = std::make_unique<states::presents::PresentsState>(
+        m_videoSystem, m_audioSystem, m_controllerSystem, m_files);
     break;
-  case states::EngineStateEnum::WorldSoftware:
-    currentState = std::make_unique<states::worldSoftware::WorldSoftwareState>(
-        videoSystem, audioSystem);
+  case states::EngineStateId::WorldSoftware:
+    m_currentState =
+        std::make_unique<states::worldSoftware::WorldSoftwareState>(
+            m_videoSystem, m_audioSystem, m_files);
     break;
-  case states::EngineStateEnum::KneeAnimation:
-    currentState = std::make_unique<states::kneeAnimation::KneeAnimationState>(
-        videoSystem, audioSystem, controllerSystem, session.version);
+  case states::EngineStateId::KneeAnimation:
+    m_currentState =
+        std::make_unique<states::kneeAnimation::KneeAnimationState>(
+            m_videoSystem, m_audioSystem, m_controllerSystem, m_files,
+            m_session.version);
     break;
-  case states::EngineStateEnum::TitleAndStory:
-    currentState = std::make_unique<states::titleAndStory::TitleAndStoryState>(
-        videoSystem, audioSystem, controllerSystem, session.version);
+  case states::EngineStateId::TitleAndStory:
+    m_currentState =
+        std::make_unique<states::titleAndStory::TitleAndStoryState>(
+            m_videoSystem, m_audioSystem, m_controllerSystem, m_files,
+            m_session.version);
     break;
-  case states::EngineStateEnum::ProtectionCheck:
-    currentState =
+  case states::EngineStateId::ProtectionCheck:
+    m_currentState =
         std::make_unique<states::protectionCheck::ProtectionCheckState>(
-            videoSystem, audioSystem, session.keyboard);
+            m_videoSystem, m_audioSystem, m_files, m_session.keyboard);
     break;
-  case states::EngineStateEnum::Menu:
-    currentState = std::make_unique<states::menu::MenuState>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Menu:
+    m_currentState = std::make_unique<states::menu::MenuState>(
+        m_videoSystem, m_audioSystem, m_controllerSystem, m_files, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::CharacterSelection:
-    currentState =
+  case states::EngineStateId::CharacterSelectionSequence:
+    m_currentState =
         std::make_unique<states::characterSelection::CharacterSelectionState>(
-            videoSystem, audioSystem, controllerSystem, options, session);
+            m_videoSystem, m_audioSystem, m_controllerSystem, m_files,
+            m_options, m_session);
     break;
-  case states::EngineStateEnum::Level1:
-    currentState = std::make_unique<states::level1::Level1State>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Level1:
+    m_currentState = std::make_unique<states::level1::Level1State>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::Level1Boss:
-    currentState = std::make_unique<states::level1::Level1BossState>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Level1Boss:
+    m_currentState = std::make_unique<states::level1::Level1BossState>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::Level1Car:
-    currentState = std::make_unique<states::level1::Level1CarState>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Level1Car:
+    m_currentState = std::make_unique<states::level1::Level1CarState>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::Level2:
-    currentState = std::make_unique<states::level2::Level2State>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Level2:
+    m_currentState = std::make_unique<states::level2::Level2State>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::Level2Boss:
-    currentState = std::make_unique<states::level2::Level2BossState>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Level2Boss:
+    m_currentState = std::make_unique<states::level2::Level2BossState>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::Level2Car:
-    currentState = std::make_unique<states::level2::Level2CarState>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Level2Car:
+    m_currentState = std::make_unique<states::level2::Level2CarState>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::StageProtectionCheck:
-    currentState =
+  case states::EngineStateId::StageProtectionCheck:
+    m_currentState =
         std::make_unique<states::protectionCheck::ProtectionCheckState>(
-            videoSystem, audioSystem, session.keyboard,
+            m_videoSystem, m_audioSystem, m_files, m_session.keyboard,
             states::protectionCheck::ProtectionCheckState::Check::Stage3);
     break;
-  case states::EngineStateEnum::Level3:
-    currentState = std::make_unique<states::level3::Level3State>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Level3:
+    m_currentState = std::make_unique<states::level3::Level3State>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::Level3Boss:
-    currentState = std::make_unique<states::level3::Level3BossState>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Level3Boss:
+    m_currentState = std::make_unique<states::level3::Level3BossState>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::Ending:
-    currentState = std::make_unique<states::ending::EndingState>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Ending:
+    m_currentState = std::make_unique<states::ending::EndingState>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::GameOver:
-    currentState = std::make_unique<states::gameOver::GameOverState>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::GameOver:
+    m_currentState = std::make_unique<states::gameOver::GameOverState>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
-  case states::EngineStateEnum::HighScore:
-    currentState = std::make_unique<states::highScore::HighScoreState>(
-        videoSystem, audioSystem, options, session);
+  case states::EngineStateId::HighScore:
+    m_currentState = std::make_unique<states::highScore::HighScoreState>(
+        m_videoSystem, makeStreetHost(), m_options, m_session, saveHighScores);
     break;
-  case states::EngineStateEnum::Continue:
-    currentState = std::make_unique<states::continueSelect::ContinueState>(
-        videoSystem, audioSystem, controllerSystem, options, session);
+  case states::EngineStateId::Continue:
+    m_currentState = std::make_unique<states::continueSelect::ContinueState>(
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   }
 }
 
+states::shared::EngineStreetHost &Engine::makeStreetHost() {
+  m_streetHost = std::make_unique<states::shared::EngineStreetHost>(
+      m_audioSystem, m_session.version);
+  return *m_streetHost;
+}
+
 void Engine::update() {
-  controllerSystem.update();
-  if (booting && controllerSystem.isDeleteHeld()) {
-    session.highScores = street::HighScoreTable(session.version);
+  m_controllerSystem.update();
+  if (m_booting && m_controllerSystem.isDeleteHeld()) {
+    m_session.highScores = street::core::HighScoreTable(m_session.version);
   }
-  for (const char key : controllerSystem.typedKeys()) {
-    session.keyboard.press(key);
+  for (const char key : m_controllerSystem.typedKeys()) {
+    m_session.keyboard.press(key);
   }
-  audioSystem.update();
+  m_audioSystem.update();
   updateState();
-  audioSystem.setVblRate(videoSystem.refreshRate());
-  videoSystem.sync();
+  m_audioSystem.setVblRate(m_videoSystem.refreshRate());
+  m_videoSystem.sync();
 }
 
 void Engine::run() {
@@ -263,6 +294,6 @@ void Engine::run() {
   }
 }
 
-int Engine::refreshRate() const { return videoSystem.refreshRate(); }
+int Engine::refreshRate() const { return m_videoSystem.refreshRate(); }
 
 } // namespace openfranko::src::engine

@@ -13,17 +13,17 @@ namespace codeCards {
 
 namespace consts {
 
-inline constexpr size_t CARD_COUNT = 2;
-inline constexpr size_t CARD_SIZE = 10;
-inline constexpr size_t VERSION12_CARD_SIZE = 5;
-inline constexpr size_t FIRST_CARD_OFFSET = 10;
+inline constexpr std::size_t CARD_COUNT = 2;
+inline constexpr std::size_t CARD_SIZE = 10;
+inline constexpr std::size_t VERSION12_CARD_SIZE = 5;
+inline constexpr std::size_t FIRST_CARD_OFFSET = 10;
 inline constexpr uint8_t COLOR_COUNT = 11;
 
 } // namespace consts
 
 namespace colors {
 
-inline constexpr const char *name(uint8_t color) {
+constexpr const char *name(uint8_t color) {
   switch (color) {
   case 0:
     return "black";
@@ -61,8 +61,8 @@ struct Card {
 
 using CodeCards = std::array<Card, consts::CARD_COUNT>;
 
-CodeCards parse(const std::vector<uint8_t> &decompressedData,
-                size_t cardSize = consts::CARD_SIZE);
+CodeCards parse(const std::vector<uint8_t> &data,
+                std::size_t cardSize = consts::CARD_SIZE);
 
 std::vector<uint8_t> toJson(const CodeCards &cards);
 

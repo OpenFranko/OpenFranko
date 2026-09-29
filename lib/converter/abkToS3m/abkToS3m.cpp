@@ -1,31 +1,62 @@
 #include "abkToS3m.h"
-#include "../../helpers/helpers.h"
+
+#include "../../binary/binary.h"
 #include "../gameData/gameData.h"
+
 #include <algorithm>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <iterator>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
 namespace openfranko::lib::converter::abkToS3m {
-
-using helpers::padTo16;
-using helpers::pushLittleEndian16;
-
 namespace {
 
-constexpr uint8_t AMOS_CMD_END = 0x80;
-constexpr uint8_t AMOS_CMD_SET_VOLUME = 0x83;
-constexpr uint8_t AMOS_CMD_STOP_EFFECT = 0x84;
-constexpr uint8_t AMOS_CMD_SET_TEMPO = 0x88;
-constexpr uint8_t AMOS_CMD_SET_SAMPLE = 0x89;
-constexpr uint8_t AMOS_CMD_ARPEGGIO = 0x8A;
-constexpr uint8_t AMOS_CMD_PORTAMENTO = 0x8B;
-constexpr uint8_t AMOS_CMD_VIBRATO = 0x8C;
-constexpr uint8_t AMOS_CMD_VOLUME_SLIDE = 0x8D;
-constexpr uint8_t AMOS_CMD_SLIDE_UP = 0x8E;
-constexpr uint8_t AMOS_CMD_SLIDE_DOWN = 0x8F;
-constexpr uint8_t AMOS_CMD_DELAY = 0x90;
-constexpr uint8_t AMOS_CMD_POSITION_JUMP = 0x91;
+constexpr uint8_t AMOS_COMMAND_FLAG = 0x80;
+constexpr uint8_t AMOS_COMMAND_END = 0x80;
+constexpr uint8_t AMOS_COMMAND_SET_VOLUME = 0x83;
+constexpr uint8_t AMOS_COMMAND_STOP_EFFECT = 0x84;
+constexpr uint8_t AMOS_COMMAND_SET_TEMPO = 0x88;
+constexpr uint8_t AMOS_COMMAND_SET_SAMPLE = 0x89;
+constexpr uint8_t AMOS_COMMAND_ARPEGGIO = 0x8A;
+constexpr uint8_t AMOS_COMMAND_PORTAMENTO = 0x8B;
+constexpr uint8_t AMOS_COMMAND_VIBRATO = 0x8C;
+constexpr uint8_t AMOS_COMMAND_VOLUME_SLIDE = 0x8D;
+constexpr uint8_t AMOS_COMMAND_SLIDE_UP = 0x8E;
+constexpr uint8_t AMOS_COMMAND_SLIDE_DOWN = 0x8F;
+constexpr uint8_t AMOS_COMMAND_DELAY = 0x90;
+constexpr uint8_t AMOS_COMMAND_POSITION_JUMP = 0x91;
+constexpr uint16_t AMOS_PERIOD_MASK = 0x0FFF;
+constexpr uint16_t AMOS_ORDER_END_FLAG = 0x8000;
+constexpr uint16_t MAX_AMOS_TEMPO = 255;
+
+constexpr std::size_t ABK_HEADER_SIZE = 20;
+constexpr std::size_t MUSIC_HEADER_SIZE = 12;
+constexpr std::size_t MUSIC_SAMPLES_POINTER_OFFSET = 0;
+constexpr std::size_t MUSIC_SONGS_POINTER_OFFSET = 4;
+constexpr std::size_t MUSIC_TRACKS_POINTER_OFFSET = 8;
+constexpr std::size_t AMOS_NAME_SIZE = 16;
+
+constexpr std::size_t SAMPLES_TABLE_OFFSET = 2;
+constexpr std::size_t SAMPLE_DESCRIPTOR_SIZE = 32;
+constexpr std::size_t SAMPLE_LOOP_POINTER_OFFSET = 4;
+constexpr std::size_t SAMPLE_LOOP_LENGTH_OFFSET = 10;
+constexpr std::size_t SAMPLE_VOLUME_OFFSET = 12;
+constexpr std::size_t SAMPLE_LENGTH_OFFSET = 14;
+constexpr std::size_t SAMPLE_NAME_OFFSET = 16;
+constexpr uint16_t MAX_SAMPLE_COUNT = 64;
+
+constexpr std::size_t SONGS_TABLE_OFFSET = 2;
+constexpr std::size_t SONG_POINTER_SIZE = 4;
+constexpr std::size_t SONG_HEADER_SIZE = 28;
+constexpr std::size_t SONG_SPEED_OFFSET = 8;
+constexpr std::size_t SONG_NAME_OFFSET = 12;
+constexpr uint16_t DEFAULT_SONG_SPEED = 17;
+
+constexpr std::size_t TRACKS_TABLE_OFFSET = 2;
 
 constexpr uint8_t S3M_EFFECT_SPEED = 1;
 constexpr uint8_t S3M_EFFECT_POSITION_JUMP = 2;
@@ -41,10 +72,78 @@ constexpr uint8_t S3M_EFFECT_TEMPO = 20;
 constexpr uint8_t S3M_NOTE_NONE = 0xFF;
 constexpr uint8_t S3M_NOTE_OFF = 0xFE;
 constexpr uint8_t S3M_VOLUME_NONE = 0xFF;
+constexpr uint8_t S3M_MAX_VOLUME = 63;
+constexpr uint8_t S3M_PACKED_NOTE = 0x20;
+constexpr uint8_t S3M_PACKED_VOLUME = 0x40;
+constexpr uint8_t S3M_PACKED_EFFECT = 0x80;
+constexpr uint8_t S3M_ORDER_END = 0xFF;
+constexpr std::size_t S3M_PARAGRAPH_SIZE = 16;
 
-constexpr int NUM_CHANNELS = 4;
-constexpr size_t MAX_S3M_PATTERNS = 254;
+constexpr uint8_t DEFAULT_S3M_SPEED = 6;
+constexpr uint8_t DEFAULT_S3M_TEMPO = 134;
+constexpr int MIN_S3M_SPEED = 1;
+constexpr int MAX_S3M_SPEED = 31;
+constexpr int MIN_S3M_TEMPO = 32;
+constexpr int MAX_S3M_TEMPO = 255;
+
+constexpr std::size_t S3M_HEADER_SIZE = 0x60;
+constexpr std::size_t S3M_SONG_NAME_SIZE = 28;
+constexpr std::size_t S3M_EOF_OFFSET = 0x1C;
+constexpr uint8_t S3M_EOF_MARKER = 0x1A;
+constexpr std::size_t S3M_TYPE_OFFSET = 0x1D;
+constexpr uint8_t S3M_MODULE_TYPE = 0x10;
+constexpr std::size_t S3M_ORDER_COUNT_OFFSET = 0x20;
+constexpr std::size_t S3M_INSTRUMENT_COUNT_OFFSET = 0x22;
+constexpr std::size_t S3M_PATTERN_COUNT_OFFSET = 0x24;
+constexpr std::size_t S3M_TRACKER_VERSION_OFFSET = 0x28;
+constexpr uint16_t S3M_TRACKER_VERSION = 0x1320;
+constexpr std::size_t S3M_SAMPLE_FORMAT_OFFSET = 0x2A;
+constexpr uint8_t S3M_UNSIGNED_SAMPLES = 2;
+constexpr std::size_t S3M_SIGNATURE_OFFSET = 0x2C;
+constexpr std::size_t S3M_GLOBAL_VOLUME_OFFSET = 0x30;
+constexpr uint8_t S3M_GLOBAL_VOLUME = 64;
+constexpr std::size_t S3M_SPEED_OFFSET = 0x31;
+constexpr std::size_t S3M_TEMPO_OFFSET = 0x32;
+constexpr std::size_t S3M_MASTER_VOLUME_OFFSET = 0x33;
+constexpr uint8_t S3M_STEREO_FLAG = 0x80;
+constexpr uint8_t S3M_MASTER_VOLUME = 48;
+constexpr std::size_t S3M_CLICK_REMOVAL_OFFSET = 0x34;
+constexpr uint8_t S3M_CLICK_REMOVAL = 16;
+constexpr std::size_t S3M_PANNING_FLAG_OFFSET = 0x35;
+constexpr uint8_t S3M_CHANNEL_PANNING = 0xFC;
+constexpr std::size_t S3M_CHANNEL_SETTINGS_OFFSET = 0x40;
+constexpr std::size_t S3M_CHANNEL_SETTING_COUNT = 32;
+constexpr uint8_t S3M_UNUSED_CHANNEL = 0xFF;
+constexpr std::size_t S3M_PANNING_SIZE = 32;
+constexpr uint8_t S3M_PAN_SET = 0x20;
+constexpr uint8_t S3M_PAN_LEFT = 3;
+constexpr uint8_t S3M_PAN_RIGHT = 12;
+
+constexpr std::size_t INSTRUMENT_SIZE = 0x50;
+constexpr uint8_t INSTRUMENT_SAMPLE_TYPE = 1;
+constexpr std::size_t INSTRUMENT_DOS_NAME_OFFSET = 1;
+constexpr std::size_t INSTRUMENT_DOS_NAME_SIZE = 12;
+constexpr std::size_t INSTRUMENT_MEMSEG_OFFSET = 0x0D;
+constexpr std::size_t INSTRUMENT_LENGTH_OFFSET = 0x10;
+constexpr std::size_t INSTRUMENT_LOOP_START_OFFSET = 0x14;
+constexpr std::size_t INSTRUMENT_LOOP_END_OFFSET = 0x18;
+constexpr std::size_t INSTRUMENT_VOLUME_OFFSET = 0x1C;
+constexpr std::size_t INSTRUMENT_FLAGS_OFFSET = 0x1F;
+constexpr uint8_t INSTRUMENT_LOOP_FLAG = 1;
+constexpr std::size_t INSTRUMENT_C2SPD_OFFSET = 0x20;
+constexpr std::size_t INSTRUMENT_NAME_OFFSET = 0x30;
+constexpr std::size_t INSTRUMENT_SIGNATURE_OFFSET = 0x4C;
+constexpr uint16_t MAX_NO_LOOP_WORDS = 2;
+constexpr uint32_t MAX_NO_LOOP_SIZE = 4;
+constexpr uint8_t SAMPLE_SIGN_BIT = 0x80;
+constexpr uint8_t UNSIGNED_SILENCE = 0x80;
+
+constexpr int CHANNEL_COUNT = 4;
+constexpr int PATTERN_ROW_COUNT = 64;
+constexpr std::size_t MAX_S3M_PATTERNS = 254;
 constexpr uint16_t FRANKO_MENU_TEMPO = 37;
+constexpr uint8_t AMIGA_CHANNEL_SETTINGS[CHANNEL_COUNT] = {0x00, 0x08, 0x09,
+                                                           0x01};
 
 constexpr uint16_t PERIOD_TABLE[] = {
     1712, 1616, 1524, 1440, 1356, 1280, 1208, 1140, 1076, 1016, 960, 906,
@@ -53,124 +152,121 @@ constexpr uint16_t PERIOD_TABLE[] = {
     214,  202,  190,  180,  170,  160,  151,  143,  135,  127,  120, 113,
     107,  101,  95,   90,   85,   80,   75,   71,   67,   63,   60,  56,
 };
-constexpr int PERIOD_TABLE_SIZE =
-    sizeof(PERIOD_TABLE) / sizeof(PERIOD_TABLE[0]);
+constexpr int PERIOD_COUNT = static_cast<int>(std::size(PERIOD_TABLE));
+constexpr int SEMITONE_COUNT = 12;
+constexpr int FIRST_OCTAVE = 2;
 
 uint8_t periodToS3mNote(uint16_t period) {
   if (period == 0) {
     return S3M_NOTE_NONE;
   }
   int best = 0;
-  int bestDist = 0x7FFF;
-  for (int i = 0; i < PERIOD_TABLE_SIZE; i++) {
-    int dist = static_cast<int>(PERIOD_TABLE[i]) - static_cast<int>(period);
-    if (dist < 0) {
-      dist = -dist;
-    }
-    if (dist < bestDist) {
-      bestDist = dist;
+  int bestDistance = std::numeric_limits<int>::max();
+  for (int i = 0; i < PERIOD_COUNT; ++i) {
+    const int distance =
+        std::abs(static_cast<int>(PERIOD_TABLE[i]) - static_cast<int>(period));
+    if (distance < bestDistance) {
+      bestDistance = distance;
       best = i;
     }
   }
-  int octave = best / 12 + 2;
-  int semitone = best % 12;
+  int octave = best / SEMITONE_COUNT + FIRST_OCTAVE;
+  int semitone = best % SEMITONE_COUNT;
   return static_cast<uint8_t>((octave << 4) | semitone);
 }
 
 struct AmosSample {
-  uint32_t pcmOffset;
-  uint32_t length;
-  uint32_t loopStart;
-  uint16_t loopLen;
-  uint16_t volume;
-  char name[17];
+  uint32_t pcmOffset = 0;
+  uint32_t length = 0;
+  uint32_t loopStart = 0;
+  uint16_t loopLength = 0;
+  uint16_t volume = 0;
+  char name[AMOS_NAME_SIZE + 1] = {};
 };
 
 struct RowEvent {
-  uint8_t note;
-  uint8_t instrument;
-  uint8_t volume;
-  uint8_t effect;
-  uint8_t effectParam;
+  uint8_t note = S3M_NOTE_NONE;
+  uint8_t instrument = 0;
+  uint8_t volume = S3M_VOLUME_NONE;
+  uint8_t effect = 0;
+  uint8_t effectParam = 0;
 };
 
 struct Pattern {
-  RowEvent channels[NUM_CHANNELS][64];
+  RowEvent channels[CHANNEL_COUNT][PATTERN_ROW_COUNT];
 };
 
-std::vector<AmosSample> parseSamples(const uint8_t *music, size_t musicSize,
-                                     size_t sampleInfoOff) {
+std::vector<AmosSample> parseSamples(const std::vector<uint8_t> &music,
+                                     std::size_t sampleInfoOffset) {
   std::vector<AmosSample> samples;
-  if (sampleInfoOff + 2 > musicSize) {
+  if (sampleInfoOffset + SAMPLES_TABLE_OFFSET > music.size()) {
     return samples;
   }
-  const std::vector<uint8_t> musicVec(music, music + musicSize);
-  helpers::BigEndianReader reader(musicVec);
-  auto read32 = [&](size_t offset) { return reader.readUint32(offset); };
-  auto read16 = [&](size_t offset) { return reader.readUint16(offset); };
-  uint16_t count = read16(sampleInfoOff);
-  if (count == 0 || count > 64) {
+  binary::BigEndianReader reader(music);
+  uint16_t count = reader.readUint16(sampleInfoOffset);
+  if (count == 0 || count > MAX_SAMPLE_COUNT) {
     return samples;
   }
-  size_t descOff = sampleInfoOff + 2;
-  for (uint16_t i = 0; i < count; i++) {
-    size_t off = descOff + static_cast<size_t>(i) * 32;
-    if (off + 32 > musicSize) {
+  std::size_t tableOffset = sampleInfoOffset + SAMPLES_TABLE_OFFSET;
+  for (uint16_t i = 0; i < count; ++i) {
+    std::size_t off =
+        tableOffset + static_cast<std::size_t>(i) * SAMPLE_DESCRIPTOR_SIZE;
+    if (off + SAMPLE_DESCRIPTOR_SIZE > music.size()) {
       break;
     }
-    AmosSample s{};
-    s.pcmOffset = read32(off);
-    uint32_t loopPos = read32(off + 4);
-    s.loopLen = read16(off + 10);
-    s.volume = read16(off + 12);
-    s.length = static_cast<uint32_t>(read16(off + 14)) * 2;
-    s.loopStart = (loopPos > s.pcmOffset) ? (loopPos - s.pcmOffset) : 0;
-    std::memcpy(s.name, music + off + 16, 16);
-    s.name[16] = '\0';
-    samples.push_back(s);
+    AmosSample sample;
+    sample.pcmOffset = reader.readUint32(off);
+    uint32_t loopPos = reader.readUint32(off + SAMPLE_LOOP_POINTER_OFFSET);
+    sample.loopLength = reader.readUint16(off + SAMPLE_LOOP_LENGTH_OFFSET);
+    sample.volume = reader.readUint16(off + SAMPLE_VOLUME_OFFSET);
+    sample.length =
+        static_cast<uint32_t>(reader.readUint16(off + SAMPLE_LENGTH_OFFSET)) *
+        2;
+    sample.loopStart =
+        (loopPos > sample.pcmOffset) ? (loopPos - sample.pcmOffset) : 0;
+    std::memcpy(sample.name, music.data() + off + SAMPLE_NAME_OFFSET,
+                AMOS_NAME_SIZE);
+    samples.push_back(sample);
   }
   return samples;
 }
 
 struct SongInfo {
-  uint16_t speed;
-  std::vector<uint16_t> orders[NUM_CHANNELS];
-  char name[17];
+  uint16_t speed = DEFAULT_SONG_SPEED;
+  std::vector<uint16_t> orders[CHANNEL_COUNT];
+  char name[AMOS_NAME_SIZE + 1] = {};
 };
 
-SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
-  SongInfo info{};
-  info.speed = 17;
-  const std::vector<uint8_t> musicVec(music, music + musicSize);
-  helpers::BigEndianReader reader(musicVec);
-  auto read16 = [&](size_t offset) { return reader.readUint16(offset); };
-  if (songOff + 6 > musicSize) {
+SongInfo parseSong(const std::vector<uint8_t> &music, std::size_t songOffset) {
+  SongInfo info;
+  if (songOffset + SONGS_TABLE_OFFSET + SONG_POINTER_SIZE > music.size()) {
     return info;
   }
 
-  const uint32_t songDataOff = reader.readUint32(songOff + 2);
-  size_t songBase = songOff + songDataOff;
-  if (songBase + 28 > musicSize) {
+  binary::BigEndianReader reader(music);
+  const uint32_t songDataOffset =
+      reader.readUint32(songOffset + SONGS_TABLE_OFFSET);
+  std::size_t songBase = songOffset + songDataOffset;
+  if (songBase + SONG_HEADER_SIZE > music.size()) {
     return info;
   }
 
-  uint16_t chOff[NUM_CHANNELS];
-  chOff[0] = read16(songBase);
-  chOff[1] = read16(songBase + 2);
-  chOff[2] = read16(songBase + 4);
-  chOff[3] = read16(songBase + 6);
-  info.speed = read16(songBase + 8);
-  std::memcpy(info.name, music + songBase + 12, 16);
-  info.name[16] = '\0';
+  uint16_t channelOffsets[CHANNEL_COUNT];
+  for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
+    channelOffsets[channel] = reader.readUint16(songBase + channel * 2);
+  }
+  info.speed = reader.readUint16(songBase + SONG_SPEED_OFFSET);
+  std::memcpy(info.name, music.data() + songBase + SONG_NAME_OFFSET,
+              AMOS_NAME_SIZE);
 
-  for (int ch = 0; ch < NUM_CHANNELS; ch++) {
-    size_t pos = songBase + chOff[ch];
-    while (pos + 2 <= musicSize) {
-      uint16_t val = read16(pos);
-      if (val & 0x8000) {
+  for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
+    std::size_t pos = songBase + channelOffsets[channel];
+    while (pos + 2 <= music.size()) {
+      uint16_t val = reader.readUint16(pos);
+      if (val & AMOS_ORDER_END_FLAG) {
         break;
       }
-      info.orders[ch].push_back(val);
+      info.orders[channel].push_back(val);
       pos += 2;
     }
   }
@@ -178,286 +274,268 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
 }
 
 struct TrackInfo {
-  uint16_t numSteps;
+  uint16_t numberOfSteps = 0;
   std::vector<uint16_t> offsets;
-  size_t trackDataBase;
+  std::size_t trackDataBase = 0;
 };
 
-TrackInfo parseTrackData(const uint8_t *music, size_t musicSize,
-                         size_t trackOff) {
-  TrackInfo info{};
-  info.trackDataBase = trackOff;
-  const std::vector<uint8_t> musicVec(music, music + musicSize);
-  helpers::BigEndianReader reader(musicVec);
-  auto read16 = [&](size_t offset) { return reader.readUint16(offset); };
-  if (trackOff + 2 > musicSize) {
+TrackInfo parseTrackData(const std::vector<uint8_t> &music,
+                         std::size_t trackOffset) {
+  TrackInfo info;
+  info.trackDataBase = trackOffset;
+  if (trackOffset + TRACKS_TABLE_OFFSET > music.size()) {
     return info;
   }
-  info.numSteps = read16(trackOff);
-  size_t numOffsets = static_cast<size_t>(info.numSteps) * NUM_CHANNELS;
-  for (size_t i = 0; i < numOffsets; i++) {
-    size_t pos = trackOff + 2 + i * 2;
-    if (pos + 2 > musicSize) {
+  binary::BigEndianReader reader(music);
+  info.numberOfSteps = reader.readUint16(trackOffset);
+  std::size_t numberOfOffsets =
+      static_cast<std::size_t>(info.numberOfSteps) * CHANNEL_COUNT;
+  for (std::size_t i = 0; i < numberOfOffsets; ++i) {
+    std::size_t pos = trackOffset + TRACKS_TABLE_OFFSET + i * 2;
+    if (pos + 2 > music.size()) {
       break;
     }
-    info.offsets.push_back(read16(pos));
+    info.offsets.push_back(reader.readUint16(pos));
   }
   return info;
 }
 
 struct DecodedPattern {
-  Pattern pat;
-  int endRow;
+  Pattern pattern;
+  int endRow = PATTERN_ROW_COUNT;
 };
 
-void decodeChannel(Pattern &pat, int ch, const uint8_t *music, size_t musicSize,
-                   const TrackInfo &track, uint16_t stepIdx,
-                   int &channelEndRow) {
-  size_t tableIdx = static_cast<size_t>(stepIdx) * NUM_CHANNELS + ch;
-  if (tableIdx >= track.offsets.size()) {
+void decodeChannel(Pattern &pattern, int channel,
+                   const std::vector<uint8_t> &music, const TrackInfo &track,
+                   uint16_t stepIndex, int &channelEndRow) {
+  std::size_t tableIndex =
+      static_cast<std::size_t>(stepIndex) * CHANNEL_COUNT + channel;
+  if (tableIndex >= track.offsets.size()) {
     return;
   }
 
-  if (track.offsets[tableIdx] == 0) {
+  if (track.offsets[tableIndex] == 0) {
     return;
   }
 
-  auto readUint16Safe = [&](size_t offset) -> uint16_t {
-    if (offset + 2 > musicSize) {
-      return 0;
-    }
-    return static_cast<uint16_t>((music[offset] << 8) | music[offset + 1]);
-  };
-
-  size_t pos = track.trackDataBase + track.offsets[tableIdx];
+  binary::BigEndianReader reader(music);
+  std::size_t pos = track.trackDataBase + track.offsets[tableIndex];
   int row = 0;
-  uint8_t curSample = 0;
-  uint8_t curVolume = S3M_VOLUME_NONE;
+  uint8_t currentSample = 0;
+  uint8_t currentVolume = S3M_VOLUME_NONE;
   uint8_t pendingEffect = 0;
   uint8_t pendingParam = 0;
   bool noteSet = false;
   uint16_t notePeriod = 0;
 
-  while (pos + 2 <= musicSize && row < 64) {
-    uint16_t cmd = readUint16Safe(pos);
+  while (pos + 2 <= music.size() && row < PATTERN_ROW_COUNT) {
+    uint16_t word = reader.readUint16(pos);
     pos += 2;
-    uint8_t hi = cmd >> 8;
-    uint8_t lo = cmd & 0xFF;
+    uint8_t command = word >> 8;
+    uint8_t parameter = word & 0xFF;
 
-    switch (hi) {
-    case AMOS_CMD_DELAY: {
-      auto &ev = pat.channels[ch][row];
+    switch (command) {
+    case AMOS_COMMAND_DELAY: {
+      auto &event = pattern.channels[channel][row];
       if (noteSet) {
-        ev.note = periodToS3mNote(notePeriod);
-        ev.instrument = curSample;
+        event.note = periodToS3mNote(notePeriod);
+        event.instrument = currentSample;
         noteSet = false;
       }
-      if (curVolume != S3M_VOLUME_NONE) {
-        ev.volume = curVolume;
-        curVolume = S3M_VOLUME_NONE;
+      if (currentVolume != S3M_VOLUME_NONE) {
+        event.volume = currentVolume;
+        currentVolume = S3M_VOLUME_NONE;
       }
       if (pendingEffect != 0) {
-        ev.effect = pendingEffect;
-        ev.effectParam = pendingParam;
+        event.effect = pendingEffect;
+        event.effectParam = pendingParam;
         pendingEffect = 0;
         pendingParam = 0;
       }
-      row += lo;
+      row += parameter;
       break;
     }
-    case AMOS_CMD_END:
-      if (row < 64) {
-        pat.channels[ch][row].note = S3M_NOTE_OFF;
-        pat.channels[ch][row].instrument = 0;
+    case AMOS_COMMAND_END:
+      if (row < PATTERN_ROW_COUNT) {
+        pattern.channels[channel][row].note = S3M_NOTE_OFF;
+        pattern.channels[channel][row].instrument = 0;
       }
       channelEndRow = row;
       return;
-    case AMOS_CMD_SET_VOLUME:
-      curVolume = std::min(lo, static_cast<uint8_t>(63));
+    case AMOS_COMMAND_SET_VOLUME:
+      currentVolume = std::min(parameter, S3M_MAX_VOLUME);
       break;
-    case AMOS_CMD_SET_SAMPLE:
-      curSample = lo + 1;
+    case AMOS_COMMAND_SET_SAMPLE:
+      currentSample = parameter + 1;
       break;
-    case AMOS_CMD_STOP_EFFECT:
+    case AMOS_COMMAND_STOP_EFFECT:
       pendingEffect = 0;
       pendingParam = 0;
       break;
-    case AMOS_CMD_SET_TEMPO:
-      if (lo > 0) {
+    case AMOS_COMMAND_SET_TEMPO:
+      if (parameter > 0) {
         pendingEffect = S3M_EFFECT_SPEED;
-        pendingParam = lo;
+        pendingParam = parameter;
       }
       break;
-    case AMOS_CMD_ARPEGGIO:
+    case AMOS_COMMAND_ARPEGGIO:
       pendingEffect = S3M_EFFECT_ARPEGGIO;
-      pendingParam = lo;
+      pendingParam = parameter;
       break;
-    case AMOS_CMD_PORTAMENTO:
+    case AMOS_COMMAND_PORTAMENTO:
       pendingEffect = S3M_EFFECT_TONE_PORTA;
-      pendingParam = lo;
+      pendingParam = parameter;
       break;
-    case AMOS_CMD_VIBRATO:
+    case AMOS_COMMAND_VIBRATO:
       pendingEffect = S3M_EFFECT_VIBRATO;
-      pendingParam = lo;
+      pendingParam = parameter;
       break;
-    case AMOS_CMD_VOLUME_SLIDE:
+    case AMOS_COMMAND_VOLUME_SLIDE:
       pendingEffect = S3M_EFFECT_VOLUME_SLIDE;
-      pendingParam = lo;
+      pendingParam = parameter;
       break;
-    case AMOS_CMD_SLIDE_UP:
+    case AMOS_COMMAND_SLIDE_UP:
       pendingEffect = S3M_EFFECT_PORTA_UP;
-      pendingParam = lo;
+      pendingParam = parameter;
       break;
-    case AMOS_CMD_SLIDE_DOWN:
+    case AMOS_COMMAND_SLIDE_DOWN:
       pendingEffect = S3M_EFFECT_PORTA_DOWN;
-      pendingParam = lo;
+      pendingParam = parameter;
       break;
-    case AMOS_CMD_POSITION_JUMP:
+    case AMOS_COMMAND_POSITION_JUMP:
       pendingEffect = S3M_EFFECT_POSITION_JUMP;
-      pendingParam = lo;
+      pendingParam = parameter;
       break;
     default:
-      if (hi < 0x80 && cmd != 0) {
-        notePeriod = cmd & 0x0FFF;
+      if ((command & AMOS_COMMAND_FLAG) == 0 && word != 0) {
+        notePeriod = word & AMOS_PERIOD_MASK;
         noteSet = true;
       }
       break;
     }
   }
 
-  if (channelEndRow == 64 && row < 64 &&
-      (noteSet || pendingEffect != 0 || curVolume != S3M_VOLUME_NONE)) {
-    auto &ev = pat.channels[ch][row];
+  if (channelEndRow == PATTERN_ROW_COUNT && row < PATTERN_ROW_COUNT &&
+      (noteSet || pendingEffect != 0 || currentVolume != S3M_VOLUME_NONE)) {
+    auto &event = pattern.channels[channel][row];
     if (noteSet) {
-      ev.note = periodToS3mNote(notePeriod);
-      ev.instrument = curSample;
+      event.note = periodToS3mNote(notePeriod);
+      event.instrument = currentSample;
     }
-    if (curVolume != S3M_VOLUME_NONE) {
-      ev.volume = curVolume;
+    if (currentVolume != S3M_VOLUME_NONE) {
+      event.volume = currentVolume;
     }
     if (pendingEffect != 0) {
-      ev.effect = pendingEffect;
-      ev.effectParam = pendingParam;
+      event.effect = pendingEffect;
+      event.effectParam = pendingParam;
     }
   }
 }
 
-DecodedPattern decodePattern(const uint8_t *music, size_t musicSize,
+DecodedPattern decodePattern(const std::vector<uint8_t> &music,
                              const TrackInfo &track,
-                             const uint16_t stepIndices[NUM_CHANNELS]) {
-  Pattern pat{};
-  for (int row = 0; row < 64; row++) {
-    for (int ch = 0; ch < NUM_CHANNELS; ch++) {
-      pat.channels[ch][row] = {S3M_NOTE_NONE, 0, S3M_VOLUME_NONE, 0, 0};
-    }
+                             const uint16_t stepIndices[CHANNEL_COUNT]) {
+  Pattern pattern;
+
+  int channelEndRows[CHANNEL_COUNT];
+  std::fill(std::begin(channelEndRows), std::end(channelEndRows),
+            PATTERN_ROW_COUNT);
+  for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
+    decodeChannel(pattern, channel, music, track, stepIndices[channel],
+                  channelEndRows[channel]);
   }
 
-  int channelEndRows[NUM_CHANNELS] = {64, 64, 64, 64};
-  for (int ch = 0; ch < NUM_CHANNELS; ch++) {
-    decodeChannel(pat, ch, music, musicSize, track, stepIndices[ch],
-                  channelEndRows[ch]);
-  }
-
-  int endRow = 64;
-  for (int ch = 0; ch < NUM_CHANNELS; ch++) {
-    if (channelEndRows[ch] < endRow) {
-      endRow = channelEndRows[ch];
+  int endRow = PATTERN_ROW_COUNT;
+  for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
+    if (channelEndRows[channel] < endRow) {
+      endRow = channelEndRows[channel];
     }
   }
-  if (endRow < 64) {
-    for (int ch = 0; ch < NUM_CHANNELS; ch++) {
-      if (pat.channels[ch][endRow].effect == 0) {
-        pat.channels[ch][endRow].effect = S3M_EFFECT_PATTERN_BREAK;
-        pat.channels[ch][endRow].effectParam = 0;
+  if (endRow < PATTERN_ROW_COUNT) {
+    for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
+      if (pattern.channels[channel][endRow].effect == 0) {
+        pattern.channels[channel][endRow].effect = S3M_EFFECT_PATTERN_BREAK;
+        pattern.channels[channel][endRow].effectParam = 0;
         break;
       }
     }
   }
 
-  return {pat, endRow};
+  return {pattern, endRow};
 }
 
-std::vector<uint8_t> packPattern(const Pattern &pat) {
+std::vector<uint8_t> packPattern(const Pattern &pattern) {
   std::vector<uint8_t> packed;
-  packed.push_back(0);
-  packed.push_back(0);
+  binary::pushLittleEndian16(packed, 0);
 
-  for (int row = 0; row < 64; row++) {
-    for (int ch = 0; ch < NUM_CHANNELS; ch++) {
-      const auto &ev = pat.channels[ch][row];
+  for (int row = 0; row < PATTERN_ROW_COUNT; ++row) {
+    for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
+      const auto &event = pattern.channels[channel][row];
       uint8_t what = 0;
-      if (ev.note != S3M_NOTE_NONE || ev.instrument != 0) {
-        what |= 0x20;
+      if (event.note != S3M_NOTE_NONE || event.instrument != 0) {
+        what |= S3M_PACKED_NOTE;
       }
-      if (ev.volume != S3M_VOLUME_NONE) {
-        what |= 0x40;
+      if (event.volume != S3M_VOLUME_NONE) {
+        what |= S3M_PACKED_VOLUME;
       }
-      if (ev.effect != 0) {
-        what |= 0x80;
+      if (event.effect != 0) {
+        what |= S3M_PACKED_EFFECT;
       }
       if (what == 0) {
         continue;
       }
-      what |= static_cast<uint8_t>(ch);
+      what |= static_cast<uint8_t>(channel);
       packed.push_back(what);
-      if (what & 0x20) {
-        packed.push_back(ev.note);
-        packed.push_back(ev.instrument);
+      if (what & S3M_PACKED_NOTE) {
+        packed.push_back(event.note);
+        packed.push_back(event.instrument);
       }
-      if (what & 0x40) {
-        packed.push_back(ev.volume);
+      if (what & S3M_PACKED_VOLUME) {
+        packed.push_back(event.volume);
       }
-      if (what & 0x80) {
-        packed.push_back(ev.effect);
-        packed.push_back(ev.effectParam);
+      if (what & S3M_PACKED_EFFECT) {
+        packed.push_back(event.effect);
+        packed.push_back(event.effectParam);
       }
     }
     packed.push_back(0);
   }
 
-  uint16_t len = static_cast<uint16_t>(packed.size());
-  packed[0] = static_cast<uint8_t>(len);
-  packed[1] = static_cast<uint8_t>(len >> 8);
+  binary::writeLittleEndian16(packed, 0, static_cast<uint16_t>(packed.size()));
   return packed;
 }
 
 struct SpeedTempo {
-  uint8_t speed;
-  uint8_t tempo;
-  bool hasTempo;
+  uint8_t speed = 0;
+  uint8_t tempo = 0;
+  bool hasTempo = false;
 };
 
 SpeedTempo amosTempoToS3m(uint8_t amosTempo) {
   if (amosTempo == 0) {
-    return {6, 134, false};
+    return {DEFAULT_S3M_SPEED, DEFAULT_S3M_TEMPO, false};
   }
-  int speed = (100 + amosTempo / 2) / amosTempo;
-  if (speed < 1)
-    speed = 1;
-  if (speed > 31)
-    speed = 31;
-  int bpm = (5 * speed * amosTempo + 2) / 4;
-  if (bpm < 32)
-    bpm = 32;
-  if (bpm > 255)
-    bpm = 255;
-  return {static_cast<uint8_t>(speed), static_cast<uint8_t>(bpm), true};
+  const int speed = std::clamp((100 + amosTempo / 2) / amosTempo, MIN_S3M_SPEED,
+                               MAX_S3M_SPEED);
+  const int tempo =
+      std::clamp((5 * speed * amosTempo + 2) / 4, MIN_S3M_TEMPO, MAX_S3M_TEMPO);
+  return {static_cast<uint8_t>(speed), static_cast<uint8_t>(tempo), true};
 }
 
-void fixSpeedEffects(Pattern &pat) {
-  for (int row = 0; row < 64; row++) {
-    for (int ch = 0; ch < NUM_CHANNELS; ch++) {
-      auto &ev = pat.channels[ch][row];
-      if (ev.effect != S3M_EFFECT_SPEED) {
+void fixSpeedEffects(Pattern &pattern) {
+  for (int row = 0; row < PATTERN_ROW_COUNT; ++row) {
+    for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
+      auto &event = pattern.channels[channel][row];
+      if (event.effect != S3M_EFFECT_SPEED) {
         continue;
       }
-      auto st = amosTempoToS3m(ev.effectParam);
-      ev.effectParam = st.speed;
-      if (st.hasTempo) {
-        for (int ch2 = 0; ch2 < NUM_CHANNELS; ch2++) {
-          if (ch2 != ch && pat.channels[ch2][row].effect == 0) {
-            pat.channels[ch2][row].effect = S3M_EFFECT_TEMPO;
-            pat.channels[ch2][row].effectParam = st.tempo;
+      auto speedTempo = amosTempoToS3m(event.effectParam);
+      event.effectParam = speedTempo.speed;
+      if (speedTempo.hasTempo) {
+        for (int other = 0; other < CHANNEL_COUNT; ++other) {
+          if (other != channel && pattern.channels[other][row].effect == 0) {
+            pattern.channels[other][row].effect = S3M_EFFECT_TEMPO;
+            pattern.channels[other][row].effectParam = speedTempo.tempo;
             break;
           }
         }
@@ -466,29 +544,30 @@ void fixSpeedEffects(Pattern &pat) {
   }
 }
 
-std::vector<Pattern> decodeAllPatterns(const uint8_t *music, size_t musicSize,
+std::vector<Pattern> decodeAllPatterns(const std::vector<uint8_t> &music,
                                        const TrackInfo &track,
                                        const SongInfo &song,
                                        std::vector<uint8_t> &orderList) {
   std::vector<Pattern> patterns;
 
-  size_t songLen = 0;
-  for (int ch = 0; ch < NUM_CHANNELS; ch++) {
-    songLen = std::max(songLen, song.orders[ch].size());
+  std::size_t songLength = 0;
+  for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
+    songLength = std::max(songLength, song.orders[channel].size());
   }
 
-  for (size_t pos = 0; pos < songLen; pos++) {
-    uint16_t steps[NUM_CHANNELS];
-    for (int ch = 0; ch < NUM_CHANNELS; ch++) {
-      steps[ch] = pos < song.orders[ch].size() ? song.orders[ch][pos] : 0;
+  for (std::size_t pos = 0; pos < songLength; ++pos) {
+    uint16_t steps[CHANNEL_COUNT];
+    for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
+      steps[channel] =
+          pos < song.orders[channel].size() ? song.orders[channel][pos] : 0;
     }
 
-    auto decoded = decodePattern(music, musicSize, track, steps);
-    fixSpeedEffects(decoded.pat);
+    auto decoded = decodePattern(music, track, steps);
+    fixSpeedEffects(decoded.pattern);
     bool found = false;
-    for (size_t pi = 0; pi < patterns.size(); pi++) {
-      if (std::memcmp(&patterns[pi], &decoded.pat, sizeof(Pattern)) == 0) {
-        orderList.push_back(static_cast<uint8_t>(pi));
+    for (std::size_t i = 0; i < patterns.size(); ++i) {
+      if (std::memcmp(&patterns[i], &decoded.pattern, sizeof(Pattern)) == 0) {
+        orderList.push_back(static_cast<uint8_t>(i));
         found = true;
         break;
       }
@@ -500,7 +579,7 @@ std::vector<Pattern> decodeAllPatterns(const uint8_t *music, size_t musicSize,
                                  " distinct patterns");
       }
       orderList.push_back(static_cast<uint8_t>(patterns.size()));
-      patterns.push_back(decoded.pat);
+      patterns.push_back(decoded.pattern);
     }
   }
 
@@ -510,131 +589,116 @@ std::vector<Pattern> decodeAllPatterns(const uint8_t *music, size_t musicSize,
 void writeS3mHeader(std::vector<uint8_t> &s3m, const SongInfo &song,
                     uint16_t ordNum, uint16_t insNum, uint16_t patNum,
                     uint8_t speed, uint8_t tempo) {
-  s3m.resize(96, 0);
+  s3m.resize(S3M_HEADER_SIZE, 0);
 
-  size_t nameLen = std::strlen(song.name);
-  if (nameLen > 28) {
-    nameLen = 28;
-  }
-  std::memcpy(s3m.data(), song.name, nameLen);
-  s3m[0x1C] = 0x1A;
-  s3m[0x1D] = 0x10;
-  s3m[0x20] = static_cast<uint8_t>(ordNum);
-  s3m[0x21] = static_cast<uint8_t>(ordNum >> 8);
-  s3m[0x22] = static_cast<uint8_t>(insNum);
-  s3m[0x23] = static_cast<uint8_t>(insNum >> 8);
-  s3m[0x24] = static_cast<uint8_t>(patNum);
-  s3m[0x25] = static_cast<uint8_t>(patNum >> 8);
-  s3m[0x28] = 0x20;
-  s3m[0x29] = 0x13;
-  s3m[0x2A] = 0x02;
-  s3m[0x2C] = 'S';
-  s3m[0x2D] = 'C';
-  s3m[0x2E] = 'R';
-  s3m[0x2F] = 'M';
-  s3m[0x30] = 64;
-  s3m[0x31] = speed;
-  s3m[0x32] = tempo;
-  s3m[0x33] = 0x80 | 48;
-  s3m[0x34] = 16;
-  s3m[0x35] = 0xFC;
+  std::size_t nameLength = std::min(std::strlen(song.name), S3M_SONG_NAME_SIZE);
+  std::memcpy(s3m.data(), song.name, nameLength);
+  s3m[S3M_EOF_OFFSET] = S3M_EOF_MARKER;
+  s3m[S3M_TYPE_OFFSET] = S3M_MODULE_TYPE;
+  binary::writeLittleEndian16(s3m, S3M_ORDER_COUNT_OFFSET, ordNum);
+  binary::writeLittleEndian16(s3m, S3M_INSTRUMENT_COUNT_OFFSET, insNum);
+  binary::writeLittleEndian16(s3m, S3M_PATTERN_COUNT_OFFSET, patNum);
+  binary::writeLittleEndian16(s3m, S3M_TRACKER_VERSION_OFFSET,
+                              S3M_TRACKER_VERSION);
+  s3m[S3M_SAMPLE_FORMAT_OFFSET] = S3M_UNSIGNED_SAMPLES;
+  s3m[S3M_SIGNATURE_OFFSET + 0] = 'S';
+  s3m[S3M_SIGNATURE_OFFSET + 1] = 'C';
+  s3m[S3M_SIGNATURE_OFFSET + 2] = 'R';
+  s3m[S3M_SIGNATURE_OFFSET + 3] = 'M';
+  s3m[S3M_GLOBAL_VOLUME_OFFSET] = S3M_GLOBAL_VOLUME;
+  s3m[S3M_SPEED_OFFSET] = speed;
+  s3m[S3M_TEMPO_OFFSET] = tempo;
+  s3m[S3M_MASTER_VOLUME_OFFSET] = S3M_STEREO_FLAG | S3M_MASTER_VOLUME;
+  s3m[S3M_CLICK_REMOVAL_OFFSET] = S3M_CLICK_REMOVAL;
+  s3m[S3M_PANNING_FLAG_OFFSET] = S3M_CHANNEL_PANNING;
 
-  s3m[0x40] = 0x00;
-  s3m[0x41] = 0x08;
-  s3m[0x42] = 0x09;
-  s3m[0x43] = 0x01;
-  for (int i = 4; i < 32; i++) {
-    s3m[0x40 + i] = 0xFF;
+  for (std::size_t i = 0; i < S3M_CHANNEL_SETTING_COUNT; ++i) {
+    s3m[S3M_CHANNEL_SETTINGS_OFFSET + i] =
+        i < static_cast<std::size_t>(CHANNEL_COUNT) ? AMIGA_CHANNEL_SETTINGS[i]
+                                                    : S3M_UNUSED_CHANNEL;
   }
 }
 
-void writeInstrument(std::vector<uint8_t> &s3m, size_t insStart,
+void writeInstrument(std::vector<uint8_t> &s3m, std::size_t instrumentOffset,
                      const AmosSample &sample, int index) {
-  s3m.resize(insStart + 80, 0);
-  s3m[insStart] = 1;
-  char dosName[13] = {};
+  s3m.resize(instrumentOffset + INSTRUMENT_SIZE, 0);
+  s3m[instrumentOffset] = INSTRUMENT_SAMPLE_TYPE;
+  char dosName[INSTRUMENT_DOS_NAME_SIZE + 1] = {};
   snprintf(dosName, sizeof(dosName), "SAMPLE%02d.RAW", index + 1);
-  std::memcpy(s3m.data() + insStart + 1, dosName, 12);
+  std::memcpy(s3m.data() + instrumentOffset + INSTRUMENT_DOS_NAME_OFFSET,
+              dosName, INSTRUMENT_DOS_NAME_SIZE);
 
-  uint32_t sampleLen = sample.length;
+  uint32_t sampleLength = sample.length;
   uint32_t loopStart = sample.loopStart;
-  uint32_t loopEnd = loopStart + static_cast<uint32_t>(sample.loopLen) * 2;
-  if (loopEnd > sampleLen) {
-    loopEnd = sampleLen;
+  uint32_t loopEnd = loopStart + static_cast<uint32_t>(sample.loopLength) * 2;
+  if (loopEnd > sampleLength) {
+    loopEnd = sampleLength;
   }
-  bool hasLoop = sample.loopLen > 2 && loopEnd > loopStart + 4;
+  bool hasLoop = sample.loopLength > MAX_NO_LOOP_WORDS &&
+                 loopEnd > loopStart + MAX_NO_LOOP_SIZE;
 
-  s3m[insStart + 0x10] = static_cast<uint8_t>(sampleLen);
-  s3m[insStart + 0x11] = static_cast<uint8_t>(sampleLen >> 8);
-  s3m[insStart + 0x12] = static_cast<uint8_t>(sampleLen >> 16);
-  s3m[insStart + 0x13] = static_cast<uint8_t>(sampleLen >> 24);
+  binary::writeLittleEndian32(s3m, instrumentOffset + INSTRUMENT_LENGTH_OFFSET,
+                              sampleLength);
+  binary::writeLittleEndian32(
+      s3m, instrumentOffset + INSTRUMENT_LOOP_START_OFFSET, loopStart);
+  binary::writeLittleEndian32(
+      s3m, instrumentOffset + INSTRUMENT_LOOP_END_OFFSET, loopEnd);
 
-  s3m[insStart + 0x14] = static_cast<uint8_t>(loopStart);
-  s3m[insStart + 0x15] = static_cast<uint8_t>(loopStart >> 8);
-  s3m[insStart + 0x16] = static_cast<uint8_t>(loopStart >> 16);
-  s3m[insStart + 0x17] = static_cast<uint8_t>(loopStart >> 24);
-
-  s3m[insStart + 0x18] = static_cast<uint8_t>(loopEnd);
-  s3m[insStart + 0x19] = static_cast<uint8_t>(loopEnd >> 8);
-  s3m[insStart + 0x1A] = static_cast<uint8_t>(loopEnd >> 16);
-  s3m[insStart + 0x1B] = static_cast<uint8_t>(loopEnd >> 24);
-
-  uint8_t vol = static_cast<uint8_t>(std::min<uint16_t>(sample.volume, 63));
-  s3m[insStart + 0x1C] = vol;
+  uint8_t volume =
+      static_cast<uint8_t>(std::min<uint16_t>(sample.volume, S3M_MAX_VOLUME));
+  s3m[instrumentOffset + INSTRUMENT_VOLUME_OFFSET] = volume;
 
   if (hasLoop) {
-    s3m[insStart + 0x1F] = 1;
+    s3m[instrumentOffset + INSTRUMENT_FLAGS_OFFSET] = INSTRUMENT_LOOP_FLAG;
   }
 
-  uint32_t c2spd = gameData::audio::DEFAULT_SAMPLE_RATE;
-  s3m[insStart + 0x20] = static_cast<uint8_t>(c2spd);
-  s3m[insStart + 0x21] = static_cast<uint8_t>(c2spd >> 8);
-  s3m[insStart + 0x22] = static_cast<uint8_t>(c2spd >> 16);
-  s3m[insStart + 0x23] = static_cast<uint8_t>(c2spd >> 24);
+  binary::writeLittleEndian32(s3m, instrumentOffset + INSTRUMENT_C2SPD_OFFSET,
+                              gameData::audio::DEFAULT_SAMPLE_RATE);
 
-  std::memcpy(s3m.data() + insStart + 0x30, sample.name, 16);
+  std::memcpy(s3m.data() + instrumentOffset + INSTRUMENT_NAME_OFFSET,
+              sample.name, AMOS_NAME_SIZE);
 
-  s3m[insStart + 0x4C] = 'S';
-  s3m[insStart + 0x4D] = 'C';
-  s3m[insStart + 0x4E] = 'R';
-  s3m[insStart + 0x4F] = 'S';
+  const std::size_t signature = instrumentOffset + INSTRUMENT_SIGNATURE_OFFSET;
+  s3m[signature + 0] = 'S';
+  s3m[signature + 1] = 'C';
+  s3m[signature + 2] = 'R';
+  s3m[signature + 3] = 'S';
 }
 
 } // namespace
 
 std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
                              uint16_t initialAmosTempo) {
-  if (abkData.size() < 24 || abkData[0] != 'A' || abkData[1] != 'm' ||
-      abkData[2] != 'B' || abkData[3] != 'k') {
-    throw std::runtime_error("not a valid AmBk file");
+  if (abkData.size() < ABK_HEADER_SIZE || abkData[0] != 'A' ||
+      abkData[1] != 'm' || abkData[2] != 'B' || abkData[3] != 'k') {
+    throw std::runtime_error("Not a valid AmBk file");
   }
 
-  const uint8_t *music = abkData.data() + 20;
-  size_t musicSize = abkData.size() - 20;
-
-  if (musicSize < 12) {
-    throw std::runtime_error("music data too small");
+  const std::vector<uint8_t> music(abkData.begin() + ABK_HEADER_SIZE,
+                                   abkData.end());
+  if (music.size() < MUSIC_HEADER_SIZE) {
+    throw std::runtime_error("Music data too small");
   }
 
-  helpers::BigEndianReader reader(abkData);
-  uint32_t sampleInfoOff = reader.readUint32(20);
-  uint32_t songOff = reader.readUint32(24);
-  uint32_t trackOff = reader.readUint32(28);
+  binary::BigEndianReader reader(music);
+  uint32_t sampleInfoOffset = reader.readUint32(MUSIC_SAMPLES_POINTER_OFFSET);
+  uint32_t songOffset = reader.readUint32(MUSIC_SONGS_POINTER_OFFSET);
+  uint32_t trackOffset = reader.readUint32(MUSIC_TRACKS_POINTER_OFFSET);
 
-  auto samples = parseSamples(music, musicSize, sampleInfoOff);
-  auto song = parseSong(music, musicSize, songOff);
-  auto track = parseTrackData(music, musicSize, trackOff);
+  auto samples = parseSamples(music, sampleInfoOffset);
+  auto song = parseSong(music, songOffset);
+  auto track = parseTrackData(music, trackOffset);
 
   std::vector<uint8_t> orderList;
-  auto patterns = decodeAllPatterns(music, musicSize, track, song, orderList);
+  auto patterns = decodeAllPatterns(music, track, song, orderList);
   if (patterns.empty()) {
-    throw std::runtime_error("empty song");
+    throw std::runtime_error("Empty song");
   }
 
   uint16_t ordNum = static_cast<uint16_t>(orderList.size());
   if (ordNum % 2 != 0) {
-    orderList.push_back(0xFF);
-    ordNum++;
+    orderList.push_back(S3M_ORDER_END);
+    ++ordNum;
   }
   uint16_t insNum = static_cast<uint16_t>(samples.size());
   uint16_t patNum = static_cast<uint16_t>(patterns.size());
@@ -645,69 +709,70 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
         std::strncmp(song.name, "e1", 2) == 0 ? FRANKO_MENU_TEMPO : song.speed;
   }
 
-  const auto initialST =
-      amosTempoToS3m(static_cast<uint8_t>(std::min<uint16_t>(amosTempo, 255)));
-  const uint8_t speed = initialST.speed;
-  const uint8_t tempo = initialST.tempo;
+  const auto initial =
+      amosTempoToS3m(static_cast<uint8_t>(std::min(amosTempo, MAX_AMOS_TEMPO)));
 
   std::vector<uint8_t> s3m;
-  writeS3mHeader(s3m, song, ordNum, insNum, patNum, speed, tempo);
+  writeS3mHeader(s3m, song, ordNum, insNum, patNum, initial.speed,
+                 initial.tempo);
   s3m.insert(s3m.end(), orderList.begin(), orderList.end());
 
-  size_t insPtrOff = s3m.size();
-  for (uint16_t i = 0; i < insNum; i++) {
-    pushLittleEndian16(s3m, 0);
+  std::size_t instrumentTableOffset = s3m.size();
+  for (uint16_t i = 0; i < insNum; ++i) {
+    binary::pushLittleEndian16(s3m, 0);
   }
 
-  size_t patPtrOff = s3m.size();
-  for (uint16_t i = 0; i < patNum; i++) {
-    pushLittleEndian16(s3m, 0);
+  std::size_t patternTableOffset = s3m.size();
+  for (uint16_t i = 0; i < patNum; ++i) {
+    binary::pushLittleEndian16(s3m, 0);
   }
 
-  uint8_t panning[32] = {};
-  panning[0] = 0x20 | 3;
-  panning[1] = 0x20 | 12;
-  panning[2] = 0x20 | 12;
-  panning[3] = 0x20 | 3;
-  s3m.insert(s3m.end(), panning, panning + 32);
+  uint8_t panning[S3M_PANNING_SIZE] = {};
+  panning[0] = S3M_PAN_SET | S3M_PAN_LEFT;
+  panning[1] = S3M_PAN_SET | S3M_PAN_RIGHT;
+  panning[2] = S3M_PAN_SET | S3M_PAN_RIGHT;
+  panning[3] = S3M_PAN_SET | S3M_PAN_LEFT;
+  s3m.insert(s3m.end(), panning, panning + S3M_PANNING_SIZE);
 
-  std::vector<size_t> insOffsets(insNum);
-  for (uint16_t i = 0; i < insNum; i++) {
-    padTo16(s3m);
-    insOffsets[i] = s3m.size();
-    uint16_t paraPtr = static_cast<uint16_t>(insOffsets[i] / 16);
-    s3m[insPtrOff + i * 2] = static_cast<uint8_t>(paraPtr);
-    s3m[insPtrOff + i * 2 + 1] = static_cast<uint8_t>(paraPtr >> 8);
+  std::vector<std::size_t> instrumentOffsets(insNum);
+  for (uint16_t i = 0; i < insNum; ++i) {
+    binary::padTo16(s3m);
+    instrumentOffsets[i] = s3m.size();
+    binary::writeLittleEndian16(
+        s3m, instrumentTableOffset + i * 2,
+        static_cast<uint16_t>(instrumentOffsets[i] / S3M_PARAGRAPH_SIZE));
     writeInstrument(s3m, s3m.size(), samples[i], i);
   }
 
-  for (uint16_t i = 0; i < patNum; i++) {
-    padTo16(s3m);
-    size_t patOff = s3m.size();
-    uint16_t paraPtr = static_cast<uint16_t>(patOff / 16);
-    s3m[patPtrOff + i * 2] = static_cast<uint8_t>(paraPtr);
-    s3m[patPtrOff + i * 2 + 1] = static_cast<uint8_t>(paraPtr >> 8);
+  for (uint16_t i = 0; i < patNum; ++i) {
+    binary::padTo16(s3m);
+    binary::writeLittleEndian16(
+        s3m, patternTableOffset + i * 2,
+        static_cast<uint16_t>(s3m.size() / S3M_PARAGRAPH_SIZE));
 
     auto packed = packPattern(patterns[i]);
     s3m.insert(s3m.end(), packed.begin(), packed.end());
   }
 
-  for (uint16_t i = 0; i < insNum; i++) {
-    padTo16(s3m);
-    size_t sampleFileOff = s3m.size();
-    uint32_t paraPtr20 = static_cast<uint32_t>(sampleFileOff / 16);
-    s3m[insOffsets[i] + 0x0D] = static_cast<uint8_t>(paraPtr20 >> 16);
-    s3m[insOffsets[i] + 0x0E] = static_cast<uint8_t>(paraPtr20);
-    s3m[insOffsets[i] + 0x0F] = static_cast<uint8_t>(paraPtr20 >> 8);
+  for (uint16_t i = 0; i < insNum; ++i) {
+    binary::padTo16(s3m);
+    uint32_t parapointer =
+        static_cast<uint32_t>(s3m.size() / S3M_PARAGRAPH_SIZE);
+    s3m[instrumentOffsets[i] + INSTRUMENT_MEMSEG_OFFSET] =
+        static_cast<uint8_t>(parapointer >> 16);
+    binary::writeLittleEndian16(
+        s3m, instrumentOffsets[i] + INSTRUMENT_MEMSEG_OFFSET + 1,
+        static_cast<uint16_t>(parapointer));
 
-    const size_t pcmOff = samples[i].pcmOffset;
-    const size_t len = samples[i].length;
-    for (size_t j = 0; j < len; j++) {
-      if (static_cast<size_t>(sampleInfoOff) + pcmOff + j < musicSize) {
-        uint8_t signedSample = music[sampleInfoOff + pcmOff + j];
-        s3m.push_back(signedSample ^ 0x80);
+    const std::size_t pcmOffset = samples[i].pcmOffset;
+    const std::size_t length = samples[i].length;
+    for (std::size_t j = 0; j < length; ++j) {
+      const std::size_t pos =
+          static_cast<std::size_t>(sampleInfoOffset) + pcmOffset + j;
+      if (pos < music.size()) {
+        s3m.push_back(static_cast<uint8_t>(music[pos] ^ SAMPLE_SIGN_BIT));
       } else {
-        s3m.push_back(0x80);
+        s3m.push_back(UNSIGNED_SILENCE);
       }
     }
   }

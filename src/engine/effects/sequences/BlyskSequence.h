@@ -1,0 +1,54 @@
+#ifndef ENGINE_EFFECTS_SEQUENCES_BLYSKSEQUENCE_H_
+#define ENGINE_EFFECTS_SEQUENCES_BLYSKSEQUENCE_H_
+
+#include "../color/AmigaPalette.h"
+#include "../color/PaletteFader.h"
+
+#include <cstddef>
+#include <optional>
+
+namespace openfranko {
+namespace src {
+namespace engine {
+namespace effects {
+namespace sequences {
+
+class BlyskSequence {
+public:
+  static constexpr std::size_t COLORS = 4;
+  static constexpr int FADE_SPEED = 2;
+  static constexpr int LIT_FRAMES = 60;
+  static constexpr color::AmigaColor INK = 0xFFF;
+  static constexpr color::AmigaColor SHADE = 0xAAA;
+  static constexpr int DARK_FRAMES = 30;
+  static constexpr int PAGE_FRAMES = LIT_FRAMES + DARK_FRAMES;
+
+  BlyskSequence(int firstPage, int endPage);
+
+  void advance(bool fireLatched);
+
+  std::optional<int> page() const;
+  const color::AmigaPalette &palette() const;
+  bool isFinished() const;
+  bool isSkipped() const;
+
+private:
+  void startPage();
+
+  int m_page;
+  int m_endPage;
+  int m_time = 0;
+  bool m_pasted = false;
+  bool m_finished = false;
+  bool m_skipped = false;
+  color::AmigaPalette m_palette = color::AmigaPalette(COLORS, 0);
+  color::PaletteFader m_fader;
+};
+
+} // namespace sequences
+} // namespace effects
+} // namespace engine
+} // namespace src
+} // namespace openfranko
+
+#endif // ENGINE_EFFECTS_SEQUENCES_BLYSKSEQUENCE_H_

@@ -1,0 +1,2 @@
+add_library(StatesLevel1 INTERFACE)
+target_link_libraries(StatesLevel1 INTERFACE StatesShared StreetScenes)

@@ -1,12 +1,10 @@
-#ifndef ENGINE_STATES_MIRAGESTATE_H_
-#define ENGINE_STATES_MIRAGESTATE_H_
+#ifndef ENGINE_STATES_MIRAGE_MIRAGESTATE_H_
+#define ENGINE_STATES_MIRAGE_MIRAGESTATE_H_
 
-#include "../../../systems/Bitmap.h"
-#include "../../../systems/Canvas.h"
-#include "../../../systems/VideoSystem.h"
-#include "../../effects/AmigaDisplay.h"
-#include "../../effects/FotoSequence.h"
-#include "../IEngineState.h"
+#include "../../../systems/graphics/Monitor.h"
+#include "../../assets/Files.h"
+#include "../EngineState.h"
+#include "../shared/FotoScreen.h"
 
 namespace openfranko {
 namespace src {
@@ -14,18 +12,14 @@ namespace engine {
 namespace states {
 namespace mirage {
 
-class MirageState : public IEngineState {
+class MirageState : public EngineState {
 public:
-  explicit MirageState(systems::VideoSystem &videoSystem);
+  MirageState(systems::graphics::Monitor &monitor, assets::Files &files);
 
-  std::optional<EngineStateEnum> update() override;
+  std::optional<EngineStateId> update() override;
 
 private:
-  systems::VideoSystem &m_videoSystem;
-  effects::VisibleRows m_rows;
-  systems::IndexedBitmap m_picture;
-  systems::Canvas m_screen;
-  effects::FotoSequence m_sequence;
+  shared::FotoScreen m_foto;
 };
 
 } // namespace mirage
@@ -34,4 +28,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_MIRAGESTATE_H_
+#endif // ENGINE_STATES_MIRAGE_MIRAGESTATE_H_

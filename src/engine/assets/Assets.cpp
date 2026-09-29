@@ -91,16 +91,15 @@ std::string musicPath(const std::string &name, const std::string &directory) {
   return directory + "/" + name + ".s3m";
 }
 
-std::string samplePath(const std::string &name, int sample,
+std::string samplePath(const Files &files, const std::string &name, int sample,
                        const std::string &directory) {
   const std::string prefix = name + "_sam" + std::to_string(sample) + "_";
-  std::error_code error;
-  for (const auto &entry : std::filesystem::directory_iterator(
-           std::filesystem::path(directory) / name, error)) {
-    const std::string file = entry.path().filename().string();
-    if (file.compare(0, prefix.size(), prefix) == 0 &&
-        entry.path().extension() == ".wav") {
-      return entry.path().string();
+  for (const std::string &path :
+       files.list((std::filesystem::path(directory) / name).string())) {
+    const std::filesystem::path file(path);
+    if (file.filename().string().compare(0, prefix.size(), prefix) == 0 &&
+        file.extension() == ".wav") {
+      return path;
     }
   }
   return {};

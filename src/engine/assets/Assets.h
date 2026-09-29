@@ -2,6 +2,7 @@
 #define ENGINE_ASSETS_ASSETS_H_
 
 #include "../GameVersion.h"
+#include "Files.h"
 
 #include <string>
 
@@ -11,6 +12,10 @@ namespace engine {
 namespace assets {
 
 inline constexpr const char *DIRECTORY = "assets";
+inline constexpr int LETTER_SET = 0x35;
+inline constexpr int MENU_TUNE = 0x261;
+inline constexpr int HISCORE_LETTERS = 0x3B9;
+inline constexpr int TITLE_SCREEN = 0x3BA;
 
 GameVersion detectVersion(const std::string &directory = DIRECTORY);
 
@@ -28,7 +33,7 @@ std::string partPath(const std::string &name, int part,
 std::string musicPath(const std::string &name,
                       const std::string &directory = DIRECTORY);
 
-std::string samplePath(const std::string &name, int sample,
+std::string samplePath(const Files &files, const std::string &name, int sample,
                        const std::string &directory = DIRECTORY);
 
 } // namespace assets

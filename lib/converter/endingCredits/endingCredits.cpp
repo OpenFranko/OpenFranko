@@ -1,6 +1,7 @@
 #include "endingCredits.h"
 
-#include "../../helpers/helpers.h"
+#include "../../binary/binary.h"
+#include "../../json/json.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -54,26 +55,19 @@ struct Call {
   int32_t value = 0;
 };
 
-uint16_t word(const std::vector<uint8_t> &code, std::size_t at) {
-  return static_cast<uint16_t>(code[at] << 8 | code[at + 1]);
-}
-
-int32_t longAt(const std::vector<uint8_t> &code, std::size_t at) {
-  return static_cast<int32_t>(static_cast<uint32_t>(word(code, at)) << 16 |
-                              word(code, at + 2));
-}
-
 std::optional<Push> pushBefore(const std::vector<uint8_t> &code,
                                std::size_t end) {
-  if (end >= 4 && word(code, end - 2) == PUSH_D3 && code[end - 4] == MOVEQ_D3) {
+  const binary::BigEndianReader reader(code);
+  if (end >= 4 && reader.readUint16(end - 2) == PUSH_D3 &&
+      code[end - 4] == MOVEQ_D3) {
     return Push{false, static_cast<int8_t>(code[end - 3]), end - 4};
   }
-  if (end >= 8 && word(code, end - 2) == PUSH_D3 &&
-      word(code, end - 8) == MOVE_LONG_D3) {
-    return Push{false, longAt(code, end - 6), end - 8};
+  if (end >= 8 && reader.readUint16(end - 2) == PUSH_D3 &&
+      reader.readUint16(end - 8) == MOVE_LONG_D3) {
+    return Push{false, reader.readInt32(end - 6), end - 8};
   }
-  if (end >= 6 && word(code, end - 6) == PUSH_LONG) {
-    return Push{true, longAt(code, end - 4), end - 6};
+  if (end >= 6 && reader.readUint16(end - 6) == PUSH_LONG) {
+    return Push{true, reader.readInt32(end - 4), end - 6};
   }
   return std::nullopt;
 }
@@ -85,7 +79,7 @@ std::optional<std::string> stringAt(const std::vector<uint8_t> &code,
     return std::nullopt;
   }
   const std::size_t start = static_cast<std::size_t>(offset);
-  const std::size_t length = word(code, start);
+  const std::size_t length = binary::BigEndianReader(code).readUint16(start);
   if (length == 0 || start + 2 + length > code.size()) {
     return std::nullopt;
   }
@@ -99,17 +93,18 @@ std::optional<std::string> stringAt(const std::vector<uint8_t> &code,
 }
 
 std::vector<Call> procedureCalls(const std::vector<uint8_t> &code) {
+  const binary::BigEndianReader reader(code);
   std::vector<Call> calls;
-  for (std::size_t at = 0; at + 6 <= code.size(); at += 2) {
-    if (word(code, at) != CLEAR_D5 || word(code, at + 2) != JSR_LONG) {
+  for (std::size_t at = 0; at + CALL_SIZE <= code.size(); at += 2) {
+    if (reader.readUint16(at) != CLEAR_D5 ||
+        reader.readUint16(at + 2) != JSR_LONG) {
       continue;
     }
     const std::optional<Push> last = pushBefore(code, at);
     if (!last) {
       continue;
     }
-    Call call{at, static_cast<uint32_t>(longAt(code, at + 4)), std::nullopt,
-              last->value};
+    Call call{at, reader.readUint32(at + 4), std::nullopt, last->value};
     const std::optional<Push> before = pushBefore(code, last->start);
     if (before && before->longImmediate) {
       call.text = stringAt(code, before->value);
@@ -127,11 +122,13 @@ uint32_t mostFrequent(const std::map<uint32_t, int> &counts) {
 }
 
 int glyphOffset(const std::vector<uint8_t> &code, uint32_t font) {
-  for (std::size_t at = font; at + 8 <= code.size() && word(code, at) != JMP_A4;
-       at += 2) {
-    const uint16_t addq = word(code, at + 4);
-    if (word(code, at) == JSR_A4 && (addq & ~ADDQ_DATA_MASK) == ADDQ_LONG_D3 &&
-        word(code, at + 6) == JSR_A4) {
+  const binary::BigEndianReader reader(code);
+  for (std::size_t at = font;
+       at + 8 <= code.size() && reader.readUint16(at) != JMP_A4; at += 2) {
+    const uint16_t addq = reader.readUint16(at + 4);
+    if (reader.readUint16(at) == JSR_A4 &&
+        (addq & ~ADDQ_DATA_MASK) == ADDQ_LONG_D3 &&
+        reader.readUint16(at + 6) == JSR_A4) {
       const int data = (addq & ADDQ_DATA_MASK) >> ADDQ_DATA_SHIFT;
       return data == 0 ? ADDQ_EIGHT : data;
     }
@@ -161,9 +158,10 @@ std::optional<uint32_t> fontProcedure(const std::vector<Call> &calls) {
 
 bool closesWithBareCall(const std::vector<uint8_t> &code, const Call &call,
                         uint32_t font) {
+  const binary::BigEndianReader reader(code);
   const std::size_t next = call.at + CALL_SIZE;
-  return next + 6 <= code.size() && word(code, next) == JSR_LONG &&
-         static_cast<uint32_t>(longAt(code, next + 2)) != font;
+  return next + 6 <= code.size() && reader.readUint16(next) == JSR_LONG &&
+         reader.readUint32(next + 2) != font;
 }
 
 std::vector<Page> introIn(const std::vector<uint8_t> &code) {
@@ -229,22 +227,11 @@ std::vector<Page> creditsIn(const std::vector<uint8_t> &code) {
   return pages;
 }
 
-std::string escapeJson(const std::string &text) {
-  std::string out;
-  for (const char c : text) {
-    if (c == '"' || c == '\\') {
-      out += '\\';
-    }
-    out += c;
-  }
-  return out;
-}
-
 } // namespace
 
 std::vector<std::vector<uint8_t>>
 readHunks(const std::vector<uint8_t> &executable) {
-  const helpers::BigEndianReader reader(executable);
+  const binary::BigEndianReader reader(executable);
   std::size_t at = 0;
   const auto next = [&reader, &at] {
     const uint32_t value = reader.readUint32(at);
@@ -319,18 +306,18 @@ std::vector<Page> extractIntro(const std::vector<uint8_t> &executable) {
 
 std::vector<uint8_t> toJson(const std::vector<Page> &pages) {
   std::string out = "{\n  \"pages\": [\n";
-  for (std::size_t p = 0; p < pages.size(); ++p) {
-    const Page &page = pages[p];
+  for (std::size_t i = 0; i < pages.size(); ++i) {
+    const Page &page = pages[i];
     out += "    {\n      \"beat\": " + std::to_string(page.beat) +
            ",\n      \"lines\": [\n";
-    for (std::size_t l = 0; l < page.lines.size(); ++l) {
-      const Line &line = page.lines[l];
+    for (std::size_t j = 0; j < page.lines.size(); ++j) {
+      const Line &line = page.lines[j];
       out += "        {\"y\": " + std::to_string(line.y) + ", \"text\": \"" +
-             escapeJson(line.text) + "\"}";
-      out += l + 1 < page.lines.size() ? ",\n" : "\n";
+             json::escape(line.text) + "\"}";
+      out += j + 1 < page.lines.size() ? ",\n" : "\n";
     }
     out += "      ]\n    }";
-    out += p + 1 < pages.size() ? ",\n" : "\n";
+    out += i + 1 < pages.size() ? ",\n" : "\n";
   }
   out += "  ]\n}\n";
   return std::vector<uint8_t>(out.begin(), out.end());
