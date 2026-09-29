@@ -109,8 +109,15 @@ DOSBox-X (`flatpak run com.dosbox_x.DOSBox-X -conf build-dos/game/dosbox.conf`).
 DOS has no long file names, so the game reads its assets from the archive;
 every build does that when `assets.tar` sits next to it instead of `assets`.
 On a real PC, copy the first three files into one directory and run `franko`.
-The game needs a Pentium, a VESA card with a 640x480 high colour mode and, for
-sound, a Sound Blaster compatible card. Ctrl+C or Ctrl+Break quits it.
+It needs a VESA card with a 640x480 high colour mode and, for sound, a Sound
+Blaster compatible card. Ctrl+C or Ctrl+Break quits it.
+
+The game starts on any 486 with a floating point unit, but its logic is tied to
+the frame rate, so on a slow PC it runs in slow motion and the music stutters.
+Full speed (50 frames a second) needs a PC faster than a 300 MHz K6-2. In
+DOSBox-X with its CPU speed presets, Level 1 runs at 40 frames a second on a
+K6-2 300, 18 on a Pentium 166 MMX, 11 on a Pentium 100 and 4 on a 486DX2-66,
+and it takes about 260000 cycles to keep 50.
 
 To build with an installed DJGPP instead, like the AUR packages `djgpp-gcc`,
 `djgpp-allegro4` and `djgpp-cmake`, build libxmp with its CMake wrapper and
@@ -132,8 +139,8 @@ cmake --build . -j $(nproc)
 The AUR packages build the C++ library and Allegro for the Pentium Pro, so that
 `src/franko.exe` needs a Pentium Pro or newer and does not run in DOSBox or
 DOSBox Staging (in DOSBox-X, set `cputype=pentium_ii`). The game's own code and
-libxmp are compiled for the Pentium (`-march=i586`), as DOSBox-X's fast CPU core
-mis-emulates the Pentium Pro floating point comparisons.
+libxmp avoid Pentium Pro instructions (`-march=i586`), as DOSBox-X's fast CPU
+core mis-emulates the Pentium Pro floating point comparisons.
 
 # FrankoExtract
 
