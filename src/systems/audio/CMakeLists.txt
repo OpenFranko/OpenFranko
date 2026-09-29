@@ -1,6 +1,7 @@
 add_library(Audio
     Mixer.cpp
     Mixer.h
+    Speaker.h
     Wave.cpp
     Wave.h)
 target_include_directories(Audio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)

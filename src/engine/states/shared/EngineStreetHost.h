@@ -1,7 +1,7 @@
 #ifndef ENGINE_STATES_SHARED_ENGINESTREETHOST_H_
 #define ENGINE_STATES_SHARED_ENGINESTREETHOST_H_
 
-#include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/audio/Speaker.h"
 #include "../../GameVersion.h"
 #include "../../street/scenes/StreetHost.h"
 
@@ -18,8 +18,8 @@ namespace shared {
 
 class EngineStreetHost : public street::scenes::StreetHost {
 public:
-  EngineStreetHost(systems::audio::AudioSystem &audioSystem,
-                   GameVersion version, std::string directory = "assets");
+  EngineStreetHost(systems::audio::Speaker &speaker, GameVersion version,
+                   std::string directory = "assets");
   ~EngineStreetHost() override;
 
   std::vector<street::core::Picture> loadSpriteSet(int resource,
@@ -53,7 +53,7 @@ private:
   void loadSamples(int resource, int bank);
   void clearSamples(int bank);
 
-  systems::audio::AudioSystem &m_audioSystem;
+  systems::audio::Speaker &m_speaker;
   GameVersion m_version;
   std::string m_directory;
   std::mt19937 m_random;

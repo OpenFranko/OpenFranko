@@ -3,8 +3,9 @@
 
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
 #include "../../AmigaDisplay.h"
+#include "../../assets/Files.h"
 #include "../../effects/sequences/FotoSequence.h"
 
 #include <string>
@@ -17,7 +18,7 @@ namespace shared {
 
 class FotoScreen {
 public:
-  FotoScreen(systems::graphics::VideoSystem &videoSystem,
+  FotoScreen(systems::graphics::Monitor &monitor, assets::Files &files,
              const std::string &picturePath, int displayLine,
              const effects::sequences::FotoSequence::Timings &timings);
 
@@ -25,7 +26,7 @@ public:
   void advance();
 
 private:
-  systems::graphics::VideoSystem &m_videoSystem;
+  systems::graphics::Monitor &m_monitor;
   VisibleRows m_rows;
   systems::graphics::IndexedBitmap m_picture;
   systems::graphics::Canvas m_screen;

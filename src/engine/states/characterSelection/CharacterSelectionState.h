@@ -1,13 +1,14 @@
 #ifndef ENGINE_STATES_CHARACTERSELECTION_CHARACTERSELECTIONSTATE_H_
 #define ENGINE_STATES_CHARACTERSELECTION_CHARACTERSELECTIONSTATE_H_
 
-#include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/audio/Speaker.h"
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../AmigaDisplay.h"
 #include "../../GameOptions.h"
+#include "../../assets/Files.h"
 #include "../../effects/sequences/CharacterSelectionSequence.h"
 #include "../../street/session/GameSession.h"
 #include "../EngineState.h"
@@ -22,10 +23,10 @@ namespace characterSelection {
 
 class CharacterSelectionState : public EngineState {
 public:
-  CharacterSelectionState(systems::graphics::VideoSystem &videoSystem,
-                          systems::audio::AudioSystem &audioSystem,
+  CharacterSelectionState(systems::graphics::Monitor &monitor,
+                          systems::audio::Speaker &speaker,
                           systems::input::ControllerSystem &controllerSystem,
-                          GameOptions &options,
+                          assets::Files &files, GameOptions &options,
                           street::session::GameSession &session);
   ~CharacterSelectionState() override;
 
@@ -35,8 +36,8 @@ private:
   void draw();
   EngineStateId firstStreet() const;
 
-  systems::graphics::VideoSystem &m_videoSystem;
-  systems::audio::AudioSystem &m_audioSystem;
+  systems::graphics::Monitor &m_monitor;
+  systems::audio::Speaker &m_speaker;
   systems::input::ControllerSystem &m_controllerSystem;
   street::session::GameSession &m_session;
   effects::sequences::CharacterSelectionSequence m_selection;

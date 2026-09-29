@@ -1,4 +1,4 @@
 add_library(StatesMirage
     MirageState.cpp
     MirageState.h)
-target_link_libraries(StatesMirage PUBLIC States StatesShared VideoSystem)
+target_link_libraries(StatesMirage PUBLIC Assets Graphics States StatesShared)

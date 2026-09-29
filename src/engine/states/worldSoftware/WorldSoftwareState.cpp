@@ -25,15 +25,15 @@ const effects::color::FlashSteps EYES_FLASH = {
 
 } // namespace
 
-WorldSoftwareState::WorldSoftwareState(
-    systems::graphics::VideoSystem &videoSystem,
-    systems::audio::AudioSystem &audioSystem)
-    : m_audioSystem(audioSystem),
-      m_foto(videoSystem, PICTURE_PATH, DISPLAY_LINE, TIMINGS) {
-  m_audioSystem.loadSample(SAMPLE, SAMPLE_PATH);
+WorldSoftwareState::WorldSoftwareState(systems::graphics::Monitor &monitor,
+                                       systems::audio::Speaker &speaker,
+                                       assets::Files &files)
+    : m_speaker(speaker),
+      m_foto(monitor, files, PICTURE_PATH, DISPLAY_LINE, TIMINGS) {
+  m_speaker.loadSample(SAMPLE, SAMPLE_PATH);
 }
 
-WorldSoftwareState::~WorldSoftwareState() { m_audioSystem.clearSample(SAMPLE); }
+WorldSoftwareState::~WorldSoftwareState() { m_speaker.clearSample(SAMPLE); }
 
 std::optional<EngineStateId> WorldSoftwareState::update() {
   effects::sequences::FotoSequence &sequence = m_foto.sequence();
@@ -43,7 +43,7 @@ std::optional<EngineStateId> WorldSoftwareState::update() {
 
   if (sequence.frame() == sequence.holdStart()) {
     sequence.flash(EYES_COLOR, EYES_FLASH);
-    m_audioSystem.playSample(SAMPLE, systems::audio::Mixer::ALL_VOICES);
+    m_speaker.playSample(SAMPLE, systems::audio::Mixer::ALL_VOICES);
   }
 
   m_foto.advance();

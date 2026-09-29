@@ -24,14 +24,15 @@ screenPalette(const systems::graphics::IndexedBitmap &picture) {
 
 } // namespace
 
-AdvertsState::AdvertsState(systems::graphics::VideoSystem &videoSystem,
-                           systems::input::ControllerSystem &controllerSystem)
-    : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_rows(visibleRows(DISPLAY_LINE, SCREEN_HEIGHT, videoSystem.isNtsc())),
+AdvertsState::AdvertsState(systems::graphics::Monitor &monitor,
+                           systems::input::ControllerSystem &controllerSystem,
+                           assets::Files &files)
+    : m_monitor(monitor), m_controllerSystem(controllerSystem),
+      m_rows(visibleRows(DISPLAY_LINE, SCREEN_HEIGHT, monitor.isNtsc())),
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_palette(SCREEN_COLORS, effects::color::BLACK) {
   for (int slide = 0; slide < SLIDES; ++slide) {
-    m_slides.push_back(systems::graphics::loadIndexedBitmap(
+    m_slides.push_back(files.loadBitmap(
         assets::picturePath("p" + std::to_string(FIRST_SLIDE + slide))));
   }
 }
@@ -110,7 +111,7 @@ void AdvertsState::show() {
     m_screen.draw(m_slides[static_cast<std::size_t>(*m_copied)], 0,
                   -m_rows.first);
   }
-  m_videoSystem.show(m_screen.output());
+  m_monitor.show(m_screen.output());
 }
 
 } // namespace openfranko::src::engine::states::adverts

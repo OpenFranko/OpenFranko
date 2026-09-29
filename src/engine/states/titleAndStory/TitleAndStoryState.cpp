@@ -68,12 +68,12 @@ TitleAndStoryState::StoryImage::StoryImage(int resourceId, GameVersion version)
     : resource(assets::resourceName(resourceId, version)) {}
 
 TitleAndStoryState::TitleAndStoryState(
-    systems::graphics::VideoSystem &videoSystem,
-    systems::audio::AudioSystem &audioSystem,
-    systems::input::ControllerSystem &controllerSystem, GameVersion version)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_controllerSystem(controllerSystem), m_version(version),
-      m_titlePicture(systems::graphics::loadIndexedBitmap(assets::picturePath(
+    systems::graphics::Monitor &monitor, systems::audio::Speaker &speaker,
+    systems::input::ControllerSystem &controllerSystem, assets::Files &files,
+    GameVersion version)
+    : m_monitor(monitor), m_speaker(speaker),
+      m_controllerSystem(controllerSystem), m_files(files), m_version(version),
+      m_titlePicture(files.loadBitmap(assets::picturePath(
           assets::resourceName(assets::TITLE_SCREEN, version)))),
       m_frame(STORY_FRAMES, version), m_picture(STORY_PICTURES, version),
       m_text(STORY_TEXTS, version), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
@@ -86,7 +86,7 @@ TitleAndStoryState::TitleAndStoryState(
               ? VERSION12_FRAMES_PER_ANIMATION_FRAME
               : effects::sequences::StorySequence::FRAMES_PER_ANIMATION_FRAME) {
   if (m_version == GameVersion::V12) {
-    m_strip.emplace(videoSystem);
+    m_strip.emplace(monitor, files);
   }
 }
 
@@ -94,7 +94,7 @@ std::optional<EngineStateId> TitleAndStoryState::update() {
   m_stripShown = false;
   const std::optional<EngineStateId> next = runTitle();
   if (!next && !m_stripShown) {
-    m_videoSystem.show(m_screen.output());
+    m_monitor.show(m_screen.output());
   }
   return next;
 }
@@ -157,7 +157,7 @@ std::optional<EngineStateId> TitleAndStoryState::runPages() {
 std::optional<EngineStateId> TitleAndStoryState::runStory() {
   if (m_phase == Phase::MusicFade) {
     m_screen.fill(m_background);
-    if (m_musicFade.advance(m_audioSystem)) {
+    if (m_musicFade.advance(m_speaker)) {
       return EngineStateId::HighScore;
     }
     return std::nullopt;
@@ -230,8 +230,7 @@ void TitleAndStoryState::drawStory(
 void TitleAndStoryState::drawStoryImage(StoryImage &image, int index, int x,
                                         int y, bool masked) {
   if (image.index != index) {
-    image.bitmap = systems::graphics::loadIndexedBitmap(
-        assets::partPath(image.resource, index));
+    image.bitmap = m_files.loadBitmap(assets::partPath(image.resource, index));
     image.index = index;
   }
   m_screen.setPalette(image.bitmap.palette);

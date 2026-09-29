@@ -4,23 +4,22 @@
 
 namespace openfranko::src::engine::states::ending {
 
-EndingState::EndingState(systems::graphics::VideoSystem &videoSystem,
-                         systems::audio::AudioSystem &audioSystem,
+EndingState::EndingState(systems::graphics::Monitor &monitor,
+                         street::scenes::StreetHost &host,
                          systems::input::ControllerSystem &controllerSystem,
                          const GameOptions &options,
                          street::session::GameSession &session)
-    : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_host(audioSystem, session.version),
-      m_scene(m_host, session, options.ntsc),
+    : m_monitor(monitor), m_controllerSystem(controllerSystem),
+      m_scene(host, session, options.ntsc),
       m_rows(visibleRows(m_scene.displayLine(),
                          street::scenes::EndingScene::SCREEN_HEIGHT,
                          options.ntsc)) {
-  m_videoSystem.setNtsc(options.ntsc);
+  m_monitor.setNtsc(options.ntsc);
 }
 
 std::optional<EngineStateId> EndingState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  shared::showSceneFrame(m_videoSystem, m_scene.output(), m_rows);
+  shared::showSceneFrame(m_monitor, m_scene.output(), m_rows);
   if (m_scene.isFinished()) {
     return EngineStateId::HighScore;
   }

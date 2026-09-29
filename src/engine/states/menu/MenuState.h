@@ -1,12 +1,13 @@
 #ifndef ENGINE_STATES_MENU_MENUSTATE_H_
 #define ENGINE_STATES_MENU_MENUSTATE_H_
 
-#include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/audio/Speaker.h"
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../GameOptions.h"
+#include "../../assets/Files.h"
 #include "../../effects/sequences/AttractSequence.h"
 #include "../../effects/sequences/MenuSequence.h"
 #include "../../street/session/GameSession.h"
@@ -23,10 +24,11 @@ namespace menu {
 
 class MenuState : public EngineState {
 public:
-  MenuState(systems::graphics::VideoSystem &videoSystem,
-            systems::audio::AudioSystem &audioSystem,
+  MenuState(systems::graphics::Monitor &monitor,
+            systems::audio::Speaker &speaker,
             systems::input::ControllerSystem &controllerSystem,
-            GameOptions &options, street::session::GameSession &session);
+            assets::Files &files, GameOptions &options,
+            street::session::GameSession &session);
 
   std::optional<EngineStateId> update() override;
 
@@ -41,8 +43,8 @@ private:
   void drawHiscoreRow(int row);
   void show(const systems::graphics::Canvas &screen);
 
-  systems::graphics::VideoSystem &m_videoSystem;
-  systems::audio::AudioSystem &m_audioSystem;
+  systems::graphics::Monitor &m_monitor;
+  systems::audio::Speaker &m_speaker;
   systems::input::ControllerSystem &m_controllerSystem;
   GameOptions &m_options;
   street::session::GameSession &m_session;

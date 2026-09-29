@@ -41,12 +41,12 @@ screenPalette(const systems::graphics::IndexedBitmap &picture) {
   return palette;
 }
 
-std::vector<systems::graphics::IndexedBitmap> loadSprites(GameVersion version) {
+std::vector<systems::graphics::IndexedBitmap> loadSprites(assets::Files &files,
+                                                          GameVersion version) {
   const std::string name = assets::resourceName(SPRITE_SET, version);
   std::vector<systems::graphics::IndexedBitmap> sprites;
   for (int index = 0; index < SPRITES; ++index) {
-    sprites.push_back(
-        systems::graphics::loadIndexedBitmap(assets::imagePath(name, index)));
+    sprites.push_back(files.loadBitmap(assets::imagePath(name, index)));
   }
   return sprites;
 }
@@ -59,31 +59,30 @@ joystickFrom(const systems::input::ControllerSystem::ControllerStates &states) {
 } // namespace
 
 CharacterSelectionState::CharacterSelectionState(
-    systems::graphics::VideoSystem &videoSystem,
-    systems::audio::AudioSystem &audioSystem,
-    systems::input::ControllerSystem &controllerSystem, GameOptions &options,
-    street::session::GameSession &session)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
+    systems::graphics::Monitor &monitor, systems::audio::Speaker &speaker,
+    systems::input::ControllerSystem &controllerSystem, assets::Files &files,
+    GameOptions &options, street::session::GameSession &session)
+    : m_monitor(monitor), m_speaker(speaker),
       m_controllerSystem(controllerSystem), m_session(session),
       m_selection(options, session.nameScreenOpen ? 1 : 0, session.version),
       m_rows(visibleRows(pictureLine(DISPLAY_LINE, options.ntsc), SCREEN_HEIGHT,
                          options.ntsc)),
-      m_picture(systems::graphics::loadIndexedBitmap(assets::picturePath(
+      m_picture(files.loadBitmap(assets::picturePath(
           assets::resourceName(assets::HISCORE_LETTERS, session.version)))),
       m_screenPalette(screenPalette(m_picture)),
-      m_sprites(loadSprites(session.version)),
+      m_sprites(loadSprites(files, session.version)),
       m_screen(SCREEN_WIDTH, m_rows.count) {
-  m_videoSystem.setNtsc(options.ntsc);
+  m_monitor.setNtsc(options.ntsc);
   const std::string voices = assets::resourceName(SPRITE_SET, session.version);
   for (const Voice &voice : VOICES) {
-    m_audioSystem.loadSample(voice.name,
-                             assets::samplePath(voices, voice.sample));
+    m_speaker.loadSample(voice.name,
+                         assets::samplePath(files, voices, voice.sample));
   }
 }
 
 CharacterSelectionState::~CharacterSelectionState() {
   for (const Voice &voice : VOICES) {
-    m_audioSystem.clearSample(voice.name);
+    m_speaker.clearSample(voice.name);
   }
 }
 
@@ -101,15 +100,15 @@ std::optional<EngineStateId> CharacterSelectionState::update() {
   if (const auto sample = m_selection.sample()) {
     for (const Voice &voice : VOICES) {
       if (voice.sample == *sample) {
-        m_audioSystem.playSample(voice.name, systems::audio::Mixer::ALL_VOICES);
+        m_speaker.playSample(voice.name, systems::audio::Mixer::ALL_VOICES);
       }
     }
   }
   if (m_selection.stopsMusic()) {
-    m_audioSystem.stopMusic();
+    m_speaker.stopMusic();
   }
   if (const auto volume = m_selection.musicVolume()) {
-    m_audioSystem.setMusicVolume(*volume);
+    m_speaker.setMusicVolume(*volume);
   }
 
   if (m_selection.isFinished()) {
@@ -147,7 +146,7 @@ void CharacterSelectionState::draw() {
       }
     }
   }
-  m_videoSystem.show(m_screen.output());
+  m_monitor.show(m_screen.output());
 }
 
 } // namespace openfranko::src::engine::states::characterSelection

@@ -8,8 +8,6 @@
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
-#include <fstream>
-#include <iterator>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -41,14 +39,12 @@ constexpr int BOX_SIZE = 13;
 constexpr uint8_t BOX_INK = 15;
 const effects::color::FlashSteps BOX_FLASH = {{0xFFF, 5}, {0x000, 5}};
 
-std::vector<uint8_t> loadCards() {
-  std::ifstream file(CARDS_PATH, std::ios::binary);
-  if (!file) {
+std::vector<uint8_t> loadCards(assets::Files &files) {
+  if (!files.exists(CARDS_PATH)) {
     throw std::runtime_error(std::string("Failed to open code cards: ") +
                              CARDS_PATH);
   }
-  return {std::istreambuf_iterator<char>(file),
-          std::istreambuf_iterator<char>()};
+  return files.read(CARDS_PATH);
 }
 
 template <typename CellArray> CellArray randomCells() {
@@ -66,12 +62,13 @@ template <typename CellArray> CellArray randomCells() {
 }
 
 effects::protection::CodeCardCheck
-makeCheck(ProtectionCheckState::Check check) {
+makeCheck(assets::Files &files, ProtectionCheckState::Check check) {
   if (check == ProtectionCheckState::Check::Stage3) {
-    return effects::protection::CodeCardCheck::stageCheck(loadCards(),
+    return effects::protection::CodeCardCheck::stageCheck(loadCards(files),
                                                           randomCells<Tries>());
   }
-  return effects::protection::CodeCardCheck(loadCards(), randomCells<Cells>());
+  return effects::protection::CodeCardCheck(loadCards(files),
+                                            randomCells<Cells>());
 }
 
 void xorRect(systems::graphics::IndexedBitmap &image, int x, int y, int width,
@@ -90,12 +87,12 @@ void xorRect(systems::graphics::IndexedBitmap &image, int x, int y, int width,
 
 } // namespace
 
-ProtectionCheckState::ProtectionCheckState(
-    systems::graphics::VideoSystem &videoSystem,
-    systems::audio::AudioSystem &audioSystem, InkeyBuffer &keyboard,
-    Check check)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_keyboard(keyboard), m_kind(check), m_check(makeCheck(check)),
+ProtectionCheckState::ProtectionCheckState(systems::graphics::Monitor &monitor,
+                                           systems::audio::Speaker &speaker,
+                                           assets::Files &files,
+                                           InkeyBuffer &keyboard, Check check)
+    : m_monitor(monitor), m_speaker(speaker), m_files(files),
+      m_keyboard(keyboard), m_kind(check), m_check(makeCheck(files, check)),
       m_loadingFrames(check == Check::Stage3
                           ? STAGE_CHECK_FILES *
                                 street::ui::LoadingQueue::FILE_FRAMES
@@ -158,7 +155,7 @@ std::optional<EngineStateId> ProtectionCheckState::runCheck() {
       }
       break;
     case Step::FailureUnpacked:
-      m_audioSystem.stopMusic();
+      m_speaker.stopMusic();
       m_failureShown = true;
       m_step = Step::Hang;
       break;
@@ -195,14 +192,14 @@ void ProtectionCheckState::draw() {
   show();
 }
 
-void ProtectionCheckState::show() { m_videoSystem.show(m_screen.output()); }
+void ProtectionCheckState::show() { m_monitor.show(m_screen.output()); }
 
 const effects::protection::CodeCardCheck &ProtectionCheckState::check() const {
   return m_check;
 }
 
 void ProtectionCheckState::showQuestion() {
-  m_question = systems::graphics::loadIndexedBitmap(QUESTION_PATH);
+  m_question = m_files.loadBitmap(QUESTION_PATH);
   m_questionPalette = m_question.palette;
   m_border = m_questionPalette[0];
   m_flasher.start(BOX_INK, BOX_FLASH);
@@ -212,12 +209,12 @@ void ProtectionCheckState::showQuestion() {
 }
 
 void ProtectionCheckState::showFailure() {
-  const bool ntsc = m_videoSystem.isNtsc();
+  const bool ntsc = m_monitor.isNtsc();
   const VisibleRows rows = visibleRows(pictureLine(FAILURE_DISPLAY_LINE, ntsc),
                                        FAILURE_SCREEN_HEIGHT, ntsc);
   m_failureTop = rows.first;
   m_screen = systems::graphics::Canvas(FAILURE_SCREEN_WIDTH, rows.count);
-  m_failure = systems::graphics::loadIndexedBitmap(FAILURE_PATH);
+  m_failure = m_files.loadBitmap(FAILURE_PATH);
 }
 
 } // namespace openfranko::src::engine::states::protectionCheck

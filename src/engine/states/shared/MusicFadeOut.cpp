@@ -2,12 +2,12 @@
 
 namespace openfranko::src::engine::states::shared {
 
-bool MusicFadeOut::advance(systems::audio::AudioSystem &audioSystem) {
+bool MusicFadeOut::advance(systems::audio::Speaker &speaker) {
   if (m_volume >= 0) {
-    audioSystem.setMusicVolume(m_volume--);
+    speaker.setMusicVolume(m_volume--);
     return false;
   }
-  audioSystem.stopMusic();
+  speaker.stopMusic();
   return true;
 }
 

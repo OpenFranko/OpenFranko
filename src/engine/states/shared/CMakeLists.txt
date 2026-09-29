@@ -13,6 +13,6 @@ add_library(StatesShared
     StreetVideo.cpp
     StreetVideo.h)
 target_link_libraries(StatesShared
-    PUBLIC Audio AudioSystem Common EffectsSequences Graphics Input States
-           StreetCore StreetScenes StreetSession VideoSystem
-    PRIVATE Assets StreetUi)
+    PUBLIC Assets Audio Common EffectsSequences Graphics Input States StreetCore
+           StreetScenes StreetSession
+    PRIVATE StreetUi)

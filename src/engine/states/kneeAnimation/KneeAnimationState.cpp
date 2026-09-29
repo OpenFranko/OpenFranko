@@ -43,31 +43,31 @@ constexpr int CLOSED_FRAME = CLOSE_FRAME + SCREENS * SCREEN_CLOSE_VBLS;
 } // namespace
 
 KneeAnimationState::KneeAnimationState(
-    systems::graphics::VideoSystem &videoSystem,
-    systems::audio::AudioSystem &audioSystem,
-    systems::input::ControllerSystem &controllerSystem, GameVersion version)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_version(version), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT) {
+    systems::graphics::Monitor &monitor, systems::audio::Speaker &speaker,
+    systems::input::ControllerSystem &controllerSystem, assets::Files &files,
+    GameVersion version)
+    : m_monitor(monitor), m_speaker(speaker), m_version(version),
+      m_screen(SCREEN_WIDTH, SCREEN_HEIGHT) {
   const bool version12 = m_version == GameVersion::V12;
   if (!version12) {
     controllerSystem.clearFireLatch();
   }
   const std::string images = assets::resourceName(IMAGE_SET, m_version);
   for (int image = 0; image < IMAGES; ++image) {
-    m_images.push_back(
-        systems::graphics::loadIndexedBitmap(assets::partPath(images, image)));
+    m_images.push_back(files.loadBitmap(assets::partPath(images, image)));
   }
-  m_audioSystem.loadSample(
-      SAMPLE,
-      version12
-          ? assets::samplePath(VERSION12_SAMPLE_BANK, VERSION12_SAMPLE_NUMBER)
-          : assets::samplePath(assets::resourceName(SAMPLE_BANK, m_version),
-                               SAMPLE_NUMBER));
-  m_audioSystem.loadMusic(
+  m_speaker.loadSample(
+      SAMPLE, version12
+                  ? assets::samplePath(files, VERSION12_SAMPLE_BANK,
+                                       VERSION12_SAMPLE_NUMBER)
+                  : assets::samplePath(
+                        files, assets::resourceName(SAMPLE_BANK, m_version),
+                        SAMPLE_NUMBER));
+  m_speaker.loadMusic(
       assets::musicPath(assets::resourceName(assets::MENU_TUNE, m_version)));
 }
 
-KneeAnimationState::~KneeAnimationState() { m_audioSystem.clearSample(SAMPLE); }
+KneeAnimationState::~KneeAnimationState() { m_speaker.clearSample(SAMPLE); }
 
 std::optional<EngineStateId> KneeAnimationState::update() {
   const int time = m_frame - OPEN_FRAMES;
@@ -77,15 +77,14 @@ std::optional<EngineStateId> KneeAnimationState::update() {
 
   const bool version12 = m_version == GameVersion::V12;
   if (time == SAMPLE_FRAME) {
-    m_audioSystem.playSample(SAMPLE, version12
-                                         ? VERSION12_SAMPLE_VOICES
-                                         : systems::audio::Mixer::ALL_VOICES);
+    m_speaker.playSample(SAMPLE, version12 ? VERSION12_SAMPLE_VOICES
+                                           : systems::audio::Mixer::ALL_VOICES);
   }
   if (time == MUSIC_FRAME) {
-    m_audioSystem.playMusic();
+    m_speaker.playMusic();
   }
   if (version12 && time == MUSIC_FRAME + TEMPO_WAIT) {
-    m_audioSystem.setMusicTempo(VERSION12_TEMPO);
+    m_speaker.setMusicTempo(VERSION12_TEMPO);
   }
 
   const int copied = std::min(time / FRAMES_PER_UNPACK, IMAGES);
@@ -98,7 +97,7 @@ std::optional<EngineStateId> KneeAnimationState::update() {
     m_screen.setPalette(image.palette);
     m_screen.draw(image, 0, 0);
   }
-  m_videoSystem.show(m_screen.output());
+  m_monitor.show(m_screen.output());
 
   ++m_frame;
   return std::nullopt;

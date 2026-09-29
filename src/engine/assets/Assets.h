@@ -2,6 +2,7 @@
 #define ENGINE_ASSETS_ASSETS_H_
 
 #include "../GameVersion.h"
+#include "Files.h"
 
 #include <string>
 
@@ -32,7 +33,7 @@ std::string partPath(const std::string &name, int part,
 std::string musicPath(const std::string &name,
                       const std::string &directory = DIRECTORY);
 
-std::string samplePath(const std::string &name, int sample,
+std::string samplePath(const Files &files, const std::string &name, int sample,
                        const std::string &directory = DIRECTORY);
 
 } // namespace assets

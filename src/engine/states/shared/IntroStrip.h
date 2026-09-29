@@ -3,8 +3,9 @@
 
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
 #include "../../AmigaDisplay.h"
+#include "../../assets/Files.h"
 #include "../../effects/sequences/BlyskSequence.h"
 #include "../../street/core/EndingCredits.h"
 
@@ -23,8 +24,8 @@ class IntroStrip {
 public:
   static constexpr int PAGES_BEFORE_KNEE = 2;
 
-  explicit IntroStrip(systems::graphics::VideoSystem &videoSystem,
-                      const std::string &directory = "assets");
+  IntroStrip(systems::graphics::Monitor &monitor, assets::Files &files,
+             const std::string &directory = "assets");
 
   int pages() const;
   void show(const effects::sequences::BlyskSequence &sequence);
@@ -35,7 +36,8 @@ private:
   void pasteGlyph(int x, int y, int image);
   const systems::graphics::IndexedBitmap *glyph(int image);
 
-  systems::graphics::VideoSystem &m_videoSystem;
+  systems::graphics::Monitor &m_monitor;
+  assets::Files &m_files;
   std::string m_directory;
   std::vector<street::core::CreditPage> m_pages;
   std::map<int, std::optional<systems::graphics::IndexedBitmap>> m_glyphs;

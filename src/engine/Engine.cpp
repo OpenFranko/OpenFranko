@@ -63,6 +63,11 @@ systems::input::KeyMode keyMode(states::EngineStateId state) {
   return systems::input::KeyMode::FrontEnd;
 }
 
+void saveHighScores(const street::core::HighScoreTable &table) {
+  street::core::writeHighScoreFile(table,
+                                   street::core::HighScoreTable::FILE_NAME);
+}
+
 } // namespace
 
 Engine::Engine()
@@ -125,6 +130,7 @@ void Engine::switchState(states::EngineStateId nextState) {
 #endif
   m_videoSystem.clear();
   m_currentState.reset();
+  m_streetHost.reset();
   m_booting = nextState == states::EngineStateId::Mirage;
   m_controllerSystem.setKeyMode(keyMode(nextState));
   if (nextState != states::EngineStateId::Menu) {
@@ -134,107 +140,125 @@ void Engine::switchState(states::EngineStateId nextState) {
   switch (nextState) {
   case states::EngineStateId::Mirage:
     m_currentState =
-        std::make_unique<states::mirage::MirageState>(m_videoSystem);
+        std::make_unique<states::mirage::MirageState>(m_videoSystem, m_files);
     break;
   case states::EngineStateId::SpiderLogo:
     m_currentState = std::make_unique<states::spiderLogo::SpiderLogoState>(
-        m_videoSystem, m_audioSystem);
+        m_videoSystem, m_audioSystem, m_files);
     break;
   case states::EngineStateId::Adverts:
     m_currentState = std::make_unique<states::adverts::AdvertsState>(
-        m_videoSystem, m_controllerSystem);
+        m_videoSystem, m_controllerSystem, m_files);
     break;
   case states::EngineStateId::Presents:
     m_currentState = std::make_unique<states::presents::PresentsState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem);
+        m_videoSystem, m_audioSystem, m_controllerSystem, m_files);
     break;
   case states::EngineStateId::WorldSoftware:
     m_currentState =
         std::make_unique<states::worldSoftware::WorldSoftwareState>(
-            m_videoSystem, m_audioSystem);
+            m_videoSystem, m_audioSystem, m_files);
     break;
   case states::EngineStateId::KneeAnimation:
     m_currentState =
         std::make_unique<states::kneeAnimation::KneeAnimationState>(
-            m_videoSystem, m_audioSystem, m_controllerSystem,
+            m_videoSystem, m_audioSystem, m_controllerSystem, m_files,
             m_session.version);
     break;
   case states::EngineStateId::TitleAndStory:
     m_currentState =
         std::make_unique<states::titleAndStory::TitleAndStoryState>(
-            m_videoSystem, m_audioSystem, m_controllerSystem,
+            m_videoSystem, m_audioSystem, m_controllerSystem, m_files,
             m_session.version);
     break;
   case states::EngineStateId::ProtectionCheck:
     m_currentState =
         std::make_unique<states::protectionCheck::ProtectionCheckState>(
-            m_videoSystem, m_audioSystem, m_session.keyboard);
+            m_videoSystem, m_audioSystem, m_files, m_session.keyboard);
     break;
   case states::EngineStateId::Menu:
     m_currentState = std::make_unique<states::menu::MenuState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, m_audioSystem, m_controllerSystem, m_files, m_options,
+        m_session);
     break;
   case states::EngineStateId::CharacterSelectionSequence:
     m_currentState =
         std::make_unique<states::characterSelection::CharacterSelectionState>(
-            m_videoSystem, m_audioSystem, m_controllerSystem, m_options,
-            m_session);
+            m_videoSystem, m_audioSystem, m_controllerSystem, m_files,
+            m_options, m_session);
     break;
   case states::EngineStateId::Level1:
     m_currentState = std::make_unique<states::level1::Level1State>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   case states::EngineStateId::Level1Boss:
     m_currentState = std::make_unique<states::level1::Level1BossState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   case states::EngineStateId::Level1Car:
     m_currentState = std::make_unique<states::level1::Level1CarState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   case states::EngineStateId::Level2:
     m_currentState = std::make_unique<states::level2::Level2State>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   case states::EngineStateId::Level2Boss:
     m_currentState = std::make_unique<states::level2::Level2BossState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   case states::EngineStateId::Level2Car:
     m_currentState = std::make_unique<states::level2::Level2CarState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   case states::EngineStateId::StageProtectionCheck:
     m_currentState =
         std::make_unique<states::protectionCheck::ProtectionCheckState>(
-            m_videoSystem, m_audioSystem, m_session.keyboard,
+            m_videoSystem, m_audioSystem, m_files, m_session.keyboard,
             states::protectionCheck::ProtectionCheckState::Check::Stage3);
     break;
   case states::EngineStateId::Level3:
     m_currentState = std::make_unique<states::level3::Level3State>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   case states::EngineStateId::Level3Boss:
     m_currentState = std::make_unique<states::level3::Level3BossState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   case states::EngineStateId::Ending:
     m_currentState = std::make_unique<states::ending::EndingState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   case states::EngineStateId::GameOver:
     m_currentState = std::make_unique<states::gameOver::GameOverState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   case states::EngineStateId::HighScore:
     m_currentState = std::make_unique<states::highScore::HighScoreState>(
-        m_videoSystem, m_audioSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_options, m_session, saveHighScores);
     break;
   case states::EngineStateId::Continue:
     m_currentState = std::make_unique<states::continueSelect::ContinueState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_options, m_session);
+        m_videoSystem, makeStreetHost(), m_controllerSystem, m_options,
+        m_session);
     break;
   }
+}
+
+states::shared::EngineStreetHost &Engine::makeStreetHost() {
+  m_streetHost = std::make_unique<states::shared::EngineStreetHost>(
+      m_audioSystem, m_session.version);
+  return *m_streetHost;
 }
 
 void Engine::update() {

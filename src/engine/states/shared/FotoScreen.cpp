@@ -18,12 +18,13 @@ screenPalette(const systems::graphics::IndexedBitmap &picture) {
 
 } // namespace
 
-FotoScreen::FotoScreen(systems::graphics::VideoSystem &videoSystem,
-                       const std::string &picturePath, int displayLine,
+FotoScreen::FotoScreen(systems::graphics::Monitor &monitor,
+                       assets::Files &files, const std::string &picturePath,
+                       int displayLine,
                        const effects::sequences::FotoSequence::Timings &timings)
-    : m_videoSystem(videoSystem),
-      m_rows(visibleRows(displayLine, SCREEN_HEIGHT, videoSystem.isNtsc())),
-      m_picture(systems::graphics::loadIndexedBitmap(picturePath)),
+    : m_monitor(monitor),
+      m_rows(visibleRows(displayLine, SCREEN_HEIGHT, monitor.isNtsc())),
+      m_picture(files.loadBitmap(picturePath)),
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_sequence(screenPalette(m_picture), timings) {}
 
@@ -37,7 +38,7 @@ void FotoScreen::advance() {
   } else {
     m_screen.fill(effects::color::BLACK);
   }
-  m_videoSystem.show(m_screen.output());
+  m_monitor.show(m_screen.output());
 }
 
 } // namespace openfranko::src::engine::states::shared

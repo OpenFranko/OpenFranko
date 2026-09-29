@@ -1,8 +1,9 @@
 #ifndef ENGINE_STATES_WORLDSOFTWARE_WORLDSOFTWARESTATE_H_
 #define ENGINE_STATES_WORLDSOFTWARE_WORLDSOFTWARESTATE_H_
 
-#include "../../../systems/audio/AudioSystem.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/audio/Speaker.h"
+#include "../../../systems/graphics/Monitor.h"
+#include "../../assets/Files.h"
 #include "../EngineState.h"
 #include "../shared/FotoScreen.h"
 
@@ -14,14 +15,14 @@ namespace worldSoftware {
 
 class WorldSoftwareState : public EngineState {
 public:
-  WorldSoftwareState(systems::graphics::VideoSystem &videoSystem,
-                     systems::audio::AudioSystem &audioSystem);
+  WorldSoftwareState(systems::graphics::Monitor &monitor,
+                     systems::audio::Speaker &speaker, assets::Files &files);
   ~WorldSoftwareState() override;
 
   std::optional<EngineStateId> update() override;
 
 private:
-  systems::audio::AudioSystem &m_audioSystem;
+  systems::audio::Speaker &m_speaker;
   shared::FotoScreen m_foto;
 };
 

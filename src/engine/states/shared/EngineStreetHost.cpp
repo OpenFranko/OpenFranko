@@ -48,16 +48,16 @@ std::optional<int> numberAfter(const std::string &text,
 
 } // namespace
 
-EngineStreetHost::EngineStreetHost(systems::audio::AudioSystem &audioSystem,
+EngineStreetHost::EngineStreetHost(systems::audio::Speaker &speaker,
                                    GameVersion version, std::string directory)
-    : m_audioSystem(audioSystem), m_version(version),
-      m_directory(std::move(directory)), m_random(std::random_device{}()) {}
+    : m_speaker(speaker), m_version(version), m_directory(std::move(directory)),
+      m_random(std::random_device{}()) {}
 
 EngineStreetHost::~EngineStreetHost() {
-  m_audioSystem.setSampleLooping(false);
+  m_speaker.setSampleLooping(false);
   for (const auto &entry : m_samples) {
     for (int sample : entry.second) {
-      m_audioSystem.clearSample(sampleName(entry.first, sample));
+      m_speaker.clearSample(sampleName(entry.first, sample));
     }
   }
 }
@@ -113,36 +113,36 @@ street::core::Picture EngineStreetHost::loadPanelPicture(int part) {
 }
 
 void EngineStreetHost::loadMusic(int resource) {
-  m_audioSystem.loadMusic(musicPath(resource));
+  m_speaker.loadMusic(musicPath(resource));
 }
 
 bool EngineStreetHost::isMusicLoaded(int resource) const {
-  return m_audioSystem.loadedMusic() == musicPath(resource);
+  return m_speaker.loadedMusic() == musicPath(resource);
 }
 
-void EngineStreetHost::playMusic() { m_audioSystem.playMusic(); }
+void EngineStreetHost::playMusic() { m_speaker.playMusic(); }
 
-void EngineStreetHost::stopMusic() { m_audioSystem.stopMusic(); }
+void EngineStreetHost::stopMusic() { m_speaker.stopMusic(); }
 
 void EngineStreetHost::setMusicVolume(int volume) {
-  m_audioSystem.setMusicVolume(volume);
+  m_speaker.setMusicVolume(volume);
 }
 
 void EngineStreetHost::setMusicTempo(int tempo) {
-  m_audioSystem.setMusicTempoScale(menuTuneScale(tempo));
+  m_speaker.setMusicTempoScale(menuTuneScale(tempo));
 }
 
 void EngineStreetHost::playSample(int bank, int sample, int voices) {
-  m_audioSystem.playSample(sampleName(bank, sample), voices);
+  m_speaker.playSample(sampleName(bank, sample), voices);
 }
 
 void EngineStreetHost::playSampleAt(int bank, int sample, int voices,
                                     int frequency) {
-  m_audioSystem.playSampleAt(sampleName(bank, sample), voices, frequency);
+  m_speaker.playSampleAt(sampleName(bank, sample), voices, frequency);
 }
 
 void EngineStreetHost::setSampleLooping(bool loop) {
-  m_audioSystem.setSampleLooping(loop);
+  m_speaker.setSampleLooping(loop);
 }
 
 int EngineStreetHost::random(int limit) {
@@ -208,14 +208,14 @@ void EngineStreetHost::loadSamples(int resource, int bank) {
     if (!sample || entry.path().extension() != ".wav") {
       continue;
     }
-    m_audioSystem.loadSample(sampleName(bank, *sample), entry.path().string());
+    m_speaker.loadSample(sampleName(bank, *sample), entry.path().string());
     m_samples[bank].push_back(*sample);
   }
 }
 
 void EngineStreetHost::clearSamples(int bank) {
   for (int sample : m_samples[bank]) {
-    m_audioSystem.clearSample(sampleName(bank, sample));
+    m_speaker.clearSample(sampleName(bank, sample));
   }
   m_samples[bank].clear();
 }

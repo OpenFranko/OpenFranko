@@ -1,6 +1,7 @@
 add_subdirectory(amal)
 add_subdirectory(assets)
 add_subdirectory(effects)
+add_subdirectory(states)
 add_subdirectory(street)
 
 set(AMIGA_DISPLAY_TEST_TARGET amigaDisplayTest)

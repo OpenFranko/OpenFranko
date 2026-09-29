@@ -1,12 +1,13 @@
 #ifndef ENGINE_STATES_PROTECTIONCHECK_PROTECTIONCHECKSTATE_H_
 #define ENGINE_STATES_PROTECTIONCHECK_PROTECTIONCHECKSTATE_H_
 
-#include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/audio/Speaker.h"
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
 #include "../../AmigaDisplay.h"
 #include "../../InkeyBuffer.h"
+#include "../../assets/Files.h"
 #include "../../effects/color/PaletteFlasher.h"
 #include "../../effects/protection/CodeCardCheck.h"
 #include "../EngineState.h"
@@ -21,8 +22,8 @@ class ProtectionCheckState : public EngineState {
 public:
   enum class Check { Title, Stage3 };
 
-  ProtectionCheckState(systems::graphics::VideoSystem &videoSystem,
-                       systems::audio::AudioSystem &audioSystem,
+  ProtectionCheckState(systems::graphics::Monitor &monitor,
+                       systems::audio::Speaker &speaker, assets::Files &files,
                        InkeyBuffer &keyboard, Check check = Check::Title);
 
   std::optional<EngineStateId> update() override;
@@ -39,8 +40,9 @@ private:
   void draw();
   void show();
 
-  systems::graphics::VideoSystem &m_videoSystem;
-  systems::audio::AudioSystem &m_audioSystem;
+  systems::graphics::Monitor &m_monitor;
+  systems::audio::Speaker &m_speaker;
+  assets::Files &m_files;
   InkeyBuffer &m_keyboard;
   Check m_kind;
   effects::protection::CodeCardCheck m_check;

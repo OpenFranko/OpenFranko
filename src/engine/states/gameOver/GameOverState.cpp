@@ -4,23 +4,23 @@
 
 namespace openfranko::src::engine::states::gameOver {
 
-GameOverState::GameOverState(systems::graphics::VideoSystem &videoSystem,
-                             systems::audio::AudioSystem &audioSystem,
+GameOverState::GameOverState(systems::graphics::Monitor &monitor,
+                             street::scenes::StreetHost &host,
                              systems::input::ControllerSystem &controllerSystem,
                              const GameOptions &options,
                              street::session::GameSession &session)
-    : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_host(audioSystem, session.version), m_scene(m_host, session),
+    : m_monitor(monitor), m_controllerSystem(controllerSystem),
+      m_scene(host, session),
       m_rows(visibleRows(
           pictureLine(street::scenes::GameOverScene::DISPLAY_LINE,
                       options.ntsc),
           street::scenes::GameOverScene::SCREEN_HEIGHT, options.ntsc)) {
-  m_videoSystem.setNtsc(options.ntsc);
+  m_monitor.setNtsc(options.ntsc);
 }
 
 std::optional<EngineStateId> GameOverState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  shared::showSceneFrame(m_videoSystem, m_scene.output(), m_rows);
+  shared::showSceneFrame(m_monitor, m_scene.output(), m_rows);
   if (m_scene.isFinished()) {
     return EngineStateId::HighScore;
   }

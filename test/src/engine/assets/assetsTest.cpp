@@ -1,5 +1,6 @@
 #include "../../../../src/engine/assets/Assets.h"
 
+#include "../../../../src/engine/assets/DiskFiles.h"
 #include "../../../TemporaryPath.h"
 
 #include <catch2/catch_all.hpp>
@@ -88,13 +89,15 @@ SCENARIO("Asset paths follow the extractor's layout") {
     }
 
     THEN("A sample is found whatever its rate") {
-      REQUIRE(assets::samplePath("s50", 2, root) ==
+      const assets::DiskFiles files;
+      REQUIRE(assets::samplePath(files, "s50", 2, root) ==
               root + "/s50/s50_sam2_13160Hz.wav");
     }
 
     THEN("A missing sample has no path") {
-      REQUIRE(assets::samplePath("s50", 3, root).empty());
-      REQUIRE(assets::samplePath("s51", 1, root).empty());
+      const assets::DiskFiles files;
+      REQUIRE(assets::samplePath(files, "s50", 3, root).empty());
+      REQUIRE(assets::samplePath(files, "s51", 1, root).empty());
     }
   }
 }

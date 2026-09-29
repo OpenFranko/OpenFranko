@@ -1,12 +1,13 @@
 #ifndef ENGINE_STATES_SPIDERLOGO_SPIDERLOGOSTATE_H_
 #define ENGINE_STATES_SPIDERLOGO_SPIDERLOGOSTATE_H_
 
-#include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/audio/Speaker.h"
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
 #include "../../AmigaDisplay.h"
 #include "../../amal/Machine.h"
+#include "../../assets/Files.h"
 #include "../../effects/sequences/FotoSequence.h"
 #include "../EngineState.h"
 
@@ -21,8 +22,8 @@ namespace spiderLogo {
 
 class SpiderLogoState : public EngineState {
 public:
-  SpiderLogoState(systems::graphics::VideoSystem &videoSystem,
-                  systems::audio::AudioSystem &audioSystem);
+  SpiderLogoState(systems::graphics::Monitor &monitor,
+                  systems::audio::Speaker &speaker, assets::Files &files);
   ~SpiderLogoState() override;
 
   std::optional<EngineStateId> update() override;
@@ -35,8 +36,8 @@ private:
   void showBlack(systems::graphics::Canvas &screen, bool hires);
   void drawBob(systems::graphics::Canvas &screen, int top) const;
 
-  systems::graphics::VideoSystem &m_videoSystem;
-  systems::audio::AudioSystem &m_audioSystem;
+  systems::graphics::Monitor &m_monitor;
+  systems::audio::Speaker &m_speaker;
   std::vector<systems::graphics::IndexedBitmap> m_images;
   systems::graphics::IndexedBitmap m_logo;
   systems::graphics::IndexedBitmap m_water;

@@ -1,7 +1,8 @@
 #ifndef ENGINE_STATES_MIRAGE_MIRAGESTATE_H_
 #define ENGINE_STATES_MIRAGE_MIRAGESTATE_H_
 
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
+#include "../../assets/Files.h"
 #include "../EngineState.h"
 #include "../shared/FotoScreen.h"
 
@@ -13,7 +14,7 @@ namespace mirage {
 
 class MirageState : public EngineState {
 public:
-  explicit MirageState(systems::graphics::VideoSystem &videoSystem);
+  MirageState(systems::graphics::Monitor &monitor, assets::Files &files);
 
   std::optional<EngineStateId> update() override;
 

@@ -1,6 +1,8 @@
 #ifndef SYSTEMS_AUDIO_AUDIOSYSTEM_H_
 #define SYSTEMS_AUDIO_AUDIOSYSTEM_H_
 
+#include "audio/Speaker.h"
+
 #include <memory>
 #include <string>
 
@@ -9,30 +11,31 @@ namespace src {
 namespace systems {
 namespace audio {
 
-class AudioSystem {
+class AudioSystem : public Speaker {
 public:
   AudioSystem();
-  ~AudioSystem();
+  ~AudioSystem() override;
 
   AudioSystem(const AudioSystem &) = delete;
   AudioSystem &operator=(const AudioSystem &) = delete;
 
-  void loadMusic(const std::string &path);
+  void loadMusic(const std::string &path) override;
   void clearMusic();
-  const std::string &loadedMusic() const;
-  void loadSample(const std::string &name, const std::string &path);
-  void clearSample(const std::string &name);
-  void playMusic();
-  void playMusicOnce();
-  void stopMusic();
-  void setMusicVolume(int volume);
-  void setMusicTempoScale(double scale);
-  void setMusicTempo(int tempo);
+  const std::string &loadedMusic() const override;
+  void loadSample(const std::string &name, const std::string &path) override;
+  void clearSample(const std::string &name) override;
+  void playMusic() override;
+  void playMusicOnce() override;
+  void stopMusic() override;
+  void setMusicVolume(int volume) override;
+  void setMusicTempoScale(double scale) override;
+  void setMusicTempo(int tempo) override;
   void setVblRate(int hertz);
-  void setLowPassFilter(bool on);
-  void playSample(const std::string &name, int voiceMask);
-  void playSampleAt(const std::string &name, int voiceMask, int frequency);
-  void setSampleLooping(bool looping);
+  void setLowPassFilter(bool on) override;
+  void playSample(const std::string &name, int voiceMask) override;
+  void playSampleAt(const std::string &name, int voiceMask,
+                    int frequency) override;
+  void setSampleLooping(bool looping) override;
   void stopSamples();
   void update();
 

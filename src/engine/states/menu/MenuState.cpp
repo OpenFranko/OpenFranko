@@ -13,7 +13,6 @@ namespace openfranko::src::engine::states::menu {
 namespace {
 
 constexpr int BACKDROP = 0x3B8;
-constexpr int HISCORES = 0x3B9;
 constexpr int MENU_BOBS = 0x34;
 
 constexpr int MENU_SCREEN_WIDTH = 368;
@@ -40,19 +39,20 @@ systems::graphics::Canvas menuScreen(bool ntscDisplay) {
       visibleRows(MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay).count);
 }
 
-systems::graphics::IndexedBitmap loadPicture(int resource,
+systems::graphics::IndexedBitmap loadPicture(assets::Files &files, int resource,
                                              GameVersion version) {
-  return systems::graphics::loadIndexedBitmap(
+  return files.loadBitmap(
       assets::picturePath(assets::resourceName(resource, version)));
 }
 
-std::vector<systems::graphics::IndexedBitmap>
-loadSprites(int resource, int count, GameVersion version) {
+std::vector<systems::graphics::IndexedBitmap> loadSprites(assets::Files &files,
+                                                          int resource,
+                                                          int count,
+                                                          GameVersion version) {
   const std::string name = assets::resourceName(resource, version);
   std::vector<systems::graphics::IndexedBitmap> sprites;
   for (int index = 0; index < count; ++index) {
-    sprites.push_back(
-        systems::graphics::loadIndexedBitmap(assets::imagePath(name, index)));
+    sprites.push_back(files.loadBitmap(assets::imagePath(name, index)));
   }
   return sprites;
 }
@@ -96,31 +96,32 @@ bool isTouched(const effects::sequences::MenuSequence::Joystick &joystick) {
 
 } // namespace
 
-MenuState::MenuState(systems::graphics::VideoSystem &videoSystem,
-                     systems::audio::AudioSystem &audioSystem,
+MenuState::MenuState(systems::graphics::Monitor &monitor,
+                     systems::audio::Speaker &speaker,
                      systems::input::ControllerSystem &controllerSystem,
-                     GameOptions &options,
+                     assets::Files &files, GameOptions &options,
                      street::session::GameSession &session)
-    : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
+    : m_monitor(monitor), m_speaker(speaker),
       m_controllerSystem(controllerSystem), m_options(options),
-      m_session(session), m_backdrop(loadPicture(BACKDROP, session.version)),
-      m_title(loadPicture(assets::TITLE_SCREEN, session.version)),
-      m_hiscores(loadPicture(HISCORES, session.version)),
-      m_menuBobs(
-          loadSprites(MENU_BOBS, menuImages(session.version), session.version)),
-      m_letters(
-          loadSprites(assets::LETTER_SET, LETTER_IMAGES, session.version)),
+      m_session(session),
+      m_backdrop(loadPicture(files, BACKDROP, session.version)),
+      m_title(loadPicture(files, assets::TITLE_SCREEN, session.version)),
+      m_hiscores(loadPicture(files, assets::HISCORE_LETTERS, session.version)),
+      m_menuBobs(loadSprites(files, MENU_BOBS, menuImages(session.version),
+                             session.version)),
+      m_letters(loadSprites(files, assets::LETTER_SET, LETTER_IMAGES,
+                            session.version)),
       m_menuScreen(menuScreen(options.ntsc)),
       m_menu(options, resized(m_backdrop.palette, MENU_COLORS),
              session.keyboard, session.version),
       m_titlePalette(resized(m_title.palette, ATTRACT_COLORS)),
       m_hiscorePalette(resized(m_hiscores.palette, ATTRACT_COLORS)) {
-  m_videoSystem.setNtsc(options.ntsc);
+  m_monitor.setNtsc(options.ntsc);
   m_session.nameScreenOpen = false;
   if (session.version == GameVersion::V12) {
-    m_audioSystem.loadMusic(assets::musicPath(
+    m_speaker.loadMusic(assets::musicPath(
         assets::resourceName(assets::MENU_TUNE, session.version)));
-    m_audioSystem.playMusic();
+    m_speaker.playMusic();
     m_musicWait = effects::sequences::MenuSequence::VERSION12_MUSIC_WAIT;
   }
 }
@@ -129,8 +130,8 @@ std::optional<EngineStateId> MenuState::update() {
   const effects::sequences::MenuSequence::Joystick joystick =
       joystickFrom(m_controllerSystem.states);
   if (m_musicWait > 0 && --m_musicWait == 0) {
-    m_audioSystem.setMusicTempo(CONVERTED_MENU_TEMPO);
-    m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
+    m_speaker.setMusicTempo(CONVERTED_MENU_TEMPO);
+    m_speaker.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
   }
 
   if (m_attract && m_attractClosing == 0) {
@@ -156,10 +157,10 @@ std::optional<EngineStateId> MenuState::update() {
     street::session::typeCheatKey(m_session.textBuffer, key);
   }
   if (m_options.music != music) {
-    m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
+    m_speaker.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
   }
   if (m_options.bass != bass) {
-    m_audioSystem.setLowPassFilter(m_options.bass);
+    m_speaker.setLowPassFilter(m_options.bass);
   }
   if (m_options.ntsc != ntsc) {
     switchStandard();
@@ -198,11 +199,11 @@ void MenuState::advanceAttract(
 }
 
 void MenuState::switchStandard() {
-  m_videoSystem.setNtsc(m_options.ntsc);
+  m_monitor.setNtsc(m_options.ntsc);
   if (m_session.version == GameVersion::V12) {
-    m_audioSystem.setMusicTempo(menuTempo(m_options.ntsc));
+    m_speaker.setMusicTempo(menuTempo(m_options.ntsc));
   } else {
-    m_audioSystem.setMusicTempoScale(menuTuneScale(menuTempo(m_options.ntsc)));
+    m_speaker.setMusicTempoScale(menuTuneScale(menuTempo(m_options.ntsc)));
   }
   m_menuScreen = menuScreen(m_options.ntsc);
 }
@@ -210,7 +211,7 @@ void MenuState::switchStandard() {
 void MenuState::startAttract() {
   const VisibleRows rows =
       visibleRows(pictureLine(ATTRACT_DISPLAY_Y, m_options.ntsc),
-                  ATTRACT_SCREEN_HEIGHT, m_videoSystem.isNtsc());
+                  ATTRACT_SCREEN_HEIGHT, m_monitor.isNtsc());
   m_attractTop = rows.first;
   m_attractScreen = systems::graphics::Canvas(ATTRACT_SCREEN_WIDTH, rows.count);
   const effects::sequences::AttractSequence::Kind kind = m_nextAttract;
@@ -276,7 +277,7 @@ void MenuState::drawHiscoreRow(int row) {
 }
 
 void MenuState::show(const systems::graphics::Canvas &screen) {
-  m_videoSystem.show(screen.output());
+  m_monitor.show(screen.output());
 }
 
 } // namespace openfranko::src::engine::states::menu

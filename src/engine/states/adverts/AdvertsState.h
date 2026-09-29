@@ -3,9 +3,10 @@
 
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../AmigaDisplay.h"
+#include "../../assets/Files.h"
 #include "../../effects/color/PaletteFader.h"
 #include "../EngineState.h"
 
@@ -24,8 +25,9 @@ public:
   static constexpr int KLIKER_FRAMES = 100;
   static constexpr int FADE_SPEED = 7;
 
-  AdvertsState(systems::graphics::VideoSystem &videoSystem,
-               systems::input::ControllerSystem &controllerSystem);
+  AdvertsState(systems::graphics::Monitor &monitor,
+               systems::input::ControllerSystem &controllerSystem,
+               assets::Files &files);
 
   std::optional<EngineStateId> update() override;
 
@@ -44,7 +46,7 @@ private:
   void wait(int frames, Step next);
   void show();
 
-  systems::graphics::VideoSystem &m_videoSystem;
+  systems::graphics::Monitor &m_monitor;
   systems::input::ControllerSystem &m_controllerSystem;
   std::vector<systems::graphics::IndexedBitmap> m_slides;
   VisibleRows m_rows;

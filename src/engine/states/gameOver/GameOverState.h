@@ -1,14 +1,13 @@
 #ifndef ENGINE_STATES_GAMEOVER_GAMEOVERSTATE_H_
 #define ENGINE_STATES_GAMEOVER_GAMEOVERSTATE_H_
 
-#include "../../../systems/audio/AudioSystem.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../AmigaDisplay.h"
 #include "../../GameOptions.h"
 #include "../../street/scenes/GameOverScene.h"
+#include "../../street/scenes/StreetHost.h"
 #include "../EngineState.h"
-#include "../shared/EngineStreetHost.h"
 
 namespace openfranko {
 namespace src {
@@ -18,8 +17,8 @@ namespace gameOver {
 
 class GameOverState : public EngineState {
 public:
-  GameOverState(systems::graphics::VideoSystem &videoSystem,
-                systems::audio::AudioSystem &audioSystem,
+  GameOverState(systems::graphics::Monitor &monitor,
+                street::scenes::StreetHost &host,
                 systems::input::ControllerSystem &controllerSystem,
                 const GameOptions &options,
                 street::session::GameSession &session);
@@ -29,9 +28,8 @@ public:
   const street::scenes::GameOverScene &scene() const;
 
 private:
-  systems::graphics::VideoSystem &m_videoSystem;
+  systems::graphics::Monitor &m_monitor;
   systems::input::ControllerSystem &m_controllerSystem;
-  shared::EngineStreetHost m_host;
   street::scenes::GameOverScene m_scene;
   VisibleRows m_rows;
 };

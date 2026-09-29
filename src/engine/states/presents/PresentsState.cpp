@@ -4,11 +4,12 @@
 
 namespace openfranko::src::engine::states::presents {
 
-PresentsState::PresentsState(systems::graphics::VideoSystem &videoSystem,
-                             systems::audio::AudioSystem &audioSystem,
-                             systems::input::ControllerSystem &controllerSystem)
-    : m_audioSystem(audioSystem), m_controllerSystem(controllerSystem),
-      m_strip(videoSystem),
+PresentsState::PresentsState(systems::graphics::Monitor &monitor,
+                             systems::audio::Speaker &speaker,
+                             systems::input::ControllerSystem &controllerSystem,
+                             assets::Files &files)
+    : m_speaker(speaker), m_controllerSystem(controllerSystem),
+      m_strip(monitor, files),
       m_sequence(
           0, std::min(shared::IntroStrip::PAGES_BEFORE_KNEE, m_strip.pages())) {
   m_controllerSystem.clearFireLatch();
@@ -17,7 +18,7 @@ PresentsState::PresentsState(systems::graphics::VideoSystem &videoSystem,
 std::optional<EngineStateId> PresentsState::update() {
   if (m_musicFade) {
     m_strip.showBlack();
-    if (m_musicFade->advance(m_audioSystem)) {
+    if (m_musicFade->advance(m_speaker)) {
       return EngineStateId::HighScore;
     }
     return std::nullopt;

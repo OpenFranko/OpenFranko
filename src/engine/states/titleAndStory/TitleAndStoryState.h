@@ -1,12 +1,13 @@
 #ifndef ENGINE_STATES_TITLEANDSTORY_TITLEANDSTORYSTATE_H_
 #define ENGINE_STATES_TITLEANDSTORY_TITLEANDSTORYSTATE_H_
 
-#include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/audio/Speaker.h"
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../GameVersion.h"
+#include "../../assets/Files.h"
 #include "../../effects/sequences/BlyskSequence.h"
 #include "../../effects/sequences/FotoSequence.h"
 #include "../../effects/sequences/StorySequence.h"
@@ -25,9 +26,10 @@ namespace titleAndStory {
 
 class TitleAndStoryState : public EngineState {
 public:
-  TitleAndStoryState(systems::graphics::VideoSystem &videoSystem,
-                     systems::audio::AudioSystem &audioSystem,
+  TitleAndStoryState(systems::graphics::Monitor &monitor,
+                     systems::audio::Speaker &speaker,
                      systems::input::ControllerSystem &controllerSystem,
+                     assets::Files &files,
                      GameVersion version = GameVersion::V10);
 
   std::optional<EngineStateId> update() override;
@@ -58,9 +60,10 @@ private:
   void drawStory(const effects::sequences::StorySequence::View &view);
   void drawStoryImage(StoryImage &image, int index, int x, int y, bool masked);
 
-  systems::graphics::VideoSystem &m_videoSystem;
-  systems::audio::AudioSystem &m_audioSystem;
+  systems::graphics::Monitor &m_monitor;
+  systems::audio::Speaker &m_speaker;
   systems::input::ControllerSystem &m_controllerSystem;
+  assets::Files &m_files;
   GameVersion m_version;
   systems::graphics::IndexedBitmap m_titlePicture;
   StoryImage m_frame;

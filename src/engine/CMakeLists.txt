@@ -16,8 +16,9 @@ add_library(Engine
     Engine.cpp
     Engine.h)
 target_link_libraries(Engine
-    PUBLIC AudioSystem Common Input Platform States StreetSession VideoSystem
-    PRIVATE Assets StatesAdverts StatesCharacterSelection StatesContinueSelect
+    PUBLIC Assets AudioSystem Common Input Platform States StatesShared
+           StreetSession VideoSystem
+    PRIVATE StatesAdverts StatesCharacterSelection StatesContinueSelect
             StatesEnding StatesGameOver StatesHighScore StatesKneeAnimation
             StatesLevel1 StatesLevel2 StatesLevel3 StatesMenu StatesMirage
             StatesPresents StatesProtectionCheck StatesSpiderLogo

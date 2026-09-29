@@ -1,12 +1,13 @@
 #ifndef ENGINE_STATES_KNEEANIMATION_KNEEANIMATIONSTATE_H_
 #define ENGINE_STATES_KNEEANIMATION_KNEEANIMATIONSTATE_H_
 
-#include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/audio/Speaker.h"
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/graphics/Monitor.h"
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../GameVersion.h"
+#include "../../assets/Files.h"
 #include "../EngineState.h"
 
 #include <vector>
@@ -19,17 +20,18 @@ namespace kneeAnimation {
 
 class KneeAnimationState : public EngineState {
 public:
-  KneeAnimationState(systems::graphics::VideoSystem &videoSystem,
-                     systems::audio::AudioSystem &audioSystem,
+  KneeAnimationState(systems::graphics::Monitor &monitor,
+                     systems::audio::Speaker &speaker,
                      systems::input::ControllerSystem &controllerSystem,
+                     assets::Files &files,
                      GameVersion version = GameVersion::V10);
   ~KneeAnimationState() override;
 
   std::optional<EngineStateId> update() override;
 
 private:
-  systems::graphics::VideoSystem &m_videoSystem;
-  systems::audio::AudioSystem &m_audioSystem;
+  systems::graphics::Monitor &m_monitor;
+  systems::audio::Speaker &m_speaker;
   GameVersion m_version;
   std::vector<systems::graphics::IndexedBitmap> m_images;
   systems::graphics::Canvas m_screen;

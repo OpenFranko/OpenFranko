@@ -12,8 +12,9 @@ constexpr effects::sequences::FotoSequence ::Timings TIMINGS{5, 200, 5, 70,
 
 } // namespace
 
-MirageState::MirageState(systems::graphics::VideoSystem &videoSystem)
-    : m_foto(videoSystem, PICTURE_PATH, DISPLAY_LINE, TIMINGS) {}
+MirageState::MirageState(systems::graphics::Monitor &monitor,
+                         assets::Files &files)
+    : m_foto(monitor, files, PICTURE_PATH, DISPLAY_LINE, TIMINGS) {}
 
 std::optional<EngineStateId> MirageState::update() {
   if (m_foto.sequence().isFinished()) {

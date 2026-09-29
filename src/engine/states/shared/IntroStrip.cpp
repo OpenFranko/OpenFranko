@@ -6,8 +6,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <filesystem>
-#include <fstream>
-#include <sstream>
 
 namespace openfranko::src::engine::states::shared {
 namespace {
@@ -23,24 +21,26 @@ constexpr int STRIP_HEIGHT = 48;
 constexpr int STRIP_DISPLAY_LINE = 136;
 constexpr int STRIP_LEFT = 160;
 
-std::vector<street::core::CreditPage> loadPages(const std::string &directory) {
-  std::ifstream file(std::filesystem::path(directory) / INTRO_FILE);
-  if (!file) {
+std::vector<street::core::CreditPage> loadPages(assets::Files &files,
+                                                const std::string &directory) {
+  const std::string path =
+      (std::filesystem::path(directory) / INTRO_FILE).string();
+  if (!files.exists(path)) {
     return {};
   }
-  std::stringstream text;
-  text << file.rdbuf();
-  return street::core::EndingCredits::fromJson(text.str()).pages;
+  const std::vector<uint8_t> text = files.read(path);
+  return street::core::EndingCredits::fromJson(
+             std::string(text.begin(), text.end()))
+      .pages;
 }
 
 } // namespace
 
-IntroStrip::IntroStrip(systems::graphics::VideoSystem &videoSystem,
-                       const std::string &directory)
-    : m_videoSystem(videoSystem), m_directory(directory),
-      m_pages(loadPages(directory)),
-      m_rows(
-          visibleRows(FRAME_DISPLAY_LINE, FRAME_HEIGHT, videoSystem.isNtsc())),
+IntroStrip::IntroStrip(systems::graphics::Monitor &monitor,
+                       assets::Files &files, const std::string &directory)
+    : m_monitor(monitor), m_files(files), m_directory(directory),
+      m_pages(loadPages(files, directory)),
+      m_rows(visibleRows(FRAME_DISPLAY_LINE, FRAME_HEIGHT, monitor.isNtsc())),
       m_frame(FRAME_WIDTH, m_rows.count) {
   m_strip.width = STRIP_WIDTH;
   m_strip.height = STRIP_HEIGHT;
@@ -64,14 +64,14 @@ void IntroStrip::show(const effects::sequences::BlyskSequence &sequence) {
                STRIP_DISPLAY_LINE - FRAME_DISPLAY_LINE - m_rows.first);
   systems::graphics::Display display = m_frame.output();
   display.displayHeight = 2 * display.height;
-  m_videoSystem.show(display);
+  m_monitor.show(display);
 }
 
 void IntroStrip::showBlack() {
   m_frame.fill(effects::color::BLACK);
   systems::graphics::Display display = m_frame.output();
   display.displayHeight = 2 * display.height;
-  m_videoSystem.show(display);
+  m_monitor.show(display);
 }
 
 void IntroStrip::paste(int page) {
@@ -116,8 +116,8 @@ const systems::graphics::IndexedBitmap *IntroStrip::glyph(int image) {
     std::optional<systems::graphics::IndexedBitmap> bitmap;
     const std::string path =
         assets::imagePath(FONT_BOBS, image - 1, m_directory);
-    if (std::filesystem::exists(path)) {
-      bitmap = systems::graphics::loadIndexedBitmap(path);
+    if (m_files.exists(path)) {
+      bitmap = m_files.loadBitmap(path);
     }
     found = m_glyphs.emplace(image, std::move(bitmap)).first;
   }
