@@ -31,7 +31,7 @@ void run(MenuSequence &menu, int frames, const Joystick &joystick = NOTHING) {
   }
 }
 
-const MenuSequence::Bob &bob(const MenuSequence &menu, int number) {
+const effects::animation::Bob &bob(const MenuSequence &menu, int number) {
   return menu.bobs()[number - 1];
 }
 
@@ -264,7 +264,7 @@ SCENARIO("MenuSequence leaves through START") {
         REQUIRE(menu.palette() == AmigaPalette(16, 0x000));
         run(menu, 2);
         REQUIRE_FALSE(menu.isScreenShown());
-        for (const MenuSequence::Bob &shown : menu.bobs()) {
+        for (const effects::animation::Bob &shown : menu.bobs()) {
           REQUIRE_FALSE(shown.shown);
         }
         REQUIRE_FALSE(menu.isFinished());

@@ -5,8 +5,8 @@
 #include "../../GameVersion.h"
 #include "../animation/AmalAnim.h"
 #include "../animation/AmalMotion.h"
+#include "../animation/Bob.h"
 
-#include <cstdint>
 #include <optional>
 
 namespace openfranko {
@@ -23,22 +23,14 @@ public:
     bool fire = false;
   };
 
-  struct Bob {
-    bool shown = false;
-    int16_t x = 0;
-    int16_t y = 0;
-    int image = 0;
-    bool flipped = false;
-  };
-
   explicit CharacterSelectionSequence(GameOptions &options,
                                       int otherScreens = 0,
                                       GameVersion version = GameVersion::V10);
 
   void advance(const Joystick &joystick);
 
-  const Bob &hand() const;
-  const Bob &face() const;
+  const animation::Bob &hand() const;
+  const animation::Bob &face() const;
   std::optional<int> sample() const;
   std::optional<int> musicVolume() const;
   bool stopsMusic() const;
@@ -52,8 +44,8 @@ private:
 
   GameOptions &m_options;
   GameVersion m_version;
-  Bob m_hand;
-  Bob m_face;
+  animation::Bob m_hand;
+  animation::Bob m_face;
   animation::AmalMotion m_handMotion;
   animation::AmalAnim m_faceAnim;
   std::optional<int> m_confirmedAt;

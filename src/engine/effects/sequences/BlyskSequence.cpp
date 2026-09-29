@@ -3,7 +3,7 @@
 namespace openfranko::src::engine::effects::sequences {
 namespace {
 
-constexpr color::AmigaColor BLACK = 0x000;
+using color::BLACK;
 constexpr color::AmigaColor INK = 0xFFF;
 constexpr color::AmigaColor SHADE = 0xAAA;
 

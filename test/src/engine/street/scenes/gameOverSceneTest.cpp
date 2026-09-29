@@ -1,6 +1,8 @@
 #include "../../../../../src/engine/street/scenes/GameOverScene.h"
 #include "../../../../../src/engine/effects/color/Rainbow.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
+#include "../core/box.h"
+#include "FakeStreetHost.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <functional>
@@ -12,6 +14,8 @@ using namespace openfranko::src::engine::street::scenes;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::test::src::engine::street::scenes;
+using namespace openfranko::test::src::engine::street::core;
 using openfranko::src::systems::graphics::toArgb;
 
 namespace {
@@ -29,12 +33,6 @@ constexpr int16_t JOY_FIRE = 16;
 constexpr uint8_t SILHOUETTE = 1;
 constexpr uint8_t TITLE_INK = 2;
 
-Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
-  return Picture{
-      width, height, hotX, hotY,
-      std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
-}
-
 Picture graveyard() {
   Picture picture =
       box(GameOverScene::PICTURE_WIDTH, GameOverScene::PICTURE_HEIGHT, 0, 0, 0);
@@ -47,15 +45,8 @@ Picture graveyard() {
   return picture;
 }
 
-class FakeHost : public StreetHost {
+class FakeHost : public FakeStreetHost {
 public:
-  std::vector<std::pair<int, int>> spriteSets;
-  std::vector<int> pictures;
-  std::vector<int> music;
-  std::vector<int> volumes;
-  int musicStarts = 0;
-  int musicStops = 0;
-
   std::vector<Picture> loadSpriteSet(int resource, int sampleBank) override {
     spriteSets.emplace_back(resource, sampleBank);
     std::vector<Picture> frames;
@@ -71,34 +62,7 @@ public:
     return graveyard();
   }
 
-  effects::color::AmigaPalette loadPalette(int) override { return {}; }
-
-  std::vector<Picture> loadScenery(int) override { return {}; }
-
-  LevelScript loadLevelScript(int) override { return LevelScript{}; }
-
-  EndingCredits loadEndingCredits() override { return {}; }
-
   Picture loadPanelPicture(int) override { return box(304, 48, 0, 0, 7); }
-
-  void loadMusic(int resource) override { music.push_back(resource); }
-
-  bool isMusicLoaded(int) const override { return false; }
-
-  void playMusic() override { ++musicStarts; }
-
-  void stopMusic() override { ++musicStops; }
-
-  void setMusicVolume(int volume) override { volumes.push_back(volume); }
-  void setMusicTempo(int) override {}
-
-  void playSample(int, int, int) override {}
-
-  void playSampleAt(int, int, int, int) override {}
-
-  void setSampleLooping(bool) override {}
-
-  int random(int) override { return 0; }
 };
 
 GameSession afterStage() {

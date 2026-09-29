@@ -1,6 +1,7 @@
 #include "../../../../../src/engine/street/actors/Actors.h"
 #include "../../../../../src/engine/amal/Machine.h"
 #include "../../../../../src/engine/amal/Program.h"
+#include "../../amal/Run.h"
 #include <catch2/catch_all.hpp>
 #include <string>
 #include <utility>
@@ -8,6 +9,7 @@
 
 using namespace openfranko::src::engine::amal;
 using namespace openfranko::src::engine::street;
+using namespace openfranko::test::src::engine::amal;
 
 namespace {
 
@@ -24,34 +26,6 @@ constexpr int16_t JOY_UP = 1;
 constexpr int16_t JOY_DOWN = 2;
 constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
-
-struct Run {
-  std::vector<int16_t> xs;
-  std::vector<int16_t> ys;
-  std::vector<int16_t> images;
-};
-
-Run run(Machine &machine, const Object &object, int frames) {
-  Run result;
-  for (int frame = 0; frame < frames; ++frame) {
-    machine.tick();
-    result.xs.push_back(object.x);
-    result.ys.push_back(object.y);
-    result.images.push_back(object.image);
-  }
-  return result;
-}
-
-std::vector<std::pair<int16_t, int>> holds(const std::vector<int16_t> &values) {
-  std::vector<std::pair<int16_t, int>> result;
-  for (int16_t value : values) {
-    if (result.empty() || result.back().first != value) {
-      result.emplace_back(value, 0);
-    }
-    ++result.back().second;
-  }
-  return result;
-}
 
 bool contains(const std::string &program, const std::string &part) {
   return program.find(part) != std::string::npos;

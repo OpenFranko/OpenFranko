@@ -9,6 +9,7 @@
 #include "../core/DoubleBuffer.h"
 #include "../core/EndingCredits.h"
 #include "../core/IndexedSurface.h"
+#include "../core/UpdateHold.h"
 #include "../session/GameSession.h"
 #include "../ui/LoadingQueue.h"
 #include "../ui/StatusPanel.h"
@@ -18,7 +19,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <string>
 #include <vector>
 
 namespace openfranko {
@@ -107,8 +107,6 @@ private:
 
   Flow wait(int frames, Step next);
   Flow hold(int frames, Step next);
-  bool holdsAtStart() const;
-  bool holdsAtEnd() const;
   void stageFrame();
   bool kliker(int16_t joystick, int frames);
   void runBasic(int16_t joystick);
@@ -120,7 +118,6 @@ private:
   void dance();
   void secondDance();
   void textScreen();
-  void font(const std::string &text, int y);
   void pageUp();
   Flow musicFade();
   void off();
@@ -158,8 +155,7 @@ private:
   Step m_step = Step::Start;
   int m_frame = 0;
   int m_resumeFrame = 0;
-  int m_holdStart = -1;
-  int m_holdUntil = -1;
+  core::UpdateHold m_hold;
   int m_count = 0;
   int m_page = 0;
   bool m_ntsc = false;

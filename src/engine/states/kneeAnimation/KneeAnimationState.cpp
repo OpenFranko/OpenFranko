@@ -24,7 +24,7 @@ constexpr int VERSION12_TEMPO = 37;
 constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
 constexpr effects::color::AmigaColor BACKGROUND_GREY = 0x555;
-constexpr effects::color::AmigaColor BLACK = 0x000;
+using effects::color::BLACK;
 
 constexpr int FRAMES_PER_UNPACK = 20;
 constexpr int SAMPLE_UNPACK = 2;

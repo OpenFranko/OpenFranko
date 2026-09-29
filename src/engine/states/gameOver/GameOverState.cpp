@@ -1,5 +1,7 @@
 #include "GameOverState.h"
 
+#include "../shared/StreetVideo.h"
+
 namespace openfranko::src::engine::states::gameOver {
 
 GameOverState::GameOverState(systems::graphics::VideoSystem &videoSystem,
@@ -18,9 +20,7 @@ GameOverState::GameOverState(systems::graphics::VideoSystem &videoSystem,
 
 std::optional<EngineStateId> GameOverState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  systems::graphics::Display output = m_scene.output();
-  systems::graphics::cropRows(output, m_rows.first, m_rows.count);
-  m_videoSystem.show(output);
+  shared::showSceneFrame(m_videoSystem, m_scene.output(), m_rows);
   if (m_scene.isFinished()) {
     return EngineStateId::HighScore;
   }

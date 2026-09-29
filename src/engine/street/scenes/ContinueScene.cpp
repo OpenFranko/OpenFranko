@@ -3,11 +3,9 @@
 #include "../../AmigaDisplay.h"
 
 #include "../actors/Actors.h"
-#include "../ui/StageFrame.h"
+#include "../ui/ScreenOutput.h"
 
-#include <algorithm>
 #include <cstddef>
-#include <utility>
 
 namespace openfranko::src::engine::street::scenes {
 namespace {
@@ -34,7 +32,7 @@ constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
 
 constexpr std::size_t COLORS = 32;
-constexpr effects::color::AmigaColor BLACK = 0x000;
+using effects::color::BLACK;
 
 effects::color::AmigaPalette continuePalette() {
   effects::color::AmigaPalette palette(COLORS, BLACK);
@@ -102,27 +100,7 @@ void ContinueScene::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display ContinueScene::output() const {
-  systems::graphics::Display display;
-  display.width = SCREEN_WIDTH;
-  display.height = SCREEN_HEIGHT;
-  display.displayHeight = SCREEN_HEIGHT;
-  display.border = m_session.border;
-  if (!m_shown) {
-    return display;
-  }
-  systems::graphics::Layer layer;
-  layer.pixels = m_display.pixels().data();
-  layer.stride = SCREEN_WIDTH;
-  layer.sourceColumns = SCREEN_WIDTH;
-  layer.sourceRows =
-      std::min(SCREEN_HEIGHT,
-               static_cast<int>(m_display.pixels().size() / SCREEN_WIDTH));
-  layer.columns = SCREEN_WIDTH;
-  layer.rows = SCREEN_HEIGHT;
-  layer.mask = COLORS - 1;
-  layer.palette = m_palette;
-  display.layers.push_back(std::move(layer));
-  return display;
+  return ui::screenOutput(m_display, m_shown, m_palette, m_session.border);
 }
 
 ContinueScene::Outcome ContinueScene::outcome() const { return m_outcome; }

@@ -29,7 +29,6 @@ constexpr int MACH_WAIT = 40;
 constexpr int SHOW_WAIT = 50;
 constexpr int VERSION12_SHOW_WAIT = 150;
 constexpr int LOUDEST = 63;
-constexpr int UNPACK_VBLS = 1;
 
 const std::vector<animation::AmalMotion::Move> WAGGLE = {
     {4, 2}, {-4, 2}, {0, 1}, {4, 2}, {-4, 2}, {0, 1},
@@ -87,13 +86,11 @@ void CharacterSelectionSequence::advance(const Joystick &joystick) {
   ++m_frame;
 }
 
-const CharacterSelectionSequence::Bob &
-CharacterSelectionSequence::hand() const {
+const animation::Bob &CharacterSelectionSequence::hand() const {
   return m_hand;
 }
 
-const CharacterSelectionSequence::Bob &
-CharacterSelectionSequence::face() const {
+const animation::Bob &CharacterSelectionSequence::face() const {
   return m_face;
 }
 

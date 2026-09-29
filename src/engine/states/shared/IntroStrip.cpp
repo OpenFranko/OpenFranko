@@ -1,6 +1,7 @@
 #include "IntroStrip.h"
 
 #include "../../assets/Assets.h"
+#include "../../street/core/Font.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -21,11 +22,7 @@ constexpr int STRIP_WIDTH = 320;
 constexpr int STRIP_HEIGHT = 48;
 constexpr int STRIP_DISPLAY_LINE = 136;
 constexpr int STRIP_LEFT = 160;
-constexpr effects::color::AmigaColor BLACK = 0x000;
-
-constexpr int LINE_WIDTH = 280;
-constexpr int GLYPH_WIDTH = 16;
-constexpr int GLYPH_OFFSET = 6;
+using effects::color::BLACK;
 
 std::vector<street::core::CreditPage> loadPages(const std::string &directory) {
   std::ifstream file(std::filesystem::path(directory) / INTRO_FILE);
@@ -84,30 +81,31 @@ void IntroStrip::paste(int page) {
   }
   for (const street::core::CreditLine &line :
        m_pages[static_cast<std::size_t>(page)].lines) {
-    const int length = static_cast<int>(line.text.size());
-    const int x = (LINE_WIDTH - length * GLYPH_WIDTH) / 2;
-    for (int i = 1; i <= length; ++i) {
-      const int image = static_cast<unsigned char>(
-                            line.text[static_cast<std::size_t>(i - 1)]) +
-                        GLYPH_OFFSET;
-      const systems::graphics::IndexedBitmap *bitmap = glyph(image);
-      if (bitmap == nullptr) {
-        continue;
-      }
-      const int left = i * GLYPH_WIDTH + x - bitmap->hotspotX;
-      const int top = line.y - bitmap->hotspotY;
-      for (int row = 0; row < bitmap->height; ++row) {
-        for (int column = 0; column < bitmap->width; ++column) {
-          const int stripX = left + column;
-          const int stripY = top + row;
-          const uint8_t index = bitmap->pixels[static_cast<std::size_t>(
-              row * bitmap->width + column)];
-          if (index != 0 && stripX >= 0 && stripX < STRIP_WIDTH &&
-              stripY >= 0 && stripY < STRIP_HEIGHT) {
-            m_strip.pixels[static_cast<std::size_t>(stripY * STRIP_WIDTH +
-                                                    stripX)] = index;
-          }
-        }
+    street::core::font(line.text, line.y, [this](int x, int y, int image) {
+      pasteGlyph(x, y, image);
+    });
+  }
+}
+
+void IntroStrip::pasteGlyph(int x, int y, int image) {
+  const systems::graphics::IndexedBitmap *bitmap = glyph(image);
+  if (bitmap == nullptr) {
+    return;
+  }
+  const int left = x - bitmap->hotspotX;
+  const int top = y - bitmap->hotspotY;
+  for (int row = 0; row < bitmap->height; ++row) {
+    for (int column = 0; column < bitmap->width; ++column) {
+      const int stripX = left + column;
+      const int stripY = top + row;
+      const uint8_t index =
+          bitmap
+              ->pixels[static_cast<std::size_t>(row * bitmap->width + column)];
+      if (index != 0 && stripX >= 0 && stripX < STRIP_WIDTH && stripY >= 0 &&
+          stripY < STRIP_HEIGHT) {
+        m_strip
+            .pixels[static_cast<std::size_t>(stripY * STRIP_WIDTH + stripX)] =
+            index;
       }
     }
   }

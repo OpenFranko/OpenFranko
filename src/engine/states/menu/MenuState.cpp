@@ -3,6 +3,7 @@
 #include "../../AmigaDisplay.h"
 #include "../../MenuTempo.h"
 #include "../../assets/Assets.h"
+#include "../../street/scenes/HighScoreScene.h"
 #include "../../street/session/CheatCodes.h"
 
 #include <cstddef>
@@ -33,18 +34,9 @@ constexpr int VERSION12_FIRST_MENU_IMAGE = 1;
 constexpr int VERSION12_LAST_MENU_IMAGE = 25;
 constexpr int FIRST_LETTER_IMAGE = 1;
 constexpr int LETTER_IMAGES = 41;
-constexpr int LETTER_A_IMAGE = 14;
-constexpr int DIGIT_IMAGE_OFFSET = 44;
 
 constexpr int MUSIC_ON_VOLUME = 63;
 constexpr int VERSION12_MUSIC_WAIT = 2;
-
-constexpr int NAME_X = 56;
-constexpr int SCORE_RIGHT = 272;
-constexpr int CHARACTER_PITCH = 10;
-constexpr int SCORE_CHARACTERS = 4;
-constexpr int FIRST_ROW_Y = 32;
-constexpr int ROW_PITCH = 20;
 
 constexpr int RO = 14;
 
@@ -242,7 +234,7 @@ void MenuState::drawMenu() {
 
   m_menuScreen.setPalette(m_menu.palette());
   m_menuScreen.draw(m_backdrop, 0, 0);
-  for (const effects::sequences::MenuSequence::Bob &bob : m_menu.shownBobs()) {
+  for (const effects::animation::Bob &bob : m_menu.shownBobs()) {
     const systems::graphics::IndexedBitmap *image =
         findImage(m_menuBobs, firstMenuImage(m_session.version), bob.image);
     if (bob.shown && image) {
@@ -278,30 +270,14 @@ void MenuState::drawAttractPicture() {
 }
 
 void MenuState::drawHiscoreRow(int row) {
-  const street::core::HighScoreTable &table = m_session.highScores;
-  const int y = FIRST_ROW_Y + row * ROW_PITCH - m_attractTop;
-
-  for (int column = 0; column < street::core::HighScoreTable::NAME_LENGTH;
-       ++column) {
-    const int letter = table.letter(row, column);
-    const systems::graphics::IndexedBitmap *image =
-        findImage(m_letters, FIRST_LETTER_IMAGE, letter + LETTER_A_IMAGE);
-    if (letter < street::core::HighScoreTable::LETTERS && image) {
-      m_attractScreen.drawMasked(*image, NAME_X + column * CHARACTER_PITCH, y);
-    }
-  }
-
-  const std::string score = " " + std::to_string(table.score(row)) + "   ";
-  const int scoreX =
-      SCORE_RIGHT - CHARACTER_PITCH * static_cast<int>(score.size());
-  for (int i = 1; i <= SCORE_CHARACTERS; ++i) {
-    const char character = score[i - 1];
-    const systems::graphics::IndexedBitmap *image = findImage(
-        m_letters, FIRST_LETTER_IMAGE, character - DIGIT_IMAGE_OFFSET);
-    if (character > ' ' && image) {
-      m_attractScreen.drawMasked(*image, scoreX + i * CHARACTER_PITCH, y);
-    }
-  }
+  street::scenes::HighScoreScene::pasteRow(
+      m_session.highScores, row, [this](int x, int y, int image) {
+        const systems::graphics::IndexedBitmap *bitmap =
+            findImage(m_letters, FIRST_LETTER_IMAGE, image);
+        if (bitmap) {
+          m_attractScreen.drawMasked(*bitmap, x, y - m_attractTop);
+        }
+      });
 }
 
 void MenuState::show(const systems::graphics::Canvas &screen) {

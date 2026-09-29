@@ -1,19 +1,14 @@
 #include "../../../../../src/engine/street/core/Bobs.h"
+#include "box.h"
 #include <catch2/catch_all.hpp>
-#include <vector>
 
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::test::src::engine::street::core;
 
 namespace {
 
 constexpr int MIRROR = 0x8000;
 constexpr int UPSIDE_DOWN = 0x4000;
-
-Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
-  return Picture{
-      width, height, hotX, hotY,
-      std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
-}
 
 Picture leftEdge(int width, int hotX) {
   Picture picture = box(width, 1, hotX, 0, 0);

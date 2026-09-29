@@ -1,5 +1,7 @@
 #include "../../../../../src/engine/street/scenes/ContinueScene.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
+#include "../core/box.h"
+#include "FakeStreetHost.h"
 #include <catch2/catch_all.hpp>
 #include <utility>
 #include <vector>
@@ -8,6 +10,8 @@ using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::street::scenes;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::test::src::engine::street::scenes;
+using namespace openfranko::test::src::engine::street::core;
 
 namespace {
 
@@ -23,16 +27,8 @@ constexpr uint32_t PURPLE = 0xFF770077u;
 constexpr uint32_t GREY = 0xFFAAAAAAu;
 constexpr uint32_t GOLD = 0xFFFFCC00u;
 
-Picture box(int width, int height, uint8_t color) {
-  return Picture{
-      width, height, 0, 0,
-      std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
-}
-
-class FakeHost : public StreetHost {
+class FakeHost : public FakeStreetHost {
 public:
-  std::vector<std::pair<int, int>> spriteSets;
-
   std::vector<Picture> loadSpriteSet(int resource, int sampleBank) override {
     spriteSets.emplace_back(resource, sampleBank);
     std::vector<Picture> frames;
@@ -46,34 +42,7 @@ public:
 
   Picture loadPicture(int) override { return box(320, 256, 0); }
 
-  effects::color::AmigaPalette loadPalette(int) override { return {}; }
-
-  std::vector<Picture> loadScenery(int) override { return {}; }
-
-  LevelScript loadLevelScript(int) override { return LevelScript{}; }
-
-  EndingCredits loadEndingCredits() override { return {}; }
-
   Picture loadPanelPicture(int) override { return box(304, 48, 7); }
-
-  void loadMusic(int) override {}
-
-  bool isMusicLoaded(int) const override { return false; }
-
-  void playMusic() override {}
-
-  void stopMusic() override {}
-
-  void setMusicVolume(int) override {}
-  void setMusicTempo(int) override {}
-
-  void playSample(int, int, int) override {}
-
-  void playSampleAt(int, int, int, int) override {}
-
-  void setSampleLooping(bool) override {}
-
-  int random(int) override { return 0; }
 };
 
 struct Choice {

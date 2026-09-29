@@ -1,12 +1,9 @@
 #ifndef ENGINE_STATES_MIRAGE_MIRAGESTATE_H_
 #define ENGINE_STATES_MIRAGE_MIRAGESTATE_H_
 
-#include "../../../systems/graphics/Bitmap.h"
-#include "../../../systems/graphics/Canvas.h"
 #include "../../../systems/graphics/VideoSystem.h"
-#include "../../AmigaDisplay.h"
-#include "../../effects/sequences/FotoSequence.h"
 #include "../EngineState.h"
+#include "../shared/FotoScreen.h"
 
 namespace openfranko {
 namespace src {
@@ -21,11 +18,7 @@ public:
   std::optional<EngineStateId> update() override;
 
 private:
-  systems::graphics::VideoSystem &m_videoSystem;
-  VisibleRows m_rows;
-  systems::graphics::IndexedBitmap m_picture;
-  systems::graphics::Canvas m_screen;
-  effects::sequences::FotoSequence m_sequence;
+  shared::FotoScreen m_foto;
 };
 
 } // namespace mirage

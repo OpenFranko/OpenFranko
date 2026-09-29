@@ -1,6 +1,7 @@
 #ifndef ENGINE_EFFECTS_SEQUENCES_ATTRACTSEQUENCE_H_
 #define ENGINE_EFFECTS_SEQUENCES_ATTRACTSEQUENCE_H_
 
+#include "../../AmigaDisplay.h"
 #include "../color/AmigaPalette.h"
 
 namespace openfranko {
@@ -14,7 +15,6 @@ public:
   enum class Kind { Title, Hiscores };
 
   static constexpr int HISCORE_ROWS = 10;
-  static constexpr int UNPACK_VBLS = 1;
 
   AttractSequence(Kind kind, color::AmigaPalette picturePalette);
 

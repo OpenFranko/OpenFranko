@@ -1,4 +1,6 @@
 #include "../../../../../src/engine/street/scenes/CarStage.h"
+#include "../core/box.h"
+#include "FakeStreetHost.h"
 #include <catch2/catch_all.hpp>
 #include <deque>
 #include <functional>
@@ -12,6 +14,8 @@ using namespace openfranko::src::engine::street::scenes;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::test::src::engine::street::scenes;
+using namespace openfranko::test::src::engine::street::core;
 
 namespace {
 
@@ -48,12 +52,6 @@ constexpr uint8_t PEDESTRIAN_INK = 6;
 constexpr uint8_t MARKER = 5;
 constexpr int MARKER_COLUMN = 100;
 
-Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
-  return Picture{
-      width, height, hotX, hotY,
-      std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
-}
-
 Picture road() {
   Picture picture = box(CarStage::ROAD_WIDTH, CarStage::SCREEN_HEIGHT, 0, 0, 0);
   for (int y = 0; y < CarStage::SCREEN_HEIGHT; ++y) {
@@ -63,14 +61,10 @@ Picture road() {
   return picture;
 }
 
-class FakeHost : public StreetHost {
+class FakeHost : public FakeStreetHost {
 public:
-  std::vector<std::pair<int, int>> spriteSets;
-  std::vector<int> pictures;
-  std::vector<std::tuple<int, int, int>> samples;
   std::vector<std::tuple<int, int, int, int>> pitched;
   std::deque<int> rolls;
-  int musicStops = 0;
   bool hugePedestrians = false;
 
   std::vector<Picture> loadSpriteSet(int resource, int sampleBank) override {
@@ -96,38 +90,13 @@ public:
     return road();
   }
 
-  effects::color::AmigaPalette loadPalette(int) override { return {}; }
-
-  std::vector<Picture> loadScenery(int) override { return {}; }
-
-  LevelScript loadLevelScript(int) override { return LevelScript{}; }
-
-  EndingCredits loadEndingCredits() override { return {}; }
-
   Picture loadPanelPicture(int part) override {
     return box(304, part == 0 ? 48 : 40, 0, 0, 1);
-  }
-
-  void loadMusic(int) override {}
-
-  bool isMusicLoaded(int) const override { return false; }
-
-  void playMusic() override {}
-
-  void stopMusic() override { ++musicStops; }
-
-  void setMusicVolume(int) override {}
-  void setMusicTempo(int) override {}
-
-  void playSample(int bank, int sample, int voices) override {
-    samples.emplace_back(bank, sample, voices);
   }
 
   void playSampleAt(int bank, int sample, int voices, int frequency) override {
     pitched.emplace_back(bank, sample, voices, frequency);
   }
-
-  void setSampleLooping(bool) override {}
 
   int random(int) override {
     if (rolls.empty()) {
@@ -136,15 +105,6 @@ public:
     const int roll = rolls.front();
     rolls.pop_front();
     return roll;
-  }
-
-  bool played(int bank, int sample, int voices) const {
-    for (const auto &entry : samples) {
-      if (entry == std::make_tuple(bank, sample, voices)) {
-        return true;
-      }
-    }
-    return false;
   }
 };
 
@@ -638,7 +598,7 @@ SCENARIO("When the distance runs out the car drives off and the stage ends") {
       REQUIRE(loopEnd >= moveEnd);
       REQUIRE(loopEnd - moveEnd < LONGEST_PASS);
       REQUIRE(finished - loopEnd == EXIT_FRAMES);
-      REQUIRE(stage.outcome() == CarStage::Outcome::DriveFinished);
+      REQUIRE(stage.outcome() == CarStage::Outcome::Cleared);
       REQUIRE(drive.session.fromBonusDrive);
       REQUIRE_FALSE(stage.bobs().isActive(CarStage::CAR));
       REQUIRE(stage.screen().pixel(100, 100) == 0);

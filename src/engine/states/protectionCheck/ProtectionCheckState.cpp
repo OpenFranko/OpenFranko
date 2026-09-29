@@ -1,6 +1,7 @@
 #include "ProtectionCheckState.h"
 
 #include "../../street/ui/LoadingQueue.h"
+#include "../../street/ui/StageFrame.h"
 
 #include <algorithm>
 #include <array>
@@ -33,8 +34,7 @@ constexpr int FAILURE_SCREEN_HEIGHT = 256;
 constexpr int FAILURE_DISPLAY_LINE = 50;
 
 constexpr int STAGE_CHECK_FILES = 2;
-constexpr effects::color::AmigaColor STAGE_BORDER = 0x555;
-constexpr effects::color::AmigaColor BLACK = 0x000;
+using effects::color::BLACK;
 
 constexpr int CELL_PITCH = 15;
 constexpr int BOX_OFFSET = 11;
@@ -102,7 +102,7 @@ ProtectionCheckState::ProtectionCheckState(
                           : 0),
       m_resumeFrame(SCREEN_OPEN_VBLS),
       m_screen(QUESTION_SCREEN_WIDTH, QUESTION_SCREEN_HEIGHT),
-      m_border(check == Check::Stage3 ? STAGE_BORDER : BLACK) {}
+      m_border(check == Check::Stage3 ? street::ui::STAGE_BORDER : BLACK) {}
 
 std::optional<EngineStateId> ProtectionCheckState::update() {
   if (m_loadingFrames > 0) {

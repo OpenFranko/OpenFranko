@@ -1,4 +1,6 @@
 #include "../../../../../src/engine/street/scenes/StreetStage.h"
+#include "../core/box.h"
+#include "FakeStreetHost.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <functional>
@@ -10,6 +12,8 @@ using namespace openfranko::src::engine::street::scenes;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::test::src::engine::street::scenes;
+using namespace openfranko::test::src::engine::street::core;
 
 namespace {
 
@@ -41,12 +45,6 @@ constexpr int STAGE_OPENING_FRAMES =
 constexpr int OPENING_FRAMES = GAME_INIT_FRAMES + STAGE_OPENING_FRAMES;
 constexpr int SCREEN_SHOW_FRAMES = 2;
 
-Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
-  return Picture{
-      width, height, hotX, hotY,
-      std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
-}
-
 uint8_t columnColor(int column) { return static_cast<uint8_t>(100 + column); }
 
 EnemySlot enemy(int spriteSet, int x, int y, int energy, int aggression) {
@@ -60,26 +58,10 @@ EnemySlot enemy(int spriteSet, int x, int y, int energy, int aggression) {
   return slot;
 }
 
-class FakeHost : public StreetHost {
+class FakeHost : public FakeStreetHost {
 public:
-  struct Sample {
-    int bank;
-    int sample;
-    int voices;
-    bool operator==(const Sample &other) const {
-      return bank == other.bank && sample == other.sample &&
-             voices == other.voices;
-    }
-  };
-
   LevelScript script;
-  std::vector<std::pair<int, int>> spriteSets;
   std::vector<int> scenery;
-  std::vector<int> music;
-  int musicStarts = 0;
-  int musicStops = 0;
-  std::vector<int> volumes;
-  std::vector<Sample> samples;
   int randomCalls = 0;
   std::function<int(int)> randomValue = [](int limit) { return limit; };
 
@@ -110,8 +92,6 @@ public:
     return box(320, 222, 0, 0, OPENING_COLOR);
   }
 
-  effects::color::AmigaPalette loadPalette(int) override { return {}; }
-
   std::vector<Picture> loadScenery(int resource) override {
     scenery.push_back(resource);
     std::vector<Picture> columns;
@@ -123,8 +103,6 @@ public:
 
   LevelScript loadLevelScript(int) override { return script; }
 
-  EndingCredits loadEndingCredits() override { return {}; }
-
   Picture loadPanelPicture(int part) override {
     if (part != 0) {
       return box(304, 40, 0, 0, 1);
@@ -135,33 +113,9 @@ public:
     return strip;
   }
 
-  void loadMusic(int resource) override { music.push_back(resource); }
-
-  bool isMusicLoaded(int) const override { return false; }
-
-  void playMusic() override { ++musicStarts; }
-
-  void stopMusic() override { ++musicStops; }
-
-  void setMusicVolume(int volume) override { volumes.push_back(volume); }
-  void setMusicTempo(int) override {}
-
-  void playSample(int bank, int sample, int voices) override {
-    samples.push_back({bank, sample, voices});
-  }
-
-  void playSampleAt(int, int, int, int) override {}
-
-  void setSampleLooping(bool) override {}
-
   int random(int limit) override {
     ++randomCalls;
     return randomValue(limit);
-  }
-
-  bool played(int bank, int sample, int voices) const {
-    return std::find(samples.begin(), samples.end(),
-                     Sample{bank, sample, voices}) != samples.end();
   }
 };
 
@@ -804,10 +758,8 @@ SCENARIO("The level ends one column before its length") {
 
     WHEN("It is walked to its end") {
       const int ended = street.runUntil(
-          [&] {
-            return stage.outcome() == StreetStage::Outcome::LevelFinished;
-          },
-          600, JOY_RIGHT);
+          [&] { return stage.outcome() == StreetStage::Outcome::Cleared; }, 600,
+          JOY_RIGHT);
 
       THEN("It stops at column 12, the player stamped where the boss starts") {
         REQUIRE(ended > 0);
@@ -850,9 +802,7 @@ SCENARIO("The SKIP code cuts every street to 32 columns as state 10 does") {
 
     WHEN("It is walked to its end") {
       const int ended = street.runUntil(
-          [&] {
-            return stage.outcome() == StreetStage::Outcome::LevelFinished;
-          },
+          [&] { return stage.outcome() == StreetStage::Outcome::Cleared; },
           1000, JOY_RIGHT);
 
       THEN("It stops at column 31") {

@@ -16,18 +16,12 @@ using actors::amosBool;
 
 constexpr int RF = 5;
 constexpr int RG = 6;
-constexpr int RI = 8;
-constexpr int RN = 13;
-constexpr int RO = 14;
 constexpr int RT = 19;
 constexpr int RU = 20;
 
-constexpr int AUTOBACK_VBLS = 3;
-constexpr int GAME_OVER_WAIT = 200;
 constexpr int IGNITION_WAIT = 30;
 constexpr int PAL_HERTZ = 50;
 constexpr int NTSC_HERTZ = 60;
-constexpr int FULL_ENERGY = 64;
 
 constexpr int PASSWORD_X = 124;
 constexpr int PASSWORD_BASELINE = 111;
@@ -93,15 +87,11 @@ constexpr int ENGINE_VOICE = 8;
 constexpr int ENGINE_PITCH = 5000;
 constexpr int ENGINE_PITCH_STEP = 200;
 
-constexpr int PLAYER_CHANNEL = 1;
-constexpr int16_t CHEAT_LIVES = 12;
 constexpr int16_t JOY_UP = 1;
 constexpr int16_t JOY_DOWN = 2;
 constexpr int16_t JOY_LEFT = 4;
 constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
-
-int16_t word(int value) { return static_cast<int16_t>(value); }
 
 void addWrap(int &value, int step, int low, int high) {
   value += step;
@@ -125,86 +115,12 @@ std::string passwordFor(int stage) {
 
 CarStage::CarStage(StreetHost &host, session::GameSession &session,
                    GameOptions &options)
-    : m_host(host), m_session(session), m_options(options),
-      m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_buffer(m_screen), m_road(0, 0), m_strip(0, 0),
-      m_panel(std::make_unique<ui::StatusPanel>(
-          host.loadPanelPicture(StreetHost::LOADING_STRIP),
-          host.loadPanelPicture(StreetHost::PANEL_ARTWORK), session.version)),
-      m_screenDisplay{
-          ui::DISPLAY_X,
-          static_cast<int16_t>(ui::playDisplayY(ui::stageLayout(options))), 0},
-      m_palette(ui::levelPalette(options.mono)),
-      m_panelPalette(ui::panelPalette()),
-      m_screenOffsetX(stage() == 2 ? 16 : 0) {
-  m_copper.reset(registers());
-  m_session.border = ui::STAGE_BORDER;
+    : Stage(host, session, options), m_road(0, 0), m_strip(0, 0) {
+  m_holdsWhileClosing = true;
+  openPanel();
+  m_screenOffsetX = stage() == 2 ? 16 : 0;
   m_panel->score(stats());
 }
-
-void CarStage::advance(const StreetInput &input) {
-  if (m_step == Step::Finished) {
-    return;
-  }
-  ++m_frame;
-  if (input.key != session::SystemKey::None) {
-    m_session.keyLatch = input.key;
-  }
-  m_mouseButton = input.mouseButton;
-  m_buffer.vbl();
-  m_copper.vbl(m_options.ntsc);
-  m_machine.tick();
-  if (m_buffer.isAutobacking()) {
-    m_buffer.autobackStep(m_bobs, m_images);
-  } else if (!holdsAtStart()) {
-    test();
-  }
-  runBasic(input);
-  if (!m_buffer.isAutobacking() && !holdsAtEnd()) {
-    test();
-  }
-}
-
-void CarStage::test() {
-  if (m_buffer.test(m_bobs, m_images)) {
-    m_copper.rebuild(registers());
-  }
-}
-
-ui::StageCopper CarStage::registers() const {
-  return {m_screenShown, m_screenDisplay, m_options.ntsc};
-}
-
-void CarStage::compose(std::vector<uint32_t> &frame) const {
-  systems::graphics::rasterize(output(), frame);
-}
-
-systems::graphics::Display CarStage::output() const {
-  const ui::StageCopper &live = m_copper.live();
-  return ui::stageOutput(live.screenShown ? &m_buffer.shown() : nullptr,
-                         m_palette, live.screenDisplay, m_screenOffsetX,
-                         m_panelShown ? m_panel.get() : nullptr,
-                         m_copper.panelY(m_options.tallScreen), m_panelPalette,
-                         m_copper.window(m_options.tallScreen));
-}
-
-CarStage::Outcome CarStage::outcome() const { return m_outcome; }
-
-const core::BobLayer &CarStage::bobs() const { return m_bobs; }
-
-const core::IndexedSurface &CarStage::screen() const { return m_screen; }
-
-const core::IndexedSurface &CarStage::display() const {
-  return m_buffer.shown();
-}
-
-const ui::StatusPanel *CarStage::panel() const { return m_panel.get(); }
-
-bool CarStage::isScreenShown() const { return m_copper.live().screenShown; }
-
-bool CarStage::isPanelShown() const { return m_panelShown; }
-
-amal::Machine &CarStage::machine() { return m_machine; }
 
 bool CarStage::isShowingPassword() const {
   return m_step == Step::Password || m_step == Step::PasswordText ||
@@ -228,15 +144,6 @@ int CarStage::carY() const { return m_y; }
 
 bool CarStage::isEngineOn() const { return m_ignition != 0; }
 
-int16_t &CarStage::global(int index) { return m_machine.globalRegister(index); }
-
-int CarStage::stage() const { return m_session.registers[RO]; }
-
-ui::StatusPanel::Stats CarStage::stats() const {
-  const amal::Registers &registers = m_session.registers;
-  return {registers[RF], registers[RO], registers[RN], registers[RG]};
-}
-
 CarStage::Flow CarStage::wait(int frames, Step next) {
   m_step = next;
   m_resumeFrame = m_frame + frames;
@@ -244,23 +151,14 @@ CarStage::Flow CarStage::wait(int frames, Step next) {
 }
 
 CarStage::Flow CarStage::hold(int frames, Step next) {
-  m_holdStart = m_frame;
-  m_holdUntil = m_frame + frames;
-  return wait(frames, next);
+  m_step = next;
+  return Stage::hold(frames);
 }
 
 CarStage::Flow CarStage::autoback(core::DoubleBuffer::Op op, Step next) {
-  op(m_screen);
-  m_buffer.autoback(std::move(op));
-  return wait(AUTOBACK_VBLS, next);
-}
-
-bool CarStage::holdsAtStart() const {
-  return m_holdStart < m_frame && m_frame <= m_holdUntil;
-}
-
-bool CarStage::holdsAtEnd() const {
-  return m_holdStart <= m_frame && m_frame < m_holdUntil;
+  Stage::autoback(std::move(op));
+  m_step = next;
+  return Flow::Yield;
 }
 
 void CarStage::play(int voices, int sample) {
@@ -297,8 +195,7 @@ void CarStage::clearScreen() {
 
 void CarStage::hideForLoading() {
   m_screenOffsetX = 0;
-  m_screenShown = false;
-  m_copper.hide();
+  hideScreen();
   m_step = Step::Era;
 }
 
@@ -316,6 +213,7 @@ void CarStage::password() {
 
 void CarStage::era() {
   m_host.stopMusic();
+  m_musicLoaded = false;
   m_images.clear();
   m_loading.queue([this] {
     m_images.load(1, m_host.loadSpriteSet(CAR_SET, CAR_SAMPLE_BANK));
@@ -603,47 +501,9 @@ CarStage::Flow CarStage::leave() {
                   Step::Cleared);
 }
 
-bool CarStage::quitsToHighScores() const {
-  return m_escape && m_session.version == GameVersion::V10;
-}
-
 void CarStage::gameOver() {
-  m_session.stageReached = global(RO);
-  global(RO) = -1;
-  if (quitsToHighScores()) {
-    global(RN) = 0;
-    closePlayScreen();
-    return;
-  }
-  m_resumeFrame = m_frame + GAME_OVER_WAIT;
-  m_step = Step::GameOverWait;
-}
-
-CarStage::Flow CarStage::closePlayScreen() {
-  return hold(SCREEN_CLOSE_SHOWN_VBLS, Step::GameOverScreenGone);
-}
-
-void CarStage::sys() {
-  const session::SystemKey key =
-      std::exchange(m_session.keyLatch, session::SystemKey::None);
-  if (key == session::SystemKey::Pal || key == session::SystemKey::Ntsc) {
-    ui::switchStandard(m_options, m_screenDisplay,
-                       key == session::SystemKey::Ntsc);
-  }
-  if (key == session::SystemKey::Lives) {
-    global(RG) = CHEAT_LIVES;
-    m_panel->score(stats());
-  }
-  if (key == session::SystemKey::Escape) {
-    global(RN) = 0;
-    m_escape = true;
-    m_machine.freezeAll();
-  }
-  if (m_mouseButton && global(RI) > 0) {
-    global(RN) = static_cast<int16_t>(global(RN) + global(RI));
-    global(RI) = 0;
-    m_machine.start(PLAYER_CHANNEL);
-  }
+  Stage::gameOver();
+  m_step = Step::GameOver;
 }
 
 void CarStage::runBasic(const StreetInput &input) {
@@ -713,38 +573,12 @@ void CarStage::runBasic(const StreetInput &input) {
       break;
     case Step::Cleared:
       m_session.fromBonusDrive = true;
-      m_outcome = Outcome::DriveFinished;
+      m_outcome = Outcome::Cleared;
       m_step = Step::Finished;
       flow = Flow::Yield;
       break;
-    case Step::GameOverWait:
-      if (m_session.version == GameVersion::V12) {
-        m_bobs.offAll();
-        flow = autoback([](core::IndexedSurface &surface) { surface.fill(0); },
-                        Step::GameOverCleared);
-      } else {
-        flow = closePlayScreen();
-      }
-      break;
-    case Step::GameOverCleared:
-      flow = closePlayScreen();
-      break;
-    case Step::GameOverScreenGone:
-      m_screenShown = false;
-      m_copper.hide();
-      flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverPanelClose);
-      break;
-    case Step::GameOverPanelClose:
-      flow = hold(SCREEN_CLOSE_SHOWN_VBLS, Step::GameOverPanelGone);
-      break;
-    case Step::GameOverPanelGone:
-      m_panelShown = false;
-      flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverClosed);
-      break;
-    case Step::GameOverClosed:
-      m_outcome = quitsToHighScores() ? Outcome::Quit : Outcome::GameOver;
-      m_step = Step::Finished;
-      flow = Flow::Yield;
+    case Step::GameOver:
+      flow = advanceGameOver();
       break;
     case Step::Finished:
       flow = Flow::Yield;

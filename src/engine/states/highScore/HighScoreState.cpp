@@ -1,5 +1,7 @@
 #include "HighScoreState.h"
 
+#include "../shared/StreetVideo.h"
+
 namespace openfranko::src::engine::states::highScore {
 namespace {
 
@@ -25,9 +27,7 @@ HighScoreState::HighScoreState(systems::graphics::VideoSystem &videoSystem,
 
 std::optional<EngineStateId> HighScoreState::update() {
   m_scene.advance();
-  systems::graphics::Display output = m_scene.output();
-  systems::graphics::cropRows(output, m_rows.first, m_rows.count);
-  m_videoSystem.show(output);
+  shared::showSceneFrame(m_videoSystem, m_scene.output(), m_rows);
 
   switch (m_scene.outcome()) {
   case street::scenes::HighScoreScene::Outcome::Menu:

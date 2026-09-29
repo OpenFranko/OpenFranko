@@ -18,7 +18,7 @@ constexpr int STORY_TEXTS = 0x3C0;
 constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
 constexpr std::size_t SCREEN_COLORS = 32;
-constexpr effects::color::AmigaColor BLACK = 0x000;
+using effects::color::BLACK;
 
 constexpr int LOADING_FRAMES = 300;
 constexpr effects::sequences::FotoSequence ::Timings TITLE_TIMINGS{

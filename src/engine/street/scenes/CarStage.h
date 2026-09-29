@@ -1,22 +1,9 @@
 #ifndef ENGINE_STREET_SCENES_CARSTAGE_H_
 #define ENGINE_STREET_SCENES_CARSTAGE_H_
 
-#include "../../GameOptions.h"
-#include "../../amal/Machine.h"
-#include "../../effects/color/AmigaPalette.h"
-#include "../core/Bobs.h"
-#include "../core/DoubleBuffer.h"
-#include "../core/IndexedSurface.h"
-#include "../session/GameSession.h"
-#include "../ui/LoadingQueue.h"
-#include "../ui/StageFrame.h"
-#include "../ui/StatusPanel.h"
-#include "StreetHost.h"
+#include "Stage.h"
 
 #include <array>
-#include <cstdint>
-#include <memory>
-#include <vector>
 
 namespace openfranko {
 namespace src {
@@ -24,12 +11,8 @@ namespace engine {
 namespace street {
 namespace scenes {
 
-class CarStage {
+class CarStage : public Stage {
 public:
-  enum class Outcome { Playing, DriveFinished, GameOver, Quit };
-
-  static constexpr int SCREEN_WIDTH = 320;
-  static constexpr int SCREEN_HEIGHT = 222;
   static constexpr int ROAD_WIDTH = 368;
   static constexpr int CAR = 1;
   static constexpr int FIRST_PEDESTRIAN = 5;
@@ -43,18 +26,6 @@ public:
   CarStage(StreetHost &host, session::GameSession &session,
            GameOptions &options);
 
-  void advance(const StreetInput &input);
-  void compose(std::vector<uint32_t> &frame) const;
-  systems::graphics::Display output() const;
-
-  Outcome outcome() const;
-  const core::BobLayer &bobs() const;
-  const core::IndexedSurface &screen() const;
-  const core::IndexedSurface &display() const;
-  const ui::StatusPanel *panel() const;
-  bool isScreenShown() const;
-  bool isPanelShown() const;
-  amal::Machine &machine();
   bool isShowingPassword() const;
   bool isDriving() const;
   int passes() const;
@@ -82,24 +53,13 @@ private:
     DriveBottom,
     StripClosed,
     Cleared,
-    GameOverWait,
-    GameOverCleared,
-    GameOverScreenGone,
-    GameOverPanelClose,
-    GameOverPanelGone,
-    GameOverClosed,
+    GameOver,
     Finished
   };
-  enum class Flow { Continue, Yield };
 
-  int16_t &global(int index);
-  int stage() const;
-  ui::StatusPanel::Stats stats() const;
   Flow wait(int frames, Step next);
   Flow hold(int frames, Step next);
   Flow autoback(core::DoubleBuffer::Op op, Step next);
-  bool holdsAtStart() const;
-  bool holdsAtEnd() const;
   void play(int voices, int sample);
   void loseEnergy(int amount);
   void gainEnergy(int amount);
@@ -121,43 +81,14 @@ private:
   void runOver();
   Flow leave();
   void gameOver();
-  bool quitsToHighScores() const;
-  Flow closePlayScreen();
-  void sys();
-  void test();
-  ui::StageCopper registers() const;
-  void runBasic(const StreetInput &input);
+  void runBasic(const StreetInput &input) override;
 
-  StreetHost &m_host;
-  session::GameSession &m_session;
-  GameOptions &m_options;
-  amal::Machine m_machine;
-  core::ImageBank m_images;
-  core::BobLayer m_bobs;
-  core::IndexedSurface m_screen;
-  core::DoubleBuffer m_buffer;
   core::IndexedSurface m_road;
   core::IndexedSurface m_strip;
   core::Picture m_backdrop;
-  std::unique_ptr<ui::StatusPanel> m_panel;
-  amal::Object m_screenDisplay;
-  ui::StageDisplay m_copper;
-  effects::color::AmigaPalette m_palette;
-  effects::color::AmigaPalette m_panelPalette;
-  ui::LoadingQueue m_loading;
 
   Step m_step = Step::Password;
   Step m_afterLoading = Step::Finished;
-  Outcome m_outcome = Outcome::Playing;
-  long m_frame = 0;
-  long m_resumeFrame = 0;
-  long m_holdStart = -1;
-  long m_holdUntil = -1;
-  bool m_escape = false;
-  bool m_mouseButton = false;
-  bool m_screenShown = true;
-  bool m_panelShown = true;
-  int m_screenOffsetX = 0;
   int m_waited = 0;
 
   int m_x = 0;

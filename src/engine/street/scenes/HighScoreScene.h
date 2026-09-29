@@ -36,6 +36,9 @@ public:
 
   using Save = std::function<void(const core::HighScoreTable &)>;
 
+  static void pasteRow(const core::HighScoreTable &table, int row,
+                       const core::Paste &paste);
+
   HighScoreScene(StreetHost &host, session::GameSession &session,
                  const GameOptions &options, Save save);
 
@@ -82,7 +85,6 @@ private:
   Flow dimmed();
   void relight();
   Flow row();
-  void pasteRow(int row);
   void startEntry();
   Flow entry();
   void restoreCell();

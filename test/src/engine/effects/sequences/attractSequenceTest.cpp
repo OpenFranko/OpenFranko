@@ -1,6 +1,7 @@
 #include "../../../../../src/engine/effects/sequences/AttractSequence.h"
 #include <catch2/catch_all.hpp>
 
+using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::effects::sequences;
 using namespace openfranko::src::engine::effects::color;
 
@@ -17,9 +18,7 @@ void run(AttractSequence &attract, int frames, bool touched = false) {
   }
 }
 
-void unpack(AttractSequence &attract) {
-  run(attract, AttractSequence::UNPACK_VBLS);
-}
+void unpack(AttractSequence &attract) { run(attract, UNPACK_VBLS); }
 
 } // namespace
 

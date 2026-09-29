@@ -13,6 +13,9 @@ namespace color {
 using AmigaColor = uint16_t;
 using AmigaPalette = std::vector<AmigaColor>;
 
+constexpr AmigaColor BLACK = 0x000;
+constexpr AmigaColor WHITE = 0xFFF;
+
 struct Rgb {
   uint8_t r;
   uint8_t g;

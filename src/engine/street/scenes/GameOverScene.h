@@ -8,6 +8,7 @@
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
+#include "../core/UpdateHold.h"
 #include "../ui/LoadingQueue.h"
 #include "StreetHost.h"
 
@@ -62,8 +63,6 @@ private:
   enum class Flow { Continue, Yield };
 
   Flow wait(int frames, Step next);
-  bool holdsAtStart() const;
-  bool holdsAtEnd() const;
   void close();
   void unpack();
   void open();
@@ -99,8 +98,7 @@ private:
   int m_count = 0;
   int m_frame = 0;
   int m_resumeFrame = 0;
-  int m_holdStart = -1;
-  int m_holdUntil = -1;
+  core::UpdateHold m_hold;
 };
 
 } // namespace scenes

@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 namespace openfranko {
@@ -13,6 +14,8 @@ namespace src {
 namespace engine {
 namespace street {
 namespace core {
+
+using Paste = std::function<void(int x, int y, int image)>;
 
 class ImageBank {
 public:

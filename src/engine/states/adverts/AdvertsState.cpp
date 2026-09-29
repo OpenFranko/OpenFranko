@@ -13,7 +13,7 @@ constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
 constexpr int DISPLAY_LINE = 42;
 constexpr std::size_t SCREEN_COLORS = 32;
-constexpr effects::color::AmigaColor BLACK = 0x000;
+using effects::color::BLACK;
 constexpr int SCREENS = 2;
 
 effects::color::AmigaPalette

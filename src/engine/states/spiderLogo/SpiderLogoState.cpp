@@ -30,7 +30,7 @@ constexpr int LOGO_DISPLAY_LINE = 42;
 constexpr int REFLECTION_TOP = 133;
 constexpr int REFLECTION_BOTTOM = 200;
 constexpr std::size_t LOGO_COLORS = 16;
-constexpr effects::color::AmigaColor BLACK = 0x000;
+using effects::color::BLACK;
 
 const effects::color::AmigaPalette WALK_PALETTE = {
     0x000, 0x600, 0x333, 0x550, 0x444, 0x770, 0x008, 0x009,
@@ -49,8 +49,6 @@ constexpr int16_t REFLECTION_IMAGE = 7;
 constexpr auto REFLECTION_PROGRAM =
     "A 0,(5,12)(6,12)(7,12)(8,12)(9,12)(10,12);";
 
-constexpr int DOUBLE_BUFFER_VBLS = 3;
-constexpr int AUTOBACK_VBLS = 3;
 constexpr int WALK_SETUP =
     SCREEN_REOPEN_VBLS + DOUBLE_BUFFER_VBLS + 2 * AUTOBACK_VBLS - 1;
 constexpr int TEMPO_WAIT = 2;

@@ -139,7 +139,7 @@ void CharacterSelectionState::draw() {
   } else {
     m_screen.setPalette(m_picture.palette);
     m_screen.draw(m_picture, 0, -m_rows.first);
-    for (const effects::sequences::CharacterSelectionSequence::Bob *bob :
+    for (const effects::animation::Bob *bob :
          {&m_selection.face(), &m_selection.hand()}) {
       const int sprite = bob->image - FIRST_SPRITE_IMAGE;
       if (bob->shown && bob->image != HIDDEN_IMAGE && sprite >= 0 &&

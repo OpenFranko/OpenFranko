@@ -2,9 +2,8 @@
 
 #include "../../AmigaDisplay.h"
 #include "../../MenuTempo.h"
-#include "../ui/StageFrame.h"
+#include "../ui/ScreenOutput.h"
 
-#include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstddef>
@@ -25,10 +24,9 @@ constexpr int FIRST_IMAGE = 1;
 
 constexpr int FULL_VOLUME = 63;
 constexpr int MUSIC_START_WAIT = 2;
-constexpr int UNPACK_VBLS = 1;
 
 constexpr std::size_t COLORS = 32;
-constexpr effects::color::AmigaColor BLACK = 0x000;
+using effects::color::BLACK;
 constexpr int DIM_ROUNDS = 4;
 constexpr int DIM_SPEED = 100;
 constexpr int DIM_WAIT = 1;
@@ -93,27 +91,7 @@ void HighScoreScene::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display HighScoreScene::output() const {
-  systems::graphics::Display display;
-  display.width = SCREEN_WIDTH;
-  display.height = SCREEN_HEIGHT;
-  display.displayHeight = SCREEN_HEIGHT;
-  display.border = m_session.border;
-  if (!m_shown) {
-    return display;
-  }
-  systems::graphics::Layer layer;
-  layer.pixels = m_display.pixels().data();
-  layer.stride = SCREEN_WIDTH;
-  layer.sourceColumns = SCREEN_WIDTH;
-  layer.sourceRows =
-      std::min(SCREEN_HEIGHT,
-               static_cast<int>(m_display.pixels().size() / SCREEN_WIDTH));
-  layer.columns = SCREEN_WIDTH;
-  layer.rows = SCREEN_HEIGHT;
-  layer.mask = COLORS - 1;
-  layer.palette = m_palette;
-  display.layers.push_back(std::move(layer));
-  return display;
+  return ui::screenOutput(m_display, m_shown, m_palette, m_session.border);
 }
 
 HighScoreScene::Outcome HighScoreScene::outcome() const { return m_outcome; }
@@ -280,7 +258,9 @@ void HighScoreScene::relight() {
 }
 
 HighScoreScene::Flow HighScoreScene::row() {
-  pasteRow(m_row);
+  pasteRow(m_session.highScores, m_row, [this](int x, int y, int image) {
+    core::BobLayer::paste(m_screen, m_images, x, y, image);
+  });
   ++m_rowsShown;
   --m_row;
   if (m_row >= 0) {
@@ -291,14 +271,13 @@ HighScoreScene::Flow HighScoreScene::row() {
                             : Step::Hold);
 }
 
-void HighScoreScene::pasteRow(int row) {
-  const core::HighScoreTable &table = m_session.highScores;
+void HighScoreScene::pasteRow(const core::HighScoreTable &table, int row,
+                              const core::Paste &paste) {
   const int y = FIRST_ROW_Y + row * ROW_PITCH;
   for (int column = 0; column < core::HighScoreTable::NAME_LENGTH; ++column) {
     const int letter = table.letter(row, column);
     if (letter < core::HighScoreTable::LETTERS) {
-      core::BobLayer::paste(m_screen, m_images, NAME_X + column * CELL_WIDTH, y,
-                            letter + LETTER_IMAGE);
+      paste(NAME_X + column * CELL_WIDTH, y, letter + LETTER_IMAGE);
     }
   }
   const std::string score = " " + std::to_string(table.score(row)) + "   ";
@@ -306,8 +285,7 @@ void HighScoreScene::pasteRow(int row) {
   for (int k = 1; k <= SCORE_CHARACTERS; ++k) {
     const char character = score[static_cast<std::size_t>(k - 1)];
     if (character > ' ') {
-      core::BobLayer::paste(m_screen, m_images, left + k * CELL_WIDTH, y,
-                            character - DIGIT_IMAGE_OFFSET);
+      paste(left + k * CELL_WIDTH, y, character - DIGIT_IMAGE_OFFSET);
     }
   }
 }

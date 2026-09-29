@@ -1,5 +1,7 @@
 #include "../../../../../src/engine/street/scenes/BossStage.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
+#include "../core/box.h"
+#include "FakeStreetHost.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <cstdlib>
@@ -14,6 +16,8 @@ using namespace openfranko::src::engine::street::scenes;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::test::src::engine::street::scenes;
+using namespace openfranko::test::src::engine::street::core;
 using openfranko::src::systems::graphics::toArgb;
 
 namespace {
@@ -52,33 +56,11 @@ constexpr uint8_t WAIT_WORD_COLOR = 5;
 constexpr int BOSS_FILES = 6;
 constexpr int READY_FRAMES = 1 + BOSS_FILES * LoadingQueue::FILE_FRAMES;
 
-Picture box(int width, int height, int hotX, int hotY, uint8_t color) {
-  return Picture{
-      width, height, hotX, hotY,
-      std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
-}
-
 uint8_t columnColor(int column) { return static_cast<uint8_t>(100 + column); }
 
-class FakeHost : public StreetHost {
+class FakeHost : public FakeStreetHost {
 public:
-  struct Sample {
-    int bank;
-    int sample;
-    int voices;
-    bool operator==(const Sample &other) const {
-      return bank == other.bank && sample == other.sample &&
-             voices == other.voices;
-    }
-  };
-
-  std::vector<std::pair<int, int>> spriteSets;
   std::vector<int> scenery;
-  std::vector<int> music;
-  int musicStarts = 0;
-  int musicStops = 0;
-  std::vector<int> volumes;
-  std::vector<Sample> samples;
   std::vector<bool> loops;
   std::function<int(int)> randomValue = [](int limit) { return limit; };
 
@@ -117,8 +99,6 @@ public:
 
   Picture loadPicture(int) override { return box(320, 222, 0, 0, 0); }
 
-  effects::color::AmigaPalette loadPalette(int) override { return {}; }
-
   std::vector<Picture> loadScenery(int resource) override {
     scenery.push_back(resource);
     std::vector<Picture> columns;
@@ -127,10 +107,6 @@ public:
     }
     return columns;
   }
-
-  LevelScript loadLevelScript(int) override { return LevelScript{}; }
-
-  EndingCredits loadEndingCredits() override { return {}; }
 
   Picture loadPanelPicture(int part) override {
     if (part != 0) {
@@ -142,31 +118,9 @@ public:
     return strip;
   }
 
-  void loadMusic(int resource) override { music.push_back(resource); }
-
-  bool isMusicLoaded(int) const override { return false; }
-
-  void playMusic() override { ++musicStarts; }
-
-  void stopMusic() override { ++musicStops; }
-
-  void setMusicVolume(int volume) override { volumes.push_back(volume); }
-  void setMusicTempo(int) override {}
-
-  void playSample(int bank, int sample, int voices) override {
-    samples.push_back({bank, sample, voices});
-  }
-
-  void playSampleAt(int, int, int, int) override {}
-
   void setSampleLooping(bool loop) override { loops.push_back(loop); }
 
   int random(int limit) override { return randomValue(limit); }
-
-  bool played(int bank, int sample, int voices) const {
-    return std::find(samples.begin(), samples.end(),
-                     Sample{bank, sample, voices}) != samples.end();
-  }
 };
 
 struct Duel {
@@ -586,7 +540,7 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
 
         THEN("No SYS reads it here, so it waits in the register for the "
              "bonus drive") {
-          REQUIRE(stage.outcome() == BossStage::Outcome::BossDefeated);
+          REQUIRE(stage.outcome() == BossStage::Outcome::Cleared);
           REQUIRE_FALSE(duel.options.ntsc);
           REQUIRE(duel.session.keyLatch == SystemKey::Ntsc);
         }
@@ -609,7 +563,7 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
           duel.run(3);
 
           THEN("The stage ends where the bonus drive begins") {
-            REQUIRE(stage.outcome() == BossStage::Outcome::BossDefeated);
+            REQUIRE(stage.outcome() == BossStage::Outcome::Cleared);
             REQUIRE_FALSE(duel.session.bossExit.has_value());
           }
         }
@@ -643,7 +597,7 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
         THEN("The looping splash of sample 9 frames 100 stamps, then the "
              "walk-off") {
           REQUIRE(ended > 0);
-          REQUIRE(stage.outcome() == BossStage::Outcome::BossDefeated);
+          REQUIRE(stage.outcome() == BossStage::Outcome::Cleared);
           REQUIRE(duel.host.loops == std::vector<bool>{true, false});
           REQUIRE(duel.host.played(4, 9, 1));
           REQUIRE(duel.host.played(2, 4, 1));
@@ -981,7 +935,7 @@ SCENARIO("On stage 3 KONBOSS sends the boss over the railing") {
                     2000);
                 REQUIRE(ended == 3 + 100 + 1 + 19 + 19 + 18 + 25 + 90 + 30 +
                                      40 + 30 + 340);
-                REQUIRE(stage.outcome() == BossStage::Outcome::BossDefeated);
+                REQUIRE(stage.outcome() == BossStage::Outcome::Cleared);
                 REQUIRE(stage.bobs().x(1) == playerX + 340);
                 REQUIRE(stage.screen().pixel(184, 60) == 85);
                 REQUIRE_FALSE(stage.bobs().isActive(1));

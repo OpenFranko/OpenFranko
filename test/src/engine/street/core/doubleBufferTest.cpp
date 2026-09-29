@@ -1,8 +1,9 @@
 #include "../../../../../src/engine/street/core/DoubleBuffer.h"
+#include "box.h"
 #include <catch2/catch_all.hpp>
-#include <vector>
 
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::test::src::engine::street::core;
 
 namespace {
 
@@ -10,12 +11,6 @@ constexpr uint8_t PAPER = 1;
 constexpr uint8_t INK = 5;
 constexpr uint8_t STAMP = 7;
 constexpr uint8_t COPIED = 9;
-
-Picture box(int width, int height, uint8_t color) {
-  return Picture{
-      width, height, 0, 0,
-      std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
-}
 
 struct Screen {
   ImageBank images;

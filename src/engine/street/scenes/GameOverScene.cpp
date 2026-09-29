@@ -17,7 +17,7 @@ constexpr int GRAVEYARD = 0x3BB;
 constexpr int GAME_OVER_TUNE = 0x262;
 
 constexpr int FULL_VOLUME = 63;
-constexpr effects::color::AmigaColor BLACK = 0x000;
+using effects::color::BLACK;
 
 constexpr int TITLE = 1;
 constexpr int HAND = 2;
@@ -40,8 +40,6 @@ constexpr int PAN_STEP_PIXELS = 5;
 constexpr int PAN_STEP_FRAMES = 4;
 constexpr int CLICK_FRAMES = 400;
 constexpr int16_t CLICK_FIRE = 16;
-constexpr int UNPACK_VBLS = 1;
-constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr int FADE_SPEED = 5;
 constexpr int HOLD_FRAMES = 100;
 
@@ -78,7 +76,7 @@ void GameOverScene::advance(int16_t joystick) {
     m_bobs.setImage(HAND, m_hand.advance(m_bobs.image(HAND)));
   }
   m_fader.advance(m_palette);
-  if (m_buffer && !holdsAtStart()) {
+  if (m_buffer && !m_hold.holdsAtStart(m_frame)) {
     m_buffer->test(m_bobs, m_images);
   }
 
@@ -134,7 +132,7 @@ void GameOverScene::advance(int16_t joystick) {
       break;
     }
   }
-  if (m_buffer && !holdsAtEnd()) {
+  if (m_buffer && !m_hold.holdsAtEnd(m_frame)) {
     m_buffer->test(m_bobs, m_images);
   }
 }
@@ -203,19 +201,10 @@ void GameOverScene::close() {
 }
 
 GameOverScene::Flow GameOverScene::wait(int frames, Step next) {
-  m_holdStart = m_frame;
-  m_holdUntil = m_frame + frames;
+  m_hold.start(m_frame, frames);
   m_resumeFrame = m_frame + frames;
   m_step = next;
   return Flow::Yield;
-}
-
-bool GameOverScene::holdsAtStart() const {
-  return m_holdStart < m_frame && m_frame <= m_holdUntil;
-}
-
-bool GameOverScene::holdsAtEnd() const {
-  return m_holdStart <= m_frame && m_frame < m_holdUntil;
 }
 
 void GameOverScene::unpack() {

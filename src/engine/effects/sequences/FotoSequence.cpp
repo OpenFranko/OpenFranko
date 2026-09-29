@@ -7,8 +7,8 @@
 namespace openfranko::src::engine::effects::sequences {
 namespace {
 
-constexpr color::AmigaColor WHITE = 0xFFF;
-constexpr color::AmigaColor BLACK = 0x000;
+using color::BLACK;
+using color::WHITE;
 
 constexpr int WHITE_FRAMES = 5;
 constexpr int FOTO_WAIT_PER_SPEED = 15;

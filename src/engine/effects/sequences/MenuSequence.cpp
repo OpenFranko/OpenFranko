@@ -75,8 +75,6 @@ constexpr int MACH_WAIT = 40;
 constexpr int LEAVING_FADE_AT = 50;
 constexpr int LEAVING_FADE_SPEED = 3;
 constexpr int LEAVING_CLOSE_AT = 95;
-constexpr int UNPACK_VBLS = 1;
-constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr char FIRST_TYPED = ' ';
 
 const std::vector<animation::AmalMotion::Move> FLY_RIGHT = {{88, 16}, {8, 8}};
@@ -150,12 +148,12 @@ void MenuSequence::resumeAfterAttract() {
   m_busy = true;
 }
 
-const std::array<MenuSequence::Bob, MenuSequence::BOBS> &
+const std::array<animation::Bob, MenuSequence::BOBS> &
 MenuSequence::bobs() const {
   return m_bobs;
 }
 
-const std::array<MenuSequence::Bob, MenuSequence::BOBS> &
+const std::array<animation::Bob, MenuSequence::BOBS> &
 MenuSequence::shownBobs() const {
   return m_shownBobs;
 }
@@ -235,7 +233,7 @@ void MenuSequence::runScript(const Joystick &joystick) {
     break;
   case Phase::Closing:
     if (time == SCREEN_CLOSE_SHOWN_VBLS) {
-      for (Bob &shown : m_bobs) {
+      for (animation::Bob &shown : m_bobs) {
         shown.shown = false;
       }
       m_screenShown = false;
@@ -365,7 +363,7 @@ void MenuSequence::runAmal() {
   for (std::size_t i = 0; i < shown.credits.size(); ++i) {
     if (m_credits[i]) {
       m_credits[i]->advance();
-      Bob &credit = bob(shown.credits[i].bob);
+      animation::Bob &credit = bob(shown.credits[i].bob);
       credit.y = m_credits[i]->y();
       credit.image = m_credits[i]->image();
     }
@@ -380,6 +378,6 @@ void MenuSequence::placeHand() {
                    layout(m_version).handImage, m_column == 0};
 }
 
-MenuSequence::Bob &MenuSequence::bob(int number) { return m_bobs[number - 1]; }
+animation::Bob &MenuSequence::bob(int number) { return m_bobs[number - 1]; }
 
 } // namespace openfranko::src::engine::effects::sequences

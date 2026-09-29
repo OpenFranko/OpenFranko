@@ -1,50 +1,26 @@
 #include "MirageState.h"
 
-#include <cstddef>
-
 namespace openfranko::src::engine::states::mirage {
 namespace {
 
 constexpr auto PICTURE_PATH = "assets/03C3.bmp";
 
-constexpr int SCREEN_WIDTH = 368;
-constexpr int SCREEN_HEIGHT = 290;
 constexpr int DISPLAY_LINE = 30;
-constexpr std::size_t SCREEN_COLORS = 32;
-constexpr effects::color::AmigaColor BLACK = 0x000;
 
 constexpr effects::sequences::FotoSequence ::Timings TIMINGS{5, 200, 5, 70,
                                                              true};
 
-effects::color::AmigaPalette
-screenPalette(const systems::graphics::IndexedBitmap &picture) {
-  effects::color::AmigaPalette palette = picture.palette;
-  palette.resize(SCREEN_COLORS);
-  return palette;
-}
-
 } // namespace
 
 MirageState::MirageState(systems::graphics::VideoSystem &videoSystem)
-    : m_videoSystem(videoSystem),
-      m_rows(visibleRows(DISPLAY_LINE, SCREEN_HEIGHT, videoSystem.isNtsc())),
-      m_picture(systems::graphics::loadIndexedBitmap(PICTURE_PATH)),
-      m_screen(SCREEN_WIDTH, m_rows.count),
-      m_sequence(screenPalette(m_picture), TIMINGS) {}
+    : m_foto(videoSystem, PICTURE_PATH, DISPLAY_LINE, TIMINGS) {}
 
 std::optional<EngineStateId> MirageState::update() {
-  if (m_sequence.isFinished()) {
+  if (m_foto.sequence().isFinished()) {
     return EngineStateId::WorldSoftware;
   }
 
-  m_sequence.advance();
-  if (m_sequence.isShown()) {
-    m_screen.setPalette(m_sequence.palette());
-    m_screen.draw(m_picture, 0, -m_rows.first);
-  } else {
-    m_screen.fill(BLACK);
-  }
-  m_videoSystem.show(m_screen.output());
+  m_foto.advance();
   return std::nullopt;
 }
 

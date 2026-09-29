@@ -5,13 +5,13 @@
 #include "../../GameVersion.h"
 #include "../../InkeyBuffer.h"
 #include "../animation/AmalMotion.h"
+#include "../animation/Bob.h"
 #include "../animation/CreditScroll.h"
 #include "../color/AmigaPalette.h"
 #include "../color/PaletteFader.h"
 
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <optional>
 #include <string>
 
@@ -31,14 +31,6 @@ public:
     bool fire = false;
   };
 
-  struct Bob {
-    bool shown = false;
-    int16_t x = 0;
-    int16_t y = 0;
-    int image = 0;
-    bool flipped = false;
-  };
-
   static constexpr std::size_t BOBS = 10;
   static constexpr int ATTRACT_AFTER = 300;
 
@@ -49,8 +41,8 @@ public:
   void advance(const Joystick &joystick);
   void resumeAfterAttract();
 
-  const std::array<Bob, BOBS> &bobs() const;
-  const std::array<Bob, BOBS> &shownBobs() const;
+  const std::array<animation::Bob, BOBS> &bobs() const;
+  const std::array<animation::Bob, BOBS> &shownBobs() const;
   const color::AmigaPalette &palette() const;
   const std::string &keysRead() const;
   bool isAttractDue() const;
@@ -72,14 +64,14 @@ private:
   void startCredits();
   void runAmal();
   void placeHand();
-  Bob &bob(int number);
+  animation::Bob &bob(int number);
 
   GameOptions &m_options;
   GameVersion m_version;
   color::AmigaPalette m_palette;
   color::PaletteFader m_fader;
-  std::array<Bob, BOBS> m_bobs{};
-  std::array<Bob, BOBS> m_shownBobs{};
+  std::array<animation::Bob, BOBS> m_bobs{};
+  std::array<animation::Bob, BOBS> m_shownBobs{};
   std::array<animation::AmalMotion, BOBS> m_motions{};
   std::array<std::optional<animation::CreditScroll>, 3> m_credits{};
   InkeyBuffer &m_keyboard;

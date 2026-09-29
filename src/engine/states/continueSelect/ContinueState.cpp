@@ -1,5 +1,7 @@
 #include "ContinueState.h"
 
+#include "../shared/StreetVideo.h"
+
 namespace openfranko::src::engine::states::continueSelect {
 
 ContinueState::ContinueState(systems::graphics::VideoSystem &videoSystem,
@@ -18,9 +20,7 @@ ContinueState::ContinueState(systems::graphics::VideoSystem &videoSystem,
 
 std::optional<EngineStateId> ContinueState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  systems::graphics::Display output = m_scene.output();
-  systems::graphics::cropRows(output, m_rows.first, m_rows.count);
-  m_videoSystem.show(output);
+  shared::showSceneFrame(m_videoSystem, m_scene.output(), m_rows);
 
   switch (m_scene.outcome()) {
   case street::scenes::ContinueScene::Outcome::Continue:

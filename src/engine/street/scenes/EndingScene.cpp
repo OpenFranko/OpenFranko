@@ -2,6 +2,7 @@
 
 #include "../../AmigaDisplay.h"
 #include "../actors/Actors.h"
+#include "../core/Font.h"
 #include "../ui/StageFrame.h"
 
 #include <algorithm>
@@ -21,17 +22,15 @@ constexpr int ENDING_TUNE = 0x25F;
 constexpr int FIRST_IMAGE = 1;
 
 constexpr int FULL_VOLUME = 63;
-constexpr effects::color::AmigaColor BLACK = 0x000;
+using effects::color::BLACK;
 constexpr effects::color::AmigaColor DEFAULT_COLOR = 0x000;
-constexpr effects::color::AmigaColor WHITE = 0xFFF;
+using effects::color::WHITE;
 constexpr effects::color::AmigaColor STILL_GREY = 0x444;
 constexpr effects::color::AmigaColor INK = 0xFFF;
 constexpr effects::color::AmigaColor SHADE = 0xAAA;
 
 constexpr int STAGE_WIDTH = 304;
 
-constexpr int AUTOBACK_VBLS = 3;
-constexpr int DOUBLE_BUFFER_VBLS = 3;
 constexpr int KLIKER_FRAMES = 2000;
 constexpr int VERSION12_FINAL_KLIKER_FRAMES = 10000;
 constexpr int16_t KLIKER_FIRE = 16;
@@ -76,9 +75,6 @@ constexpr int PORTRAIT_Y = 15;
 constexpr int TEXT_TOP = 50;
 constexpr int TEXT_HEIGHT = 80;
 constexpr std::size_t TEXT_COLORS = 16;
-constexpr int LINE_WIDTH = 280;
-constexpr int GLYPH_WIDTH = 16;
-constexpr int GLYPH_OFFSET = 6;
 constexpr int BEAT_SPEED = 10;
 constexpr int BEAT_HOLD = 150;
 constexpr int BEAT_DARK = 150;
@@ -122,14 +118,14 @@ void EndingScene::advance(int16_t joystick) {
   m_stillVbl = true;
   m_machine.tick();
   m_fader.advance(m_screens[0].palette);
-  if (!holdsAtStart()) {
+  if (!m_hold.holdsAtStart(m_frame)) {
     stillTest();
     if (m_dancerBuffer) {
       m_dancerBuffer->test(m_bobs, m_images);
     }
   }
   runBasic(joystick);
-  if (!holdsAtEnd()) {
+  if (!m_hold.holdsAtEnd(m_frame)) {
     stillTest();
     if (m_dancerBuffer) {
       m_dancerBuffer->test(m_bobs, m_images);
@@ -262,17 +258,8 @@ const core::IndexedSurface *EndingScene::panel() const {
 amal::Machine &EndingScene::machine() { return m_machine; }
 
 EndingScene::Flow EndingScene::hold(int frames, Step next) {
-  m_holdStart = m_frame;
-  m_holdUntil = m_frame + frames;
+  m_hold.start(m_frame, frames);
   return wait(frames, next);
-}
-
-bool EndingScene::holdsAtStart() const {
-  return m_holdStart < m_frame && m_frame <= m_holdUntil;
-}
-
-bool EndingScene::holdsAtEnd() const {
-  return m_holdStart <= m_frame && m_frame < m_holdUntil;
 }
 
 void EndingScene::stageFrame() {
@@ -576,25 +563,15 @@ void EndingScene::textScreen() {
   m_border = m_screens[0].palette[0];
 }
 
-void EndingScene::font(const std::string &text, int y) {
-  const int length = static_cast<int>(text.size());
-  const int x = (LINE_WIDTH - length * GLYPH_WIDTH) / 2;
-  for (int i = 1; i <= length; ++i) {
-    const int image =
-        static_cast<unsigned char>(text[static_cast<std::size_t>(i - 1)]) +
-        GLYPH_OFFSET;
-    core::BobLayer::paste(m_screens[0].surface, m_images, i * GLYPH_WIDTH + x,
-                          y, image);
-  }
-}
-
 void EndingScene::pageUp() {
   if (m_page == SECOND_DANCE_PAGE) {
     secondDance();
   }
   for (const core::CreditLine &line :
        m_credits.pages[static_cast<std::size_t>(m_page)].lines) {
-    font(line.text, line.y);
+    core::font(line.text, line.y, [this](int x, int y, int image) {
+      core::BobLayer::paste(m_screens[0].surface, m_images, x, y, image);
+    });
   }
   m_fader.start(m_screens[0].palette, BEAT_SPEED, beat(INK, SHADE));
 }

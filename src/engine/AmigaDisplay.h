@@ -21,6 +21,9 @@ constexpr int SCREEN_CLOSE_SHOWN_VBLS = 2;
 constexpr int SCREEN_CLOSE_HIDDEN_VBLS =
     SCREEN_CLOSE_VBLS - SCREEN_CLOSE_SHOWN_VBLS;
 constexpr int SCREEN_REOPEN_VBLS = SCREEN_CLOSE_VBLS + SCREEN_OPEN_VBLS;
+constexpr int DOUBLE_BUFFER_VBLS = 3;
+constexpr int AUTOBACK_VBLS = 3;
+constexpr int UNPACK_VBLS = 1;
 
 constexpr int NTSC_PICTURE_RAISE = 27;
 

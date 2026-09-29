@@ -1,5 +1,7 @@
 #include "../../../../../src/engine/street/scenes/HighScoreScene.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
+#include "../core/box.h"
+#include "FakeStreetHost.h"
 #include <catch2/catch_all.hpp>
 #include <functional>
 #include <string>
@@ -11,6 +13,8 @@ using namespace openfranko::src::engine::street::scenes;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::test::src::engine::street::scenes;
+using namespace openfranko::test::src::engine::street::core;
 using openfranko::src::systems::graphics::toArgb;
 
 namespace {
@@ -33,12 +37,6 @@ constexpr uint8_t PAPER = 0;
 
 uint8_t inkOf(int image) { return static_cast<uint8_t>(1 + image % 31); }
 
-Picture box(int width, int height, uint8_t color) {
-  return Picture{
-      width, height, 0, 0,
-      std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
-}
-
 effects::color::AmigaPalette picturePalette() {
   effects::color::AmigaPalette palette(32, 0x888);
   palette[0] = 0x444;
@@ -57,16 +55,10 @@ HighScoreTable ladder(int lowest) {
   return table;
 }
 
-class FakeHost : public StreetHost {
+class FakeHost : public FakeStreetHost {
 public:
-  std::vector<std::pair<int, int>> spriteSets;
-  std::vector<int> pictures;
   std::vector<int> palettes;
-  std::vector<int> music;
-  std::vector<int> volumes;
   std::vector<int> tempos;
-  int musicStarts = 0;
-  int musicStops = 0;
   int tuneInMemory = 0;
 
   std::vector<Picture> loadSpriteSet(int resource, int sampleBank) override {
@@ -90,12 +82,6 @@ public:
     return picturePalette();
   }
 
-  std::vector<Picture> loadScenery(int) override { return {}; }
-
-  LevelScript loadLevelScript(int) override { return LevelScript{}; }
-
-  EndingCredits loadEndingCredits() override { return {}; }
-
   Picture loadPanelPicture(int) override { return box(304, 48, 7); }
 
   void loadMusic(int resource) override {
@@ -107,20 +93,7 @@ public:
     return resource == tuneInMemory;
   }
 
-  void playMusic() override { ++musicStarts; }
-
-  void stopMusic() override { ++musicStops; }
-
-  void setMusicVolume(int volume) override { volumes.push_back(volume); }
   void setMusicTempo(int tempo) override { tempos.push_back(tempo); }
-
-  void playSample(int, int, int) override {}
-
-  void playSampleAt(int, int, int, int) override {}
-
-  void setSampleLooping(bool) override {}
-
-  int random(int) override { return 0; }
 };
 
 struct Board {

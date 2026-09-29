@@ -32,6 +32,7 @@ public:
 
 private:
   void paste(int page);
+  void pasteGlyph(int x, int y, int image);
   const systems::graphics::IndexedBitmap *glyph(int image);
 
   systems::graphics::VideoSystem &m_videoSystem;
