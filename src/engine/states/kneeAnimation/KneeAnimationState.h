@@ -4,8 +4,8 @@
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
-#include "../../../systems/input/ControllerSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../GameVersion.h"
 #include "../IEngineState.h"
 
