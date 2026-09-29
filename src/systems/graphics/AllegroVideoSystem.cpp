@@ -7,6 +7,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <dos.h>
 #include <pc.h>
 #include <stdexcept>
 #include <string>
@@ -27,6 +28,29 @@ constexpr int LATCH_WRITE = 0x01;
 constexpr int ALL_PLANES = 0x0F;
 constexpr int PLANE_SHIFT = 8;
 constexpr int DAC_SHIFT = 2;
+constexpr std::size_t BAND_ROWS = 8;
+constexpr int SCREEN_HERTZ = PAL_HERTZ;
+constexpr int STATUS_PORT = 0x3DA;
+constexpr int DISPLAY_OFF = 0x01;
+constexpr int VERTICAL_RETRACE = 0x08;
+constexpr int TIMER_COMMAND_PORT = 0x43;
+constexpr int CLOCK_PORT = 0x42;
+constexpr int SPEAKER_PORT = 0x61;
+constexpr int CLOCK_GATE = 0x01;
+constexpr int SPEAKER_DATA = 0x02;
+constexpr int CLOCK_MODE = 0xB4;
+constexpr int CLOCK_LATCH = 0x80;
+constexpr int CLOCK_WRAP = 0x10000;
+constexpr int BYTE_BITS = 8;
+constexpr int CLOCK_CHECK_READS = 100;
+constexpr int VERTICAL_BLANK_TICKS = 24;
+constexpr int RETRACE_TIMEOUT = 3;
+constexpr int PHASE_TIMEOUT = SCREEN_HERTZ;
+constexpr int QUICK_PART = 8;
+constexpr int PERIOD_SMOOTHING = 8;
+constexpr int PERIOD_SAMPLES = 64;
+constexpr int FASTEST_HERTZ = 55;
+constexpr int SLOWEST_HERTZ = 45;
 
 volatile int vbls = 0;
 
@@ -38,20 +62,11 @@ END_OF_FUNCTION(countVbl)
                            allegro_error);
 }
 
-struct Write {
+struct RowWork {
   int row = 0;
-  int first = 0;
-  int last = 0;
-};
-
-struct Move {
-  int row = 0;
+  int from = NO_ROW;
   int shift = 0;
-};
-
-struct Copy {
-  int row = 0;
-  int from = 0;
+  std::array<Span, 2> spans{};
 };
 
 struct Placement {
@@ -267,9 +282,80 @@ void writePlaneRow(uintptr_t address, const uint8_t *source, int count,
   }
 }
 
+int startClock() {
+  const int speaker = inportb(SPEAKER_PORT);
+  outportb(SPEAKER_PORT, (speaker & ~SPEAKER_DATA) | CLOCK_GATE);
+  outportb(TIMER_COMMAND_PORT, CLOCK_MODE);
+  outportb(CLOCK_PORT, 0);
+  outportb(CLOCK_PORT, 0);
+  return speaker;
+}
+
+int clockCount() {
+  outportb(TIMER_COMMAND_PORT, CLOCK_LATCH);
+  const int low = inportb(CLOCK_PORT);
+  return low | inportb(CLOCK_PORT) << BYTE_BITS;
+}
+
+int clockTicks(int from, int to) { return (from - to) & (CLOCK_WRAP - 1); }
+
+int clockTicks(int from, int to, int vblTicks) {
+  const int counted = clockTicks(from, to);
+  const int estimate = vblTicks * BPS_TO_TIMER(SCREEN_HERTZ);
+  return counted +
+         (estimate - counted + CLOCK_WRAP / 2) / CLOCK_WRAP * CLOCK_WRAP;
+}
+
+bool isClockRunning() {
+  const int start = clockCount();
+  for (int read = 0; read < CLOCK_CHECK_READS; ++read) {
+    inportb(STATUS_PORT);
+  }
+  return clockCount() != start;
+}
+
+bool isVerticalBlank() {
+  int status = inportb(STATUS_PORT);
+  if ((status & DISPLAY_OFF) == 0) {
+    return false;
+  }
+  disable();
+  const int start = clockCount();
+  bool vertical = false;
+  while (!vertical && (status & DISPLAY_OFF) != 0) {
+    vertical = (status & VERTICAL_RETRACE) != 0 ||
+               clockTicks(start, clockCount()) >= VERTICAL_BLANK_TICKS;
+    status = inportb(STATUS_PORT);
+  }
+  enable();
+  return vertical;
+}
+
+bool waitVerticalBlank(int timeout) {
+  while (!isVerticalBlank()) {
+    if (vbls >= timeout) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool waitDisplay(int timeout) {
+  while ((inportb(STATUS_PORT) & DISPLAY_OFF) != 0) {
+    if (vbls >= timeout) {
+      return false;
+    }
+  }
+  return true;
+}
+
 } // namespace
 
 struct VideoSystem::Window {
+  void draw();
+  void followRetrace();
+  void measurePeriod(int found, int vblTicks);
+
   IndexedRasterizer rasterizer{leadingWords, trailingWords};
   IndexedFrame frame;
   Placement placement;
@@ -278,11 +364,20 @@ struct VideoSystem::Window {
   int darkest = 0;
   std::array<uint16_t, FRAME_COLORS> palette{};
   PALETTE dac{};
-  std::vector<Write> writes;
-  std::vector<Move> moves;
-  std::vector<Copy> copies;
+  bool recolored = false;
+  bool cleared = false;
+  std::vector<RowWork> rows;
   int hertz = 0;
   int nextVbl = 0;
+  int speaker = 0;
+  bool retrace = false;
+  bool timed = false;
+  bool polled = false;
+  int period = BPS_TO_TIMER(SCREEN_HERTZ);
+  int periodSamples = 0;
+  int refClock = 0;
+  int refVbl = 0;
+  int phase = 0;
 };
 
 VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
@@ -293,10 +388,13 @@ VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
   LOCK_VARIABLE(vbls);
   LOCK_FUNCTION(countVbl);
   set_palette(black_palette);
+  m_window->speaker = startClock();
+  m_window->retrace = isClockRunning();
 }
 
 VideoSystem::~VideoSystem() {
   remove_int(countVbl);
+  outportb(SPEAKER_PORT, m_window->speaker);
   set_gfx_mode(GFX_TEXT, 0, 0, 0, 0);
 }
 
@@ -327,110 +425,176 @@ void VideoSystem::present() {
       window.dac[slot].b =
           static_cast<unsigned char>(dacLevel(frame.palette[slot], 0));
     }
-    set_palette_range(window.dac, 0, static_cast<int>(FRAME_COLORS) - 1, FALSE);
+    window.recolored = true;
   }
   const int letterbox = window.darkest;
   const bool cleared = fresh || letterbox != window.letterbox;
   if (cleared) {
-    clear_to_color(screen, letterbox);
+    window.cleared = true;
     window.letterbox = letterbox;
   }
 
   const int step = placement.step;
   const bool movable = frame.width % (PLANES * step) == 0;
-  const auto write = [&](int row, int first, int last) {
-    const int firstColumn = (first + step - 1) / step;
-    const int lastColumn = std::min(placement.width, (last + step - 1) / step);
-    if (firstColumn < lastColumn) {
-      window.writes.push_back({row, firstColumn, lastColumn});
-    }
-  };
   const bool copyable = placement.height == frame.height;
-  window.writes.clear();
-  window.moves.clear();
-  window.copies.clear();
+  const auto screenSpan = [&](const Span &span) {
+    return Span{(span.first + step - 1) / step,
+                std::min(placement.width, (span.last + step - 1) / step)};
+  };
+  window.rows.clear();
   for (int row = 0; row < placement.height; ++row) {
     const RowChange &change =
         frame.changes[static_cast<std::size_t>(sourceRow(placement, row))];
-    if (cleared) {
-      write(row, 0, frame.width);
+    RowWork work;
+    work.row = row;
+    const bool whole = cleared || (change.from != NO_ROW && !copyable) ||
+                       (change.shift != 0 &&
+                        (!movable || change.shift % (PLANES * step) != 0));
+    if (whole) {
+      work.spans[0] = {0, placement.width};
+    } else if (isChanged(change)) {
+      work.from = change.from;
+      work.shift = change.shift / step;
+      work.spans = {screenSpan(change.spans[0]), screenSpan(change.spans[1])};
+    } else {
       continue;
     }
-    if (change.from != NO_ROW) {
-      if (!copyable) {
-        write(row, 0, frame.width);
-        continue;
-      }
-      window.copies.push_back({row, change.from});
-    }
-    if (change.shift != 0) {
-      if (!movable || change.shift % (PLANES * step) != 0) {
-        write(row, 0, frame.width);
-        continue;
-      }
-      window.moves.push_back({row, change.shift / step});
-    }
-    for (const Span &span : change.spans) {
-      write(row, span.first, span.last);
-    }
+    window.rows.push_back(work);
   }
-  if (window.writes.empty() && window.moves.empty() && window.copies.empty()) {
+  if (std::any_of(window.rows.begin(), window.rows.end(),
+                  [](const RowWork &work) {
+                    return work.from != NO_ROW && work.from < work.row;
+                  })) {
+    std::reverse(window.rows.begin(), window.rows.end());
+  }
+}
+
+void VideoSystem::Window::draw() {
+  if (recolored) {
+    set_palette_range(dac, 0, static_cast<int>(FRAME_COLORS) - 1, FALSE);
+    recolored = false;
+  }
+  if (cleared) {
+    clear_to_color(screen, letterbox);
+    cleared = false;
+  }
+  if (rows.empty()) {
     return;
   }
-
   bmp_select(screen);
-  if (!window.moves.empty() || !window.copies.empty()) {
-    outportb(GRAPHICS_PORT, MODE_REGISTER);
-    const int mode = inportb(GRAPHICS_PORT + 1);
-    outportw(GRAPHICS_PORT, ((mode & ~WRITE_MODES) | LATCH_WRITE)
+  outportb(GRAPHICS_PORT, MODE_REGISTER);
+  const int mode = inportb(GRAPHICS_PORT + 1);
+  bool latched = false;
+  const auto latch = [&](bool on) {
+    if (on == latched) {
+      return;
+    }
+    latched = on;
+    outportw(GRAPHICS_PORT, ((mode & ~WRITE_MODES) | (on ? LATCH_WRITE : 0))
                                     << PLANE_SHIFT |
                                 MODE_REGISTER);
-    outportw(SEQUENCER_PORT, ALL_PLANES << PLANE_SHIFT | MAP_MASK);
-    const int groups = placement.width / PLANES;
-    const auto rowStart = [&](int row) {
-      return reinterpret_cast<uintptr_t>(screen->line[placement.y + row]) +
-             static_cast<uintptr_t>(placement.x / PLANES);
-    };
-    if (!window.copies.empty() &&
-        window.copies.front().from < window.copies.front().row) {
-      std::reverse(window.copies.begin(), window.copies.end());
+    if (on) {
+      outportw(SEQUENCER_PORT, ALL_PLANES << PLANE_SHIFT | MAP_MASK);
     }
-    for (const Copy &copy : window.copies) {
-      copyLatches(rowStart(copy.from), rowStart(copy.row), groups, false);
-    }
-    for (const Move &move : window.moves) {
-      const int moved = std::abs(move.shift) / PLANES;
-      const uintptr_t base =
-          reinterpret_cast<uintptr_t>(screen->line[placement.y + move.row]) +
-          static_cast<uintptr_t>(placement.x / PLANES);
-      if (move.shift < 0) {
-        copyLatches(base + static_cast<uintptr_t>(moved), base, groups - moved,
-                    false);
-      } else {
-        copyLatches(base, base + static_cast<uintptr_t>(moved), groups - moved,
-                    true);
-      }
-    }
-    outportw(GRAPHICS_PORT, mode << PLANE_SHIFT | MODE_REGISTER);
-  }
+  };
+  const auto rowStart = [&](int row) {
+    return reinterpret_cast<uintptr_t>(screen->line[placement.y + row]) +
+           static_cast<uintptr_t>(placement.x / PLANES);
+  };
+  const int groups = placement.width / PLANES;
   const std::size_t width = static_cast<std::size_t>(frame.width);
-  for (int plane = 0; plane < PLANES; ++plane) {
-    outportw(SEQUENCER_PORT, (1 << (PLANE_SHIFT + plane)) | MAP_MASK);
-    for (const Write &span : window.writes) {
-      const int first =
-          span.first + (plane - span.first % PLANES + PLANES) % PLANES;
-      if (first >= span.last) {
-        continue;
+  const int step = placement.step;
+  for (std::size_t band = 0; band < rows.size(); band += BAND_ROWS) {
+    const std::size_t end = std::min(rows.size(), band + BAND_ROWS);
+    for (std::size_t index = band; index < end; ++index) {
+      const RowWork &work = rows[index];
+      if (work.from != NO_ROW) {
+        latch(true);
+        copyLatches(rowStart(work.from), rowStart(work.row), groups, false);
       }
-      const uint8_t *source =
-          frame.pixels.data() +
-          static_cast<std::size_t>(sourceRow(placement, span.row)) * width +
-          first * step;
-      writePlaneRow(
-          reinterpret_cast<uintptr_t>(screen->line[placement.y + span.row]) +
-              static_cast<uintptr_t>((placement.x + first) / PLANES),
-          source, (span.last - first + PLANES - 1) / PLANES, step);
+      if (work.shift != 0) {
+        latch(true);
+        const int moved = std::abs(work.shift) / PLANES;
+        const uintptr_t start = rowStart(work.row);
+        if (work.shift < 0) {
+          copyLatches(start + static_cast<uintptr_t>(moved), start,
+                      groups - moved, false);
+        } else {
+          copyLatches(start, start + static_cast<uintptr_t>(moved),
+                      groups - moved, true);
+        }
+      }
     }
+    for (int plane = 0; plane < PLANES; ++plane) {
+      bool selected = false;
+      for (std::size_t index = band; index < end; ++index) {
+        const RowWork &work = rows[index];
+        const uint8_t *source =
+            frame.pixels.data() +
+            static_cast<std::size_t>(sourceRow(placement, work.row)) * width;
+        for (const Span &span : work.spans) {
+          const int first =
+              span.first + (plane - span.first % PLANES + PLANES) % PLANES;
+          if (first >= span.last) {
+            continue;
+          }
+          if (!selected) {
+            latch(false);
+            outportw(SEQUENCER_PORT, (1 << (PLANE_SHIFT + plane)) | MAP_MASK);
+            selected = true;
+          }
+          writePlaneRow(rowStart(work.row) +
+                            static_cast<uintptr_t>(first / PLANES),
+                        source + first * step,
+                        (span.last - first + PLANES - 1) / PLANES, step);
+        }
+      }
+    }
+  }
+  latch(false);
+  rows.clear();
+}
+
+void VideoSystem::Window::followRetrace() {
+  const int clock = clockCount();
+  const int ticks = vbls;
+  const bool known = timed && ticks - refVbl <= PHASE_TIMEOUT;
+  const int since =
+      known ? phase + clockTicks(refClock, clock, ticks - refVbl) : 0;
+  if (known && since >= period) {
+    phase = since % period;
+    refClock = clock;
+    refVbl = ticks;
+    polled = false;
+    return;
+  }
+  const bool leave = !known || since < period / QUICK_PART;
+  if ((leave && !waitDisplay(ticks + RETRACE_TIMEOUT)) ||
+      !waitVerticalBlank(ticks + RETRACE_TIMEOUT)) {
+    retrace = false;
+    return;
+  }
+  const int found = clockCount();
+  if (known && polled) {
+    measurePeriod(found, vbls - refVbl);
+  }
+  timed = true;
+  polled = true;
+  phase = 0;
+  refClock = found;
+  refVbl = vbls;
+}
+
+void VideoSystem::Window::measurePeriod(int found, int vblTicks) {
+  const int elapsed = clockTicks(refClock, found, vblTicks);
+  const int refreshes = (elapsed + period / 2) / period;
+  if (refreshes == 0) {
+    return;
+  }
+  period += (elapsed / refreshes - period) / PERIOD_SMOOTHING;
+  if (++periodSamples == PERIOD_SAMPLES) {
+    retrace = period >= BPS_TO_TIMER(FASTEST_HERTZ) &&
+              period <= BPS_TO_TIMER(SLOWEST_HERTZ);
   }
 }
 
@@ -441,13 +605,20 @@ void VideoSystem::waitVbl() {
     install_int_ex(countVbl, BPS_TO_TIMER(hertz));
     window.hertz = hertz;
     window.nextVbl = vbls;
+    window.timed = false;
   }
-  ++window.nextVbl;
-  while (vbls < window.nextVbl) {
-  }
-  if (vbls - window.nextVbl > 1) {
+  if (window.retrace && hertz == SCREEN_HERTZ) {
+    window.followRetrace();
     window.nextVbl = vbls;
+  } else {
+    ++window.nextVbl;
+    while (vbls < window.nextVbl) {
+    }
+    if (vbls - window.nextVbl > 1) {
+      window.nextVbl = vbls;
+    }
   }
+  window.draw();
 }
 
 } // namespace openfranko::src::systems::graphics
