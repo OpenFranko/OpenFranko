@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::scenes {
 
 EndingCredits EndingCredits::fromJson(const std::string &json) {
   const core::JsonValue root = core::parseJson(json);
@@ -21,4 +21,4 @@ EndingCredits EndingCredits::fromJson(const std::string &json) {
   return credits;
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::scenes

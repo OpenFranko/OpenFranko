@@ -67,14 +67,14 @@ struct GameSession {
   int extraLifeKills = FIRST_EXTRA_LIFE;
   bool brutality = false;
   bool shortLevels = false;
-  std::string textBuffer = HighScoreTable::FILE_NAME;
+  std::string textBuffer = scenes::HighScoreTable::FILE_NAME;
   int stageReached = 0;
   bool fromBonusDrive = false;
   bool nameScreenOpen = false;
   effects::color::AmigaColor border = 0x000;
   SystemKey keyLatch = SystemKey::None;
   DriveCarryOver lastDrive;
-  HighScoreTable highScores;
+  scenes::HighScoreTable highScores;
   effects::core::InkeyBuffer keyboard;
   std::optional<StreetExit> streetExit;
   std::optional<BossExit> bossExit;

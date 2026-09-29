@@ -31,9 +31,10 @@ heldSystemKey(const systems::ControllerSystem &controller) {
 
 } // namespace
 
-street::StreetInput readStreetInput(const systems::ControllerSystem &controller,
-                                    GameVersion version) {
-  street::StreetInput input;
+street::scenes::StreetInput
+readStreetInput(const systems::ControllerSystem &controller,
+                GameVersion version) {
+  street::scenes::StreetInput input;
   input.joystick = controller.joystick();
   if (version == GameVersion::V12) {
     input.key = heldSystemKey(controller);

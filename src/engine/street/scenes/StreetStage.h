@@ -24,6 +24,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace scenes {
 
 class StreetHost {
 public:
@@ -223,6 +224,7 @@ private:
   std::array<int, 4> m_needed{};
 };
 
+} // namespace scenes
 } // namespace street
 } // namespace engine
 } // namespace src

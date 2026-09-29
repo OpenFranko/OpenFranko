@@ -3,8 +3,9 @@
 namespace openfranko::src::engine::states::highScore {
 namespace {
 
-void save(const street::HighScoreTable &table) {
-  street::writeHighScoreFile(table, street::HighScoreTable::FILE_NAME);
+void save(const street::scenes::HighScoreTable &table) {
+  street::scenes::writeHighScoreFile(table,
+                                     street::scenes::HighScoreTable::FILE_NAME);
 }
 
 } // namespace
@@ -16,9 +17,9 @@ HighScoreState::HighScoreState(systems::VideoSystem &videoSystem,
     : m_videoSystem(videoSystem), m_host(audioSystem, session.version),
       m_scene(m_host, session, options, save),
       m_rows(effects::color::visibleRows(
-          effects::color::pictureLine(street::HighScoreScene::DISPLAY_LINE,
-                                      options.ntsc),
-          street::HighScoreScene::HEIGHT, options.ntsc)) {
+          effects::color::pictureLine(
+              street::scenes::HighScoreScene::DISPLAY_LINE, options.ntsc),
+          street::scenes::HighScoreScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }
 
@@ -29,16 +30,18 @@ std::optional<EngineStateEnum> HighScoreState::update() {
   m_videoSystem.show(output);
 
   switch (m_scene.outcome()) {
-  case street::HighScoreScene::Outcome::Menu:
+  case street::scenes::HighScoreScene::Outcome::Menu:
     return EngineStateEnum::Menu;
-  case street::HighScoreScene::Outcome::Continue:
+  case street::scenes::HighScoreScene::Outcome::Continue:
     return EngineStateEnum::Continue;
-  case street::HighScoreScene::Outcome::Running:
+  case street::scenes::HighScoreScene::Outcome::Running:
     break;
   }
   return std::nullopt;
 }
 
-const street::HighScoreScene &HighScoreState::scene() const { return m_scene; }
+const street::scenes::HighScoreScene &HighScoreState::scene() const {
+  return m_scene;
+}
 
 } // namespace openfranko::src::engine::states::highScore

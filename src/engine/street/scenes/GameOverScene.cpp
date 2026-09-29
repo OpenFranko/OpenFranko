@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::scenes {
 namespace {
 
 constexpr int OBJECTS = 0x36;
@@ -297,4 +297,4 @@ void GameOverScene::closeGraveyard() {
   m_copperShown = false;
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::scenes

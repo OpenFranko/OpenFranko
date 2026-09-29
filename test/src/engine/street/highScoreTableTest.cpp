@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-using namespace openfranko::src::engine::street;
+using namespace openfranko::src::engine::street::scenes;
 
 namespace {
 

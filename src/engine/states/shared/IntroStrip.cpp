@@ -27,14 +27,15 @@ constexpr int LINE_WIDTH = 280;
 constexpr int GLYPH_WIDTH = 16;
 constexpr int GLYPH_OFFSET = 6;
 
-std::vector<street::CreditPage> loadPages(const std::string &directory) {
+std::vector<street::scenes::CreditPage>
+loadPages(const std::string &directory) {
   std::ifstream file(std::filesystem::path(directory) / INTRO_FILE);
   if (!file) {
     return {};
   }
   std::stringstream text;
   text << file.rdbuf();
-  return street::EndingCredits::fromJson(text.str()).pages;
+  return street::scenes::EndingCredits::fromJson(text.str()).pages;
 }
 
 } // namespace
@@ -82,7 +83,7 @@ void IntroStrip::paste(int page) {
   if (page < 0 || page >= pages()) {
     return;
   }
-  for (const street::CreditLine &line :
+  for (const street::scenes::CreditLine &line :
        m_pages[static_cast<std::size_t>(page)].lines) {
     const int length = static_cast<int>(line.text.size());
     const int x = (LINE_WIDTH - length * GLYPH_WIDTH) / 2;

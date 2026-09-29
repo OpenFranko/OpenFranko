@@ -34,8 +34,9 @@ street::ui::BossExit lastBossExit(const amal::Registers &registers) {
   street::ui::StatusPanel panel(panelPicture("0384.bmp"),
                                 panelPicture("0384_1.bmp"));
   panel.score({registers[RF], registers[RO], registers[RN], registers[RG]});
-  const street::core::IndexedSurface screen(street::BossStage::SCREEN_WIDTH,
-                                            street::BossStage::SCREEN_HEIGHT);
+  const street::core::IndexedSurface screen(
+      street::scenes::BossStage::SCREEN_WIDTH,
+      street::scenes::BossStage::SCREEN_HEIGHT);
   return street::ui::BossExit{street::core::DoubleBuffer(screen),
                               street::core::levelPalette(false),
                               street::core::playDisplayY(layout),

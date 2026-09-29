@@ -94,7 +94,7 @@ street::core::LevelScript EngineStreetHost::loadLevelScript(int resource) {
   return street::core::LevelScript::fromJson(text.str());
 }
 
-street::EndingCredits EngineStreetHost::loadEndingCredits() {
+street::scenes::EndingCredits EngineStreetHost::loadEndingCredits() {
   const std::string path = m_directory + "/" + CREDITS_FILE;
   std::ifstream file(path);
   if (!file) {
@@ -102,7 +102,7 @@ street::EndingCredits EngineStreetHost::loadEndingCredits() {
   }
   std::stringstream text;
   text << file.rdbuf();
-  return street::EndingCredits::fromJson(text.str());
+  return street::scenes::EndingCredits::fromJson(text.str());
 }
 
 street::core::Picture EngineStreetHost::loadPanelPicture(int part) {

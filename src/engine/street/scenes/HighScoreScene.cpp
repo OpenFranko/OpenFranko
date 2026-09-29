@@ -10,7 +10,7 @@
 #include <optional>
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::scenes {
 namespace {
 
 constexpr int RN = 13;
@@ -390,4 +390,4 @@ void HighScoreScene::redraw() {
   m_bobs.draw(m_display, m_images);
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::scenes

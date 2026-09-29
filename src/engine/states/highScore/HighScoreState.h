@@ -25,12 +25,12 @@ public:
 
   std::optional<EngineStateEnum> update() override;
 
-  const street::HighScoreScene &scene() const;
+  const street::scenes::HighScoreScene &scene() const;
 
 private:
   systems::VideoSystem &m_videoSystem;
   shared::EngineStreetHost m_host;
-  street::HighScoreScene m_scene;
+  street::scenes::HighScoreScene m_scene;
   effects::color::VisibleRows m_rows;
 };
 

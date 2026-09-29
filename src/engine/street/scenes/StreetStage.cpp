@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::scenes {
 namespace {
 
 using amal::actors::amosBool;
@@ -1091,4 +1091,4 @@ void StreetStage::runBasic(const StreetInput &input) {
   }
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::scenes

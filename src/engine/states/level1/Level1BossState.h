@@ -26,14 +26,14 @@ public:
 
   std::optional<EngineStateEnum> update() override;
 
-  const street::BossStage &stage() const;
+  const street::scenes::BossStage &stage() const;
 
 private:
   systems::VideoSystem &m_videoSystem;
   systems::ControllerSystem &m_controllerSystem;
   const effects::core::GameOptions &m_options;
   shared::EngineStreetHost m_host;
-  street::BossStage m_stage;
+  street::scenes::BossStage m_stage;
 };
 
 } // namespace level1

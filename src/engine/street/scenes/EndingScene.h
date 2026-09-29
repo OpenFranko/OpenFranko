@@ -25,6 +25,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace scenes {
 
 class EndingScene {
 public:
@@ -164,6 +165,7 @@ private:
   int m_displayLine = DISPLAY_LINE;
 };
 
+} // namespace scenes
 } // namespace street
 } // namespace engine
 } // namespace src

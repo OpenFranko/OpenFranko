@@ -10,8 +10,9 @@ EndingState::EndingState(systems::VideoSystem &videoSystem,
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem, session.version),
       m_scene(m_host, session, options.ntsc),
-      m_rows(effects::color::visibleRows(
-          m_scene.displayLine(), street::EndingScene::HEIGHT, options.ntsc)) {
+      m_rows(effects::color::visibleRows(m_scene.displayLine(),
+                                         street::scenes::EndingScene::HEIGHT,
+                                         options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }
 
@@ -26,6 +27,8 @@ std::optional<EngineStateEnum> EndingState::update() {
   return std::nullopt;
 }
 
-const street::EndingScene &EndingState::scene() const { return m_scene; }
+const street::scenes::EndingScene &EndingState::scene() const {
+  return m_scene;
+}
 
 } // namespace openfranko::src::engine::states::ending

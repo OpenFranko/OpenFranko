@@ -22,6 +22,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace scenes {
 
 class CarStage {
 public:
@@ -183,6 +184,7 @@ private:
   std::array<bool, PEDESTRIANS + 1> m_hit{};
 };
 
+} // namespace scenes
 } // namespace street
 } // namespace engine
 } // namespace src

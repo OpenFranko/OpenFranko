@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::scenes {
 namespace {
 
 constexpr int RO = 14;
@@ -658,4 +658,4 @@ void EndingScene::stillTest() {
   }
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::scenes

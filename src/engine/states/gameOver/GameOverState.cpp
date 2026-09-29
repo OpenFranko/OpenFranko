@@ -10,9 +10,9 @@ GameOverState::GameOverState(systems::VideoSystem &videoSystem,
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem, session.version), m_scene(m_host, session),
       m_rows(effects::color::visibleRows(
-          effects::color::pictureLine(street::GameOverScene::DISPLAY_LINE,
-                                      options.ntsc),
-          street::GameOverScene::HEIGHT, options.ntsc)) {
+          effects::color::pictureLine(
+              street::scenes::GameOverScene::DISPLAY_LINE, options.ntsc),
+          street::scenes::GameOverScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }
 
@@ -27,6 +27,8 @@ std::optional<EngineStateEnum> GameOverState::update() {
   return std::nullopt;
 }
 
-const street::GameOverScene &GameOverState::scene() const { return m_scene; }
+const street::scenes::GameOverScene &GameOverState::scene() const {
+  return m_scene;
+}
 
 } // namespace openfranko::src::engine::states::gameOver

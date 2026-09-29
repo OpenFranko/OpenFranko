@@ -12,6 +12,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace scenes {
 
 class HighScoreTable {
 public:
@@ -47,6 +48,7 @@ private:
 std::optional<HighScoreTable> readHighScoreFile(const std::string &path);
 bool writeHighScoreFile(const HighScoreTable &table, const std::string &path);
 
+} // namespace scenes
 } // namespace street
 } // namespace engine
 } // namespace src

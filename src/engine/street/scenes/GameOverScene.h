@@ -19,6 +19,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace scenes {
 
 class GameOverScene {
 public:
@@ -102,6 +103,7 @@ private:
   int m_holdUntil = -1;
 };
 
+} // namespace scenes
 } // namespace street
 } // namespace engine
 } // namespace src

@@ -19,18 +19,20 @@ std::optional<EngineStateEnum> Level3State::update() {
   shared::showStageFrame(m_videoSystem, m_stage.output(), m_options);
 
   switch (m_stage.outcome()) {
-  case street::StreetStage::Outcome::GameOver:
+  case street::scenes::StreetStage::Outcome::GameOver:
     return EngineStateEnum::GameOver;
-  case street::StreetStage::Outcome::Quit:
+  case street::scenes::StreetStage::Outcome::Quit:
     return EngineStateEnum::HighScore;
-  case street::StreetStage::Outcome::LevelFinished:
+  case street::scenes::StreetStage::Outcome::LevelFinished:
     return EngineStateEnum::Level3Boss;
-  case street::StreetStage::Outcome::Playing:
+  case street::scenes::StreetStage::Outcome::Playing:
     break;
   }
   return std::nullopt;
 }
 
-const street::StreetStage &Level3State::stage() const { return m_stage; }
+const street::scenes::StreetStage &Level3State::stage() const {
+  return m_stage;
+}
 
 } // namespace openfranko::src::engine::states::level3

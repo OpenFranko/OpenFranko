@@ -16,6 +16,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace scenes {
 
 class ContinueScene {
 public:
@@ -65,6 +66,7 @@ private:
   int m_resumeFrame = 0;
 };
 
+} // namespace scenes
 } // namespace street
 } // namespace engine
 } // namespace src

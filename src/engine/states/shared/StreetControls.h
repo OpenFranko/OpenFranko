@@ -13,8 +13,9 @@ namespace engine {
 namespace states {
 namespace shared {
 
-street::StreetInput readStreetInput(const systems::ControllerSystem &controller,
-                                    GameVersion version);
+street::scenes::StreetInput
+readStreetInput(const systems::ControllerSystem &controller,
+                GameVersion version);
 void showStageFrame(systems::VideoSystem &videoSystem,
                     const systems::Display &frame,
                     const effects::core::GameOptions &options);

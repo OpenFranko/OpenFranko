@@ -278,14 +278,15 @@ void MenuState::drawAttractPicture() {
 }
 
 void MenuState::drawHiscoreRow(int row) {
-  const street::HighScoreTable &table = m_session.highScores;
+  const street::scenes::HighScoreTable &table = m_session.highScores;
   const int y = FIRST_ROW_Y + row * ROW_PITCH - m_attractTop;
 
-  for (int column = 0; column < street::HighScoreTable::NAME_LENGTH; ++column) {
+  for (int column = 0; column < street::scenes::HighScoreTable::NAME_LENGTH;
+       ++column) {
     const int letter = table.letter(row, column);
     const systems::IndexedBitmap *image =
         findImage(m_letters, FIRST_LETTER_IMAGE, letter + LETTER_A_IMAGE);
-    if (letter < street::HighScoreTable::LETTERS && image) {
+    if (letter < street::scenes::HighScoreTable::LETTERS && image) {
       m_attractScreen.drawMasked(*image, NAME_X + column * CHARACTER_PITCH, y);
     }
   }

@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <fstream>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::scenes {
 namespace {
 
 constexpr const char *SEED_NAME = "XPSME TPGUXBSF ";
@@ -126,4 +126,4 @@ bool writeHighScoreFile(const HighScoreTable &table, const std::string &path) {
   return static_cast<bool>(file);
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::scenes

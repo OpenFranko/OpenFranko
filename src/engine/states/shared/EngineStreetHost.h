@@ -16,7 +16,7 @@ namespace engine {
 namespace states {
 namespace shared {
 
-class EngineStreetHost : public street::StreetHost {
+class EngineStreetHost : public street::scenes::StreetHost {
 public:
   EngineStreetHost(systems::AudioSystem &audioSystem, GameVersion version,
                    std::string directory = "assets");
@@ -28,7 +28,7 @@ public:
   effects::color::AmigaPalette loadPalette(int resource) override;
   std::vector<street::core::Picture> loadScenery(int resource) override;
   street::core::LevelScript loadLevelScript(int resource) override;
-  street::EndingCredits loadEndingCredits() override;
+  street::scenes::EndingCredits loadEndingCredits() override;
   street::core::Picture loadPanelPicture(int part) override;
   void loadMusic(int resource) override;
   bool isMusicLoaded(int resource) const override;

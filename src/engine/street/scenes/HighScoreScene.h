@@ -21,6 +21,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace scenes {
 
 class HighScoreScene {
 public:
@@ -120,6 +121,7 @@ private:
   std::string m_name;
 };
 
+} // namespace scenes
 } // namespace street
 } // namespace engine
 } // namespace src

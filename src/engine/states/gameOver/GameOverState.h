@@ -26,13 +26,13 @@ public:
 
   std::optional<EngineStateEnum> update() override;
 
-  const street::GameOverScene &scene() const;
+  const street::scenes::GameOverScene &scene() const;
 
 private:
   systems::VideoSystem &m_videoSystem;
   systems::ControllerSystem &m_controllerSystem;
   shared::EngineStreetHost m_host;
-  street::GameOverScene m_scene;
+  street::scenes::GameOverScene m_scene;
   effects::color::VisibleRows m_rows;
 };
 

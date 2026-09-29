@@ -10,9 +10,9 @@ ContinueState::ContinueState(systems::VideoSystem &videoSystem,
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem, session.version), m_scene(m_host, session),
       m_rows(effects::color::visibleRows(
-          effects::color::pictureLine(street::ContinueScene::DISPLAY_LINE,
-                                      options.ntsc),
-          street::ContinueScene::HEIGHT, options.ntsc)) {
+          effects::color::pictureLine(
+              street::scenes::ContinueScene::DISPLAY_LINE, options.ntsc),
+          street::scenes::ContinueScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }
 
@@ -23,16 +23,18 @@ std::optional<EngineStateEnum> ContinueState::update() {
   m_videoSystem.show(output);
 
   switch (m_scene.outcome()) {
-  case street::ContinueScene::Outcome::Continue:
+  case street::scenes::ContinueScene::Outcome::Continue:
     return EngineStateEnum::CharacterSelection;
-  case street::ContinueScene::Outcome::NewGame:
+  case street::scenes::ContinueScene::Outcome::NewGame:
     return EngineStateEnum::Menu;
-  case street::ContinueScene::Outcome::Choosing:
+  case street::scenes::ContinueScene::Outcome::Choosing:
     break;
   }
   return std::nullopt;
 }
 
-const street::ContinueScene &ContinueState::scene() const { return m_scene; }
+const street::scenes::ContinueScene &ContinueState::scene() const {
+  return m_scene;
+}
 
 } // namespace openfranko::src::engine::states::continueSelect

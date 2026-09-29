@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::scenes {
 namespace {
 
 constexpr int RO = 14;
@@ -199,4 +199,4 @@ void ContinueScene::redraw() {
   m_bobs.draw(m_display, m_images);
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::scenes

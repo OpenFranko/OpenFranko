@@ -8,6 +8,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace street {
+namespace scenes {
 
 struct CreditLine {
   std::string text;
@@ -25,6 +26,7 @@ struct EndingCredits {
   static EndingCredits fromJson(const std::string &json);
 };
 
+} // namespace scenes
 } // namespace street
 } // namespace engine
 } // namespace src

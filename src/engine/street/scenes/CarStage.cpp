@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-namespace openfranko::src::engine::street {
+namespace openfranko::src::engine::street::scenes {
 namespace {
 
 using amal::actors::amosBool;
@@ -759,4 +759,4 @@ void CarStage::runBasic(const StreetInput &input) {
   }
 }
 
-} // namespace openfranko::src::engine::street
+} // namespace openfranko::src::engine::street::scenes

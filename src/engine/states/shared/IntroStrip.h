@@ -36,7 +36,7 @@ private:
 
   systems::VideoSystem &m_videoSystem;
   std::string m_directory;
-  std::vector<street::CreditPage> m_pages;
+  std::vector<street::scenes::CreditPage> m_pages;
   std::map<int, std::optional<systems::IndexedBitmap>> m_glyphs;
   effects::color::VisibleRows m_rows;
   systems::Canvas m_frame;
