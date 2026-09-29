@@ -19,7 +19,12 @@ constexpr int SCREEN_WIDTH = 376;
 constexpr int SCREEN_HEIGHT = 282;
 constexpr int PLANES = 4;
 constexpr int SEQUENCER_PORT = 0x3C4;
+constexpr int GRAPHICS_PORT = 0x3CE;
 constexpr int MAP_MASK = 0x02;
+constexpr int MODE_REGISTER = 0x05;
+constexpr int WRITE_MODES = 0x03;
+constexpr int LATCH_WRITE = 0x01;
+constexpr int ALL_PLANES = 0x0F;
 constexpr int PLANE_SHIFT = 8;
 constexpr int DAC_SHIFT = 2;
 
@@ -32,6 +37,22 @@ END_OF_FUNCTION(countVbl)
   throw std::runtime_error("Video system error: " + cause + ": " +
                            allegro_error);
 }
+
+struct Write {
+  int row = 0;
+  int first = 0;
+  int last = 0;
+};
+
+struct Move {
+  int row = 0;
+  int shift = 0;
+};
+
+struct Copy {
+  int row = 0;
+  int from = 0;
+};
 
 struct Placement {
   int x = 0;
@@ -67,7 +88,9 @@ Placement place(const Display &display) {
 }
 
 int sourceRow(const Placement &placement, int row) {
-  return row * placement.sourceHeight / placement.height;
+  return placement.height == placement.sourceHeight
+             ? row
+             : row * placement.sourceHeight / placement.height;
 }
 
 int brightness(uint16_t color) {
@@ -87,19 +110,90 @@ int dacLevel(uint16_t color, int shift) {
   return level << DAC_SHIFT | level >> DAC_SHIFT;
 }
 
-bool equalWords(const uint8_t *left, const uint8_t *right, std::size_t count) {
-  std::size_t words = count / sizeof(uint32_t);
+std::size_t firstDifference(const uint8_t *left, const uint8_t *right,
+                            std::size_t words) {
+  std::size_t remaining = words;
   bool same = true;
-  if (words > 0) {
-    asm volatile("cld\n\trepe cmpsl"
-                 : "+S"(left), "+D"(right), "+c"(words), "=@ccz"(same)
-                 :
+  asm volatile("cld\n\trepe cmpsl"
+               : "+S"(left), "+D"(right), "+c"(remaining), "=@ccz"(same)
+               :
+               : "memory");
+  return same ? words : words - remaining - 1;
+}
+
+std::size_t lastDifference(const uint8_t *left, const uint8_t *right,
+                           std::size_t words) {
+  std::size_t remaining = words;
+  bool same = true;
+  const uint8_t *leftWord = left + (words - 1) * sizeof(uint32_t);
+  const uint8_t *rightWord = right + (words - 1) * sizeof(uint32_t);
+  asm volatile("std\n\trepe cmpsl\n\tcld"
+               : "+S"(leftWord), "+D"(rightWord), "+c"(remaining), "=@ccz"(same)
+               :
+               : "memory");
+  return same ? words : words - remaining - 1;
+}
+
+std::size_t leadingWords(const uint8_t *left, const uint8_t *right,
+                         std::size_t count) {
+  const std::size_t words = count / sizeof(uint32_t);
+  std::size_t equal =
+      words > 0 ? firstDifference(left, right, words) * sizeof(uint32_t) : 0;
+  while (equal < count && left[equal] == right[equal]) {
+    ++equal;
+  }
+  return equal;
+}
+
+std::size_t trailingWords(const uint8_t *left, const uint8_t *right,
+                          std::size_t count) {
+  std::size_t equal = 0;
+  while (count % sizeof(uint32_t) != 0) {
+    if (left[count - 1] != right[count - 1]) {
+      return equal;
+    }
+    --count;
+    ++equal;
+  }
+  const std::size_t words = count / sizeof(uint32_t);
+  const std::size_t equalWords =
+      words > 0 ? lastDifference(left, right, words) : 0;
+  equal += equalWords * sizeof(uint32_t);
+  count -= equalWords * sizeof(uint32_t);
+  while (count > 0 && left[count - 1] == right[count - 1]) {
+    --count;
+    ++equal;
+  }
+  return equal;
+}
+
+void copyLatches(uintptr_t from, uintptr_t to, int count, bool backward) {
+  if (count <= 0) {
+    return;
+  }
+  const uint16_t selector = static_cast<uint16_t>(screen->seg);
+  if (backward) {
+    from += static_cast<uintptr_t>(count - 1);
+    to += static_cast<uintptr_t>(count - 1);
+    asm volatile("pushl %%es\n\t"
+                 "movw %w3, %%es\n\t"
+                 "std\n\t"
+                 "rep movsb %%fs:(%%esi), %%es:(%%edi)\n\t"
+                 "cld\n\t"
+                 "popl %%es"
+                 : "+S"(from), "+D"(to), "+c"(count)
+                 : "r"(selector)
+                 : "memory");
+  } else {
+    asm volatile("pushl %%es\n\t"
+                 "movw %w3, %%es\n\t"
+                 "cld\n\t"
+                 "rep movsb %%fs:(%%esi), %%es:(%%edi)\n\t"
+                 "popl %%es"
+                 : "+S"(from), "+D"(to), "+c"(count)
+                 : "r"(selector)
                  : "memory");
   }
-  for (std::size_t at = 0; same && at < count % sizeof(uint32_t); ++at) {
-    same = left[at] == right[at];
-  }
-  return same;
 }
 
 uint32_t gatherWord(const uint8_t *source, int stride) {
@@ -176,14 +270,17 @@ void writePlaneRow(uintptr_t address, const uint8_t *source, int count,
 } // namespace
 
 struct VideoSystem::Window {
-  IndexedRasterizer rasterizer{equalWords};
+  IndexedRasterizer rasterizer{leadingWords, trailingWords};
   IndexedFrame frame;
   Placement placement;
   bool fresh = true;
   int letterbox = -1;
+  int darkest = 0;
   std::array<uint16_t, FRAME_COLORS> palette{};
   PALETTE dac{};
-  std::vector<int> rows;
+  std::vector<Write> writes;
+  std::vector<Move> moves;
+  std::vector<Copy> copies;
   int hertz = 0;
   int nextVbl = 0;
 };
@@ -216,8 +313,12 @@ void VideoSystem::present() {
   window.placement = placement;
   window.fresh = false;
 
-  if (frame.palette != window.palette) {
+  const std::size_t paletteBytes = sizeof(frame.palette);
+  if (leadingWords(reinterpret_cast<const uint8_t *>(frame.palette.data()),
+                   reinterpret_cast<const uint8_t *>(window.palette.data()),
+                   paletteBytes) != paletteBytes) {
     window.palette = frame.palette;
+    window.darkest = darkestSlot(frame.palette);
     for (std::size_t slot = 0; slot < FRAME_COLORS; ++slot) {
       window.dac[slot].r =
           static_cast<unsigned char>(dacLevel(frame.palette[slot], 8));
@@ -228,42 +329,107 @@ void VideoSystem::present() {
     }
     set_palette_range(window.dac, 0, static_cast<int>(FRAME_COLORS) - 1, FALSE);
   }
-  const int letterbox = darkestSlot(frame.palette);
+  const int letterbox = window.darkest;
   const bool cleared = fresh || letterbox != window.letterbox;
   if (cleared) {
     clear_to_color(screen, letterbox);
     window.letterbox = letterbox;
   }
 
-  window.rows.clear();
+  const int step = placement.step;
+  const bool movable = frame.width % (PLANES * step) == 0;
+  const auto write = [&](int row, int first, int last) {
+    const int firstColumn = (first + step - 1) / step;
+    const int lastColumn = std::min(placement.width, (last + step - 1) / step);
+    if (firstColumn < lastColumn) {
+      window.writes.push_back({row, firstColumn, lastColumn});
+    }
+  };
+  const bool copyable = placement.height == frame.height;
+  window.writes.clear();
+  window.moves.clear();
+  window.copies.clear();
   for (int row = 0; row < placement.height; ++row) {
-    const std::size_t shown =
-        static_cast<std::size_t>(sourceRow(placement, row));
-    if (cleared || frame.changedRows[shown]) {
-      window.rows.push_back(row);
+    const RowChange &change =
+        frame.changes[static_cast<std::size_t>(sourceRow(placement, row))];
+    if (cleared) {
+      write(row, 0, frame.width);
+      continue;
+    }
+    if (change.from != NO_ROW) {
+      if (!copyable) {
+        write(row, 0, frame.width);
+        continue;
+      }
+      window.copies.push_back({row, change.from});
+    }
+    if (change.shift != 0) {
+      if (!movable || change.shift % (PLANES * step) != 0) {
+        write(row, 0, frame.width);
+        continue;
+      }
+      window.moves.push_back({row, change.shift / step});
+    }
+    for (const Span &span : change.spans) {
+      write(row, span.first, span.last);
     }
   }
-  if (window.rows.empty()) {
+  if (window.writes.empty() && window.moves.empty() && window.copies.empty()) {
     return;
   }
 
-  const std::size_t width = static_cast<std::size_t>(frame.width);
   bmp_select(screen);
-  for (int plane = 0; plane < PLANES; ++plane) {
-    const int count = (placement.width - plane + PLANES - 1) / PLANES;
-    if (count <= 0) {
-      continue;
+  if (!window.moves.empty() || !window.copies.empty()) {
+    outportb(GRAPHICS_PORT, MODE_REGISTER);
+    const int mode = inportb(GRAPHICS_PORT + 1);
+    outportw(GRAPHICS_PORT, ((mode & ~WRITE_MODES) | LATCH_WRITE)
+                                    << PLANE_SHIFT |
+                                MODE_REGISTER);
+    outportw(SEQUENCER_PORT, ALL_PLANES << PLANE_SHIFT | MAP_MASK);
+    const int groups = placement.width / PLANES;
+    const auto rowStart = [&](int row) {
+      return reinterpret_cast<uintptr_t>(screen->line[placement.y + row]) +
+             static_cast<uintptr_t>(placement.x / PLANES);
+    };
+    if (!window.copies.empty() &&
+        window.copies.front().from < window.copies.front().row) {
+      std::reverse(window.copies.begin(), window.copies.end());
     }
+    for (const Copy &copy : window.copies) {
+      copyLatches(rowStart(copy.from), rowStart(copy.row), groups, false);
+    }
+    for (const Move &move : window.moves) {
+      const int moved = std::abs(move.shift) / PLANES;
+      const uintptr_t base =
+          reinterpret_cast<uintptr_t>(screen->line[placement.y + move.row]) +
+          static_cast<uintptr_t>(placement.x / PLANES);
+      if (move.shift < 0) {
+        copyLatches(base + static_cast<uintptr_t>(moved), base, groups - moved,
+                    false);
+      } else {
+        copyLatches(base, base + static_cast<uintptr_t>(moved), groups - moved,
+                    true);
+      }
+    }
+    outportw(GRAPHICS_PORT, mode << PLANE_SHIFT | MODE_REGISTER);
+  }
+  const std::size_t width = static_cast<std::size_t>(frame.width);
+  for (int plane = 0; plane < PLANES; ++plane) {
     outportw(SEQUENCER_PORT, (1 << (PLANE_SHIFT + plane)) | MAP_MASK);
-    for (const int row : window.rows) {
+    for (const Write &span : window.writes) {
+      const int first =
+          span.first + (plane - span.first % PLANES + PLANES) % PLANES;
+      if (first >= span.last) {
+        continue;
+      }
       const uint8_t *source =
           frame.pixels.data() +
-          static_cast<std::size_t>(sourceRow(placement, row)) * width +
-          plane * placement.step;
+          static_cast<std::size_t>(sourceRow(placement, span.row)) * width +
+          first * step;
       writePlaneRow(
-          reinterpret_cast<uintptr_t>(screen->line[placement.y + row]) +
-              placement.x / PLANES,
-          source, count, placement.step);
+          reinterpret_cast<uintptr_t>(screen->line[placement.y + span.row]) +
+              static_cast<uintptr_t>((placement.x + first) / PLANES),
+          source, (span.last - first + PLANES - 1) / PLANES, step);
     }
   }
 }

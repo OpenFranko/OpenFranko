@@ -28,6 +28,20 @@ Picture solid(int width, int height, uint8_t color) {
       std::vector<uint8_t>(static_cast<std::size_t>(width * height), color)};
 }
 
+uint8_t expectedPixel(const Picture &picture, const IndexedSurface &before,
+                      int left, int top, bool flipX, bool flipY, bool opaque,
+                      int x, int y) {
+  const int column = x - left;
+  const int row = y - top;
+  if (column < 0 || column >= picture.width || row < 0 ||
+      row >= picture.height) {
+    return before.pixel(x, y);
+  }
+  const uint8_t value = picture.at(flipX ? picture.width - 1 - column : column,
+                                   flipY ? picture.height - 1 - row : row);
+  return value != 0 || opaque ? value : before.pixel(x, y);
+}
+
 } // namespace
 
 SCENARIO("Screen Copy clips as Sco0 does") {
@@ -155,6 +169,36 @@ SCENARIO("Draw is masked, flipped and clipped") {
       REQUIRE(screen.intersects(-2, 3, 3, 2));
       REQUIRE_FALSE(screen.intersects(-3, 3, 3, 2));
       REQUIRE_FALSE(screen.intersects(8, 0, 3, 2));
+    }
+  }
+}
+
+SCENARIO("Draw handles wide pictures four pixels at a time") {
+  GIVEN("A 13 x 3 picture with opaque, transparent and mixed stretches") {
+    Picture picture{13, 3, 0, 0, {}};
+    for (int index = 0; index < 13 * 3; ++index) {
+      picture.pixels.push_back(
+          static_cast<uint8_t>(index % 9 < 4 ? 0 : index % 7 + 1));
+    }
+    IndexedSurface before = columns(20, 5);
+
+    THEN("Every placement, flip and mask matches drawing pixel by pixel") {
+      for (int left = -6; left <= 12; ++left) {
+        for (int flags = 0; flags < 8; ++flags) {
+          const bool flipX = (flags & 1) != 0;
+          const bool flipY = (flags & 2) != 0;
+          const bool opaque = (flags & 4) != 0;
+          IndexedSurface screen = before;
+          screen.draw(picture, left, 1, flipX, flipY, opaque);
+          for (int y = 0; y < screen.height(); ++y) {
+            for (int x = 0; x < screen.width(); ++x) {
+              REQUIRE(screen.pixel(x, y) == expectedPixel(picture, before, left,
+                                                          1, flipX, flipY,
+                                                          opaque, x, y));
+            }
+          }
+        }
+      }
     }
   }
 }

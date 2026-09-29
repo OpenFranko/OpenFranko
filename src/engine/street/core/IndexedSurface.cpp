@@ -7,6 +7,20 @@
 namespace openfranko::src::engine::street::core {
 namespace {
 
+constexpr int WORD_BYTES = 4;
+constexpr int BYTE_BITS = 8;
+constexpr uint32_t LOW_BITS = 0x01010101u;
+constexpr uint32_t HIGH_BITS = 0x80808080u;
+
+bool hasZeroByte(uint32_t word) {
+  return ((word - LOW_BITS) & ~word & HIGH_BITS) != 0;
+}
+
+uint32_t swapBytes(uint32_t word) {
+  return word >> 24 | (word >> 8 & 0xFF00u) | (word << 8 & 0xFF0000u) |
+         word << 24;
+}
+
 int clampToSize(int value, int size) {
   if (value < 0) {
     return 0;
@@ -126,22 +140,37 @@ void IndexedSurface::draw(const Picture &picture, int left, int top, bool flipX,
         static_cast<std::ptrdiff_t>(sourceRow) * picture.width;
     uint8_t *target =
         m_pixels.data() + static_cast<std::ptrdiff_t>(top + row) * m_width;
-    if (flipX) {
-      for (int column = firstColumn; column < lastColumn; ++column) {
-        const uint8_t value = source[picture.width - 1 - column];
-        if (value != 0 || opaque) {
-          target[left + column] = value;
-        }
-      }
-    } else if (opaque) {
+    if (opaque && !flipX) {
       std::copy(source + firstColumn, source + lastColumn,
                 target + left + firstColumn);
-    } else {
-      for (int column = firstColumn; column < lastColumn; ++column) {
-        const uint8_t value = source[column];
+      continue;
+    }
+    int column = firstColumn;
+    for (; column + WORD_BYTES <= lastColumn; column += WORD_BYTES) {
+      uint32_t word = 0;
+      if (flipX) {
+        std::memcpy(&word, source + picture.width - WORD_BYTES - column,
+                    WORD_BYTES);
+        word = swapBytes(word);
+      } else {
+        std::memcpy(&word, source + column, WORD_BYTES);
+      }
+      if (opaque || !hasZeroByte(word)) {
+        std::memcpy(target + left + column, &word, WORD_BYTES);
+        continue;
+      }
+      for (int byte = 0; byte < WORD_BYTES && word != 0; ++byte) {
+        const uint8_t value = static_cast<uint8_t>(word);
         if (value != 0) {
-          target[left + column] = value;
+          target[left + column + byte] = value;
         }
+        word >>= BYTE_BITS;
+      }
+    }
+    for (; column < lastColumn; ++column) {
+      const uint8_t value = source[flipX ? picture.width - 1 - column : column];
+      if (value != 0 || opaque) {
+        target[left + column] = value;
       }
     }
   }

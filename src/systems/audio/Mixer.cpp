@@ -243,9 +243,16 @@ void Mixer::render(int16_t *stereo, int frames) {
   }
 
   const int musicLevel = m_silencing ? 0 : m_musicVolume;
-  for (std::size_t sample = 0; sample < samples; ++sample) {
-    stereo[sample] =
-        clampSample(m_musicBuffer[sample] * musicLevel / MAX_VOLUME);
+  if (musicLevel >= 0 && musicLevel <= MAX_VOLUME) {
+    for (std::size_t sample = 0; sample < samples; ++sample) {
+      stereo[sample] =
+          static_cast<int16_t>(m_musicBuffer[sample] * musicLevel / MAX_VOLUME);
+    }
+  } else {
+    for (std::size_t sample = 0; sample < samples; ++sample) {
+      stereo[sample] =
+          clampSample(m_musicBuffer[sample] * musicLevel / MAX_VOLUME);
+    }
   }
   for (int voice = 0; voice < VOICES; ++voice) {
     Voice &playing = m_voices[static_cast<std::size_t>(voice)];

@@ -116,9 +116,8 @@ The game shows the Amiga picture pixel for pixel in a 376x282 256-colour VGA
 mode (Mode X); high resolution screens are shown at half their width. It needs
 a 486 with a floating point unit, and its logic is tied to the frame rate, so a
 slower PC plays it in slow motion. In DOSBox-X with its CPU speed presets,
-Level 1 keeps its 50 frames a second on a 486DX4-100, averages about 47 on a
-486DX2-66, which slows down briefly while the street scrolls, and runs at about
-23 on a 486DX-33.
+Level 1 keeps its 50 frames a second on a 486DX2-66 or faster, apart from short
+pauses while it loads scenery, and runs at about 35 on a 486DX-33.
 
 To build with an installed DJGPP instead, like the AUR packages `djgpp-gcc`,
 `djgpp-allegro4` and `djgpp-cmake`, build libxmp with its CMake wrapper and
