@@ -125,8 +125,7 @@ ExtractedBitmap convertBitmap(const std::vector<uint8_t> &data, size_t offset,
                               const std::vector<uint16_t> &palette,
                               const std::string &name, bool skipTiny) {
   try {
-    auto image = amosCompact::decodeAmosBitmap(
-        data, offset, palette.data(), static_cast<int>(palette.size()));
+    auto image = amosCompact::decodeAmosBitmap(data, offset);
     if (image.pixels.empty() ||
         (skipTiny &&
          (image.width < MIN_BITMAP_SIDE || image.height < MIN_BITMAP_SIDE))) {

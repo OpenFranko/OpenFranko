@@ -125,8 +125,7 @@ SpriteSheet convertToSheet(const std::vector<uint8_t> &data,
         static_cast<size_t>(header.descriptors[i].wordOffset) * 2;
 
     try {
-      auto image = amosCompact::decodeAmosBitmap(
-          data, bitmapPos, palette.data(), static_cast<int>(palette.size()));
+      auto image = amosCompact::decodeAmosBitmap(data, bitmapPos);
       if (!image.pixels.empty()) {
         if (image.width > maxWidth) {
           maxWidth = image.width;
@@ -196,8 +195,7 @@ convertToIndividual(const std::vector<uint8_t> &data,
         BANK_HEADER_SIZE + static_cast<size_t>(descriptor.wordOffset) * 2;
 
     try {
-      auto image = amosCompact::decodeAmosBitmap(
-          data, bitmapPos, palette.data(), static_cast<int>(palette.size()));
+      auto image = amosCompact::decodeAmosBitmap(data, bitmapPos);
       if (!image.pixels.empty()) {
         auto bmp = bmpWriter::pixelsToBmp(image.width, image.height,
                                           image.pixels.data(), palette.data(),

@@ -7,14 +7,10 @@
 
 namespace openfranko::lib::converter::amosCompact {
 
-DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
-                              const uint16_t *palette, int numberOfColors) {
+DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset) {
   if (offset > data.size() ||
       data.size() - offset < headers::PACKED_BITMAP_HEADER_SIZE) {
     throw std::runtime_error("Data too small for bitmap header");
-  }
-  if (palette == nullptr || numberOfColors <= 0) {
-    throw std::runtime_error("A palette is required to decode a bitmap");
   }
   if (binary::BigEndianReader(data).readUint32(offset) !=
       headers::AMOS_BMCODE) {
