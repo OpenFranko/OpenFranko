@@ -1,13 +1,15 @@
 #include "../../../../src/systems/graphics/Bitmap.h"
+#include "../../../TemporaryPath.h"
+
 #include <catch2/catch_all.hpp>
 
 #include <cstdint>
-#include <cstdio>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 using namespace openfranko::src::systems::graphics;
+using namespace openfranko::test;
 
 namespace {
 
@@ -148,8 +150,8 @@ SCENARIO("readIndexedBitmap reads the 8-bit pictures the asset pipeline "
 
 SCENARIO("loadIndexedBitmap names the file it could not read") {
   GIVEN("A path with no file") {
-    const std::string path = "no-such-picture.bmp";
-    std::remove(path.c_str());
+    const TemporaryPath missing("openFrankoMissingPicture.bmp");
+    const std::string path = missing.path().string();
 
     THEN("The error carries the path") {
       REQUIRE_THROWS_WITH(loadIndexedBitmap(path),

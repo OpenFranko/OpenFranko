@@ -1,5 +1,7 @@
 #include "../../../lib/converter/codeCards/codeCards.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <string>
 #include <vector>
 

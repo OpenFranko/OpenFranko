@@ -1,10 +1,12 @@
 #include "../../../../../src/engine/street/scenes/EndingScene.h"
+#include "../../../../../src/engine/AmigaDisplay.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
-#include <algorithm>
+#include "SceneRunner.h"
+
 #include <catch2/catch_all.hpp>
-#include <functional>
+
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -16,7 +18,7 @@ using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
-using openfranko::src::systems::graphics::toArgb;
+using namespace openfranko::src::systems::graphics;
 
 namespace {
 
@@ -33,8 +35,6 @@ constexpr int DANCE_IMAGES = 101;
 constexpr int STILL_IMAGES = 26;
 constexpr int STILL_MARK = 150;
 constexpr uint8_t PICTURE_COLOR = 7;
-constexpr uint8_t STRIP_COLOR = 7;
-constexpr uint8_t WAIT_WORD_COLOR = 5;
 constexpr uint8_t STREET_COLOR = 3;
 constexpr uint8_t BOB_COLOR = 9;
 constexpr uint8_t SCORE_COLOR = 4;
@@ -45,10 +45,8 @@ constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
 
 constexpr int LOADED = 3 + EndingScene::FILES * LoadingQueue::FILE_FRAMES + 1;
-constexpr int SCREEN_CLOSE = 4;
-constexpr int SCREEN_CLOSE_SHOWN = 2;
-constexpr int STILL_SHOWN = LOADED + SCREEN_CLOSE + SCREEN_CLOSE + 2;
-constexpr int TEXT_BOX_SHOWN = STILL_SHOWN + 5 + 60 + SCREEN_CLOSE;
+constexpr int STILL_SHOWN = LOADED + SCREEN_CLOSE_VBLS + SCREEN_CLOSE_VBLS + 2;
+constexpr int TEXT_BOX_SHOWN = STILL_SHOWN + 5 + 60 + SCREEN_CLOSE_VBLS;
 constexpr int KLIKER_START = TEXT_BOX_SHOWN + 1;
 
 constexpr int CREDIT_PAGES = 12;
@@ -118,16 +116,13 @@ public:
     if (part != 0) {
       return box(304, 40, 0, 0, SCORE_COLOR);
     }
-    Picture strip = box(304, 48, 0, 0, STRIP_COLOR);
-    std::fill(strip.pixels.begin() + 32 * 304, strip.pixels.end(),
-              WAIT_WORD_COLOR);
-    return strip;
+    return FakeStreetHost::loadPanelPicture(part);
   }
 
   int random(int limit) override { return limit; }
 };
 
-struct Ending {
+struct Ending : SceneRunner<Ending> {
   FakeHost host;
   GameSession session;
   EndingScene scene;
@@ -151,23 +146,6 @@ struct Ending {
     std::vector<uint32_t> frame;
     scene.compose(frame);
     return frame[static_cast<std::size_t>(row * EndingScene::SCREEN_WIDTH + x)];
-  }
-
-  void run(int frames, int16_t joystick = 0) {
-    for (int frame = 0; frame < frames; ++frame) {
-      scene.advance(joystick);
-    }
-  }
-
-  int runUntil(const std::function<bool()> &done, int limit,
-               int16_t joystick = 0) {
-    for (int frame = 0; frame < limit; ++frame) {
-      scene.advance(joystick);
-      if (done()) {
-        return frame + 1;
-      }
-    }
-    return -1;
   }
 
   void reachLastWalkFrame() {
@@ -326,11 +304,11 @@ SCENARIO("CONGRA clears the stage, stops the tune and loads four files") {
       THEN("_CLOSE drops the stage two frames after the call and the panel "
            "two frames after its own close, four frames later") {
         REQUIRE(scene.isStageShown());
-        ending.run(SCREEN_CLOSE_SHOWN);
+        ending.run(SCREEN_CLOSE_SHOWN_VBLS);
         REQUIRE_FALSE(scene.isStageShown());
         REQUIRE(scene.panel() != nullptr);
         REQUIRE(ending.panelPixel(101, 10) == WAIT_WORD_COLOR);
-        ending.run(SCREEN_CLOSE - 1);
+        ending.run(SCREEN_CLOSE_VBLS - 1);
         REQUIRE(scene.panel() != nullptr);
         ending.run(1);
         REQUIRE(scene.panel() == nullptr);
@@ -373,7 +351,7 @@ SCENARIO("FOTO fades the still in from white and holds it for KLIKER") {
       }
 
       AND_WHEN("Wait 5, Fade 4 To 7, Wait 60 and Screen Close 7 are over") {
-        ending.run(5 + 60 + SCREEN_CLOSE);
+        ending.run(5 + 60 + SCREEN_CLOSE_VBLS);
 
         THEN("The picture has its own colours and the text box is up") {
           REQUIRE(scene.palette(0) == picturePalette());
@@ -539,7 +517,7 @@ SCENARIO("The break-dance opens two screens and walks the dancer in") {
     }
 
     WHEN("_OFF, _CLOSE and the dancer's screen have taken their frames") {
-      ending.run(50 + SCREEN_CLOSE + SCREEN_CLOSE);
+      ending.run(50 + SCREEN_CLOSE_VBLS + SCREEN_CLOSE_VBLS);
       const bool closed = !scene.isShown(0) && !scene.isShown(1);
       ending.run(1);
 
@@ -718,9 +696,9 @@ SCENARIO("After the last page the music fades out and ETAP goes to HI") {
       ending.host.volumes.clear();
       ending.run(1, JOY_FIRE);
       const bool bothUp = scene.isShown(0) && scene.isShown(1);
-      ending.run(SCREEN_CLOSE_SHOWN);
+      ending.run(SCREEN_CLOSE_SHOWN_VBLS);
       const bool textClosed = !scene.isShown(0) && scene.isShown(1);
-      ending.run(SCREEN_CLOSE);
+      ending.run(SCREEN_CLOSE_VBLS);
       const bool allClosed = !scene.isShown(0) && !scene.isShown(1);
       const int ended =
           ending.runUntil([&] { return scene.isFinished(); }, 200);

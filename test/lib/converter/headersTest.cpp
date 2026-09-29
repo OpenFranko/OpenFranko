@@ -1,5 +1,7 @@
 #include "../../../lib/converter/headers/headers.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <vector>
 
 using namespace openfranko::lib::converter::headers;
@@ -44,24 +46,24 @@ SCENARIO("parseSpackHeader reads all fields from big-endian data") {
     WHEN("parseSpackHeader is called") {
       auto header = parseSpackHeader(data);
 
-      THEN("screen dimensions are correct") {
+      THEN("Screen dimensions are correct") {
         REQUIRE(header.screenWidth == 320);
         REQUIRE(header.screenHeight == 256);
       }
 
-      THEN("window position and size are correct") {
+      THEN("Window position and size are correct") {
         REQUIRE(header.windowX == 10);
         REQUIRE(header.windowY == 20);
         REQUIRE(header.windowWidth == 300);
         REQUIRE(header.windowHeight == 200);
       }
 
-      THEN("color info is correct") {
+      THEN("Color info is correct") {
         REQUIRE(header.numberOfColors == 16);
         REQUIRE(header.numberOfBitplanes == 4);
       }
 
-      THEN("palette values are read") {
+      THEN("Palette values are read") {
         REQUIRE(header.amigaPalette[0] == 0x0F00);
         REQUIRE(header.amigaPalette[1] == 0x00F0);
       }
@@ -84,23 +86,23 @@ SCENARIO("parseBitmapHeader reads all fields from big-endian data") {
     WHEN("parseBitmapHeader is called") {
       auto header = parseBitmapHeader(data);
 
-      THEN("signed offsets are correct") {
+      THEN("Signed offsets are correct") {
         REQUIRE(header.xOffset == -5);
         REQUIRE(header.yOffset == 10);
       }
 
-      THEN("grid dimensions are correct") {
+      THEN("Grid dimensions are correct") {
         REQUIRE(header.gridX == 16);
         REQUIRE(header.gridY == 16);
       }
 
-      THEN("tile height is correct") { REQUIRE(header.tileHeight == 32); }
+      THEN("Tile height is correct") { REQUIRE(header.tileHeight == 32); }
 
-      THEN("bitplane count is correct") {
+      THEN("Bitplane count is correct") {
         REQUIRE(header.numberOfBitplanes == 5);
       }
 
-      THEN("data offsets are correct") {
+      THEN("Data offsets are correct") {
         REQUIRE(header.offsetToByteTable2 == 0x1000);
         REQUIRE(header.offsetToPointerBitstream == 0x2000);
       }
@@ -108,7 +110,7 @@ SCENARIO("parseBitmapHeader reads all fields from big-endian data") {
   }
 }
 
-SCENARIO("SPACK header parsing extracts all fields correctly") {
+SCENARIO("parseSpackHeader reads a full 90-byte SPACK header") {
   GIVEN("A 90-byte SPACK header with known values") {
     std::vector<uint8_t> data(90, 0);
     data[0] = 0x12;
@@ -162,7 +164,7 @@ SCENARIO("SPACK header parsing extracts all fields correctly") {
   }
 }
 
-SCENARIO("Bitmap header parsing extracts all fields correctly") {
+SCENARIO("parseBitmapHeader reads a full 24-byte bitmap header") {
   GIVEN("A 24-byte bitmap header with known values") {
     std::vector<uint8_t> data = {
         0x06, 0x07, 0x19, 0x63, 0xFF, 0xFE, 0x00, 0x03, 0x00, 0x28, 0x00, 0x0A,

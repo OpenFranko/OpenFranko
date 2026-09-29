@@ -1,8 +1,12 @@
 #include "../../../../../src/engine/effects/sequences/FotoSequence.h"
+#include "../../../../../src/engine/AmigaDisplay.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <cstddef>
 #include <vector>
 
+using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::effects::sequences;
 using namespace openfranko::src::engine::effects::color;
 
@@ -23,12 +27,9 @@ const AmigaPalette SPIDER_PALETTE = {
 constexpr FotoSequence::Timings SPIDER_TIMINGS{5, 200, 5, 75, false};
 
 constexpr int OPEN = 2;
-constexpr int CLOSE = 4;
-constexpr int CLOSE_SHOWN = 2;
-constexpr int BOOT_SCREEN_CLOSE = 4;
-constexpr int MIRAGE_OPEN = BOOT_SCREEN_CLOSE + OPEN;
-constexpr int FOTO_RETURNS = OPEN + 5 + 75 + CLOSE;
-constexpr int MIRAGE_RETURNS = MIRAGE_OPEN + 5 + 75 + CLOSE;
+constexpr int MIRAGE_OPEN = SCREEN_CLOSE_VBLS + OPEN;
+constexpr int FOTO_RETURNS = OPEN + 5 + 75 + SCREEN_CLOSE_VBLS;
+constexpr int MIRAGE_RETURNS = MIRAGE_OPEN + 5 + 75 + SCREEN_CLOSE_VBLS;
 
 constexpr std::size_t EYES = 22;
 const FlashSteps EYES_FLASH = {{0xF00, 4}, {0xE00, 4}, {0xD00, 4}, {0xC00, 4},
@@ -101,7 +102,7 @@ SCENARIO("FotoSequence plays the Mirage logo as state_02 does") {
       }
 
       AND_WHEN("Screen Close 7 and the Wait 200 pass") {
-        const bool changed = run(sequence, CLOSE + 200);
+        const bool changed = run(sequence, SCREEN_CLOSE_VBLS + 200);
 
         THEN("Nothing changes while the logo stays up") {
           REQUIRE_FALSE(changed);
@@ -117,12 +118,12 @@ SCENARIO("FotoSequence plays the Mirage logo as state_02 does") {
       THEN("_CLOSE comes next: the logo stays two VBLs, then the screen is "
            "gone and BASIC goes on two VBLs later") {
         REQUIRE(sequence.isShown());
-        run(sequence, CLOSE_SHOWN);
+        run(sequence, SCREEN_CLOSE_SHOWN_VBLS);
         REQUIRE(sequence.isShown());
         run(sequence, 1);
         REQUIRE_FALSE(sequence.isShown());
         REQUIRE_FALSE(sequence.isFinished());
-        run(sequence, CLOSE - CLOSE_SHOWN - 1);
+        run(sequence, SCREEN_CLOSE_VBLS - SCREEN_CLOSE_SHOWN_VBLS - 1);
         REQUIRE(sequence.isFinished());
       }
 
@@ -133,7 +134,7 @@ SCENARIO("FotoSequence plays the Mirage logo as state_02 does") {
       }
 
       THEN("Nothing happens after the end") {
-        run(sequence, CLOSE);
+        run(sequence, SCREEN_CLOSE_VBLS);
         const auto last = sequence.palette();
         REQUIRE_FALSE(sequence.advance());
         REQUIRE(sequence.palette() == last);
@@ -154,7 +155,7 @@ SCENARIO("FotoSequence plays the Mirage logo as state_02 does") {
     FotoSequence sequence(MIRAGE_PALETTE, {5, 200, 5, 75, false});
 
     WHEN("It has run to its end") {
-      run(sequence, FOTO_RETURNS + 200 + 75 + CLOSE);
+      run(sequence, FOTO_RETURNS + 200 + 75 + SCREEN_CLOSE_VBLS);
 
       THEN("It ends completely black") {
         REQUIRE(sequence.isFinished());
@@ -184,15 +185,15 @@ SCENARIO("FotoSequence flashes the spider's eyes as state_02 does") {
     }
 
     WHEN("The screen has played to its end") {
-      const auto eyes =
-          runFlashingEyes(sequence, FOTO_RETURNS + 200 + 75 + CLOSE);
+      const auto eyes = runFlashingEyes(sequence, FOTO_RETURNS + 200 + 75 +
+                                                      SCREEN_CLOSE_VBLS);
       const auto at = [&](int frame) {
         return eyes[static_cast<std::size_t>(FOTO_RETURNS + frame)];
       };
 
       THEN("The eyes fade in with the rest of the picture and hold through "
            "Screen Close 7") {
-        REQUIRE(at(-CLOSE - 1) == 0xF55);
+        REQUIRE(at(-SCREEN_CLOSE_VBLS - 1) == 0xF55);
         REQUIRE(at(-1) == 0xF55);
       }
 

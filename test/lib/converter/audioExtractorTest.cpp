@@ -1,7 +1,8 @@
 #include "../../../lib/converter/audioExtractor/audioExtractor.h"
 #include "../../../lib/binary/binary.h"
+
 #include <catch2/catch_all.hpp>
-#include <cstring>
+
 #include <vector>
 
 using namespace openfranko::lib::converter::audioExtractor;
@@ -36,13 +37,13 @@ SCENARIO("extractStandaloneSamBank extracts WAV from sample bank") {
     WHEN("extractStandaloneSamBank is called") {
       auto results = extractStandaloneSamBank(data, "TEST");
 
-      THEN("it extracts one sample") { REQUIRE(results.size() == 1); }
+      THEN("It extracts one sample") { REQUIRE(results.size() == 1); }
 
-      THEN("the name includes file ID and frequency") {
+      THEN("The name includes file ID and frequency") {
         REQUIRE(results[0].name == "TEST_sam1_8000Hz.wav");
       }
 
-      THEN("the output is a valid WAV file") {
+      THEN("The output is a valid WAV file") {
         auto &wav = results[0].data;
         REQUIRE(wav.size() >= 44);
         REQUIRE(wav[0] == 'R');
@@ -73,7 +74,7 @@ SCENARIO("extractStandaloneSamBank extracts WAV from sample bank") {
 
     WHEN("extractStandaloneSamBank is called") {
       auto results = extractStandaloneSamBank(data, "X");
-      THEN("it returns empty") { REQUIRE(results.empty()); }
+      THEN("It returns empty") { REQUIRE(results.empty()); }
     }
   }
 
@@ -84,7 +85,7 @@ SCENARIO("extractStandaloneSamBank extracts WAV from sample bank") {
 
     WHEN("extractStandaloneSamBank is called") {
       auto results = extractStandaloneSamBank(data, "X");
-      THEN("it returns empty") { REQUIRE(results.empty()); }
+      THEN("It returns empty") { REQUIRE(results.empty()); }
     }
   }
 
@@ -94,7 +95,7 @@ SCENARIO("extractStandaloneSamBank extracts WAV from sample bank") {
 
     WHEN("extractStandaloneSamBank is called") {
       auto results = extractStandaloneSamBank(data, "F0");
-      THEN("frequency defaults to 8287") {
+      THEN("Frequency defaults to 8287") {
         REQUIRE(results.size() == 1);
         REQUIRE(results[0].name == "F0_sam1_8287Hz.wav");
         auto &wav = results[0].data;
@@ -111,11 +112,11 @@ SCENARIO("wrapMusicBank produces a valid ABK wrapper") {
     WHEN("wrapMusicBank is called") {
       auto result = wrapMusicBank(music, "025F");
 
-      THEN("the name has .abk extension") {
+      THEN("The name has .abk extension") {
         REQUIRE(result.name == "025F.abk");
       }
 
-      THEN("output starts with AmBk magic") {
+      THEN("Output starts with AmBk magic") {
         REQUIRE(result.data.size() >= 20);
         REQUIRE(result.data[0] == 'A');
         REQUIRE(result.data[1] == 'm');
@@ -123,7 +124,7 @@ SCENARIO("wrapMusicBank produces a valid ABK wrapper") {
         REQUIRE(result.data[3] == 'k');
       }
 
-      THEN("music data follows the 20-byte header") {
+      THEN("Music data follows the 20-byte header") {
         REQUIRE(result.data.size() == 20 + music.size());
       }
     }
@@ -136,7 +137,7 @@ SCENARIO("extractEmbeddedSamBank handles edge cases") {
 
     WHEN("extractEmbeddedSamBank is called") {
       auto results = extractEmbeddedSamBank(data, "X");
-      THEN("it returns empty") { REQUIRE(results.empty()); }
+      THEN("It returns empty") { REQUIRE(results.empty()); }
     }
   }
 
@@ -149,7 +150,7 @@ SCENARIO("extractEmbeddedSamBank handles edge cases") {
 
     WHEN("extractEmbeddedSamBank is called") {
       auto results = extractEmbeddedSamBank(data, "X");
-      THEN("it returns empty") { REQUIRE(results.empty()); }
+      THEN("It returns empty") { REQUIRE(results.empty()); }
     }
   }
 
@@ -158,7 +159,7 @@ SCENARIO("extractEmbeddedSamBank handles edge cases") {
 
     WHEN("extractEmbeddedSamBank is called") {
       auto results = extractEmbeddedSamBank(data, "X");
-      THEN("it returns empty") { REQUIRE(results.empty()); }
+      THEN("It returns empty") { REQUIRE(results.empty()); }
     }
   }
 }

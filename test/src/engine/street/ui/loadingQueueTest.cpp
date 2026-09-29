@@ -1,5 +1,7 @@
 #include "../../../../../src/engine/street/ui/LoadingQueue.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <vector>
 
 using namespace openfranko::src::engine::street::ui;

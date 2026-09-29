@@ -1,6 +1,8 @@
 #include "../../../../../src/engine/effects/protection/CodeCardCheck.h"
-#include <array>
+
 #include <catch2/catch_all.hpp>
+
+#include <array>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>

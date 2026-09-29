@@ -1,13 +1,15 @@
 #include "../../../lib/converter/endingCredits/endingCredits.h"
 #include "../../../lib/binary/binary.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-using namespace openfranko::lib;
-namespace credits = openfranko::lib::converter::endingCredits;
+using namespace openfranko::lib::binary;
+using namespace openfranko::lib::converter::endingCredits;
 
 namespace {
 
@@ -78,10 +80,10 @@ public:
     for (uint32_t value :
          {0x3F3u, 0u, 1u, 0u, 0u, static_cast<uint32_t>(CODE_SIZE / 4), 0x3E9u,
           static_cast<uint32_t>(CODE_SIZE / 4)}) {
-      binary::pushBigEndian32(file, value);
+      pushBigEndian32(file, value);
     }
     file.insert(file.end(), m_code.begin(), m_code.end());
-    binary::pushBigEndian32(file, 0x3F2);
+    pushBigEndian32(file, 0x3F2);
     return file;
   }
 
@@ -130,7 +132,7 @@ SCENARIO("The ending credits are read from the compiled program's calls") {
     program.line("E\\F", 64);
     program.beat(150);
     program.other(20);
-    const auto pages = credits::extract(program.executable());
+    const auto pages = extract(program.executable());
 
     THEN("Each FONT call is a line and each BLYSK2 call closes a page") {
       REQUIRE(pages.size() == 2);
@@ -145,7 +147,7 @@ SCENARIO("The ending credits are read from the compiled program's calls") {
     }
 
     THEN("The JSON keeps the stored text, escaped") {
-      const auto json = credits::toJson(pages);
+      const auto json = toJson(pages);
       const std::string text(json.begin(), json.end());
       REQUIRE(text.find("\"beat\": 150") != std::string::npos);
       REQUIRE(text.find("{\"y\": 64, \"text\": \"E\\\\F\"}") !=
@@ -163,7 +165,7 @@ SCENARIO("The ending credits are read from the compiled program's calls") {
     program.decoy("YY");
     program.line("CC", 16);
     program.beat(20);
-    const auto pages = credits::extract(program.executable());
+    const auto pages = extract(program.executable());
 
     THEN("The procedure called most with a string is taken as FONT") {
       REQUIRE(pages.size() == 2);
@@ -185,7 +187,7 @@ SCENARIO("The ending credits are read from the compiled program's calls") {
     program.beat(0);
     program.line("CD", 0);
     program.beat(10);
-    const auto pages = credits::extract(program.executable());
+    const auto pages = extract(program.executable());
 
     THEN("Only the lines closed by BLYSK2 are credits") {
       REQUIRE(pages.size() == 2);
@@ -202,7 +204,7 @@ SCENARIO("The ending credits are read from the compiled program's calls") {
     program.fontAdds(8);
     program.line("AB%", 16);
     program.beat(0);
-    const auto pages = credits::extract(program.executable());
+    const auto pages = extract(program.executable());
 
     THEN("The text is stored for a FONT that adds 6, as in 1.0") {
       REQUIRE(pages.size() == 1);
@@ -215,7 +217,7 @@ SCENARIO("The ending credits are read from the compiled program's calls") {
     program.fontAdds(6);
     program.line("AB%", 16);
     program.beat(0);
-    const auto pages = credits::extract(program.executable());
+    const auto pages = extract(program.executable());
 
     THEN("The text is kept as it is") {
       REQUIRE(pages[0].lines[0].text == "AB%");
@@ -224,11 +226,10 @@ SCENARIO("The ending credits are read from the compiled program's calls") {
 
   GIVEN("Files that are not what the extractor expects") {
     THEN("A non-executable and a program without credits are refused") {
-      REQUIRE_THROWS_AS(credits::extract({0, 0, 0, 1}), std::runtime_error);
+      REQUIRE_THROWS_AS(extract({0, 0, 0, 1}), std::runtime_error);
       Program empty;
       empty.other(3);
-      REQUIRE_THROWS_AS(credits::extract(empty.executable()),
-                        std::runtime_error);
+      REQUIRE_THROWS_AS(extract(empty.executable()), std::runtime_error);
     }
   }
 }
@@ -247,7 +248,7 @@ SCENARIO("The 1.2 intro texts are the FONT lines closed by a bare BLYSK") {
     program.beat(0);
     program.line("IJ", 8);
     program.beat(10);
-    const auto intro = credits::extractIntro(program.executable());
+    const auto intro = extractIntro(program.executable());
 
     THEN("Each bare BLYSK call closes a page, in the 1.0 text encoding") {
       REQUIRE(intro.size() == 2);
@@ -262,7 +263,7 @@ SCENARIO("The 1.2 intro texts are the FONT lines closed by a bare BLYSK") {
     }
 
     THEN("The ending credits still skip the intro pages") {
-      const auto pages = credits::extract(program.executable());
+      const auto pages = extract(program.executable());
       REQUIRE(pages.size() == 2);
       REQUIRE(pages[0].lines.size() == 1);
       REQUIRE(pages[0].lines[0].text == "IJ");
@@ -277,7 +278,7 @@ SCENARIO("The 1.2 intro texts are the FONT lines closed by a bare BLYSK") {
     program.beat(0);
 
     THEN("No intro pages are found") {
-      REQUIRE(credits::extractIntro(program.executable()).empty());
+      REQUIRE(extractIntro(program.executable()).empty());
     }
   }
 }

@@ -1,6 +1,8 @@
 #include "../../../lib/converter/gameData/gameData.h"
 #include "../../../lib/converter/gameData/palettes.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <cstdint>
 #include <vector>
 

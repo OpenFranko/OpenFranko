@@ -1,14 +1,19 @@
 #include "../../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../../lib/binary/binary.h"
+#include "buildPackedBitmap.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <vector>
 
 using namespace openfranko::lib::converter::spriteSheet;
-using openfranko::lib::binary::pushBigEndian16;
-using openfranko::lib::binary::pushBigEndian32;
-namespace pal = openfranko::lib::converter::gameData::palettes;
+using namespace openfranko::lib::binary;
+using namespace openfranko::lib::converter::gameData;
+using namespace openfranko::test::lib::converter;
 
-static std::vector<uint8_t>
+namespace {
+
+std::vector<uint8_t>
 buildBankHeader(uint16_t count, uint16_t maxW, uint16_t maxH,
                 uint16_t numberOfColors, uint32_t samBankOff,
                 const std::vector<SpriteDescriptor> &descs) {
@@ -28,23 +33,7 @@ buildBankHeader(uint16_t count, uint16_t maxW, uint16_t maxH,
   return buf;
 }
 
-static std::vector<uint8_t> buildMinimalPackedBitmap() {
-  const uint32_t maskBytesOffset = 25;
-  const uint32_t pointerBitsOffset = 26;
-  std::vector<uint8_t> buf;
-  pushBigEndian32(buf, 0x06071963);
-  pushBigEndian32(buf, 0);
-  pushBigEndian16(buf, 1);
-  pushBigEndian16(buf, 1);
-  pushBigEndian16(buf, 1);
-  pushBigEndian16(buf, 1);
-  pushBigEndian32(buf, maskBytesOffset);
-  pushBigEndian32(buf, pointerBitsOffset);
-  buf.push_back(0x42);
-  buf.push_back(0x00);
-  buf.push_back(0x00);
-  return buf;
-}
+} // namespace
 
 SCENARIO("parseHeader reads sprite bank header and descriptors") {
   GIVEN("A header with 2 sprites") {
@@ -124,67 +113,67 @@ SCENARIO("selectPalette returns the correct palette for known file IDs") {
     WHEN("selectPalette is called with '0038'") {
       auto p = selectPalette("0038");
       THEN("It returns SUNSET") {
-        REQUIRE(p.size() == pal::SUNSET.size());
-        REQUIRE(p[0] == pal::SUNSET[0]);
-        REQUIRE(p[15] == pal::SUNSET[15]);
+        REQUIRE(p.size() == palettes::SUNSET.size());
+        REQUIRE(p[0] == palettes::SUNSET[0]);
+        REQUIRE(p[15] == palettes::SUNSET[15]);
       }
     }
 
     WHEN("selectPalette is called with '0037'") {
       auto p = selectPalette("0037");
       THEN("It returns STORY") {
-        REQUIRE(p.size() == pal::STORY.size());
-        REQUIRE(p[0] == pal::STORY[0]);
+        REQUIRE(p.size() == palettes::STORY.size());
+        REQUIRE(p[0] == palettes::STORY[0]);
       }
     }
 
     WHEN("selectPalette is called with '0034'") {
       auto p = selectPalette("0034");
       THEN("It returns MENU") {
-        REQUIRE(p.size() == pal::MENU.size());
-        REQUIRE(p[0] == pal::MENU[0]);
+        REQUIRE(p.size() == palettes::MENU.size());
+        REQUIRE(p[0] == palettes::MENU[0]);
       }
     }
 
     WHEN("selectPalette is called with '0035'") {
       auto p = selectPalette("0035");
       THEN("It returns MENU_35") {
-        REQUIRE(p.size() == pal::MENU_35.size());
-        REQUIRE(p[0] == pal::MENU_35[0]);
+        REQUIRE(p.size() == palettes::MENU_35.size());
+        REQUIRE(p[0] == palettes::MENU_35[0]);
       }
     }
 
     WHEN("selectPalette is called with '0036'") {
       auto p = selectPalette("0036");
       THEN("It returns CEMETERY") {
-        REQUIRE(p.size() == pal::CEMETERY.size());
-        REQUIRE(p[0] == pal::CEMETERY[0]);
+        REQUIRE(p.size() == palettes::CEMETERY.size());
+        REQUIRE(p[0] == palettes::CEMETERY[0]);
       }
     }
 
     WHEN("selectPalette is called with the 1.2 counterparts of those files") {
       THEN("They get the same palettes") {
-        REQUIRE(selectPalette("s56")[15] == pal::SUNSET[15]);
-        REQUIRE(selectPalette("s55").size() == pal::STORY.size());
-        REQUIRE(selectPalette("s52")[7] == pal::MENU[7]);
-        REQUIRE(selectPalette("s53").size() == pal::MENU_35.size());
-        REQUIRE(selectPalette("s54")[2] == pal::CEMETERY[2]);
+        REQUIRE(selectPalette("s56")[15] == palettes::SUNSET[15]);
+        REQUIRE(selectPalette("s55").size() == palettes::STORY.size());
+        REQUIRE(selectPalette("s52")[7] == palettes::MENU[7]);
+        REQUIRE(selectPalette("s53").size() == palettes::MENU_35.size());
+        REQUIRE(selectPalette("s54")[2] == palettes::CEMETERY[2]);
       }
     }
 
     WHEN("selectPalette is called with 's50'") {
       auto p = selectPalette("s50");
       THEN("It returns WORLD_SOFTWARE") {
-        REQUIRE(p.size() == pal::WORLD_SOFTWARE.size());
-        REQUIRE(p[1] == pal::WORLD_SOFTWARE[1]);
+        REQUIRE(p.size() == palettes::WORLD_SOFTWARE.size());
+        REQUIRE(p[1] == palettes::WORLD_SOFTWARE[1]);
       }
     }
 
     WHEN("selectPalette is called with an unknown ID") {
       auto p = selectPalette("9999");
       THEN("It returns LEVEL as default") {
-        REQUIRE(p.size() == pal::LEVEL.size());
-        REQUIRE(p[0] == pal::LEVEL[0]);
+        REQUIRE(p.size() == palettes::LEVEL.size());
+        REQUIRE(p[0] == palettes::LEVEL[0]);
       }
     }
   }
@@ -199,11 +188,12 @@ SCENARIO("Sprite conversion says why a sprite could not be converted") {
         {1000, 1, 1, 0, 0},
     };
     auto data = buildBankHeader(3, 8, 1, 16, 0, descs);
-    auto bitmap = buildMinimalPackedBitmap();
+    auto bitmap = buildPackedBitmap(1, 1, 1, 1, {0x42}, {0x00}, {0x00});
     data.insert(data.end(), bitmap.begin(), bitmap.end());
     const size_t noBitmapPos = 12 + 29 * 2;
     data.resize(noBitmapPos + 24, 0);
-    std::vector<uint16_t> palette(pal::LEVEL.begin(), pal::LEVEL.end());
+    std::vector<uint16_t> palette(palettes::LEVEL.begin(),
+                                  palettes::LEVEL.end());
 
     WHEN("convertToIndividual is called") {
       auto sprites = convertToIndividual(data, palette);

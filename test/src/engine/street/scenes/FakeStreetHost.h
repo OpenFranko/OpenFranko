@@ -2,8 +2,10 @@
 #define TEST_SRC_ENGINE_STREET_SCENES_FAKESTREETHOST_H_
 
 #include "../../../../../src/engine/street/scenes/StreetHost.h"
+#include "../core/box.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <utility>
 #include <vector>
 
@@ -13,6 +15,21 @@ namespace src {
 namespace engine {
 namespace street {
 namespace scenes {
+
+constexpr uint8_t STRIP_COLOR = 7;
+constexpr uint8_t WAIT_WORD_COLOR = 5;
+
+inline std::vector<openfranko::src::engine::street::core::Picture>
+bloodAndIndicator() {
+  std::vector<openfranko::src::engine::street::core::Picture> frames;
+  frames.push_back(core::box(48, 23, 0, 11, 5));
+  for (int i = 1; i < 9; ++i) {
+    frames.push_back(core::box(16, 8, 0, 0, 3));
+  }
+  frames.push_back(core::box(16, 1, 0, 0, 0));
+  frames.push_back(core::box(16, 1, 0, 0, 0));
+  return frames;
+}
 
 class FakeStreetHost
     : public openfranko::src::engine::street::scenes::StreetHost {
@@ -64,7 +81,15 @@ public:
     return {};
   }
 
-  Picture loadPanelPicture(int) override { return {}; }
+  Picture loadPanelPicture(int part) override {
+    if (part != 0) {
+      return core::box(304, 40, 0, 0, 1);
+    }
+    Picture strip = core::box(304, 48, 0, 0, STRIP_COLOR);
+    std::fill(strip.pixels.begin() + 32 * 304, strip.pixels.end(),
+              WAIT_WORD_COLOR);
+    return strip;
+  }
 
   void loadMusic(int resource) override { music.push_back(resource); }
 

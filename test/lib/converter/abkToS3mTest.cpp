@@ -1,7 +1,8 @@
 #include "../../../lib/converter/abkToS3m/abkToS3m.h"
 #include "../../../lib/binary/binary.h"
+
 #include <catch2/catch_all.hpp>
-#include <cstring>
+
 #include <vector>
 
 using namespace openfranko::lib::converter::abkToS3m;
@@ -89,14 +90,14 @@ SCENARIO("convert rejects invalid input") {
   GIVEN("A buffer that is too small") {
     std::vector<uint8_t> data = {0x01, 0x02};
 
-    THEN("it throws") { REQUIRE_THROWS_AS(convert(data), std::runtime_error); }
+    THEN("It throws") { REQUIRE_THROWS_AS(convert(data), std::runtime_error); }
   }
 
   GIVEN("A buffer without AmBk magic") {
     std::vector<uint8_t> data(30, 0);
     data[0] = 'X';
 
-    THEN("it throws") { REQUIRE_THROWS_AS(convert(data), std::runtime_error); }
+    THEN("It throws") { REQUIRE_THROWS_AS(convert(data), std::runtime_error); }
   }
 }
 
@@ -107,7 +108,7 @@ SCENARIO("convert produces a valid S3M file") {
     WHEN("convert is called") {
       auto s3m = convert(abk);
 
-      THEN("output has S3M signature at offset 0x2C") {
+      THEN("Output has S3M signature at offset 0x2C") {
         REQUIRE(s3m.size() > 0x30);
         REQUIRE(s3m[0x2C] == 'S');
         REQUIRE(s3m[0x2D] == 'C');
@@ -115,29 +116,29 @@ SCENARIO("convert produces a valid S3M file") {
         REQUIRE(s3m[0x2F] == 'M');
       }
 
-      THEN("output has EOF marker at 0x1C") { REQUIRE(s3m[0x1C] == 0x1A); }
+      THEN("Output has EOF marker at 0x1C") { REQUIRE(s3m[0x1C] == 0x1A); }
 
-      THEN("song name is embedded in the header") {
+      THEN("Song name is embedded in the header") {
         std::string name(reinterpret_cast<const char *>(s3m.data()), 9);
         REQUIRE(name == "test song");
       }
 
-      THEN("order count is at least 2 (padded to even)") {
+      THEN("Order count is at least 2 (padded to even)") {
         LittleEndianReader reader(s3m);
         uint16_t ordNum = reader.readUint16(0x20);
         REQUIRE(ordNum >= 2);
         REQUIRE(ordNum % 2 == 0);
       }
 
-      THEN("instrument count is 1") {
+      THEN("Instrument count is 1") {
         REQUIRE(LittleEndianReader(s3m).readUint16(0x22) == 1);
       }
 
-      THEN("pattern count is at least 1") {
+      THEN("Pattern count is at least 1") {
         REQUIRE(LittleEndianReader(s3m).readUint16(0x24) >= 1);
       }
 
-      THEN("global volume is 64") { REQUIRE(s3m[0x30] == 64); }
+      THEN("Global volume is 64") { REQUIRE(s3m[0x30] == 64); }
     }
   }
 }
@@ -149,7 +150,7 @@ SCENARIO("convert uses the Franko menu tempo for song 'e1'") {
     WHEN("convert is called") {
       auto s3m = convert(abk);
 
-      THEN("speed = round(100/37) = 3") { REQUIRE(s3m[0x31] == 3); }
+      THEN("Speed = round(100/37) = 3") { REQUIRE(s3m[0x31] == 3); }
 
       THEN("BPM = round(5*3*37/4) = 139, not 124 from tempo 33") {
         REQUIRE(s3m[0x32] == 139);
@@ -165,7 +166,7 @@ SCENARIO("convert maps AMOS tempo to S3M speed/tempo") {
     WHEN("convert is called") {
       auto s3m = convert(abk);
 
-      THEN("speed = round(100/25) = 4") { REQUIRE(s3m[0x31] == 4); }
+      THEN("Speed = round(100/25) = 4") { REQUIRE(s3m[0x31] == 4); }
 
       THEN("BPM = 5*4*25/4 = 125") { REQUIRE(s3m[0x32] == 125); }
     }
@@ -177,7 +178,7 @@ SCENARIO("convert maps AMOS tempo to S3M speed/tempo") {
     WHEN("convert is called") {
       auto s3m = convert(abk);
 
-      THEN("speed = round(100/17) = 6") { REQUIRE(s3m[0x31] == 6); }
+      THEN("Speed = round(100/17) = 6") { REQUIRE(s3m[0x31] == 6); }
     }
   }
 }

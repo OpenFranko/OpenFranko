@@ -1,10 +1,10 @@
 #include "../../../lib/bmpWriter/bmpWriter.h"
 #include "../../../lib/binary/binary.h"
+
 #include <catch2/catch_all.hpp>
-#include <vector>
 
 using namespace openfranko::lib::bmpWriter;
-using openfranko::lib::binary::LittleEndianReader;
+using namespace openfranko::lib::binary;
 
 SCENARIO("pixelsToBmp produces a valid Windows BMP v3") {
   GIVEN("A 2x2 image with a 2-color Amiga palette") {
@@ -73,8 +73,7 @@ SCENARIO("pixelsToBmp converts Amiga 12-bit palette to 8-bit BGRA") {
 SCENARIO("pixelsToBmp stores rows bottom-up with 4-byte alignment") {
   GIVEN("A 3x2 image with distinct pixels per row") {
     uint8_t pixels[] = {
-        10, 11, 12,
-        20, 21, 22,
+        10, 11, 12, 20, 21, 22,
     };
     uint16_t palette[] = {0x000};
 

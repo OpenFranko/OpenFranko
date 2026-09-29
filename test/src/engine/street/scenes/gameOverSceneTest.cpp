@@ -3,9 +3,11 @@
 #include "../../../../../src/engine/street/ui/StageFrame.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
-#include <algorithm>
+#include "SceneRunner.h"
+
 #include <catch2/catch_all.hpp>
-#include <functional>
+
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -16,7 +18,7 @@ using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
-using openfranko::src::systems::graphics::toArgb;
+using namespace openfranko::src::systems::graphics;
 
 namespace {
 
@@ -26,7 +28,6 @@ constexpr int TUNE = 0x262;
 constexpr int OPEN_FRAME = 1 + GameOverScene::FILES * LoadingQueue::FILE_FRAMES;
 constexpr int OPENED_FRAME = OPEN_FRAME + 1 + 3;
 constexpr uint32_t GREY = 0xFF555555u;
-constexpr uint32_t BLACK = 0xFF000000u;
 constexpr uint32_t RED = 0xFFFF0000u;
 constexpr int PAN_FRAMES = 545;
 constexpr int16_t JOY_FIRE = 16;
@@ -71,27 +72,10 @@ GameSession afterStage() {
   return session;
 }
 
-struct Graveyard {
+struct Graveyard : SceneRunner<Graveyard> {
   FakeHost host;
   GameSession session = afterStage();
   GameOverScene scene{host, session};
-
-  void run(int frames, int16_t joystick = 0) {
-    for (int frame = 0; frame < frames; ++frame) {
-      scene.advance(joystick);
-    }
-  }
-
-  int runUntil(const std::function<bool()> &done, int limit,
-               int16_t joystick = 0) {
-    for (int frame = 0; frame < limit; ++frame) {
-      scene.advance(joystick);
-      if (done()) {
-        return frame + 1;
-      }
-    }
-    return -1;
-  }
 
   uint32_t pixel(int x, int y) const {
     std::vector<uint32_t> frame;

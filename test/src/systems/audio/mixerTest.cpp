@@ -1,4 +1,5 @@
 #include "../../../../src/systems/audio/Mixer.h"
+
 #include <catch2/catch_all.hpp>
 
 #include <algorithm>

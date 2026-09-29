@@ -1,6 +1,9 @@
 #include "../../../../../src/engine/street/core/HighScoreTable.h"
-#include <algorithm>
+#include "../../../../TemporaryPath.h"
+
 #include <catch2/catch_all.hpp>
+
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -8,6 +11,7 @@
 #include <vector>
 
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::test;
 
 namespace {
 
@@ -28,10 +32,6 @@ HighScoreTable ladder(int lowest) {
     table.setName(slot, std::string(1, static_cast<char>('A' + step)));
   }
   return table;
-}
-
-std::filesystem::path scratchFile() {
-  return std::filesystem::temp_directory_path() / "openFrankoHighScoreTest_h";
 }
 
 } // namespace
@@ -155,7 +155,8 @@ SCENARIO("The table is saved and loaded as the rotated 160-byte file") {
   GIVEN("A table with an entry") {
     HighScoreTable table;
     table.setName(table.insert(42), "NICE           ");
-    const std::filesystem::path path = scratchFile();
+    const TemporaryPath file("openFrankoHighScores");
+    const std::filesystem::path &path = file.path();
 
     WHEN("It is written and read back") {
       REQUIRE(writeHighScoreFile(table, path.string()));
@@ -164,7 +165,6 @@ SCENARIO("The table is saved and loaded as the rotated 160-byte file") {
                                       std::istreambuf_iterator<char>());
       file.close();
       const auto loaded = readHighScoreFile(path.string());
-      std::filesystem::remove(path);
 
       THEN("The file holds exactly the rotated table") {
         const HighScoreTable::Bytes rotated = table.toFile();
@@ -183,10 +183,10 @@ SCENARIO("The table is saved and loaded as the rotated 160-byte file") {
   }
 
   GIVEN("No file") {
-    std::filesystem::remove(scratchFile());
+    const TemporaryPath file("openFrankoHighScores");
 
     THEN("There is nothing to load, so boot falls back to HINEW") {
-      REQUIRE_FALSE(readHighScoreFile(scratchFile().string()).has_value());
+      REQUIRE_FALSE(readHighScoreFile(file.path().string()).has_value());
     }
   }
 }

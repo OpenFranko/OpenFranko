@@ -1,7 +1,9 @@
 #include "../../../../src/engine/amal/Machine.h"
 #include "../../../../src/engine/street/actors/Actors.h"
 #include "Run.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -287,25 +289,27 @@ SCENARIO("The scheduler's budget and loops") {
 }
 
 SCENARIO("The parser refuses what AMAL would not compile") {
-  THEN("An undefined label, a stray Next and an unknown instruction throw") {
-    REQUIRE_THROWS_AS(parse("JB;"), std::invalid_argument);
-    REQUIRE_THROWS_AS(parse("NR0;"), std::invalid_argument);
-    REQUIRE_THROWS_AS(parse("Q;"), std::invalid_argument);
-  }
+  GIVEN("The AMAL program parser") {
+    THEN("An undefined label, a stray Next and an unknown instruction throw") {
+      REQUIRE_THROWS_AS(parse("JB;"), std::invalid_argument);
+      REQUIRE_THROWS_AS(parse("NR0;"), std::invalid_argument);
+      REQUIRE_THROWS_AS(parse("Q;"), std::invalid_argument);
+    }
 
-  THEN("Operands and operators must alternate, and only a constant takes a "
-       "sign") {
-    REQUIRE_THROWS_AS(parse("LR0=;"), std::invalid_argument);
-    REQUIRE_THROWS_AS(parse("LR0=1+;"), std::invalid_argument);
-    REQUIRE_THROWS_AS(parse("LR0=1>+2;"), std::invalid_argument);
-    REQUIRE_THROWS_AS(parse("LR0=-R1;"), std::invalid_argument);
-    REQUIRE_THROWS_AS(parse("LR0=R1R2;"), std::invalid_argument);
-  }
+    THEN("Operands and operators must alternate, and only a constant takes a "
+         "sign") {
+      REQUIRE_THROWS_AS(parse("LR0=;"), std::invalid_argument);
+      REQUIRE_THROWS_AS(parse("LR0=1+;"), std::invalid_argument);
+      REQUIRE_THROWS_AS(parse("LR0=1>+2;"), std::invalid_argument);
+      REQUIRE_THROWS_AS(parse("LR0=-R1;"), std::invalid_argument);
+      REQUIRE_THROWS_AS(parse("LR0=R1R2;"), std::invalid_argument);
+    }
 
-  THEN("Lower-case letters are ignored, so words read as instructions") {
-    const Program program = parse("Move 5,0,1; Pause; Jump B; B: Let R0=1");
-    REQUIRE(program.code.size() == 4);
-    REQUIRE(program.code[0].opcode == Opcode::Move);
-    REQUIRE(program.code[2].jump == 3);
+    THEN("Lower-case letters are ignored, so words read as instructions") {
+      const Program program = parse("Move 5,0,1; Pause; Jump B; B: Let R0=1");
+      REQUIRE(program.code.size() == 4);
+      REQUIRE(program.code[0].opcode == Opcode::Move);
+      REQUIRE(program.code[2].jump == 3);
+    }
   }
 }

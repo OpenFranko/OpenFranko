@@ -1,4 +1,6 @@
 #include "../../../../../src/engine/effects/sequences/MenuSequence.h"
+#include "../../../../../src/engine/AmigaDisplay.h"
+
 #include <catch2/catch_all.hpp>
 
 #include <string>
@@ -23,7 +25,6 @@ const Joystick FIRE{false, false, false, false, true};
 
 constexpr int UNPACKED = 4;
 constexpr int OPENING_FRAMES = UNPACKED + 50;
-constexpr int SCREEN_CLOSE = 4;
 
 void run(MenuSequence &menu, int frames, const Joystick &joystick = NOTHING) {
   for (int frame = 0; frame < frames; ++frame) {
@@ -301,7 +302,7 @@ SCENARIO("MenuSequence asks for the attract screens when left alone") {
 
         AND_WHEN("The attract screens are over") {
           menu.resumeAfterAttract();
-          run(menu, SCREEN_CLOSE + 301);
+          run(menu, SCREEN_CLOSE_VBLS + 301);
           const bool dueAgainTooEarly = menu.isAttractDue();
           menu.advance(NOTHING);
 
@@ -315,7 +316,7 @@ SCENARIO("MenuSequence asks for the attract screens when left alone") {
         AND_WHEN("Screen Close 1 runs after Amal On") {
           menu.resumeAfterAttract();
           const int creditBefore = bob(menu, 1).y;
-          run(menu, SCREEN_CLOSE);
+          run(menu, SCREEN_CLOSE_VBLS);
 
           THEN("The credits scroll on while BASIC waits") {
             REQUIRE(bob(menu, 1).y != creditBefore);
@@ -448,7 +449,7 @@ SCENARIO("MenuSequence reads typed keys only when the keyboard gets through") {
     WHEN("The key comes while an attract screen sits in a Wait") {
       keyboard.sleep();
       menu.resumeAfterAttract();
-      const std::string readDuringClose = readDuring(menu, SCREEN_CLOSE);
+      const std::string readDuringClose = readDuring(menu, SCREEN_CLOSE_VBLS);
       menu.advance(NOTHING);
 
       THEN("The menu loop reads it after Screen Close 1") {

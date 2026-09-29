@@ -1,9 +1,10 @@
 #include "../../../lib/decompressor/backwardLZ77/backwardLZ77.h"
+
 #include <catch2/catch_all.hpp>
 
 using namespace openfranko::lib::decompressor::backwardLZ77;
 
-SCENARIO("BackwardLZ77 decompression works correctly") {
+SCENARIO("decompress unpacks a file and rejects broken ones") {
   GIVEN("A short literal run encoding a single byte") {
     std::vector<uint8_t> compressedData = {
         0x00, 0x00, 0x28, 0x40, 0x00, 0x00, 0x28, 0x40, 0x00, 0x00,
@@ -13,7 +14,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected = {0x42};
         REQUIRE(decompressedData == expected);
       }
@@ -29,7 +30,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected = {0x4F, 0x4C, 0x4C, 0x45, 0x48};
         REQUIRE(decompressedData == expected);
       }
@@ -45,7 +46,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected = {0xAA, 0xBB, 0xAA, 0xBB};
         REQUIRE(decompressedData == expected);
       }
@@ -61,7 +62,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected = {0x41, 0x41, 0x41, 0x41};
         REQUIRE(decompressedData == expected);
       }
@@ -77,7 +78,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected = {0x41, 0x42, 0x41, 0x42, 0x41, 0x42};
         REQUIRE(decompressedData == expected);
       }
@@ -93,7 +94,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected(7, 0x58);
         REQUIRE(decompressedData == expected);
       }
@@ -110,7 +111,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected = {0x41, 0x42, 0x43, 0x44, 0x45,
                                          0x46, 0x47, 0x48, 0x49};
         REQUIRE(decompressedData == expected);
@@ -128,7 +129,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected = {0x30, 0x31, 0x32, 0x33, 0x34, 0x35,
                                          0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B};
         REQUIRE(decompressedData == expected);
@@ -146,7 +147,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected = {0xEE, 0xFF, 0xCC, 0xDD,
                                          0xAA, 0xBB, 0xCC, 0xDD};
         REQUIRE(decompressedData == expected);
@@ -163,7 +164,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected = {0x01, 0x02, 0x02, 0x01,
                                          0x02, 0x01, 0x02};
         REQUIRE(decompressedData == expected);
@@ -180,7 +181,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     WHEN("Decompressing the data") {
       const auto decompressedData = decompress(compressedData);
 
-      THEN("The decompressed data should match the expected output") {
+      THEN("The decompressed data matches the expected output") {
         std::vector<uint8_t> expected = {0xCD, 0xAB, 0xCD, 0xAB, 0xCD, 0xAB,
                                          0xCD, 0xAB, 0xCD, 0xAB, 0xCD, 0xAB};
         REQUIRE(decompressedData == expected);
@@ -205,7 +206,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     std::vector<uint8_t> compressedData = {0x00, 0x01, 0x02};
 
     WHEN("Attempting to decompress") {
-      THEN("It should throw a runtime error") {
+      THEN("It throws a runtime error") {
         REQUIRE_THROWS_AS(decompress(compressedData), std::runtime_error);
       }
     }
@@ -218,7 +219,7 @@ SCENARIO("BackwardLZ77 decompression works correctly") {
     };
 
     WHEN("Attempting to decompress") {
-      THEN("It should throw a runtime error") {
+      THEN("It throws a runtime error") {
         REQUIRE_THROWS_AS(decompress(compressedData), std::runtime_error);
       }
     }
@@ -263,7 +264,7 @@ SCENARIO("decompressStream unpacks a stream that has no file footer") {
     std::vector<uint8_t> stream(11, 0x00);
 
     WHEN("Attempting to decompress") {
-      THEN("It should throw a runtime error") {
+      THEN("It throws a runtime error") {
         REQUIRE_THROWS_AS(decompressStream(stream), std::runtime_error);
       }
     }

@@ -1,4 +1,5 @@
 #include "../../../../../src/engine/street/session/CheatCodes.h"
+
 #include <catch2/catch_all.hpp>
 
 #include <string>

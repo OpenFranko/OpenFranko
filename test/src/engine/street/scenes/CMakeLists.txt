@@ -9,14 +9,14 @@ set(CAR_STAGE_TEST_TARGET carStageTest)
 add_executable(${CAR_STAGE_TEST_TARGET}
     carStageTest.cpp)
 target_link_libraries(${CAR_STAGE_TEST_TARGET}
-    PRIVATE Catch2::Catch2WithMain StreetCore StreetScenes)
+    PRIVATE Catch2::Catch2WithMain Common StreetCore StreetScenes)
 add_test(NAME ${CAR_STAGE_TEST_TARGET} COMMAND ${CAR_STAGE_TEST_TARGET})
 
 set(CONTINUE_SCENE_TEST_TARGET continueSceneTest)
 add_executable(${CONTINUE_SCENE_TEST_TARGET}
     continueSceneTest.cpp)
 target_link_libraries(${CONTINUE_SCENE_TEST_TARGET}
-    PRIVATE Catch2::Catch2WithMain StreetCore StreetScenes StreetUi)
+    PRIVATE Catch2::Catch2WithMain Common StreetCore StreetScenes StreetUi)
 add_test(NAME ${CONTINUE_SCENE_TEST_TARGET}
     COMMAND ${CONTINUE_SCENE_TEST_TARGET})
 
@@ -24,7 +24,7 @@ set(ENDING_SCENE_TEST_TARGET endingSceneTest)
 add_executable(${ENDING_SCENE_TEST_TARGET}
     endingSceneTest.cpp)
 target_link_libraries(${ENDING_SCENE_TEST_TARGET}
-    PRIVATE Catch2::Catch2WithMain StreetCore StreetScenes StreetUi)
+    PRIVATE Catch2::Catch2WithMain Common StreetCore StreetScenes StreetUi)
 add_test(NAME ${ENDING_SCENE_TEST_TARGET} COMMAND ${ENDING_SCENE_TEST_TARGET})
 
 set(GAME_OVER_SCENE_TEST_TARGET gameOverSceneTest)

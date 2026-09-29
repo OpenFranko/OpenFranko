@@ -1,4 +1,6 @@
 #include "../../../../src/engine/assets/Assets.h"
+#include "../../../TemporaryPath.h"
+
 #include <catch2/catch_all.hpp>
 
 #include <filesystem>
@@ -7,29 +9,14 @@
 #include <string>
 
 using namespace openfranko::src::engine;
+using namespace openfranko::test;
 
 namespace {
 
-class TemporaryDirectory {
-public:
-  explicit TemporaryDirectory(const std::string &name)
-      : m_path(std::filesystem::temp_directory_path() / name) {
-    std::filesystem::remove_all(m_path);
-    std::filesystem::create_directories(m_path);
-  }
-  ~TemporaryDirectory() { std::filesystem::remove_all(m_path); }
-
-  void touch(const std::string &file) const {
-    const std::filesystem::path path = m_path / file;
-    std::filesystem::create_directories(path.parent_path());
-    std::ofstream(path).put('\0');
-  }
-
-  std::string path() const { return m_path.string(); }
-
-private:
-  std::filesystem::path m_path;
-};
+void touch(const std::filesystem::path &path) {
+  std::filesystem::create_directories(path.parent_path());
+  std::ofstream(path).put('\0');
+}
 
 } // namespace
 
@@ -64,30 +51,32 @@ SCENARIO("Resources are named after the data files of their version") {
 
 SCENARIO("The version is told by the extracted files") {
   GIVEN("A directory holding a 1.0 extraction") {
-    const TemporaryDirectory directory("openfranko-assets-10");
-    directory.touch("0384/0384.bmp");
+    const TemporaryPath directory("openFrankoAssets10");
+    touch(directory.path() / "0384/0384.bmp");
 
     THEN("It is version 1.0") {
-      REQUIRE(assets::detectVersion(directory.path()) == GameVersion::V10);
+      REQUIRE(assets::detectVersion(directory.path().string()) ==
+              GameVersion::V10);
     }
   }
 
   GIVEN("A directory holding a 1.2 extraction") {
-    const TemporaryDirectory directory("openfranko-assets-12");
-    directory.touch("p0/p0.bmp");
+    const TemporaryPath directory("openFrankoAssets12");
+    touch(directory.path() / "p0/p0.bmp");
 
     THEN("It is version 1.2") {
-      REQUIRE(assets::detectVersion(directory.path()) == GameVersion::V12);
+      REQUIRE(assets::detectVersion(directory.path().string()) ==
+              GameVersion::V12);
     }
   }
 }
 
 SCENARIO("Asset paths follow the extractor's layout") {
   GIVEN("A directory with a bank's samples") {
-    const TemporaryDirectory directory("openfranko-assets-samples");
-    directory.touch("s50/s50_sam2_13160Hz.wav");
-    directory.touch("s50/s50_002.bmp");
-    const std::string root = directory.path();
+    const TemporaryPath directory("openFrankoAssetsSamples");
+    touch(directory.path() / "s50/s50_sam2_13160Hz.wav");
+    touch(directory.path() / "s50/s50_002.bmp");
+    const std::string root = directory.path().string();
 
     THEN("Pictures, images, parts and tunes have fixed names") {
       REQUIRE(assets::picturePath("p54", root) == root + "/p54.bmp");

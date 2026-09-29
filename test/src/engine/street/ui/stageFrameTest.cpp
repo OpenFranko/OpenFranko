@@ -1,4 +1,5 @@
 #include "../../../../../src/engine/street/ui/StageFrame.h"
+
 #include <catch2/catch_all.hpp>
 
 #include <cstddef>
@@ -8,7 +9,7 @@
 using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
-using openfranko::src::systems::graphics::toArgb;
+using namespace openfranko::src::systems::graphics;
 
 namespace {
 
@@ -75,42 +76,44 @@ uint32_t at(const std::vector<uint32_t> &frame, int row) {
 } // namespace
 
 SCENARIO("The stage layout follows state 09's Screen Display lines") {
-  THEN("PAL puts the play screen at 47 and the panel at 270") {
-    const StageLayout pal{false, false};
-    REQUIRE(playDisplayY(pal) == 47);
-    REQUIRE(panelDisplayY(pal) == 270);
-    REQUIRE(frameTop(pal) == 47);
-    REQUIRE(frameRows(pal) == 255);
-  }
+  GIVEN("The play screen and the panel of a stage") {
+    THEN("PAL puts the play screen at 47 and the panel at 270") {
+      const StageLayout pal{false, false};
+      REQUIRE(playDisplayY(pal) == 47);
+      REQUIRE(panelDisplayY(pal) == 270);
+      REQUIRE(frameTop(pal) == 47);
+      REQUIRE(frameRows(pal) == 255);
+    }
 
-  THEN("NTSC moves both up 40 lines, and the frame with them") {
-    const StageLayout ntsc{true, false};
-    REQUIRE(playDisplayY(ntsc) == 7);
-    REQUIRE(panelDisplayY(ntsc) == 230);
-    REQUIRE(frameTop(ntsc) == 7);
-    REQUIRE(frameRows(ntsc) == 255);
-  }
+    THEN("NTSC moves both up 40 lines, and the frame with them") {
+      const StageLayout ntsc{true, false};
+      REQUIRE(playDisplayY(ntsc) == 7);
+      REQUIRE(panelDisplayY(ntsc) == 230);
+      REQUIRE(frameTop(ntsc) == 7);
+      REQUIRE(frameRows(ntsc) == 255);
+    }
 
-  THEN("320x512 laces the play screen 60 lines lower, the panel 51 higher, "
-       "and doubles the rows") {
-    const StageLayout tall{false, true};
-    REQUIRE(playDisplayY(tall) == 107);
-    REQUIRE(panelDisplayY(tall) == 219);
-    REQUIRE(frameTop(tall) == 47);
-    REQUIRE(rowsPerLine(tall) == 2);
-    REQUIRE(frameRows(tall) == 510);
-    const StageLayout tallNtsc{true, true};
-    REQUIRE(playDisplayY(tallNtsc) == 67);
-    REQUIRE(panelDisplayY(tallNtsc) == 179);
-  }
+    THEN("320x512 laces the play screen 60 lines lower, the panel 51 higher, "
+         "and doubles the rows") {
+      const StageLayout tall{false, true};
+      REQUIRE(playDisplayY(tall) == 107);
+      REQUIRE(panelDisplayY(tall) == 219);
+      REQUIRE(frameTop(tall) == 47);
+      REQUIRE(rowsPerLine(tall) == 2);
+      REQUIRE(frameRows(tall) == 510);
+      const StageLayout tallNtsc{true, true};
+      REQUIRE(playDisplayY(tallNtsc) == 67);
+      REQUIRE(panelDisplayY(tallNtsc) == 179);
+    }
 
-  THEN("The menu's options pick the layout") {
-    GameOptions options;
-    options.ntsc = true;
-    options.tallScreen = true;
-    const StageLayout layout = stageLayout(options);
-    REQUIRE(layout.ntsc);
-    REQUIRE(layout.laced);
+    THEN("The menu's options pick the layout") {
+      GameOptions options;
+      options.ntsc = true;
+      options.tallScreen = true;
+      const StageLayout layout = stageLayout(options);
+      REQUIRE(layout.ntsc);
+      REQUIRE(layout.laced);
+    }
   }
 }
 

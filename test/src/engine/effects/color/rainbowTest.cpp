@@ -1,5 +1,7 @@
 #include "../../../../../src/engine/effects/color/Rainbow.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <stdexcept>
 #include <vector>
 
@@ -43,11 +45,14 @@ SCENARIO("Set Rainbow builds its table as TRSet does") {
     }
   }
 
-  THEN("A malformed program is refused") {
-    REQUIRE_THROWS_AS(rainbowTable(10, "(0,1,1)", "", ""),
-                      std::invalid_argument);
-    REQUIRE_THROWS_AS(rainbowTable(10, "(1,1)", "", ""), std::invalid_argument);
-    REQUIRE_THROWS_AS(rainbowTable(10, "", "(2,1,-1)", ""),
-                      std::invalid_argument);
+  GIVEN("Programs with a zero step, a missing field or a negative count") {
+    THEN("A malformed program is refused") {
+      REQUIRE_THROWS_AS(rainbowTable(10, "(0,1,1)", "", ""),
+                        std::invalid_argument);
+      REQUIRE_THROWS_AS(rainbowTable(10, "(1,1)", "", ""),
+                        std::invalid_argument);
+      REQUIRE_THROWS_AS(rainbowTable(10, "", "(2,1,-1)", ""),
+                        std::invalid_argument);
+    }
   }
 }

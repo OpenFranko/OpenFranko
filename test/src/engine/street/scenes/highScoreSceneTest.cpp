@@ -2,7 +2,9 @@
 #include "../../../../../src/engine/street/ui/StageFrame.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <functional>
 #include <string>
 #include <utility>
@@ -15,7 +17,7 @@ using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
-using openfranko::src::systems::graphics::toArgb;
+using namespace openfranko::src::systems::graphics;
 
 namespace {
 

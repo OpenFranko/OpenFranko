@@ -2,8 +2,11 @@
 #include "../../../../../src/engine/street/ui/StageFrame.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
-#include <algorithm>
+#include "StageRunner.h"
+
 #include <catch2/catch_all.hpp>
+
+#include <algorithm>
 #include <cstdlib>
 #include <functional>
 #include <memory>
@@ -18,7 +21,7 @@ using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
-using openfranko::src::systems::graphics::toArgb;
+using namespace openfranko::src::systems::graphics;
 
 namespace {
 
@@ -51,8 +54,6 @@ constexpr uint8_t STREET_COLOR = 6;
 constexpr uint8_t STAMP_COLOR = 3;
 constexpr uint8_t PLAYER_COLOR = 1;
 constexpr uint8_t BOSS_COLOR = 2;
-constexpr uint8_t STRIP_COLOR = 7;
-constexpr uint8_t WAIT_WORD_COLOR = 5;
 constexpr int BOSS_FILES = 6;
 constexpr int READY_FRAMES = 1 + BOSS_FILES * LoadingQueue::FILE_FRAMES;
 
@@ -68,12 +69,7 @@ public:
     spriteSets.emplace_back(resource, sampleBank);
     std::vector<Picture> frames;
     if (resource == 0) {
-      frames.push_back(box(48, 23, 0, 11, 5));
-      for (int i = 1; i < 9; ++i) {
-        frames.push_back(box(16, 8, 0, 0, 3));
-      }
-      frames.push_back(box(16, 1, 0, 0, 0));
-      frames.push_back(box(16, 1, 0, 0, 0));
+      frames = bloodAndIndicator();
     } else if (resource == FRANKO_BOSS_SET) {
       for (int i = 0; i < 32; ++i) {
         frames.push_back(box(64, 80, 16, 77, PLAYER_COLOR));
@@ -108,22 +104,12 @@ public:
     return columns;
   }
 
-  Picture loadPanelPicture(int part) override {
-    if (part != 0) {
-      return box(304, 40, 0, 0, 1);
-    }
-    Picture strip = box(304, 48, 0, 0, STRIP_COLOR);
-    std::fill(strip.pixels.begin() + 32 * 304, strip.pixels.end(),
-              WAIT_WORD_COLOR);
-    return strip;
-  }
-
   void setSampleLooping(bool loop) override { loops.push_back(loop); }
 
   int random(int limit) override { return randomValue(limit); }
 };
 
-struct Duel {
+struct Duel : StageRunner<Duel> {
   FakeHost host;
   GameSession session;
   GameOptions options;
@@ -145,23 +131,6 @@ struct Duel {
   BossStage &start() {
     stage = std::make_unique<BossStage>(host, session, options);
     return *stage;
-  }
-
-  void run(int frames, int16_t joystick = 0, SystemKey key = SystemKey::None) {
-    for (int frame = 0; frame < frames; ++frame) {
-      stage->advance({joystick, frame == 0 ? key : SystemKey::None});
-    }
-  }
-
-  int runUntil(const std::function<bool()> &done, int limit,
-               int16_t joystick = 0) {
-    for (int frame = 0; frame < limit; ++frame) {
-      stage->advance({joystick, SystemKey::None});
-      if (done()) {
-        return frame + 1;
-      }
-    }
-    return -1;
   }
 
   uint8_t panelPixel(int x, int y) const {

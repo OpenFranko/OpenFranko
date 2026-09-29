@@ -1,13 +1,15 @@
 #include "../../../../src/systems/audio/Wave.h"
+#include "../../../TemporaryPath.h"
+
 #include <catch2/catch_all.hpp>
 
 #include <cstdint>
-#include <cstdio>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 using namespace openfranko::src::systems::audio;
+using namespace openfranko::test;
 
 namespace {
 
@@ -120,8 +122,8 @@ SCENARIO("readWave reads the sample files the asset pipeline writes") {
 
 SCENARIO("loadWave names the file it could not read") {
   GIVEN("A path with no file") {
-    const std::string path = "no-such-sample.wav";
-    std::remove(path.c_str());
+    const TemporaryPath missing("openFrankoMissingSample.wav");
+    const std::string path = missing.path().string();
 
     THEN("The error carries the path") {
       REQUIRE_THROWS_WITH(loadWave(path),

@@ -1,8 +1,12 @@
 #include "../../../../../src/engine/street/scenes/ContinueScene.h"
+#include "../../../../../src/engine/AmigaDisplay.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
+#include "SceneRunner.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <utility>
 #include <vector>
 
@@ -17,7 +21,6 @@ namespace {
 
 constexpr int RO = 14;
 constexpr int MACH_WAIT = 40;
-constexpr int SCREEN_CLOSE = 4;
 constexpr int16_t JOY_LEFT = 4;
 constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
@@ -45,16 +48,10 @@ public:
   Picture loadPanelPicture(int) override { return box(304, 48, 7); }
 };
 
-struct Choice {
+struct Choice : SceneRunner<Choice> {
   FakeHost host;
   GameSession session;
   ContinueScene scene{host, session};
-
-  void run(int frames, int16_t joystick = 0) {
-    for (int frame = 0; frame < frames; ++frame) {
-      scene.advance(joystick);
-    }
-  }
 
   int16_t handX() const { return scene.bobs().x(ContinueScene::HAND); }
 
@@ -191,7 +188,7 @@ SCENARIO("Fire waggles the hand through MACH, then the choice is taken") {
     WHEN("NIE is fired") {
       choice.run(1, JOY_RIGHT);
       choice.run(1, JOY_FIRE);
-      choice.run(MACH_WAIT + SCREEN_CLOSE);
+      choice.run(MACH_WAIT + SCREEN_CLOSE_VBLS);
 
       THEN("It is back to the menu with the stage left alone") {
         REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::NewGame);

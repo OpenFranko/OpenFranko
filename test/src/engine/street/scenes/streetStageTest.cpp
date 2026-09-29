@@ -1,8 +1,11 @@
 #include "../../../../../src/engine/street/scenes/StreetStage.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
-#include <algorithm>
+#include "StageRunner.h"
+
 #include <catch2/catch_all.hpp>
+
+#include <algorithm>
 #include <functional>
 #include <utility>
 #include <vector>
@@ -36,8 +39,6 @@ constexpr int16_t JOY_FIRE = 16;
 constexpr int FRANKO = 0xFF;
 constexpr int ALEX = 0xFA;
 constexpr uint8_t OPENING_COLOR = 4;
-constexpr uint8_t STRIP_COLOR = 7;
-constexpr uint8_t WAIT_WORD_COLOR = 5;
 constexpr int OPENING_FILES = 5;
 constexpr int GAME_INIT_FRAMES = 1 + 3 + 1;
 constexpr int STAGE_OPENING_FRAMES =
@@ -69,12 +70,7 @@ public:
     spriteSets.emplace_back(resource, sampleBank);
     std::vector<Picture> frames;
     if (resource == 0) {
-      frames.push_back(box(48, 23, 0, 11, 5));
-      for (int i = 1; i < 9; ++i) {
-        frames.push_back(box(16, 8, 0, 0, 3));
-      }
-      frames.push_back(box(16, 1, 0, 0, 0));
-      frames.push_back(box(16, 1, 0, 0, 0));
+      frames = bloodAndIndicator();
     } else if (resource == FRANKO || resource == ALEX) {
       for (int i = 0; i < 33; ++i) {
         frames.push_back(box(64, 80, 16, 77, 1));
@@ -103,23 +99,13 @@ public:
 
   LevelScript loadLevelScript(int) override { return script; }
 
-  Picture loadPanelPicture(int part) override {
-    if (part != 0) {
-      return box(304, 40, 0, 0, 1);
-    }
-    Picture strip = box(304, 48, 0, 0, STRIP_COLOR);
-    std::fill(strip.pixels.begin() + 32 * 304, strip.pixels.end(),
-              WAIT_WORD_COLOR);
-    return strip;
-  }
-
   int random(int limit) override {
     ++randomCalls;
     return randomValue(limit);
   }
 };
 
-struct Street {
+struct Street : StageRunner<Street> {
   FakeHost host;
   GameSession session;
   GameOptions options;
@@ -141,23 +127,6 @@ struct Street {
 
   uint8_t panelPixel(int x, int y) const {
     return stage->panel()->surface().pixel(x, y);
-  }
-
-  void run(int frames, int16_t joystick = 0, SystemKey key = SystemKey::None) {
-    for (int frame = 0; frame < frames; ++frame) {
-      stage->advance({joystick, frame == 0 ? key : SystemKey::None});
-    }
-  }
-
-  int runUntil(const std::function<bool()> &done, int limit,
-               int16_t joystick = 0) {
-    for (int frame = 0; frame < limit; ++frame) {
-      stage->advance({joystick, SystemKey::None});
-      if (done()) {
-        return frame + 1;
-      }
-    }
-    return -1;
   }
 
   int16_t &global(int index) { return session.registers[index]; }

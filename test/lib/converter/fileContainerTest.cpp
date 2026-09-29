@@ -1,15 +1,15 @@
 #include "../../../lib/converter/fileContainer/fileContainer.h"
 #include "../../../lib/binary/binary.h"
 #include "../../../lib/converter/gameData/gameData.h"
-#include <algorithm>
+
 #include <catch2/catch_all.hpp>
+
+#include <algorithm>
 #include <vector>
 
 using namespace openfranko::lib::converter::fileContainer;
-namespace resourceTypes = openfranko::lib::converter::gameData::resourceTypes;
-using openfranko::lib::binary::BigEndianReader;
-using openfranko::lib::binary::pushBigEndian16;
-using openfranko::lib::binary::pushBigEndian32;
+using namespace openfranko::lib::binary;
+using namespace openfranko::lib::converter::gameData;
 
 namespace {
 
@@ -79,15 +79,15 @@ SCENARIO("parseFooter reads the last 8 bytes as big-endian fields") {
   GIVEN("A 16-byte buffer with a known 8-byte suffix") {
     std::vector<uint8_t> data = {
         0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x11, 0x22,
-        0x00, 0x01, 0x00, 0x00,
-        0x03, 0x84,
-        0x02, 0x00,
+        0x00, 0x01, 0x00, 0x00, 0x03, 0x84, 0x02, 0x00,
     };
 
     WHEN("parseFooter is called") {
       auto info = parseFooter(data);
 
-      THEN("unpackSize is read correctly") { REQUIRE(info.unpackSize == 65536); }
+      THEN("unpackSize is read correctly") {
+        REQUIRE(info.unpackSize == 65536);
+      }
 
       THEN("fileId is read correctly") { REQUIRE(info.fileId == 0x0384); }
 
@@ -99,9 +99,7 @@ SCENARIO("parseFooter reads the last 8 bytes as big-endian fields") {
 
   GIVEN("An exactly 8-byte buffer") {
     std::vector<uint8_t> data = {
-        0x00, 0x00, 0x00, 0x42,
-        0x00, 0x38,
-        0x00, 0x00,
+        0x00, 0x00, 0x00, 0x42, 0x00, 0x38, 0x00, 0x00,
     };
 
     WHEN("parseFooter is called") {

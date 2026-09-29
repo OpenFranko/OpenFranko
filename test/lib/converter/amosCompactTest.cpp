@@ -3,22 +3,28 @@
 #include "../../../lib/converter/amosCompact/consts.h"
 #include "../../../lib/converter/amosCompact/detail/BitReader.h"
 #include "../../../lib/converter/amosCompact/detail/ByteReader.h"
+#include "buildPackedBitmap.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <vector>
 
 using namespace openfranko::lib::converter::amosCompact;
 using namespace openfranko::lib::converter::amosCompact::detail;
-using openfranko::lib::binary::LittleEndianReader;
+using namespace openfranko::lib::binary;
+using namespace openfranko::test::lib::converter;
 
-static uint32_t bmpWidth(const std::vector<uint8_t> &bmp) {
+namespace {
+
+uint32_t bmpWidth(const std::vector<uint8_t> &bmp) {
   return LittleEndianReader(bmp).readUint32(18);
 }
 
-static uint32_t bmpHeight(const std::vector<uint8_t> &bmp) {
+uint32_t bmpHeight(const std::vector<uint8_t> &bmp) {
   return LittleEndianReader(bmp).readUint32(22);
 }
 
-static uint8_t bmpPixel(const std::vector<uint8_t> &bmp, int x, int y) {
+uint8_t bmpPixel(const std::vector<uint8_t> &bmp, int x, int y) {
   uint32_t w = bmpWidth(bmp);
   uint32_t h = bmpHeight(bmp);
   uint32_t rowBytes = (w + 3) & ~3u;
@@ -31,52 +37,12 @@ struct BmpColor {
   uint8_t r, g, b;
 };
 
-static BmpColor bmpPalette(const std::vector<uint8_t> &bmp, int index) {
+BmpColor bmpPalette(const std::vector<uint8_t> &bmp, int index) {
   size_t off = 54 + index * 4;
   return {bmp[off + 2], bmp[off + 1], bmp[off]};
 }
 
-static std::vector<uint8_t>
-buildPackedBitmap(uint16_t tx, uint16_t ty, uint16_t tcar, uint16_t nplan,
-                  const std::vector<uint8_t> &dataStream1,
-                  const std::vector<uint8_t> &dataStream2,
-                  const std::vector<uint8_t> &pointerBitstream) {
-  uint32_t datas2Off = 24 + static_cast<uint32_t>(dataStream1.size());
-  uint32_t pointOff = datas2Off + static_cast<uint32_t>(dataStream2.size());
-
-  std::vector<uint8_t> data = {
-      0x06,
-      0x07,
-      0x19,
-      0x63,
-      0x00,
-      0x00,
-      0x00,
-      0x00,
-      static_cast<uint8_t>(tx >> 8),
-      static_cast<uint8_t>(tx & 0xFF),
-      static_cast<uint8_t>(ty >> 8),
-      static_cast<uint8_t>(ty & 0xFF),
-      static_cast<uint8_t>(tcar >> 8),
-      static_cast<uint8_t>(tcar & 0xFF),
-      static_cast<uint8_t>(nplan >> 8),
-      static_cast<uint8_t>(nplan & 0xFF),
-      static_cast<uint8_t>(datas2Off >> 24),
-      static_cast<uint8_t>(datas2Off >> 16),
-      static_cast<uint8_t>(datas2Off >> 8),
-      static_cast<uint8_t>(datas2Off & 0xFF),
-      static_cast<uint8_t>(pointOff >> 24),
-      static_cast<uint8_t>(pointOff >> 16),
-      static_cast<uint8_t>(pointOff >> 8),
-      static_cast<uint8_t>(pointOff & 0xFF),
-  };
-
-  data.insert(data.end(), dataStream1.begin(), dataStream1.end());
-  data.insert(data.end(), dataStream2.begin(), dataStream2.end());
-  data.insert(data.end(), pointerBitstream.begin(), pointerBitstream.end());
-
-  return data;
-}
+} // namespace
 
 SCENARIO("BitReader reads bits MSB-first from a byte stream") {
   GIVEN("A single byte 0xA5 (10100101)") {

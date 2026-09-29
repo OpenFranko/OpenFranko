@@ -1,4 +1,5 @@
 #include "../../../../src/systems/input/ControllerSystem.h"
+
 #include <catch2/catch_all.hpp>
 
 using namespace openfranko::src::systems::input;

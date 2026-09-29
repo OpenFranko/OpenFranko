@@ -26,14 +26,14 @@ set(FOTO_SEQUENCE_TEST_TARGET fotoSequenceTest)
 add_executable(${FOTO_SEQUENCE_TEST_TARGET}
     fotoSequenceTest.cpp)
 target_link_libraries(${FOTO_SEQUENCE_TEST_TARGET}
-    PRIVATE Catch2::Catch2WithMain EffectsSequences)
+    PRIVATE Catch2::Catch2WithMain Common EffectsSequences)
 add_test(NAME ${FOTO_SEQUENCE_TEST_TARGET} COMMAND ${FOTO_SEQUENCE_TEST_TARGET})
 
 set(MENU_SEQUENCE_TEST_TARGET menuSequenceTest)
 add_executable(${MENU_SEQUENCE_TEST_TARGET}
     menuSequenceTest.cpp)
 target_link_libraries(${MENU_SEQUENCE_TEST_TARGET}
-    PRIVATE Catch2::Catch2WithMain EffectsSequences)
+    PRIVATE Catch2::Catch2WithMain Common EffectsSequences)
 add_test(NAME ${MENU_SEQUENCE_TEST_TARGET} COMMAND ${MENU_SEQUENCE_TEST_TARGET})
 
 set(STORY_SEQUENCE_TEST_TARGET storySequenceTest)

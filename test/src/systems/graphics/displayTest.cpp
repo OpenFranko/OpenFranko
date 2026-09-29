@@ -1,4 +1,5 @@
 #include "../../../../src/systems/graphics/Display.h"
+
 #include <catch2/catch_all.hpp>
 
 #include <cstdint>

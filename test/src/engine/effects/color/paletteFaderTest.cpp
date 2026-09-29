@@ -1,5 +1,7 @@
 #include "../../../../../src/engine/effects/color/PaletteFader.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <stdexcept>
 #include <vector>
 

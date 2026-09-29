@@ -1,9 +1,12 @@
 #include "../../../../../src/engine/street/scenes/CarStage.h"
+#include "../../../../../src/engine/AmigaDisplay.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
+#include "StageRunner.h"
+
 #include <catch2/catch_all.hpp>
+
 #include <deque>
-#include <functional>
 #include <memory>
 #include <tuple>
 #include <utility>
@@ -25,7 +28,6 @@ constexpr int RN = 13;
 constexpr int RO = 14;
 
 constexpr int16_t JOY_UP = 1;
-constexpr int16_t JOY_LEFT = 4;
 constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
 
@@ -33,8 +35,7 @@ constexpr int PASSWORD_FRAMES = 6;
 constexpr int SKIP_FRAME = PASSWORD_FRAMES + 1;
 constexpr int LOADED_FRAME =
     SKIP_FRAME + CarStage::FILES * LoadingQueue::FILE_FRAMES;
-constexpr int SCREEN_CLOSE = 4;
-constexpr int ROAD_SCREENS = 1 + 1 + SCREEN_CLOSE;
+constexpr int ROAD_SCREENS = 1 + 1 + SCREEN_CLOSE_VBLS;
 constexpr int DRIVE_FRAME = LOADED_FRAME + ROAD_SCREENS;
 constexpr int PASS_LIMIT = 100;
 constexpr int PAL_FRAMES_PER_SECOND = 50;
@@ -43,7 +44,7 @@ constexpr int LONGEST_PASS =
     (PAL_FRAMES_PER_SECOND + CarStage::PASSES_PER_SECOND - 1) /
     CarStage::PASSES_PER_SECOND;
 constexpr int MOVE_END = 401;
-constexpr int EXIT_FRAMES = SCREEN_CLOSE + 3;
+constexpr int EXIT_FRAMES = SCREEN_CLOSE_VBLS + 3;
 constexpr int WALKER_LIMIT = 1000;
 
 constexpr uint8_t CAR_INK = 3;
@@ -108,7 +109,7 @@ public:
   }
 };
 
-struct Drive {
+struct Drive : StageRunner<Drive> {
   FakeHost host;
   GameSession session;
   GameOptions options;
@@ -124,23 +125,6 @@ struct Drive {
   CarStage &start() {
     stage = std::make_unique<CarStage>(host, session, options);
     return *stage;
-  }
-
-  void run(int frames, int16_t joystick = 0, SystemKey key = SystemKey::None) {
-    for (int frame = 0; frame < frames; ++frame) {
-      stage->advance({joystick, frame == 0 ? key : SystemKey::None});
-    }
-  }
-
-  int runUntil(const std::function<bool()> &done, int limit,
-               int16_t joystick = 0) {
-    for (int frame = 0; frame < limit; ++frame) {
-      stage->advance({joystick, SystemKey::None});
-      if (done()) {
-        return frame + 1;
-      }
-    }
-    return -1;
   }
 
   void toTheWheel() {
@@ -560,7 +544,7 @@ SCENARIO("A run-over walker slides off the road and frees his channel") {
   }
 }
 
-SCENARIO("When the distance runs out the car drives off and the stage ends") {
+SCENARIO("The car drives off and the stage ends when the distance runs out") {
   GIVEN("A drive at top speed") {
     Drive drive;
     drive.toTheWheel();
@@ -633,7 +617,7 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
     WHEN("The lives run out") {
       drive.global(RG) = -1;
       drive.runUntil([&] { return !stage.isDriving(); }, PASS_LIMIT);
-      drive.run(SCREEN_CLOSE);
+      drive.run(SCREEN_CLOSE_VBLS);
 
       THEN("Game over follows Wait 200 and _CLOSE's two screens, four VBLs "
            "each, each gone after two") {

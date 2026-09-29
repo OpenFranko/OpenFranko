@@ -1,4 +1,5 @@
 #include "../../../src/engine/InkeyBuffer.h"
+
 #include <catch2/catch_all.hpp>
 
 #include <string>
