@@ -13,7 +13,7 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.getCmdOption("-i");
+  const auto inputOptional = parser.option("-i");
 
   if (!inputOptional.has_value()) {
     std::cerr << "Usage: " << argv[0] << " -i <input_file> -o <output_file>"
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
   std::string outputFilePath = inputFilePath + ".dec";
 
-  const auto outputOptional = parser.getCmdOption("-o");
+  const auto outputOptional = parser.option("-o");
 
   if (outputOptional.has_value()) {
     outputFilePath = outputOptional.value();

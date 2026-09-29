@@ -22,8 +22,8 @@ public:
   void loadMusic(const std::string &path);
   void clearMusic();
   const std::string &loadedMusic() const;
-  void loadSFX(const std::string &name, const std::string &path);
-  void clearSFX(const std::string &name);
+  void loadSample(const std::string &name, const std::string &path);
+  void clearSample(const std::string &name);
   void playMusic();
   void playMusicOnce();
   void stopMusic();
@@ -35,7 +35,7 @@ public:
   void playSample(const std::string &name, int voiceMask);
   void playSampleAt(const std::string &name, int voiceMask, int frequency);
   void setSampleLooping(bool looping);
-  void stopSFX();
+  void stopSamples();
   void update();
 
 private:

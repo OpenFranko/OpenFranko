@@ -24,7 +24,7 @@ void BlyskSequence::advance(bool fireLatched) {
   if (m_finished) {
     return;
   }
-  m_fader.tick(m_palette);
+  m_fader.advance(m_palette);
   if (m_time == 0) {
     startPage();
   } else if (m_time == LIT_FRAMES) {

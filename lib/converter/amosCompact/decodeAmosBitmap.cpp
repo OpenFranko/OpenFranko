@@ -1,7 +1,7 @@
 #include "decodeAmosBitmap.h"
 #include "../../binary/binary.h"
 #include "../headers/headers.h"
-#include "detail/bitmapUnpack.h"
+#include "detail/unpackBitmap.h"
 #include <stdexcept>
 
 namespace openfranko::lib::converter::amosCompact {
@@ -25,7 +25,7 @@ DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
   std::vector<uint16_t> palVec(palette, palette + numberOfColors);
 
   auto hdr = headers::parseBitmapHeader(slice);
-  auto bm = detail::bitmapUnpack(slice, hdr, palVec);
+  auto bm = detail::unpackBitmap(slice, hdr, palVec);
 
   DecodedImage img;
   img.width = bm.width;

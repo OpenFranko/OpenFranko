@@ -121,7 +121,7 @@ void EndingScene::advance(int16_t joystick) {
   }
   m_stillVbl = true;
   m_machine.tick();
-  m_fader.tick(m_screens[0].palette);
+  m_fader.advance(m_screens[0].palette);
   if (!holdsAtStart()) {
     stillTest();
     if (m_dancerBuffer) {

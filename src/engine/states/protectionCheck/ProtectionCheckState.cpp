@@ -113,7 +113,7 @@ std::optional<EngineStateId> ProtectionCheckState::update() {
   }
   const std::optional<EngineStateId> next = runCheck();
   if (m_questionShown) {
-    m_flasher.tick(m_questionPalette);
+    m_flasher.advance(m_questionPalette);
   }
   ++m_frame;
   if (next) {

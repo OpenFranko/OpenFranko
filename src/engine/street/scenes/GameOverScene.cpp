@@ -77,7 +77,7 @@ void GameOverScene::advance(int16_t joystick) {
   if (m_animating) {
     m_bobs.setImage(HAND, m_hand.advance(m_bobs.image(HAND)));
   }
-  m_fader.tick(m_palette);
+  m_fader.advance(m_palette);
   if (m_buffer && !holdsAtStart()) {
     m_buffer->test(m_bobs, m_images);
   }

@@ -97,17 +97,17 @@ SpiderLogoState::SpiderLogoState(systems::graphics::VideoSystem &videoSystem,
     m_images.push_back(
         systems::graphics::loadIndexedBitmap(assets::imagePath(BOBS, index)));
   }
-  m_audioSystem.loadSFX(STEP_SAMPLE,
-                        assets::samplePath(BOBS, STEP_SAMPLE_NUMBER));
-  m_audioSystem.loadSFX(JINGLE_SAMPLE,
-                        assets::samplePath(BOBS, JINGLE_SAMPLE_NUMBER));
+  m_audioSystem.loadSample(STEP_SAMPLE,
+                           assets::samplePath(BOBS, STEP_SAMPLE_NUMBER));
+  m_audioSystem.loadSample(JINGLE_SAMPLE,
+                           assets::samplePath(BOBS, JINGLE_SAMPLE_NUMBER));
   m_audioSystem.loadMusic(assets::musicPath(TUNE));
   m_machine.bind(BOB_CHANNEL, &m_bob);
 }
 
 SpiderLogoState::~SpiderLogoState() {
-  m_audioSystem.clearSFX(STEP_SAMPLE);
-  m_audioSystem.clearSFX(JINGLE_SAMPLE);
+  m_audioSystem.clearSample(STEP_SAMPLE);
+  m_audioSystem.clearSample(JINGLE_SAMPLE);
 }
 
 std::optional<EngineStateId> SpiderLogoState::update() {

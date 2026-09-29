@@ -42,10 +42,10 @@ WorldSoftwareState::WorldSoftwareState(
       m_picture(systems::graphics::loadIndexedBitmap(PICTURE_PATH)),
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_sequence(screenPalette(m_picture), TIMINGS) {
-  m_audioSystem.loadSFX(SAMPLE, SAMPLE_PATH);
+  m_audioSystem.loadSample(SAMPLE, SAMPLE_PATH);
 }
 
-WorldSoftwareState::~WorldSoftwareState() { m_audioSystem.clearSFX(SAMPLE); }
+WorldSoftwareState::~WorldSoftwareState() { m_audioSystem.clearSample(SAMPLE); }
 
 std::optional<EngineStateId> WorldSoftwareState::update() {
   if (m_sequence.isFinished()) {

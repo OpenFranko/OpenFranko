@@ -159,7 +159,7 @@ public:
 
   void playSampleAt(int, int, int, int) override {}
 
-  void setSampleLoop(bool loop) override { loops.push_back(loop); }
+  void setSampleLooping(bool loop) override { loops.push_back(loop); }
 
   int random(int limit) override { return randomValue(limit); }
 

@@ -9,7 +9,7 @@ using namespace openfranko::lib;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.getCmdOption("-i");
+  const auto inputOptional = parser.option("-i");
 
   if (!inputOptional.has_value()) {
     std::cerr << "Usage: " << argv[0] << " -i <input.abk> [-o <output.s3m>]"
@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
   }
   outputFilePath += ".s3m";
 
-  const auto outputOptional = parser.getCmdOption("-o");
+  const auto outputOptional = parser.option("-o");
   if (outputOptional.has_value()) {
     outputFilePath = outputOptional.value();
   }

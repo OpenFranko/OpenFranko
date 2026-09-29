@@ -12,7 +12,7 @@ SCENARIO("PaletteFlasher cycles a colour like the AMOS Flash instruction") {
     flasher.start(1, {{0xF00, 4}, {0x800, 2}});
 
     WHEN("The next frame comes") {
-      const bool changed = flasher.tick(palette);
+      const bool changed = flasher.advance(palette);
 
       THEN("The first colour shows at once and no other colour changes") {
         REQUIRE(changed);
@@ -24,7 +24,7 @@ SCENARIO("PaletteFlasher cycles a colour like the AMOS Flash instruction") {
       std::vector<AmigaColor> shown;
       std::vector<int> changeFrames;
       for (int frame = 1; frame <= 13; ++frame) {
-        if (flasher.tick(palette)) {
+        if (flasher.advance(palette)) {
           changeFrames.push_back(frame);
         }
         shown.push_back(palette[1]);
@@ -50,7 +50,7 @@ SCENARIO("PaletteFlasher cycles a colour like the AMOS Flash instruction") {
 
     THEN("The colour stops flashing, as with Flash n,\"\"") {
       REQUIRE_FALSE(flasher.isFlashing());
-      REQUIRE_FALSE(flasher.tick(palette));
+      REQUIRE_FALSE(flasher.advance(palette));
       REQUIRE(palette == AmigaPalette{0x123});
     }
   }
@@ -61,7 +61,7 @@ SCENARIO("PaletteFlasher cycles a colour like the AMOS Flash instruction") {
     flasher.start(1, {{0xF00, 1}});
 
     THEN("It refuses to write outside the palette") {
-      REQUIRE_THROWS_AS(flasher.tick(palette), std::out_of_range);
+      REQUIRE_THROWS_AS(flasher.advance(palette), std::out_of_range);
     }
   }
 

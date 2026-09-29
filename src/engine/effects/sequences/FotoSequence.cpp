@@ -32,8 +32,8 @@ bool FotoSequence::advance() {
                   color::AmigaPalette(m_palette.size(), BLACK));
   }
 
-  const bool flashed = m_flasher.tick(m_palette);
-  const bool faded = m_fader.tick(m_palette);
+  const bool flashed = m_flasher.advance(m_palette);
+  const bool faded = m_fader.advance(m_palette);
   ++m_frame;
   return flashed || faded;
 }

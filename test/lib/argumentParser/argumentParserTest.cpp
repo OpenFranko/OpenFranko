@@ -10,13 +10,13 @@ SCENARIO("ArgumentParser works correctly") {
       openfranko::lib::argumentParser::ArgumentParser parser(argc, argv);
 
       THEN("The input file should be correctly parsed") {
-        REQUIRE(parser.getCmdOption("-i").has_value());
-        REQUIRE(parser.getCmdOption("-i").value() == "input.txt");
+        REQUIRE(parser.option("-i").has_value());
+        REQUIRE(parser.option("-i").value() == "input.txt");
       }
 
       THEN("The output file should be correctly parsed") {
-        REQUIRE(parser.getCmdOption("-o").has_value());
-        REQUIRE(parser.getCmdOption("-o").value() == "output.txt");
+        REQUIRE(parser.option("-o").has_value());
+        REQUIRE(parser.option("-o").value() == "output.txt");
       }
     }
   }

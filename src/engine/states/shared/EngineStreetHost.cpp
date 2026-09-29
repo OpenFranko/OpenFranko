@@ -57,7 +57,7 @@ EngineStreetHost::~EngineStreetHost() {
   m_audioSystem.setSampleLooping(false);
   for (const auto &entry : m_samples) {
     for (int sample : entry.second) {
-      m_audioSystem.clearSFX(sampleName(entry.first, sample));
+      m_audioSystem.clearSample(sampleName(entry.first, sample));
     }
   }
 }
@@ -141,7 +141,7 @@ void EngineStreetHost::playSampleAt(int bank, int sample, int voices,
   m_audioSystem.playSampleAt(sampleName(bank, sample), voices, frequency);
 }
 
-void EngineStreetHost::setSampleLoop(bool loop) {
+void EngineStreetHost::setSampleLooping(bool loop) {
   m_audioSystem.setSampleLooping(loop);
 }
 
@@ -208,14 +208,14 @@ void EngineStreetHost::loadSamples(int resource, int bank) {
     if (!sample || entry.path().extension() != ".wav") {
       continue;
     }
-    m_audioSystem.loadSFX(sampleName(bank, *sample), entry.path().string());
+    m_audioSystem.loadSample(sampleName(bank, *sample), entry.path().string());
     m_samples[bank].push_back(*sample);
   }
 }
 
 void EngineStreetHost::clearSamples(int bank) {
   for (int sample : m_samples[bank]) {
-    m_audioSystem.clearSFX(sampleName(bank, sample));
+    m_audioSystem.clearSample(sampleName(bank, sample));
   }
   m_samples[bank].clear();
 }

@@ -77,13 +77,14 @@ CharacterSelectionState::CharacterSelectionState(
   m_videoSystem.setNtsc(options.ntsc);
   const std::string voices = assets::resourceName(SPRITE_SET, session.version);
   for (const Voice &voice : VOICES) {
-    m_audioSystem.loadSFX(voice.name, assets::samplePath(voices, voice.sample));
+    m_audioSystem.loadSample(voice.name,
+                             assets::samplePath(voices, voice.sample));
   }
 }
 
 CharacterSelectionState::~CharacterSelectionState() {
   for (const Voice &voice : VOICES) {
-    m_audioSystem.clearSFX(voice.name);
+    m_audioSystem.clearSample(voice.name);
   }
 }
 

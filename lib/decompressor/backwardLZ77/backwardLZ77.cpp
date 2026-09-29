@@ -33,27 +33,28 @@ void processDecompression(BitReader &reader, std::vector<uint8_t> &out,
   size_t writePtr = unpackedSize;
 
   while (writePtr > 0) {
-    bool isComplexCommand = reader.getBit();
+    bool isComplexCommand = reader.readBit();
 
     if (isComplexCommand) {
-      uint32_t type = reader.getBits(2);
+      uint32_t type = reader.readBits(2);
 
       if (type < 2) {
-        applyMatch(out, writePtr, reader.getBits(9 + type), type + 3,
+        applyMatch(out, writePtr, reader.readBits(9 + type), type + 3,
                    unpackedSize);
       } else if (type == 2) {
-        int length = reader.getBits(8);
-        applyMatch(out, writePtr, reader.getBits(12), length + 1, unpackedSize);
+        int length = reader.readBits(8);
+        applyMatch(out, writePtr, reader.readBits(12), length + 1,
+                   unpackedSize);
       } else {
-        applyLiteralRun(out, writePtr, reader, reader.getBits(8) + 9);
+        applyLiteralRun(out, writePtr, reader, reader.readBits(8) + 9);
       }
     } else {
-      bool isShortMatch = reader.getBit();
+      bool isShortMatch = reader.readBit();
 
       if (isShortMatch) {
-        applyMatch(out, writePtr, reader.getBits(8), 2, unpackedSize);
+        applyMatch(out, writePtr, reader.readBits(8), 2, unpackedSize);
       } else {
-        applyLiteralRun(out, writePtr, reader, reader.getBits(3) + 1);
+        applyLiteralRun(out, writePtr, reader, reader.readBits(3) + 1);
       }
     }
   }

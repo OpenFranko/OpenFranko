@@ -40,7 +40,7 @@ std::optional<EngineStateId> AdvertsState::update() {
   if (m_step == Step::Finished) {
     return EngineStateId::Presents;
   }
-  m_fader.tick(m_palette);
+  m_fader.advance(m_palette);
   runBasic(m_controllerSystem.states.button);
   show();
   ++m_frame;

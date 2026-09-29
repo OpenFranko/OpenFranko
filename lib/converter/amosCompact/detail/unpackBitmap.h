@@ -1,5 +1,5 @@
-#ifndef AMOSCOMPACT_BITMAPUNPACK_H_
-#define AMOSCOMPACT_BITMAPUNPACK_H_
+#ifndef AMOSCOMPACT_UNPACKBITMAP_H_
+#define AMOSCOMPACT_UNPACKBITMAP_H_
 
 #include "../../headers/headers.h"
 #include "UnpackedBitmap.h"
@@ -12,7 +12,7 @@ namespace converter {
 namespace amosCompact {
 namespace detail {
 
-UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
+UnpackedBitmap unpackBitmap(const std::vector<uint8_t> &packedData,
                             const headers::BitmapHeader &header,
                             const std::vector<uint16_t> &palette);
 
@@ -22,4 +22,4 @@ UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
 } // namespace lib
 } // namespace openfranko
 
-#endif // AMOSCOMPACT_BITMAPUNPACK_H_
+#endif // AMOSCOMPACT_UNPACKBITMAP_H_

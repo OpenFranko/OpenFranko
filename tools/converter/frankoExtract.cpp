@@ -11,7 +11,7 @@ namespace extractor = openfranko::tools::converter::frankoResourceExtractor;
 int main(int argc, char **argv) {
   argumentParser::ArgumentParser parser(argc, argv);
 
-  const auto inputOptional = parser.getCmdOption("-i");
+  const auto inputOptional = parser.option("-i");
   if (!inputOptional.has_value()) {
     std::cerr << "Usage: " << argv[0]
               << " -i <file_or_dir> [-o <output_dir>] [-e <game executable>]"
@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
 
   std::string inputPath = inputOptional.value();
   std::string outDir = "extracted";
-  const auto outputOptional = parser.getCmdOption("-o");
+  const auto outputOptional = parser.option("-o");
   if (outputOptional.has_value()) {
     outDir = outputOptional.value();
   }
@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
       errors = extractor::processFile(inputPath, outDir);
     }
 
-    std::string executable = parser.getCmdOption("-e").value_or("");
+    std::string executable = parser.option("-e").value_or("");
     const auto bundled = std::filesystem::path(inputPath) / "game";
     if (executable.empty() && std::filesystem::is_directory(inputPath) &&
         std::filesystem::is_regular_file(bundled)) {

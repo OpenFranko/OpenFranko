@@ -1,4 +1,4 @@
-#include "bitmapUnpack.h"
+#include "unpackBitmap.h"
 #include "../consts.h"
 #include "BitReader.h"
 #include "ByteReader.h"
@@ -86,7 +86,7 @@ void unpackChunkyPixels(UnpackedBitmap &bitmap) {
 
 } // namespace
 
-UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
+UnpackedBitmap unpackBitmap(const std::vector<uint8_t> &packedData,
                             const headers::BitmapHeader &header,
                             const std::vector<uint16_t> &palette) {
   const size_t widthFull = static_cast<size_t>(header.gridX) * 8;

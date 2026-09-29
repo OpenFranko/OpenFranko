@@ -6,20 +6,20 @@ using namespace openfranko::lib::converter::headers;
 
 namespace {
 
-void putBE16(std::vector<uint8_t> &buf, size_t off, uint16_t v) {
+void putBigEndian16(std::vector<uint8_t> &buf, size_t off, uint16_t v) {
   buf[off] = static_cast<uint8_t>(v >> 8);
   buf[off + 1] = static_cast<uint8_t>(v);
 }
 
-void putBE32(std::vector<uint8_t> &buf, size_t off, uint32_t v) {
+void putBigEndian32(std::vector<uint8_t> &buf, size_t off, uint32_t v) {
   buf[off] = static_cast<uint8_t>(v >> 24);
   buf[off + 1] = static_cast<uint8_t>(v >> 16);
   buf[off + 2] = static_cast<uint8_t>(v >> 8);
   buf[off + 3] = static_cast<uint8_t>(v);
 }
 
-void putBE16S(std::vector<uint8_t> &buf, size_t off, int16_t v) {
-  putBE16(buf, off, static_cast<uint16_t>(v));
+void putBigEndian16Signed(std::vector<uint8_t> &buf, size_t off, int16_t v) {
+  putBigEndian16(buf, off, static_cast<uint16_t>(v));
 }
 
 } // namespace
@@ -27,19 +27,19 @@ void putBE16S(std::vector<uint8_t> &buf, size_t off, int16_t v) {
 SCENARIO("parseSpackHeader reads all fields from big-endian data") {
   GIVEN("A buffer with known SPACK header values") {
     std::vector<uint8_t> data(90, 0);
-    putBE16(data, 4, 320);
-    putBE16(data, 6, 256);
-    putBE16(data, 8, 10);
-    putBE16(data, 10, 20);
-    putBE16(data, 12, 300);
-    putBE16(data, 14, 200);
-    putBE16(data, 16, 0);
-    putBE16(data, 18, 0);
-    putBE16(data, 20, 0x00);
-    putBE16(data, 22, 16);
-    putBE16(data, 24, 4);
-    putBE16(data, 26, 0x0F00);
-    putBE16(data, 28, 0x00F0);
+    putBigEndian16(data, 4, 320);
+    putBigEndian16(data, 6, 256);
+    putBigEndian16(data, 8, 10);
+    putBigEndian16(data, 10, 20);
+    putBigEndian16(data, 12, 300);
+    putBigEndian16(data, 14, 200);
+    putBigEndian16(data, 16, 0);
+    putBigEndian16(data, 18, 0);
+    putBigEndian16(data, 20, 0x00);
+    putBigEndian16(data, 22, 16);
+    putBigEndian16(data, 24, 4);
+    putBigEndian16(data, 26, 0x0F00);
+    putBigEndian16(data, 28, 0x00F0);
 
     WHEN("parseSpackHeader is called") {
       auto hdr = parseSpackHeader(data);
@@ -72,14 +72,14 @@ SCENARIO("parseSpackHeader reads all fields from big-endian data") {
 SCENARIO("parseBitmapHeader reads all fields from big-endian data") {
   GIVEN("A buffer with known bitmap header values") {
     std::vector<uint8_t> data(24, 0);
-    putBE16S(data, 4, -5);
-    putBE16S(data, 6, 10);
-    putBE16(data, 8, 16);
-    putBE16(data, 10, 16);
-    putBE16(data, 12, 32);
-    putBE16(data, 14, 5);
-    putBE32(data, 16, 0x1000);
-    putBE32(data, 20, 0x2000);
+    putBigEndian16Signed(data, 4, -5);
+    putBigEndian16Signed(data, 6, 10);
+    putBigEndian16(data, 8, 16);
+    putBigEndian16(data, 10, 16);
+    putBigEndian16(data, 12, 32);
+    putBigEndian16(data, 14, 5);
+    putBigEndian32(data, 16, 0x1000);
+    putBigEndian32(data, 20, 0x2000);
 
     WHEN("parseBitmapHeader is called") {
       auto hdr = parseBitmapHeader(data);

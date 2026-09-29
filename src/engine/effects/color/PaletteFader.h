@@ -19,7 +19,7 @@ public:
   void start(const AmigaPalette &palette, int speed,
              const AmigaPalette &target);
 
-  bool tick(AmigaPalette &palette);
+  bool advance(AmigaPalette &palette);
 
   bool isFading() const;
 

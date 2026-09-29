@@ -2,7 +2,7 @@
 #include "../../binary/binary.h"
 #include "../../bmpWriter/bmpWriter.h"
 #include "consts.h"
-#include "detail/bitmapUnpack.h"
+#include "detail/unpackBitmap.h"
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
@@ -10,7 +10,7 @@
 namespace openfranko::lib::converter::amosCompact {
 
 namespace {
-bool isSPACK(const std::vector<uint8_t> &data) {
+bool isSpack(const std::vector<uint8_t> &data) {
   uint32_t header = binary::BigEndianReader(data).readUint32(0);
   return header == headers::SPACK_SCREEN_HEADER;
 }
@@ -42,7 +42,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   std::vector<uint8_t> data = compressedData;
   std::vector<uint16_t> palette;
 
-  if (isSPACK(data)) {
+  if (isSpack(data)) {
     if (data.size() <
         headers::SPACK_HEADER_SIZE + headers::PACKED_BITMAP_HEADER_SIZE) {
       throw std::runtime_error("File is too small to be a valid SPACK screen");
@@ -75,7 +75,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     palette = defaultPalette(bitmapHeader.numberOfBitplanes);
   }
 
-  auto unpackedBitmap = detail::bitmapUnpack(data, bitmapHeader, palette);
+  auto unpackedBitmap = detail::unpackBitmap(data, bitmapHeader, palette);
 
   if (unpackedBitmap.width == 0 || unpackedBitmap.height == 0) {
     throw std::runtime_error("Bitmap has zero dimensions");

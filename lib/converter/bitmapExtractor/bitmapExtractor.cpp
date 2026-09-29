@@ -16,7 +16,7 @@ using converter::amosCompact::DecodedImage;
 
 namespace {
 
-std::vector<size_t> findBMCodeOffsets(const std::vector<uint8_t> &data) {
+std::vector<size_t> findBmCodeOffsets(const std::vector<uint8_t> &data) {
   std::vector<size_t> offsets;
   binary::BigEndianReader reader(data);
   for (size_t off = 0; off + headers::PACKED_BITMAP_HEADER_SIZE <= data.size();
@@ -97,7 +97,7 @@ bool isTileFile(const std::string &id) {
          gameData::fileIds::TILE_FILES.end();
 }
 
-std::vector<uint16_t> readSPACKPalette(const std::vector<uint8_t> &data,
+std::vector<uint16_t> readSpackPalette(const std::vector<uint8_t> &data,
                                        size_t offset) {
   if (offset > data.size()) {
     throw std::runtime_error("SPACK palette offset is past the end of data");
@@ -134,10 +134,10 @@ ExtractedBitmap convertBitmap(const std::vector<uint8_t> &data, size_t offset,
   }
 }
 
-std::vector<ExtractedBitmap> extractSCCode(const std::vector<uint8_t> &data,
+std::vector<ExtractedBitmap> extractScCode(const std::vector<uint8_t> &data,
                                            const std::string &fileId) {
-  auto p = readSPACKPalette(data, 0);
-  auto offsets = findBMCodeOffsets(data);
+  auto p = readSpackPalette(data, 0);
+  auto offsets = findBmCodeOffsets(data);
 
   std::vector<ExtractedBitmap> results;
   for (size_t i = 0; i < offsets.size(); i++) {
@@ -162,12 +162,12 @@ std::vector<ExtractedBitmap> extractTiles(const std::vector<uint8_t> &data,
 }
 
 std::vector<ExtractedBitmap>
-extractMultiBMCode(const std::vector<uint8_t> &data,
+extractMultiBmCode(const std::vector<uint8_t> &data,
                    const std::string &fileId) {
   auto p = pal::selectPalette(fileId);
   auto offsets = readBitmapTable(data);
   if (offsets.empty()) {
-    offsets = findBMCodeOffsets(data);
+    offsets = findBmCodeOffsets(data);
   }
 
   std::vector<ExtractedBitmap> results;
@@ -194,7 +194,7 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data,
     }
     firstImage = std::min(firstImage, offset);
     if (screen) {
-      curPal = readSPACKPalette(data, offset);
+      curPal = readSpackPalette(data, offset);
       offset += headers::SPACK_HEADER_SIZE;
     }
     const size_t index = results.size();
@@ -224,14 +224,14 @@ std::vector<ExtractedBitmap> extract(const std::vector<uint8_t> &data,
 
   if (magic == headers::SPACK_SCREEN_HEADER &&
       role != gameData::fileIds::CEMETERY_PICTURE) {
-    return extractSCCode(data, fileId);
+    return extractScCode(data, fileId);
   }
 
   if (isTileFile(fileId)) {
     return extractTiles(data, fileId);
   }
 
-  return extractMultiBMCode(data, fileId);
+  return extractMultiBmCode(data, fileId);
 }
 
 } // namespace openfranko::lib::converter::bitmapExtractor

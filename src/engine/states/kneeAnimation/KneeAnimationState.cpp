@@ -58,7 +58,7 @@ KneeAnimationState::KneeAnimationState(
     m_images.push_back(
         systems::graphics::loadIndexedBitmap(assets::partPath(images, image)));
   }
-  m_audioSystem.loadSFX(
+  m_audioSystem.loadSample(
       SAMPLE,
       version12
           ? assets::samplePath(VERSION12_SAMPLE_BANK, VERSION12_SAMPLE_NUMBER)
@@ -68,7 +68,7 @@ KneeAnimationState::KneeAnimationState(
       assets::musicPath(assets::resourceName(MENU_TUNE, m_version)));
 }
 
-KneeAnimationState::~KneeAnimationState() { m_audioSystem.clearSFX(SAMPLE); }
+KneeAnimationState::~KneeAnimationState() { m_audioSystem.clearSample(SAMPLE); }
 
 std::optional<EngineStateId> KneeAnimationState::update() {
   const int time = m_frame - OPEN_FRAMES;

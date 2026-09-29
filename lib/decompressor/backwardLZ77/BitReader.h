@@ -15,8 +15,8 @@ public:
             uint32_t initialBuffer, uint32_t xorChecksum);
 
   uint8_t readRawByte();
-  uint32_t getBit();
-  uint32_t getBits(int count);
+  uint32_t readBit();
+  uint32_t readBits(int count);
   bool verifyChecksum() const;
 
 private:

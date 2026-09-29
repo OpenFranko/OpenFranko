@@ -12,7 +12,7 @@ SCENARIO("PaletteFader steps like the AMOS Fade instruction") {
     fader.start(palette, 5, {0x505});
 
     WHEN("The next frame comes") {
-      const bool changed = fader.tick(palette);
+      const bool changed = fader.advance(palette);
 
       THEN("The first step lands at once, every nibble one unit closer") {
         REQUIRE(changed);
@@ -24,7 +24,7 @@ SCENARIO("PaletteFader steps like the AMOS Fade instruction") {
       std::vector<int> stepFrames;
       AmigaColor afterTenSteps = 0;
       for (int frame = 1; frame <= 100; ++frame) {
-        if (fader.tick(palette)) {
+        if (fader.advance(palette)) {
           stepFrames.push_back(frame);
         }
         if (frame == 46) {
@@ -61,7 +61,7 @@ SCENARIO("PaletteFader steps like the AMOS Fade instruction") {
 
     WHEN("It runs to the end") {
       while (fader.isFading()) {
-        fader.tick(palette);
+        fader.advance(palette);
       }
 
       THEN("A KEEP entry and the entries past the target are untouched") {
@@ -77,7 +77,7 @@ SCENARIO("PaletteFader steps like the AMOS Fade instruction") {
 
     THEN("There is nothing to do and the palette does not change") {
       REQUIRE_FALSE(fader.isFading());
-      REQUIRE_FALSE(fader.tick(palette));
+      REQUIRE_FALSE(fader.advance(palette));
       REQUIRE(palette == AmigaPalette{0x000, 0x7A3});
     }
   }
@@ -86,13 +86,13 @@ SCENARIO("PaletteFader steps like the AMOS Fade instruction") {
     AmigaPalette palette = {0xFFF, 0x505};
     PaletteFader fader;
     fader.start(palette, 100, {0x000, 0x000});
-    fader.tick(palette);
+    fader.advance(palette);
     fader.start(palette, 1, palette);
 
     WHEN("More frames pass") {
       bool changed = false;
       for (int frame = 0; frame < 200; ++frame) {
-        changed = fader.tick(palette) || changed;
+        changed = fader.advance(palette) || changed;
       }
 
       THEN("The palette stays one step darker for good") {

@@ -842,7 +842,7 @@ BossStage::Flow BossStage::finishPose() {
 BossStage::Flow BossStage::finishBlood() {
   m_bobs.setImage(PLAYER, word(39 + global(RR)));
   m_machine.start(PLAYER_TALK_CHANNEL);
-  m_host.setSampleLoop(true);
+  m_host.setSampleLooping(true);
   m_host.playSample(BOSS_SAMPLE_BANK, FINISHING_SAMPLE, PRIORITY_VOICE);
   m_index = 1;
   return finishStamp();
@@ -862,7 +862,7 @@ BossStage::Flow BossStage::finishStamp() {
       return Flow::Yield;
     }
   }
-  m_host.setSampleLoop(false);
+  m_host.setSampleLooping(false);
   m_machine.create(PLAYER_WALK_CHANNEL, actors::finishingPoseBack());
   m_machine.start(PLAYER_WALK_CHANNEL);
   m_machine.destroy(PLAYER_TALK_CHANNEL);

@@ -82,7 +82,7 @@ void HighScoreScene::advance() {
   if (m_step == Step::Finished) {
     return;
   }
-  m_fader.tick(m_palette);
+  m_fader.advance(m_palette);
   runBasic();
   redraw();
   ++m_frame;

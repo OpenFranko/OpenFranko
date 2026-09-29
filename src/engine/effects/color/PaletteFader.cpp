@@ -50,7 +50,7 @@ void PaletteFader::start(const AmigaPalette &palette, int speed,
   }
 }
 
-bool PaletteFader::tick(AmigaPalette &palette) {
+bool PaletteFader::advance(AmigaPalette &palette) {
   if (m_fading.empty() || --m_countdown > 0) {
     return false;
   }

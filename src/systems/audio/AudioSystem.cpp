@@ -45,8 +45,8 @@ const std::string &AudioSystem::loadedMusic() const {
   return output->musicPath;
 }
 
-void AudioSystem::loadSFX(const std::string &name, const std::string &path) {
-  clearSFX(name);
+void AudioSystem::loadSample(const std::string &name, const std::string &path) {
+  clearSample(name);
   try {
     output->sounds[name] = std::make_unique<Sound>(loadWave(path));
   } catch (const std::runtime_error &) {
@@ -54,7 +54,7 @@ void AudioSystem::loadSFX(const std::string &name, const std::string &path) {
   }
 }
 
-void AudioSystem::clearSFX(const std::string &name) {
+void AudioSystem::clearSample(const std::string &name) {
   const auto sound = output->sounds.find(name);
   if (sound == output->sounds.end()) {
     return;
@@ -115,7 +115,7 @@ void AudioSystem::setSampleLooping(bool looping) {
   }
 }
 
-void AudioSystem::stopSFX() { output->mixer.stopAll(); }
+void AudioSystem::stopSamples() { output->mixer.stopAll(); }
 
 void AudioSystem::update() { output->mixer.update(); }
 

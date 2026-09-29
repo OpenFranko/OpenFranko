@@ -96,7 +96,7 @@ public:
 
   void playSampleAt(int, int, int, int) override {}
 
-  void setSampleLoop(bool) override {}
+  void setSampleLooping(bool) override {}
 
   int random(int) override { return 0; }
 };

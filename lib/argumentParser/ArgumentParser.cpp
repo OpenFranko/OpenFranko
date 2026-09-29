@@ -9,9 +9,9 @@ ArgumentParser::ArgumentParser(int argc, char **argv) {
 }
 
 std::optional<std::string>
-ArgumentParser::getCmdOption(const std::string &option) const {
+ArgumentParser::option(const std::string &name) const {
   auto itr =
-      std::find(this->inputStrings.begin(), this->inputStrings.end(), option);
+      std::find(this->inputStrings.begin(), this->inputStrings.end(), name);
   if (itr != this->inputStrings.end() && ++itr != this->inputStrings.end()) {
     return *itr;
   }

@@ -10,9 +10,9 @@ BitReader::BitReader(const std::vector<uint8_t> &data, size_t endPos,
     : m_data(data), m_readPos(endPos), m_buffer(initialBuffer),
       m_checksum(xorChecksum) {}
 
-uint8_t BitReader::readRawByte() { return static_cast<uint8_t>(getBits(8)); }
+uint8_t BitReader::readRawByte() { return static_cast<uint8_t>(readBits(8)); }
 
-uint32_t BitReader::getBit() {
+uint32_t BitReader::readBit() {
   uint32_t bit = m_buffer & 1;
   m_buffer >>= 1;
 
@@ -24,10 +24,10 @@ uint32_t BitReader::getBit() {
   return bit;
 }
 
-uint32_t BitReader::getBits(int count) {
+uint32_t BitReader::readBits(int count) {
   uint32_t result = 0;
   for (int i = 0; i < count; ++i) {
-    result = (result << 1) | getBit();
+    result = (result << 1) | readBit();
   }
   return result;
 }

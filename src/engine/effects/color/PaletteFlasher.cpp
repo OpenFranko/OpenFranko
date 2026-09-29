@@ -21,7 +21,7 @@ void PaletteFlasher::start(std::size_t color, FlashSteps steps) {
   m_countdown = 1;
 }
 
-bool PaletteFlasher::tick(AmigaPalette &palette) {
+bool PaletteFlasher::advance(AmigaPalette &palette) {
   if (m_steps.empty() || --m_countdown > 0) {
     return false;
   }

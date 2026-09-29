@@ -24,7 +24,7 @@ public:
 
   void start(std::size_t color, FlashSteps steps);
 
-  bool tick(AmigaPalette &palette);
+  bool advance(AmigaPalette &palette);
 
   bool isFlashing() const;
 

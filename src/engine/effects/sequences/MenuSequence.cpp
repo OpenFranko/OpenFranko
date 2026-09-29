@@ -137,7 +137,7 @@ void MenuSequence::advance(const Joystick &joystick) {
     return;
   }
   runAmal();
-  m_fader.tick(m_palette);
+  m_fader.advance(m_palette);
   ++m_frame;
   ++m_timer;
 }

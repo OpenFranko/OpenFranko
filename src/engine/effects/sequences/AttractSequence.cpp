@@ -84,7 +84,7 @@ void AttractSequence::advanceHiscores(bool joystickTouched) {
   if (m_frame < ROWS_FROM && m_frame % DIM_EVERY == 0) {
     color::PaletteFader dim;
     dim.start(m_palette, 1, color::AmigaPalette(m_palette.size(), 0));
-    dim.tick(m_palette);
+    dim.advance(m_palette);
   }
   if (m_frame == ROWS_FROM) {
     for (const Relit &relit : RELIT) {

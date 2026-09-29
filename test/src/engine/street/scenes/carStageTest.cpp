@@ -127,7 +127,7 @@ public:
     pitched.emplace_back(bank, sample, voices, frequency);
   }
 
-  void setSampleLoop(bool) override {}
+  void setSampleLooping(bool) override {}
 
   int random(int) override {
     if (rolls.empty()) {
