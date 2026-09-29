@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_FOTOSEQUENCE_H_
-#define ENGINE_EFFECTS_FOTOSEQUENCE_H_
+#ifndef ENGINE_EFFECTS_SEQUENCES_FOTOSEQUENCE_H_
+#define ENGINE_EFFECTS_SEQUENCES_FOTOSEQUENCE_H_
 
 #include "../color/PaletteFader.h"
 #include "../color/PaletteFlasher.h"
@@ -56,4 +56,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_FOTOSEQUENCE_H_
+#endif // ENGINE_EFFECTS_SEQUENCES_FOTOSEQUENCE_H_

@@ -1,7 +1,7 @@
 #include "HighScoreScene.h"
 
 #include "../../effects/color/AmigaDisplay.h"
-#include "../core/StageFrame.h"
+#include "../ui/StageFrame.h"
 
 #include <algorithm>
 #include <array>
@@ -274,7 +274,7 @@ void HighScoreScene::relight() {
   for (const Relit &relit : RELIT) {
     m_palette[relit.index] = relit.color;
   }
-  m_row = HighScoreTable::ROWS - 1;
+  m_row = core::HighScoreTable::ROWS - 1;
   m_step = Step::Row;
 }
 
@@ -285,16 +285,17 @@ HighScoreScene::Flow HighScoreScene::row() {
   if (m_row >= 0) {
     return wait(ROW_WAIT, Step::Row);
   }
-  return wait(ROW_WAIT,
-              m_slot < HighScoreTable::NO_SLOT ? Step::EntryStart : Step::Hold);
+  return wait(ROW_WAIT, m_slot < core::HighScoreTable::NO_SLOT
+                            ? Step::EntryStart
+                            : Step::Hold);
 }
 
 void HighScoreScene::pasteRow(int row) {
-  const HighScoreTable &table = m_session.highScores;
+  const core::HighScoreTable &table = m_session.highScores;
   const int y = FIRST_ROW_Y + row * ROW_PITCH;
-  for (int column = 0; column < HighScoreTable::NAME_LENGTH; ++column) {
+  for (int column = 0; column < core::HighScoreTable::NAME_LENGTH; ++column) {
     const int letter = table.letter(row, column);
-    if (letter < HighScoreTable::LETTERS) {
+    if (letter < core::HighScoreTable::LETTERS) {
       core::BobLayer::paste(m_screen, m_images, NAME_X + column * CELL_WIDTH, y,
                             letter + LETTER_IMAGE);
     }
@@ -316,7 +317,7 @@ void HighScoreScene::startEntry() {
   m_scratch.copy(m_screen, m_x, m_y, m_x + SCRATCH_COPY_WIDTH,
                  m_y + SCRATCH_HEIGHT, 0, 0);
   m_bobs.set(CURSOR, m_x, m_y + CURSOR_DROP, CURSOR_IMAGE);
-  m_name.assign(HighScoreTable::NAME_LENGTH, ' ');
+  m_name.assign(core::HighScoreTable::NAME_LENGTH, ' ');
   m_entering = true;
   m_step = Step::Entry;
 }

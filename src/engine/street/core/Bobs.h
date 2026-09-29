@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_BOBS_H_
-#define ENGINE_STREET_BOBS_H_
+#ifndef ENGINE_STREET_CORE_BOBS_H_
+#define ENGINE_STREET_CORE_BOBS_H_
 
 #include "../../amal/Machine.h"
 #include "IndexedSurface.h"
@@ -101,4 +101,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_BOBS_H_
+#endif // ENGINE_STREET_CORE_BOBS_H_

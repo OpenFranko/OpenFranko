@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_BOSSSTAGE_H_
-#define ENGINE_STREET_BOSSSTAGE_H_
+#ifndef ENGINE_STREET_SCENES_BOSSSTAGE_H_
+#define ENGINE_STREET_SCENES_BOSSSTAGE_H_
 
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
@@ -7,9 +7,9 @@
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
-#include "../core/LoadingMock.h"
-#include "../core/StageFrame.h"
 #include "../ui/GameSession.h"
+#include "../ui/LoadingMock.h"
+#include "../ui/StageFrame.h"
 #include "../ui/StatusPanel.h"
 #include "StreetStage.h"
 
@@ -157,7 +157,7 @@ private:
   bool quitsToHighScores() const;
   void closePlayScreen();
   void test();
-  core::StageCopper registers() const;
+  ui::StageCopper registers() const;
   void sys();
   void runBasic(const StreetInput &input);
 
@@ -171,11 +171,11 @@ private:
   core::DoubleBuffer m_buffer;
   std::unique_ptr<ui::StatusPanel> m_panel;
   amal::Object m_screenDisplay;
-  core::StageDisplay m_copper;
+  ui::StageDisplay m_copper;
   effects::color::AmigaPalette m_palette;
   effects::color::AmigaPalette m_panelPalette;
   std::vector<core::Picture> m_columns;
-  core::LoadingMock m_loading;
+  ui::LoadingMock m_loading;
   std::optional<core::ScreenBlock> m_block;
 
   Step m_step = Step::Init;
@@ -206,4 +206,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_BOSSSTAGE_H_
+#endif // ENGINE_STREET_SCENES_BOSSSTAGE_H_

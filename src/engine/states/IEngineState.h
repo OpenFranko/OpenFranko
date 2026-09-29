@@ -1,5 +1,5 @@
-#ifndef ENGINE_IENGINESTATE_H_
-#define ENGINE_IENGINESTATE_H_
+#ifndef ENGINE_STATES_IENGINESTATE_H_
+#define ENGINE_STATES_IENGINESTATE_H_
 
 #include "EngineStateEnum.h"
 #include <optional>
@@ -20,4 +20,4 @@ public:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_IENGINESTATE_H_
+#endif // ENGINE_STATES_IENGINESTATE_H_

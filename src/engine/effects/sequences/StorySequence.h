@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_STORYSEQUENCE_H_
-#define ENGINE_EFFECTS_STORYSEQUENCE_H_
+#ifndef ENGINE_EFFECTS_SEQUENCES_STORYSEQUENCE_H_
+#define ENGINE_EFFECTS_SEQUENCES_STORYSEQUENCE_H_
 
 #include <cstddef>
 #include <optional>
@@ -58,4 +58,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_STORYSEQUENCE_H_
+#endif // ENGINE_EFFECTS_SEQUENCES_STORYSEQUENCE_H_

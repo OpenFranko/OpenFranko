@@ -1,8 +1,8 @@
 #include "EndingScene.h"
 
-#include "../../amal/Actors.h"
+#include "../../amal/actors/Actors.h"
 #include "../../effects/color/AmigaDisplay.h"
-#include "../core/StageFrame.h"
+#include "../ui/StageFrame.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -101,7 +101,7 @@ effects::color::AmigaPalette beat(effects::color::AmigaColor ink,
 
 EndingScene::EndingScene(StreetHost &host, ui::GameSession &session, bool ntsc)
     : m_host(host), m_session(session), m_machine(session.registers),
-      m_display(0, 0), m_border(core::STAGE_BORDER), m_ntsc(ntsc),
+      m_display(0, 0), m_border(ui::STAGE_BORDER), m_ntsc(ntsc),
       m_displayLine(effects::color::pictureLine(DISPLAY_LINE, ntsc)) {}
 
 void EndingScene::advance(int16_t joystick) {
@@ -174,7 +174,7 @@ systems::graphics::Display EndingScene::output() const {
     layer.top = m_panelTop - m_displayLine;
     layer.columns = ui::StatusPanel::WIDTH;
     layer.rows = ui::StatusPanel::VISIBLE_HEIGHT;
-    layer.palette = core::panelPalette();
+    layer.palette = ui::panelPalette();
     display.layers.push_back(std::move(layer));
   }
   for (int number : {1, 0}) {
@@ -487,7 +487,7 @@ void EndingScene::start() {
   stageFrame();
   m_stageShown = true;
   m_panelShown = true;
-  m_border = core::STAGE_BORDER;
+  m_border = ui::STAGE_BORDER;
 }
 
 void EndingScene::era() {

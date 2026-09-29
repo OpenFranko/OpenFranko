@@ -1,5 +1,5 @@
-#ifndef ENGINE_STATES_PRESENTS_INTROSTRIP_H_
-#define ENGINE_STATES_PRESENTS_INTROSTRIP_H_
+#ifndef ENGINE_STATES_SHARED_INTROSTRIP_H_
+#define ENGINE_STATES_SHARED_INTROSTRIP_H_
 
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
@@ -50,4 +50,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_PRESENTS_INTROSTRIP_H_
+#endif // ENGINE_STATES_SHARED_INTROSTRIP_H_

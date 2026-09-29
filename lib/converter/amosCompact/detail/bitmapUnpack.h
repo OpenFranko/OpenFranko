@@ -13,7 +13,7 @@ namespace amosCompact {
 namespace detail {
 
 UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
-                            const shared::headers::BitmapHeader &header,
+                            const shared::BitmapHeader &header,
                             const std::vector<uint16_t> &palette);
 
 }

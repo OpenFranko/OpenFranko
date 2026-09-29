@@ -9,7 +9,7 @@
 
 using namespace openfranko::lib::converter::amosCompact;
 using namespace openfranko::lib::converter::amosCompact::detail;
-using namespace openfranko::lib::converter::shared::headers;
+using namespace openfranko::lib::converter::shared;
 using openfranko::lib::helpers::LittleEndianReader;
 
 static uint32_t bmpWidth(const std::vector<uint8_t> &bmp) {

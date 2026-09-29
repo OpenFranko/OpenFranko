@@ -2,8 +2,8 @@
 
 #include "../../effects/color/AmigaDisplay.h"
 
-#include "../../amal/Actors.h"
-#include "../core/StageFrame.h"
+#include "../../amal/actors/Actors.h"
+#include "../ui/StageFrame.h"
 
 #include <algorithm>
 #include <cstddef>

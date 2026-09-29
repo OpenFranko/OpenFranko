@@ -1,5 +1,5 @@
-#ifndef ENGINE_STATES_ENGINESTREETHOST_H_
-#define ENGINE_STATES_ENGINESTREETHOST_H_
+#ifndef ENGINE_STATES_SHARED_ENGINESTREETHOST_H_
+#define ENGINE_STATES_SHARED_ENGINESTREETHOST_H_
 
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../GameVersion.h"
@@ -66,4 +66,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_ENGINESTREETHOST_H_
+#endif // ENGINE_STATES_SHARED_ENGINESTREETHOST_H_

@@ -2,7 +2,7 @@
 
 #include "../../effects/color/AmigaDisplay.h"
 
-#include "../../amal/Actors.h"
+#include "../../amal/actors/Actors.h"
 
 #include <cstdlib>
 #include <stdexcept>
@@ -135,13 +135,12 @@ BossStage::BossStage(StreetHost &host, ui::GameSession &session,
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen),
       m_screenDisplay{
-          core::DISPLAY_X,
-          static_cast<int16_t>(core::playDisplayY(core::stageLayout(options))),
-          0},
-      m_palette(core::levelPalette(options.mono)),
-      m_panelPalette(core::panelPalette()) {
+          ui::DISPLAY_X,
+          static_cast<int16_t>(ui::playDisplayY(ui::stageLayout(options))), 0},
+      m_palette(ui::levelPalette(options.mono)),
+      m_panelPalette(ui::panelPalette()) {
   m_copper.reset(registers());
-  m_session.border = core::STAGE_BORDER;
+  m_session.border = ui::STAGE_BORDER;
 }
 
 void BossStage::advance(const StreetInput &input) {
@@ -174,7 +173,7 @@ void BossStage::test() {
   }
 }
 
-core::StageCopper BossStage::registers() const {
+ui::StageCopper BossStage::registers() const {
   return {m_screenShown, m_screenDisplay, m_options.ntsc};
 }
 
@@ -183,7 +182,7 @@ void BossStage::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display BossStage::output() const {
-  const core::StageCopper &live = m_copper.live();
+  const ui::StageCopper &live = m_copper.live();
   return stageOutput(live.screenShown ? &m_buffer.shown() : nullptr, m_palette,
                      live.screenDisplay, m_screenOffsetX,
                      m_panelShown ? m_panel.get() : nullptr,
@@ -893,7 +892,7 @@ BossStage::Flow BossStage::finishCleanUp() {
     m_buffer.autoback([](core::IndexedSurface &surface) { surface.fill(0); });
     m_session.bossExit.emplace(ui::BossExit{
         m_buffer, m_palette, m_screenDisplay.y, m_screenOffsetX,
-        m_panel->surface(), core::panelDisplayY(core::stageLayout(m_options)),
+        m_panel->surface(), ui::panelDisplayY(ui::stageLayout(m_options)),
         m_options.tallScreen});
     m_outcome = Outcome::BossDefeated;
     m_step = Step::Finished;
@@ -946,8 +945,7 @@ void BossStage::sys() {
     break;
   case ui::SystemKey::Pal:
   case ui::SystemKey::Ntsc:
-    core::switchStandard(m_options, m_screenDisplay,
-                         key == ui::SystemKey::Ntsc);
+    ui::switchStandard(m_options, m_screenDisplay, key == ui::SystemKey::Ntsc);
     break;
   case ui::SystemKey::Lives:
     global(RG) = CHEAT_LIVES;

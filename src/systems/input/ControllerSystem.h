@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_CONTROLLERSYSTEM_H_
-#define SYSTEMS_CONTROLLERSYSTEM_H_
+#ifndef SYSTEMS_INPUT_CONTROLLERSYSTEM_H_
+#define SYSTEMS_INPUT_CONTROLLERSYSTEM_H_
 
 #include <array>
 #include <cstddef>
@@ -95,4 +95,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_CONTROLLERSYSTEM_H_
+#endif // SYSTEMS_INPUT_CONTROLLERSYSTEM_H_

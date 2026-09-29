@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_AUDIOSYSTEM_H_
-#define SYSTEMS_AUDIOSYSTEM_H_
+#ifndef SYSTEMS_AUDIO_AUDIOSYSTEM_H_
+#define SYSTEMS_AUDIO_AUDIOSYSTEM_H_
 
 #include <memory>
 #include <string>
@@ -52,4 +52,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_AUDIOSYSTEM_H_
+#endif // SYSTEMS_AUDIO_AUDIOSYSTEM_H_

@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_SYSTEMTEXT_H_
-#define ENGINE_STREET_SYSTEMTEXT_H_
+#ifndef ENGINE_STREET_CORE_SYSTEMTEXT_H_
+#define ENGINE_STREET_CORE_SYSTEMTEXT_H_
 
 #include "IndexedSurface.h"
 
@@ -25,4 +25,4 @@ void drawSystemText(IndexedSurface &surface, int x, int baseline,
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_SYSTEMTEXT_H_
+#endif // ENGINE_STREET_CORE_SYSTEMTEXT_H_

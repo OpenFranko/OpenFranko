@@ -6,8 +6,8 @@ target_link_libraries(extractSpriteSheet argumentParser readFile backwardLZ77 sp
 
 add_executable(frankoExtract
     converter/frankoExtract.cpp
-    converter/frankoResourceExtractor.cpp
-    converter/frankoResourceExtractor.h)
+    converter/frankoResourceExtractor/frankoResourceExtractor.cpp
+    converter/frankoResourceExtractor/frankoResourceExtractor.h)
 target_link_libraries(frankoExtract argumentParser readFile writeFile backwardLZ77 amosCompact spriteSheet bitmapExtractor audioExtractor fileContainer abkToS3m levelScript codeCards endingCredits gameData)
 
 add_executable(extractSprites converter/extractSprites.cpp)

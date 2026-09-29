@@ -22,9 +22,9 @@ bool isPackedBitmap(const std::vector<uint8_t> &data) {
 
 std::vector<uint16_t> defaultPalette(uint16_t numberOfBitplanes) {
   const int numberOfColors = std::min(
-      1 << numberOfBitplanes, static_cast<int>(consts::SPACK_PALETTE_SIZE));
+      1 << numberOfBitplanes, static_cast<int>(shared::SPACK_PALETTE_SIZE));
 
-  std::vector<uint16_t> palette(consts::SPACK_PALETTE_SIZE, 0);
+  std::vector<uint16_t> palette(shared::SPACK_PALETTE_SIZE, 0);
   for (int i = 0; i < numberOfColors; i++) {
     const auto level = static_cast<uint16_t>(i * 15 / (numberOfColors - 1));
     palette[i] = static_cast<uint16_t>(level * 0x111);
@@ -48,7 +48,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
       throw std::runtime_error("File is too small to be a valid SPACK screen");
     }
 
-    auto spackHeader = shared::headers::parseSPACKHeader(data);
+    auto spackHeader = shared::parseSPACKHeader(data);
     palette = std::vector<uint16_t>(std::begin(spackHeader.amigaPalette),
                                     std::end(spackHeader.amigaPalette));
     data = std::vector<uint8_t>(data.begin() + consts::SPACK_HEADER_SIZE,
@@ -60,7 +60,7 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
     throw std::runtime_error("File is not a valid packed bitmap");
   }
 
-  auto bitmapHeader = shared::headers::parseBitmapHeader(data);
+  auto bitmapHeader = shared::parseBitmapHeader(data);
 
   if (bitmapHeader.numberOfBitplanes == 0 ||
       bitmapHeader.numberOfBitplanes > consts::MAX_SUPPORTED_BITPLANES) {
@@ -89,10 +89,10 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
   std::vector<uint16_t> outPalette(std::begin(unpackedBitmap.palette),
                                    std::end(unpackedBitmap.palette));
 
-  if (numberOfColors > static_cast<int>(consts::SPACK_PALETTE_SIZE)) {
+  if (numberOfColors > static_cast<int>(shared::SPACK_PALETTE_SIZE)) {
     outPalette.resize(static_cast<size_t>(numberOfColors));
-    for (size_t i = consts::SPACK_PALETTE_SIZE; i < outPalette.size(); i++) {
-      const uint16_t base = outPalette[i - consts::SPACK_PALETTE_SIZE];
+    for (size_t i = shared::SPACK_PALETTE_SIZE; i < outPalette.size(); i++) {
+      const uint16_t base = outPalette[i - shared::SPACK_PALETTE_SIZE];
       outPalette[i] = static_cast<uint16_t>((base >> 1) & 0x777);
     }
   }

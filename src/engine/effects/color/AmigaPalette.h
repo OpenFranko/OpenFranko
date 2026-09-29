@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_AMIGAPALETTE_H_
-#define ENGINE_EFFECTS_AMIGAPALETTE_H_
+#ifndef ENGINE_EFFECTS_COLOR_AMIGAPALETTE_H_
+#define ENGINE_EFFECTS_COLOR_AMIGAPALETTE_H_
 
 #include <cstdint>
 #include <vector>
@@ -31,4 +31,4 @@ constexpr Rgb toRgb(AmigaColor color) {
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_AMIGAPALETTE_H_
+#endif // ENGINE_EFFECTS_COLOR_AMIGAPALETTE_H_

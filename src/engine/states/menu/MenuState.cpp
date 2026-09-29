@@ -2,7 +2,7 @@
 
 #include "../../assets/Assets.h"
 #include "../../effects/color/AmigaDisplay.h"
-#include "../../street/core/CheatCodes.h"
+#include "../../street/ui/CheatCodes.h"
 
 #include <cstddef>
 #include <string>
@@ -166,7 +166,7 @@ std::optional<EngineStateEnum> MenuState::update() {
     m_session.border = m_menu.palette()[0];
   }
   for (const char key : m_menu.keysRead()) {
-    street::core::typeCheatKey(m_session.textBuffer, key);
+    street::ui::typeCheatKey(m_session.textBuffer, key);
   }
   if (m_options.music != music) {
     m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
@@ -179,7 +179,7 @@ std::optional<EngineStateEnum> MenuState::update() {
   }
   if (m_menu.isFinished()) {
     m_session.registers[RO] = 0;
-    street::core::applyCheatCodes(m_session);
+    street::ui::applyCheatCodes(m_session);
     return EngineStateEnum::CharacterSelection;
   }
 
@@ -279,15 +279,15 @@ void MenuState::drawAttractPicture() {
 }
 
 void MenuState::drawHiscoreRow(int row) {
-  const street::scenes::HighScoreTable &table = m_session.highScores;
+  const street::core::HighScoreTable &table = m_session.highScores;
   const int y = FIRST_ROW_Y + row * ROW_PITCH - m_attractTop;
 
-  for (int column = 0; column < street::scenes::HighScoreTable::NAME_LENGTH;
+  for (int column = 0; column < street::core::HighScoreTable::NAME_LENGTH;
        ++column) {
     const int letter = table.letter(row, column);
     const systems::graphics::IndexedBitmap *image =
         findImage(m_letters, FIRST_LETTER_IMAGE, letter + LETTER_A_IMAGE);
-    if (letter < street::scenes::HighScoreTable::LETTERS && image) {
+    if (letter < street::core::HighScoreTable::LETTERS && image) {
       m_attractScreen.drawMasked(*image, NAME_X + column * CHARACTER_PITCH, y);
     }
   }

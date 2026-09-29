@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_CREDITSCROLL_H_
-#define ENGINE_EFFECTS_CREDITSCROLL_H_
+#ifndef ENGINE_EFFECTS_SEQUENCES_CREDITSCROLL_H_
+#define ENGINE_EFFECTS_SEQUENCES_CREDITSCROLL_H_
 
 #include <cstdint>
 
@@ -33,4 +33,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_CREDITSCROLL_H_
+#endif // ENGINE_EFFECTS_SEQUENCES_CREDITSCROLL_H_

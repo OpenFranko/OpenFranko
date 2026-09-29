@@ -1,5 +1,5 @@
-#ifndef ENGINE_STATES_HIGHSCORESTATE_H_
-#define ENGINE_STATES_HIGHSCORESTATE_H_
+#ifndef ENGINE_STATES_HIGHSCORE_HIGHSCORESTATE_H_
+#define ENGINE_STATES_HIGHSCORE_HIGHSCORESTATE_H_
 
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
@@ -40,4 +40,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_HIGHSCORESTATE_H_
+#endif // ENGINE_STATES_HIGHSCORE_HIGHSCORESTATE_H_

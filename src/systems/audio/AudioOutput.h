@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_AUDIOOUTPUT_H_
-#define SYSTEMS_AUDIOOUTPUT_H_
+#ifndef SYSTEMS_AUDIO_AUDIOOUTPUT_H_
+#define SYSTEMS_AUDIO_AUDIOOUTPUT_H_
 
 #include "audio/AudioDevice.h"
 #include "audio/AudioSystem.h"
@@ -32,4 +32,4 @@ struct AudioSystem::Output {
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_AUDIOOUTPUT_H_
+#endif // SYSTEMS_AUDIO_AUDIOOUTPUT_H_

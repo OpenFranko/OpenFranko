@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_GAMEOPTIONS_H_
-#define ENGINE_EFFECTS_GAMEOPTIONS_H_
+#ifndef ENGINE_EFFECTS_CORE_GAMEOPTIONS_H_
+#define ENGINE_EFFECTS_CORE_GAMEOPTIONS_H_
 
 namespace openfranko {
 namespace src {
@@ -24,4 +24,4 @@ struct GameOptions {
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_GAMEOPTIONS_H_
+#endif // ENGINE_EFFECTS_CORE_GAMEOPTIONS_H_

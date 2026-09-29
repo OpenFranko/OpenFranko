@@ -1,5 +1,5 @@
-#ifndef ENGINE_ENGINESTATEENUM_H_
-#define ENGINE_ENGINESTATEENUM_H_
+#ifndef ENGINE_STATES_ENGINESTATEENUM_H_
+#define ENGINE_STATES_ENGINESTATEENUM_H_
 
 namespace openfranko {
 namespace src {
@@ -37,4 +37,4 @@ enum class EngineStateEnum {
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_ENGINESTATEENUM_H_
+#endif // ENGINE_STATES_ENGINESTATEENUM_H_

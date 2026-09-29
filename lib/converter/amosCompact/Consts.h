@@ -22,8 +22,6 @@ constexpr size_t MAX_BITMAP_PIXELS = 64u * 1024u * 1024u;
 
 constexpr size_t SPACK_HEADER_SIZE = 90;
 
-constexpr size_t SPACK_PALETTE_SIZE = 32;
-
 constexpr size_t PACKED_BITMAP_HEADER_SIZE = 24;
 
 } // namespace consts

@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_ENDINGCREDITS_H_
-#define ENGINE_STREET_ENDINGCREDITS_H_
+#ifndef ENGINE_STREET_SCENES_ENDINGCREDITS_H_
+#define ENGINE_STREET_SCENES_ENDINGCREDITS_H_
 
 #include <string>
 #include <vector>
@@ -32,4 +32,4 @@ struct EndingCredits {
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_ENDINGCREDITS_H_
+#endif // ENGINE_STREET_SCENES_ENDINGCREDITS_H_

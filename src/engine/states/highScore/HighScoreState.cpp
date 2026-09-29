@@ -3,9 +3,9 @@
 namespace openfranko::src::engine::states::highScore {
 namespace {
 
-void save(const street::scenes::HighScoreTable &table) {
-  street::scenes::writeHighScoreFile(table,
-                                     street::scenes::HighScoreTable::FILE_NAME);
+void save(const street::core::HighScoreTable &table) {
+  street::core::writeHighScoreFile(table,
+                                   street::core::HighScoreTable::FILE_NAME);
 }
 
 } // namespace

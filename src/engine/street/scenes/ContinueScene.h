@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_CONTINUESCENE_H_
-#define ENGINE_STREET_CONTINUESCENE_H_
+#ifndef ENGINE_STREET_SCENES_CONTINUESCENE_H_
+#define ENGINE_STREET_SCENES_CONTINUESCENE_H_
 
 #include "../../../systems/graphics/Display.h"
 #include "../../amal/Machine.h"
@@ -72,4 +72,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_CONTINUESCENE_H_
+#endif // ENGINE_STREET_SCENES_CONTINUESCENE_H_

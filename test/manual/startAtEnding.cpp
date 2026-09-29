@@ -1,7 +1,7 @@
 #include "../../src/engine/Engine.h"
 #include "../../src/engine/effects/core/GameOptions.h"
-#include "../../src/engine/street/core/StageFrame.h"
 #include "../../src/engine/street/scenes/BossStage.h"
+#include "../../src/engine/street/ui/StageFrame.h"
 #include "../../src/engine/street/ui/StatusPanel.h"
 #include "../../src/systems/graphics/Bitmap.h"
 
@@ -29,8 +29,8 @@ street::core::Picture panelPicture(const std::string &file) {
 }
 
 street::ui::BossExit lastBossExit(const amal::Registers &registers) {
-  const street::core::StageLayout layout =
-      street::core::stageLayout(effects::core::GameOptions{});
+  const street::ui::StageLayout layout =
+      street::ui::stageLayout(effects::core::GameOptions{});
   street::ui::StatusPanel panel(panelPicture("0384.bmp"),
                                 panelPicture("0384_1.bmp"));
   panel.score({registers[RF], registers[RO], registers[RN], registers[RG]});
@@ -38,11 +38,11 @@ street::ui::BossExit lastBossExit(const amal::Registers &registers) {
       street::scenes::BossStage::SCREEN_WIDTH,
       street::scenes::BossStage::SCREEN_HEIGHT);
   return street::ui::BossExit{street::core::DoubleBuffer(screen),
-                              street::core::levelPalette(false),
-                              street::core::playDisplayY(layout),
+                              street::ui::levelPalette(false),
+                              street::ui::playDisplayY(layout),
                               0,
                               panel.surface(),
-                              street::core::panelDisplayY(layout),
+                              street::ui::panelDisplayY(layout),
                               layout.laced};
 }
 

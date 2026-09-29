@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_CANVAS_H_
-#define SYSTEMS_CANVAS_H_
+#ifndef SYSTEMS_GRAPHICS_CANVAS_H_
+#define SYSTEMS_GRAPHICS_CANVAS_H_
 
 #include "graphics/Bitmap.h"
 #include "graphics/Display.h"
@@ -46,4 +46,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_CANVAS_H_
+#endif // SYSTEMS_GRAPHICS_CANVAS_H_

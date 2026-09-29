@@ -1,5 +1,5 @@
-#ifndef ENGINE_STATES_MIRAGESTATE_H_
-#define ENGINE_STATES_MIRAGESTATE_H_
+#ifndef ENGINE_STATES_MIRAGE_MIRAGESTATE_H_
+#define ENGINE_STATES_MIRAGE_MIRAGESTATE_H_
 
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
@@ -34,4 +34,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_MIRAGESTATE_H_
+#endif // ENGINE_STATES_MIRAGE_MIRAGESTATE_H_

@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_AUDIODEVICE_H_
-#define SYSTEMS_AUDIODEVICE_H_
+#ifndef SYSTEMS_AUDIO_AUDIODEVICE_H_
+#define SYSTEMS_AUDIO_AUDIODEVICE_H_
 
 #include <cstdint>
 #include <functional>
@@ -31,4 +31,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_AUDIODEVICE_H_
+#endif // SYSTEMS_AUDIO_AUDIODEVICE_H_

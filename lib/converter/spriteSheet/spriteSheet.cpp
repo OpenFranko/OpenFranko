@@ -2,7 +2,7 @@
 #include "../../bmpWriter/bmpWriter.h"
 #include "../../helpers/helpers.h"
 #include "../amosCompact/Consts.h"
-#include "../shared/decodeImage.h"
+#include "../amosCompact/decodeImage.h"
 #include "../shared/headers.h"
 #include <algorithm>
 #include <stdexcept>
@@ -10,8 +10,8 @@
 
 namespace openfranko::lib::converter::spriteSheet {
 
-using converter::shared::decodeAmosBitmap;
-using converter::shared::DecodedImage;
+using converter::amosCompact::decodeAmosBitmap;
+using converter::amosCompact::DecodedImage;
 
 static constexpr size_t BANK_HEADER_SIZE = 12;
 static constexpr size_t DESCRIPTOR_SIZE = 10;
@@ -223,10 +223,9 @@ void applyScreenPalette(const std::string &fileId,
           amosCompact::consts::SPACK_SCREEN_HEADER) {
     throw std::runtime_error("Not a packed screen");
   }
-  const auto header = shared::headers::parseSPACKHeader(screen);
-  const int colours =
-      std::min<int>(header.numberOfColors,
-                    static_cast<int>(amosCompact::consts::SPACK_PALETTE_SIZE));
+  const auto header = shared::parseSPACKHeader(screen);
+  const int colours = std::min<int>(
+      header.numberOfColors, static_cast<int>(shared::SPACK_PALETTE_SIZE));
   for (int i = LOGO_REFLECTION_FIRST_SPRITE;
        i <= LOGO_REFLECTION_LAST_SPRITE && i < static_cast<int>(sprites.size());
        i++) {

@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_ENDINGSCENE_H_
-#define ENGINE_STREET_ENDINGSCENE_H_
+#ifndef ENGINE_STREET_SCENES_ENDINGSCENE_H_
+#define ENGINE_STREET_SCENES_ENDINGSCENE_H_
 
 #include "../../../systems/graphics/Display.h"
 #include "../../amal/Machine.h"
@@ -8,8 +8,8 @@
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
-#include "../core/LoadingMock.h"
 #include "../ui/GameSession.h"
+#include "../ui/LoadingMock.h"
 #include "../ui/StatusPanel.h"
 #include "EndingCredits.h"
 #include "StreetStage.h"
@@ -132,7 +132,7 @@ private:
   StreetHost &m_host;
   ui::GameSession &m_session;
   amal::Machine m_machine;
-  core::LoadingMock m_loading;
+  ui::LoadingMock m_loading;
   core::ImageBank m_images;
   core::ImageBank m_parked;
   core::BobLayer m_bobs;
@@ -146,7 +146,7 @@ private:
   std::unique_ptr<ui::StatusPanel> m_panel;
   bool m_stageShown = false;
   bool m_panelShown = false;
-  int m_panelTop = core::PANEL_DISPLAY_Y;
+  int m_panelTop = ui::PANEL_DISPLAY_Y;
   core::Picture m_picture;
   effects::color::AmigaPalette m_picturePalette;
   effects::color::PaletteFader m_fader;
@@ -171,4 +171,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_ENDINGSCENE_H_
+#endif // ENGINE_STREET_SCENES_ENDINGSCENE_H_

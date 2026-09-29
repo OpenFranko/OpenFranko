@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_CODECARDCHECK_H_
-#define ENGINE_EFFECTS_CODECARDCHECK_H_
+#ifndef ENGINE_EFFECTS_SEQUENCES_CODECARDCHECK_H_
+#define ENGINE_EFFECTS_SEQUENCES_CODECARDCHECK_H_
 
 #include <array>
 #include <cstddef>
@@ -60,4 +60,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_CODECARDCHECK_H_
+#endif // ENGINE_EFFECTS_SEQUENCES_CODECARDCHECK_H_

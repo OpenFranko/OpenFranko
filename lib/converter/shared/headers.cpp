@@ -1,8 +1,7 @@
 #include "headers.h"
 #include "../../helpers/helpers.h"
-#include "../amosCompact/Consts.h"
 
-namespace openfranko::lib::converter::shared::headers {
+namespace openfranko::lib::converter::shared {
 
 SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data) {
   helpers::BigEndianReader reader(data);
@@ -20,7 +19,7 @@ SPACKHeader parseSPACKHeader(const std::vector<uint8_t> &data) {
   header.numberOfColors = reader.readUint16(22);
   header.numberOfBitplanes = reader.readUint16(24);
 
-  for (size_t i = 0; i < amosCompact::consts::SPACK_PALETTE_SIZE; ++i) {
+  for (size_t i = 0; i < SPACK_PALETTE_SIZE; ++i) {
     header.amigaPalette[i] = reader.readUint16(26 + i * 2);
   }
   return header;
@@ -41,4 +40,4 @@ BitmapHeader parseBitmapHeader(const std::vector<uint8_t> &data) {
   return header;
 }
 
-} // namespace openfranko::lib::converter::shared::headers
+} // namespace openfranko::lib::converter::shared

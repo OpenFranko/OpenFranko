@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_INDEXEDSURFACE_H_
-#define ENGINE_STREET_INDEXEDSURFACE_H_
+#ifndef ENGINE_STREET_CORE_INDEXEDSURFACE_H_
+#define ENGINE_STREET_CORE_INDEXEDSURFACE_H_
 
 #include <cstdint>
 #include <vector>
@@ -65,4 +65,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_INDEXEDSURFACE_H_
+#endif // ENGINE_STREET_CORE_INDEXEDSURFACE_H_

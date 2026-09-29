@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_PALETTEFADER_H_
-#define ENGINE_EFFECTS_PALETTEFADER_H_
+#ifndef ENGINE_EFFECTS_COLOR_PALETTEFADER_H_
+#define ENGINE_EFFECTS_COLOR_PALETTEFADER_H_
 
 #include "AmigaPalette.h"
 
@@ -37,4 +37,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_PALETTEFADER_H_
+#endif // ENGINE_EFFECTS_COLOR_PALETTEFADER_H_

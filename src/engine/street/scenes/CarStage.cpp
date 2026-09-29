@@ -2,7 +2,7 @@
 
 #include "../../effects/color/AmigaDisplay.h"
 
-#include "../../amal/Actors.h"
+#include "../../amal/actors/Actors.h"
 #include "../core/SystemText.h"
 
 #include <cstdlib>
@@ -132,14 +132,13 @@ CarStage::CarStage(StreetHost &host, ui::GameSession &session,
           host.loadPanelPicture(StreetStage::LOADING_STRIP),
           host.loadPanelPicture(StreetStage::PANEL_ARTWORK), session.version)),
       m_screenDisplay{
-          core::DISPLAY_X,
-          static_cast<int16_t>(core::playDisplayY(core::stageLayout(options))),
-          0},
-      m_palette(core::levelPalette(options.mono)),
-      m_panelPalette(core::panelPalette()),
+          ui::DISPLAY_X,
+          static_cast<int16_t>(ui::playDisplayY(ui::stageLayout(options))), 0},
+      m_palette(ui::levelPalette(options.mono)),
+      m_panelPalette(ui::panelPalette()),
       m_screenOffsetX(stage() == 2 ? 16 : 0) {
   m_copper.reset(registers());
-  m_session.border = core::STAGE_BORDER;
+  m_session.border = ui::STAGE_BORDER;
   m_panel->score(stats());
 }
 
@@ -172,7 +171,7 @@ void CarStage::test() {
   }
 }
 
-core::StageCopper CarStage::registers() const {
+ui::StageCopper CarStage::registers() const {
   return {m_screenShown, m_screenDisplay, m_options.ntsc};
 }
 
@@ -181,13 +180,12 @@ void CarStage::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display CarStage::output() const {
-  const core::StageCopper &live = m_copper.live();
-  return core::stageOutput(live.screenShown ? &m_buffer.shown() : nullptr,
-                           m_palette, live.screenDisplay, m_screenOffsetX,
-                           m_panelShown ? m_panel.get() : nullptr,
-                           m_copper.panelY(m_options.tallScreen),
-                           m_panelPalette,
-                           m_copper.window(m_options.tallScreen));
+  const ui::StageCopper &live = m_copper.live();
+  return ui::stageOutput(live.screenShown ? &m_buffer.shown() : nullptr,
+                         m_palette, live.screenDisplay, m_screenOffsetX,
+                         m_panelShown ? m_panel.get() : nullptr,
+                         m_copper.panelY(m_options.tallScreen), m_panelPalette,
+                         m_copper.window(m_options.tallScreen));
 }
 
 CarStage::Outcome CarStage::outcome() const { return m_outcome; }
@@ -630,8 +628,7 @@ void CarStage::sys() {
   const ui::SystemKey key =
       std::exchange(m_session.keyLatch, ui::SystemKey::None);
   if (key == ui::SystemKey::Pal || key == ui::SystemKey::Ntsc) {
-    core::switchStandard(m_options, m_screenDisplay,
-                         key == ui::SystemKey::Ntsc);
+    ui::switchStandard(m_options, m_screenDisplay, key == ui::SystemKey::Ntsc);
   }
   if (key == ui::SystemKey::Lives) {
     global(RG) = CHEAT_LIVES;

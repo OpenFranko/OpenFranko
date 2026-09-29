@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_DOUBLEBUFFER_H_
-#define ENGINE_STREET_DOUBLEBUFFER_H_
+#ifndef ENGINE_STREET_CORE_DOUBLEBUFFER_H_
+#define ENGINE_STREET_CORE_DOUBLEBUFFER_H_
 
 #include "Bobs.h"
 #include "IndexedSurface.h"
@@ -77,4 +77,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_DOUBLEBUFFER_H_
+#endif // ENGINE_STREET_CORE_DOUBLEBUFFER_H_

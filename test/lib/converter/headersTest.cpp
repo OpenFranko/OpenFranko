@@ -2,7 +2,7 @@
 #include <catch2/catch_all.hpp>
 #include <vector>
 
-using namespace openfranko::lib::converter::shared::headers;
+using namespace openfranko::lib::converter::shared;
 
 namespace {
 

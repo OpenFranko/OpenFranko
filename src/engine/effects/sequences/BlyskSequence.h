@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_BLYSKSEQUENCE_H_
-#define ENGINE_EFFECTS_BLYSKSEQUENCE_H_
+#ifndef ENGINE_EFFECTS_SEQUENCES_BLYSKSEQUENCE_H_
+#define ENGINE_EFFECTS_SEQUENCES_BLYSKSEQUENCE_H_
 
 #include "../color/AmigaPalette.h"
 #include "../color/PaletteFader.h"
@@ -49,4 +49,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_BLYSKSEQUENCE_H_
+#endif // ENGINE_EFFECTS_SEQUENCES_BLYSKSEQUENCE_H_

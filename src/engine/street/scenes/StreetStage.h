@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_STREETSTAGE_H_
-#define ENGINE_STREET_STREETSTAGE_H_
+#ifndef ENGINE_STREET_SCENES_STREETSTAGE_H_
+#define ENGINE_STREET_SCENES_STREETSTAGE_H_
 
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
@@ -8,9 +8,9 @@
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
 #include "../core/LevelScript.h"
-#include "../core/LoadingMock.h"
-#include "../core/StageFrame.h"
 #include "../ui/GameSession.h"
+#include "../ui/LoadingMock.h"
+#include "../ui/StageFrame.h"
 #include "../ui/StatusPanel.h"
 #include "EndingCredits.h"
 
@@ -139,7 +139,7 @@ private:
   void openScreens(bool shown);
   void test();
   void hideScreen();
-  core::StageCopper registers() const;
+  ui::StageCopper registers() const;
   Flow stageInit();
   Flow stageMusic();
   Flow stageScreen();
@@ -186,13 +186,13 @@ private:
   core::DoubleBuffer m_buffer;
   std::unique_ptr<ui::StatusPanel> m_panel;
   amal::Object m_screenDisplay;
-  core::StageDisplay m_copper;
+  ui::StageDisplay m_copper;
   effects::color::AmigaPalette m_palette;
   effects::color::AmigaPalette m_panelPalette;
   core::LevelScript m_script;
   std::vector<core::Picture> m_columns;
   core::Picture m_opening;
-  core::LoadingMock m_loading;
+  ui::LoadingMock m_loading;
   std::optional<core::ScreenBlock> m_block;
 
   Step m_step = Step::Start;
@@ -230,4 +230,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_STREETSTAGE_H_
+#endif // ENGINE_STREET_SCENES_STREETSTAGE_H_

@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_MIXER_H_
-#define SYSTEMS_MIXER_H_
+#ifndef SYSTEMS_AUDIO_MIXER_H_
+#define SYSTEMS_AUDIO_MIXER_H_
 
 #include "audio/Wave.h"
 
@@ -115,4 +115,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_MIXER_H_
+#endif // SYSTEMS_AUDIO_MIXER_H_

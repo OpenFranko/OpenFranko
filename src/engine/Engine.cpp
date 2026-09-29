@@ -72,9 +72,8 @@ Engine::Engine(states::EngineStateEnum firstState,
     : session(std::move(startingSession)), running(true) {
   session.version = assets::detectVersion();
   session.highScores =
-      street::scenes::readHighScoreFile(
-          street::scenes::HighScoreTable::FILE_NAME)
-          .value_or(street::scenes::HighScoreTable(session.version));
+      street::core::readHighScoreFile(street::core::HighScoreTable::FILE_NAME)
+          .value_or(street::core::HighScoreTable(session.version));
   switchState(firstState);
 }
 
@@ -234,7 +233,7 @@ void Engine::switchState(states::EngineStateEnum nextState) {
 void Engine::update() {
   controllerSystem.update();
   if (booting && controllerSystem.isDeleteHeld()) {
-    session.highScores = street::scenes::HighScoreTable(session.version);
+    session.highScores = street::core::HighScoreTable(session.version);
   }
   for (const char key : controllerSystem.typedKeys()) {
     session.keyboard.press(key);

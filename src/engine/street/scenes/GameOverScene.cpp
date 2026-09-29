@@ -3,7 +3,7 @@
 #include "../../effects/color/AmigaDisplay.h"
 
 #include "../../effects/color/Rainbow.h"
-#include "../core/StageFrame.h"
+#include "../ui/StageFrame.h"
 
 #include <algorithm>
 #include <cstddef>

@@ -65,7 +65,7 @@ add_test(NAME ${BITMAP_EXTRACTOR_TEST_TARGET} COMMAND ${BITMAP_EXTRACTOR_TEST_TA
 
 set(HELPERS_TEST_TARGET helpersTest)
 add_executable(${HELPERS_TEST_TARGET}
-    decompressor/helpersTest.cpp
+    helpers/helpersTest.cpp
 )
 target_link_libraries(${HELPERS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain helpers)
 add_test(NAME ${HELPERS_TEST_TARGET} COMMAND ${HELPERS_TEST_TARGET})
@@ -81,7 +81,7 @@ set(HEADERS_TEST_TARGET headersTest)
 add_executable(${HEADERS_TEST_TARGET}
     converter/headersTest.cpp
 )
-target_link_libraries(${HEADERS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain decodeImage)
+target_link_libraries(${HEADERS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain shared)
 add_test(NAME ${HEADERS_TEST_TARGET} COMMAND ${HEADERS_TEST_TARGET})
 
 set(ABK_TO_S3M_TEST_TARGET abkToS3mTest)

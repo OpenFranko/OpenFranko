@@ -1,5 +1,5 @@
-#ifndef ENGINE_STATES_LEVEL2BOSSSTATE_H_
-#define ENGINE_STATES_LEVEL2BOSSSTATE_H_
+#ifndef ENGINE_STATES_LEVEL2_LEVEL2BOSSSTATE_H_
+#define ENGINE_STATES_LEVEL2_LEVEL2BOSSSTATE_H_
 
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
@@ -42,4 +42,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_LEVEL2BOSSSTATE_H_
+#endif // ENGINE_STATES_LEVEL2_LEVEL2BOSSSTATE_H_

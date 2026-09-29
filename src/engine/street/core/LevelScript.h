@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_LEVELSCRIPT_H_
-#define ENGINE_STREET_LEVELSCRIPT_H_
+#ifndef ENGINE_STREET_CORE_LEVELSCRIPT_H_
+#define ENGINE_STREET_CORE_LEVELSCRIPT_H_
 
 #include <array>
 #include <string>
@@ -40,4 +40,4 @@ struct LevelScript {
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_LEVELSCRIPT_H_
+#endif // ENGINE_STREET_CORE_LEVELSCRIPT_H_

@@ -1,6 +1,6 @@
 #include "StreetControls.h"
 
-#include "../../street/core/StageFrame.h"
+#include "../../street/ui/StageFrame.h"
 
 namespace openfranko::src::engine::states::shared {
 
@@ -69,7 +69,7 @@ readStreetInput(const systems::input::ControllerSystem &controller,
 void showStageFrame(systems::graphics::VideoSystem &videoSystem,
                     const systems::graphics::Display &frame,
                     const effects::core::GameOptions &options) {
-  videoSystem.setNtsc(street::core::stageLayout(options).ntsc);
+  videoSystem.setNtsc(street::ui::stageLayout(options).ntsc);
   videoSystem.show(frame);
 }
 

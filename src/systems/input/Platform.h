@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_PLATFORM_H_
-#define SYSTEMS_PLATFORM_H_
+#ifndef SYSTEMS_INPUT_PLATFORM_H_
+#define SYSTEMS_INPUT_PLATFORM_H_
 
 #include "input/ControllerSystem.h"
 
@@ -24,4 +24,4 @@ public:
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_PLATFORM_H_
+#endif // SYSTEMS_INPUT_PLATFORM_H_

@@ -1,2 +1,2 @@
 add_library(bitmapExtractor bitmapExtractor.cpp bitmapExtractor.h)
-target_link_libraries(bitmapExtractor decodeImage bmpWriter gameData)
+target_link_libraries(bitmapExtractor amosCompact shared bmpWriter gameData)

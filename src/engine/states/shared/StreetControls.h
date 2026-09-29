@@ -1,5 +1,5 @@
-#ifndef ENGINE_STATES_STREETCONTROLS_H_
-#define ENGINE_STATES_STREETCONTROLS_H_
+#ifndef ENGINE_STATES_SHARED_STREETCONTROLS_H_
+#define ENGINE_STATES_SHARED_STREETCONTROLS_H_
 
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../../systems/input/ControllerSystem.h"
@@ -26,4 +26,4 @@ void showStageFrame(systems::graphics::VideoSystem &videoSystem,
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_STREETCONTROLS_H_
+#endif // ENGINE_STATES_SHARED_STREETCONTROLS_H_

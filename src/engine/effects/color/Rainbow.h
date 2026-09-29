@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_RAINBOW_H_
-#define ENGINE_EFFECTS_RAINBOW_H_
+#ifndef ENGINE_EFFECTS_COLOR_RAINBOW_H_
+#define ENGINE_EFFECTS_COLOR_RAINBOW_H_
 
 #include "AmigaPalette.h"
 
@@ -21,4 +21,4 @@ AmigaPalette rainbowTable(int height, const std::string &red,
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_RAINBOW_H_
+#endif // ENGINE_EFFECTS_COLOR_RAINBOW_H_

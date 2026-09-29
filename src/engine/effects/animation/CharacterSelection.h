@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_CHARACTERSELECTION_H_
-#define ENGINE_EFFECTS_CHARACTERSELECTION_H_
+#ifndef ENGINE_EFFECTS_ANIMATION_CHARACTERSELECTION_H_
+#define ENGINE_EFFECTS_ANIMATION_CHARACTERSELECTION_H_
 
 #include "../../GameVersion.h"
 #include "../core/GameOptions.h"
@@ -72,4 +72,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_CHARACTERSELECTION_H_
+#endif // ENGINE_EFFECTS_ANIMATION_CHARACTERSELECTION_H_

@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_DISPLAY_H_
-#define SYSTEMS_DISPLAY_H_
+#ifndef SYSTEMS_GRAPHICS_DISPLAY_H_
+#define SYSTEMS_GRAPHICS_DISPLAY_H_
 
 #include <cstdint>
 #include <vector>
@@ -52,4 +52,4 @@ void rasterize(const Display &display, std::vector<uint32_t> &argb);
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_DISPLAY_H_
+#endif // SYSTEMS_GRAPHICS_DISPLAY_H_

@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_VIDEOSYSTEM_H_
-#define SYSTEMS_VIDEOSYSTEM_H_
+#ifndef SYSTEMS_GRAPHICS_VIDEOSYSTEM_H_
+#define SYSTEMS_GRAPHICS_VIDEOSYSTEM_H_
 
 #include "graphics/Display.h"
 
@@ -42,4 +42,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_VIDEOSYSTEM_H_
+#endif // SYSTEMS_GRAPHICS_VIDEOSYSTEM_H_

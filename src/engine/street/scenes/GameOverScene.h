@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_GAMEOVERSCENE_H_
-#define ENGINE_STREET_GAMEOVERSCENE_H_
+#ifndef ENGINE_STREET_SCENES_GAMEOVERSCENE_H_
+#define ENGINE_STREET_SCENES_GAMEOVERSCENE_H_
 
 #include "../../../systems/graphics/Display.h"
 #include "../../effects/animation/AmalAnim.h"
@@ -8,7 +8,7 @@
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
-#include "../core/LoadingMock.h"
+#include "../ui/LoadingMock.h"
 #include "StreetStage.h"
 
 #include <cstdint>
@@ -75,7 +75,7 @@ private:
 
   StreetHost &m_host;
   ui::GameSession &m_session;
-  core::LoadingMock m_loading;
+  ui::LoadingMock m_loading;
   core::ImageBank m_images;
   core::BobLayer m_bobs;
   core::Picture m_picture;
@@ -109,4 +109,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_GAMEOVERSCENE_H_
+#endif // ENGINE_STREET_SCENES_GAMEOVERSCENE_H_

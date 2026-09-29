@@ -2,8 +2,8 @@
 #include "../../bmpWriter/bmpWriter.h"
 #include "../../helpers/helpers.h"
 #include "../amosCompact/Consts.h"
+#include "../amosCompact/decodeImage.h"
 #include "../gameData/gameData.h"
-#include "../shared/decodeImage.h"
 #include "../shared/headers.h"
 #include "../spriteSheet/Palettes.h"
 #include <algorithm>
@@ -13,8 +13,8 @@ namespace openfranko::lib::converter::bitmapExtractor {
 
 namespace amosConsts = amosCompact::consts;
 namespace pal = spriteSheet::palettes;
-using converter::shared::decodeAmosBitmap;
-using converter::shared::DecodedImage;
+using converter::amosCompact::decodeAmosBitmap;
+using converter::amosCompact::DecodedImage;
 
 namespace {
 
@@ -106,7 +106,7 @@ std::vector<uint16_t> readSPACKPalette(const std::vector<uint8_t> &data,
   }
   std::vector<uint8_t> slice(data.begin() + static_cast<std::ptrdiff_t>(offset),
                              data.end());
-  auto hdr = shared::headers::parseSPACKHeader(slice);
+  auto hdr = shared::parseSPACKHeader(slice);
   return {std::begin(hdr.amigaPalette), std::end(hdr.amigaPalette)};
 }
 

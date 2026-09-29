@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_AMIGADISPLAY_H_
-#define ENGINE_EFFECTS_AMIGADISPLAY_H_
+#ifndef ENGINE_EFFECTS_COLOR_AMIGADISPLAY_H_
+#define ENGINE_EFFECTS_COLOR_AMIGADISPLAY_H_
 
 #include <algorithm>
 
@@ -58,4 +58,4 @@ constexpr double menuTuneScale(int tempo) {
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_AMIGADISPLAY_H_
+#endif // ENGINE_EFFECTS_COLOR_AMIGADISPLAY_H_

@@ -1,6 +1,6 @@
 #include "ProtectionCheckState.h"
 
-#include "../../street/core/LoadingMock.h"
+#include "../../street/ui/LoadingMock.h"
 
 #include <algorithm>
 #include <array>
@@ -97,7 +97,7 @@ ProtectionCheckState::ProtectionCheckState(
       m_keyboard(keyboard), m_kind(check), m_check(makeCheck(check)),
       m_loadingFrames(check == Check::Stage3
                           ? STAGE_CHECK_FILES *
-                                street::core::LoadingMock::FILE_FRAMES
+                                street::ui::LoadingMock::FILE_FRAMES
                           : 0),
       m_resumeFrame(effects::color::SCREEN_OPEN_VBLS),
       m_screen(QUESTION_SCREEN_WIDTH, QUESTION_SCREEN_HEIGHT),

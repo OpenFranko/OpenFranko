@@ -1,14 +1,14 @@
-#ifndef ENGINE_STREET_GAMESESSION_H_
-#define ENGINE_STREET_GAMESESSION_H_
+#ifndef ENGINE_STREET_UI_GAMESESSION_H_
+#define ENGINE_STREET_UI_GAMESESSION_H_
 
 #include "../../GameVersion.h"
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
 #include "../../effects/core/InkeyBuffer.h"
 #include "../core/DoubleBuffer.h"
+#include "../core/HighScoreTable.h"
 #include "../core/IndexedSurface.h"
-#include "../core/StageFrame.h"
-#include "../scenes/HighScoreTable.h"
+#include "StageFrame.h"
 
 #include <optional>
 #include <string>
@@ -45,7 +45,7 @@ struct BossExit {
   int displayY = 0;
   int offsetX = 0;
   core::IndexedSurface panel;
-  int panelY = core::PANEL_DISPLAY_Y;
+  int panelY = PANEL_DISPLAY_Y;
   bool laced = false;
 };
 
@@ -67,14 +67,14 @@ struct GameSession {
   int extraLifeKills = FIRST_EXTRA_LIFE;
   bool brutality = false;
   bool shortLevels = false;
-  std::string textBuffer = scenes::HighScoreTable::FILE_NAME;
+  std::string textBuffer = core::HighScoreTable::FILE_NAME;
   int stageReached = 0;
   bool fromBonusDrive = false;
   bool nameScreenOpen = false;
   effects::color::AmigaColor border = 0x000;
   SystemKey keyLatch = SystemKey::None;
   DriveCarryOver lastDrive;
-  scenes::HighScoreTable highScores;
+  core::HighScoreTable highScores;
   effects::core::InkeyBuffer keyboard;
   std::optional<StreetExit> streetExit;
   std::optional<BossExit> bossExit;
@@ -86,4 +86,4 @@ struct GameSession {
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_GAMESESSION_H_
+#endif // ENGINE_STREET_UI_GAMESESSION_H_

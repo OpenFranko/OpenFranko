@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_MENUSEQUENCE_H_
-#define ENGINE_EFFECTS_MENUSEQUENCE_H_
+#ifndef ENGINE_EFFECTS_SEQUENCES_MENUSEQUENCE_H_
+#define ENGINE_EFFECTS_SEQUENCES_MENUSEQUENCE_H_
 
 #include "../../GameVersion.h"
 #include "../animation/AmalMotion.h"
@@ -106,4 +106,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_MENUSEQUENCE_H_
+#endif // ENGINE_EFFECTS_SEQUENCES_MENUSEQUENCE_H_

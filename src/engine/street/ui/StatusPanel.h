@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_STATUSPANEL_H_
-#define ENGINE_STREET_STATUSPANEL_H_
+#ifndef ENGINE_STREET_UI_STATUSPANEL_H_
+#define ENGINE_STREET_UI_STATUSPANEL_H_
 
 #include "../../GameVersion.h"
 #include "../core/IndexedSurface.h"
@@ -48,4 +48,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_STATUSPANEL_H_
+#endif // ENGINE_STREET_UI_STATUSPANEL_H_

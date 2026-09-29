@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_BITMAP_H_
-#define SYSTEMS_BITMAP_H_
+#ifndef SYSTEMS_GRAPHICS_BITMAP_H_
+#define SYSTEMS_GRAPHICS_BITMAP_H_
 
 #include <cstdint>
 #include <string>
@@ -27,4 +27,4 @@ IndexedBitmap loadIndexedBitmap(const std::string &path);
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_BITMAP_H_
+#endif // SYSTEMS_GRAPHICS_BITMAP_H_

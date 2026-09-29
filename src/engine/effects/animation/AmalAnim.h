@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_AMALANIM_H_
-#define ENGINE_EFFECTS_AMALANIM_H_
+#ifndef ENGINE_EFFECTS_ANIMATION_AMALANIM_H_
+#define ENGINE_EFFECTS_ANIMATION_AMALANIM_H_
 
 #include <cstddef>
 #include <vector>
@@ -38,4 +38,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_AMALANIM_H_
+#endif // ENGINE_EFFECTS_ANIMATION_AMALANIM_H_

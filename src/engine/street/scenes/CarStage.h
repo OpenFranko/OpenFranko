@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_CARSTAGE_H_
-#define ENGINE_STREET_CARSTAGE_H_
+#ifndef ENGINE_STREET_SCENES_CARSTAGE_H_
+#define ENGINE_STREET_SCENES_CARSTAGE_H_
 
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
@@ -7,9 +7,9 @@
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
-#include "../core/LoadingMock.h"
-#include "../core/StageFrame.h"
 #include "../ui/GameSession.h"
+#include "../ui/LoadingMock.h"
+#include "../ui/StageFrame.h"
 #include "../ui/StatusPanel.h"
 #include "StreetStage.h"
 
@@ -125,7 +125,7 @@ private:
   Flow closePlayScreen();
   void sys();
   void test();
-  core::StageCopper registers() const;
+  ui::StageCopper registers() const;
   void runBasic(const StreetInput &input);
 
   StreetHost &m_host;
@@ -141,10 +141,10 @@ private:
   core::Picture m_backdrop;
   std::unique_ptr<ui::StatusPanel> m_panel;
   amal::Object m_screenDisplay;
-  core::StageDisplay m_copper;
+  ui::StageDisplay m_copper;
   effects::color::AmigaPalette m_palette;
   effects::color::AmigaPalette m_panelPalette;
-  core::LoadingMock m_loading;
+  ui::LoadingMock m_loading;
 
   Step m_step = Step::Password;
   Step m_afterLoading = Step::Finished;
@@ -190,4 +190,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_CARSTAGE_H_
+#endif // ENGINE_STREET_SCENES_CARSTAGE_H_

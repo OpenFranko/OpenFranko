@@ -1,6 +1,7 @@
 #ifndef HEADERS_H_
 #define HEADERS_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -8,7 +9,8 @@ namespace openfranko {
 namespace lib {
 namespace converter {
 namespace shared {
-namespace headers {
+
+constexpr size_t SPACK_PALETTE_SIZE = 32;
 
 struct SPACKHeader {
   uint16_t screenWidth;
@@ -40,7 +42,6 @@ struct BitmapHeader {
 
 BitmapHeader parseBitmapHeader(const std::vector<uint8_t> &data);
 
-} // namespace headers
 } // namespace shared
 } // namespace converter
 } // namespace lib

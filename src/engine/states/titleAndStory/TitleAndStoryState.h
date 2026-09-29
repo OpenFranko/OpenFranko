@@ -1,5 +1,5 @@
-#ifndef ENGINE_STATES_TITLEANDSTORYSTATE_H_
-#define ENGINE_STATES_TITLEANDSTORYSTATE_H_
+#ifndef ENGINE_STATES_TITLEANDSTORY_TITLEANDSTORYSTATE_H_
+#define ENGINE_STATES_TITLEANDSTORY_TITLEANDSTORYSTATE_H_
 
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../../systems/graphics/Bitmap.h"
@@ -85,4 +85,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_TITLEANDSTORYSTATE_H_
+#endif // ENGINE_STATES_TITLEANDSTORY_TITLEANDSTORYSTATE_H_

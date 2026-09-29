@@ -1,15 +1,15 @@
-#ifndef ENGINE_STREET_HIGHSCORESCENE_H_
-#define ENGINE_STREET_HIGHSCORESCENE_H_
+#ifndef ENGINE_STREET_SCENES_HIGHSCORESCENE_H_
+#define ENGINE_STREET_SCENES_HIGHSCORESCENE_H_
 
 #include "../../../systems/graphics/Display.h"
 #include "../../effects/color/AmigaPalette.h"
 #include "../../effects/color/PaletteFader.h"
 #include "../../effects/core/GameOptions.h"
 #include "../core/Bobs.h"
+#include "../core/HighScoreTable.h"
 #include "../core/IndexedSurface.h"
-#include "../core/LoadingMock.h"
 #include "../ui/GameSession.h"
-#include "HighScoreTable.h"
+#include "../ui/LoadingMock.h"
 #include "StreetStage.h"
 
 #include <cstdint>
@@ -34,7 +34,7 @@ public:
   static constexpr char BACKSPACE = '\b';
   static constexpr char RETURN = '\r';
 
-  using Save = std::function<void(const HighScoreTable &)>;
+  using Save = std::function<void(const core::HighScoreTable &)>;
 
   HighScoreScene(StreetHost &host, ui::GameSession &session,
                  const effects::core::GameOptions &options, Save save);
@@ -94,7 +94,7 @@ private:
   ui::GameSession &m_session;
   const effects::core::GameOptions &m_options;
   Save m_save;
-  core::LoadingMock m_loading;
+  ui::LoadingMock m_loading;
   core::ImageBank m_images;
   core::BobLayer m_bobs;
   core::Picture m_picture;
@@ -115,7 +115,7 @@ private:
   int m_round = 0;
   int m_row = 0;
   int m_rowsShown = 0;
-  int m_slot = HighScoreTable::NO_SLOT;
+  int m_slot = core::HighScoreTable::NO_SLOT;
   int m_x = 0;
   int m_y = 0;
   std::string m_name;
@@ -127,4 +127,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_HIGHSCORESCENE_H_
+#endif // ENGINE_STREET_SCENES_HIGHSCORESCENE_H_

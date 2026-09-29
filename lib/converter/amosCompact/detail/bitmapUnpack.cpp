@@ -12,9 +12,8 @@ namespace openfranko::lib::converter::amosCompact::detail {
 namespace {
 
 void mainDecompression(UnpackedBitmap &bitmap,
-                       const shared::headers::BitmapHeader &header,
-                       ByteReader &bytes1, ByteReader &bytes2,
-                       BitReader &pointerBits) {
+                       const shared::BitmapHeader &header, ByteReader &bytes1,
+                       ByteReader &bytes2, BitReader &pointerBits) {
   const size_t lineSize = header.gridX;
   const size_t heightLines = bitmap.height;
 
@@ -88,7 +87,7 @@ void unpackChunkyPixels(UnpackedBitmap &bitmap) {
 } // namespace
 
 UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
-                            const shared::headers::BitmapHeader &header,
+                            const shared::BitmapHeader &header,
                             const std::vector<uint16_t> &palette) {
   const size_t widthFull = static_cast<size_t>(header.gridX) * 8;
   const size_t heightFull =

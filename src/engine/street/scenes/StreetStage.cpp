@@ -2,7 +2,7 @@
 
 #include "../../effects/color/AmigaDisplay.h"
 
-#include "../../amal/Actors.h"
+#include "../../amal/actors/Actors.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -84,13 +84,11 @@ StreetStage::StreetStage(StreetHost &host, ui::GameSession &session,
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen),
       m_screenDisplay{
-          core::DISPLAY_X,
-          static_cast<int16_t>(core::playDisplayY(core::stageLayout(options))),
-          0},
-      m_palette(core::levelPalette(false)),
-      m_panelPalette(core::panelPalette()) {
+          ui::DISPLAY_X,
+          static_cast<int16_t>(ui::playDisplayY(ui::stageLayout(options))), 0},
+      m_palette(ui::levelPalette(false)), m_panelPalette(ui::panelPalette()) {
   m_copper.reset(registers());
-  m_session.border = core::STAGE_BORDER;
+  m_session.border = ui::STAGE_BORDER;
 }
 
 void StreetStage::advance(const StreetInput &input) {
@@ -128,7 +126,7 @@ void StreetStage::hideScreen() {
   m_copper.hide();
 }
 
-core::StageCopper StreetStage::registers() const {
+ui::StageCopper StreetStage::registers() const {
   return {m_screenShown, m_screenDisplay, m_options.ntsc};
 }
 
@@ -137,13 +135,12 @@ void StreetStage::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display StreetStage::output() const {
-  const core::StageCopper &live = m_copper.live();
-  return core::stageOutput(live.screenShown ? &m_buffer.shown() : nullptr,
-                           m_palette, live.screenDisplay, m_screenOffsetX,
-                           m_panelShown ? m_panel.get() : nullptr,
-                           m_copper.panelY(m_options.tallScreen),
-                           m_panelPalette,
-                           m_copper.window(m_options.tallScreen));
+  const ui::StageCopper &live = m_copper.live();
+  return ui::stageOutput(live.screenShown ? &m_buffer.shown() : nullptr,
+                         m_palette, live.screenDisplay, m_screenOffsetX,
+                         m_panelShown ? m_panel.get() : nullptr,
+                         m_copper.panelY(m_options.tallScreen), m_panelPalette,
+                         m_copper.window(m_options.tallScreen));
 }
 
 StreetStage::Outcome StreetStage::outcome() const { return m_outcome; }
@@ -249,8 +246,8 @@ void StreetStage::gameInit() {
 }
 
 void StreetStage::openScreens(bool shown) {
-  m_palette = core::levelPalette(m_options.mono);
-  m_panelPalette = core::panelPalette();
+  m_palette = ui::levelPalette(m_options.mono);
+  m_panelPalette = ui::panelPalette();
   m_screenShown = shown;
   m_copper.reset(registers());
   m_screen.fill(0);
@@ -941,8 +938,7 @@ void StreetStage::sys() {
     break;
   case ui::SystemKey::Pal:
   case ui::SystemKey::Ntsc:
-    core::switchStandard(m_options, m_screenDisplay,
-                         key == ui::SystemKey::Ntsc);
+    ui::switchStandard(m_options, m_screenDisplay, key == ui::SystemKey::Ntsc);
     break;
   case ui::SystemKey::Lives:
     global(RG) = CHEAT_LIVES;

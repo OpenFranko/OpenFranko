@@ -1,5 +1,5 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
-#include "frankoResourceExtractor.h"
+#include "frankoResourceExtractor/frankoResourceExtractor.h"
 #include <filesystem>
 #include <iostream>
 #include <string>

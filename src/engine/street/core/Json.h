@@ -1,5 +1,5 @@
-#ifndef ENGINE_STREET_JSON_H_
-#define ENGINE_STREET_JSON_H_
+#ifndef ENGINE_STREET_CORE_JSON_H_
+#define ENGINE_STREET_CORE_JSON_H_
 
 #include <string>
 #include <utility>
@@ -35,4 +35,4 @@ JsonValue parseJson(const std::string &text);
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STREET_JSON_H_
+#endif // ENGINE_STREET_CORE_JSON_H_

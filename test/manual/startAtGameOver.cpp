@@ -1,5 +1,5 @@
 #include "../../src/engine/Engine.h"
-#include "../../src/engine/street/core/StageFrame.h"
+#include "../../src/engine/street/ui/StageFrame.h"
 
 #include <utility>
 
@@ -14,7 +14,7 @@ constexpr int FIRST_STAGE = 1;
 int main() {
   street::ui::GameSession session;
   session.stageReached = FIRST_STAGE;
-  session.border = street::core::STAGE_BORDER;
+  session.border = street::ui::STAGE_BORDER;
   Engine engine(states::EngineStateEnum::GameOver, std::move(session));
   engine.run();
   return 0;

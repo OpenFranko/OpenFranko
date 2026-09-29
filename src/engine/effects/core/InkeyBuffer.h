@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_INKEYBUFFER_H_
-#define ENGINE_EFFECTS_INKEYBUFFER_H_
+#ifndef ENGINE_EFFECTS_CORE_INKEYBUFFER_H_
+#define ENGINE_EFFECTS_CORE_INKEYBUFFER_H_
 
 #include <cstddef>
 #include <deque>
@@ -36,4 +36,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_INKEYBUFFER_H_
+#endif // ENGINE_EFFECTS_CORE_INKEYBUFFER_H_

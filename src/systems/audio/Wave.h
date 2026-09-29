@@ -1,5 +1,5 @@
-#ifndef SYSTEMS_WAVE_H_
-#define SYSTEMS_WAVE_H_
+#ifndef SYSTEMS_AUDIO_WAVE_H_
+#define SYSTEMS_AUDIO_WAVE_H_
 
 #include <cstdint>
 #include <string>
@@ -23,4 +23,4 @@ Sound loadWave(const std::string &path);
 } // namespace src
 } // namespace openfranko
 
-#endif // SYSTEMS_WAVE_H_
+#endif // SYSTEMS_AUDIO_WAVE_H_

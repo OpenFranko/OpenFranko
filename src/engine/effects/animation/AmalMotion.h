@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_AMALMOTION_H_
-#define ENGINE_EFFECTS_AMALMOTION_H_
+#ifndef ENGINE_EFFECTS_ANIMATION_AMALMOTION_H_
+#define ENGINE_EFFECTS_ANIMATION_AMALMOTION_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -40,4 +40,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_AMALMOTION_H_
+#endif // ENGINE_EFFECTS_ANIMATION_AMALMOTION_H_

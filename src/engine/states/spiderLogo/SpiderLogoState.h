@@ -1,5 +1,5 @@
-#ifndef ENGINE_STATES_SPIDERLOGOSTATE_H_
-#define ENGINE_STATES_SPIDERLOGOSTATE_H_
+#ifndef ENGINE_STATES_SPIDERLOGO_SPIDERLOGOSTATE_H_
+#define ENGINE_STATES_SPIDERLOGO_SPIDERLOGOSTATE_H_
 
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../../systems/graphics/Bitmap.h"
@@ -62,4 +62,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_STATES_SPIDERLOGOSTATE_H_
+#endif // ENGINE_STATES_SPIDERLOGO_SPIDERLOGOSTATE_H_
