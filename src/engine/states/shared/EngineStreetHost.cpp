@@ -46,6 +46,17 @@ std::optional<int> numberAfter(const std::string &text,
   return std::stoi(text.substr(prefix.size(), end - prefix.size()));
 }
 
+std::vector<std::filesystem::path>
+listFiles(const std::filesystem::path &directory) {
+  std::vector<std::filesystem::path> paths;
+  std::error_code error;
+  for (const auto &entry :
+       std::filesystem::directory_iterator(directory, error)) {
+    paths.push_back(entry.path());
+  }
+  return paths;
+}
+
 } // namespace
 
 EngineStreetHost::EngineStreetHost(systems::audio::Speaker &speaker,
@@ -176,11 +187,9 @@ EngineStreetHost::loadFrames(int resource) const {
   const std::string name = resourceName(resource);
   const std::filesystem::path directory = m_directory + "/" + name;
   std::vector<street::core::Picture> frames;
-  std::error_code error;
-  for (const auto &entry :
-       std::filesystem::directory_iterator(directory, error)) {
+  for (const std::filesystem::path &path : listFiles(directory)) {
     const auto index =
-        numberAfter(entry.path().filename().string(), name + "_", ".bmp");
+        numberAfter(path.filename().string(), name + "_", ".bmp");
     if (!index) {
       continue;
     }
@@ -188,7 +197,7 @@ EngineStreetHost::loadFrames(int resource) const {
       frames.resize(static_cast<std::size_t>(*index) + 1);
     }
     frames[static_cast<std::size_t>(*index)] =
-        toPicture(systems::graphics::loadIndexedBitmap(entry.path().string()));
+        toPicture(systems::graphics::loadIndexedBitmap(path.string()));
   }
   if (frames.empty()) {
     throw std::runtime_error("No frames found in " + directory.string());
@@ -200,15 +209,13 @@ void EngineStreetHost::loadSamples(int resource, int bank) {
   clearSamples(bank);
   const std::string name = resourceName(resource);
   const std::filesystem::path directory = m_directory + "/" + name;
-  std::error_code error;
-  for (const auto &entry :
-       std::filesystem::directory_iterator(directory, error)) {
-    const std::string file = entry.path().filename().string();
-    const auto sample = numberAfter(file, name + "_sam", "_");
-    if (!sample || entry.path().extension() != ".wav") {
+  for (const std::filesystem::path &path : listFiles(directory)) {
+    const auto sample =
+        numberAfter(path.filename().string(), name + "_sam", "_");
+    if (!sample || path.extension() != ".wav") {
       continue;
     }
-    m_speaker.loadSample(sampleName(bank, *sample), entry.path().string());
+    m_speaker.loadSample(sampleName(bank, *sample), path.string());
     m_samples[bank].push_back(*sample);
   }
 }

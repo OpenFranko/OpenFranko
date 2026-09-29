@@ -97,8 +97,20 @@ the AUR):
 yay -S djgpp-gcc djgpp-allegro4 djgpp-cmake
 ```
 
-libxmp has no DJGPP package, so build it and install it into the DJGPP
-directory:
+`build-dos.sh` does the rest: it builds libxmp into `build-dos/libxmp` (no
+sudo needed), builds the game in `build-dos` and puts a runnable copy with
+`CWSDPMI.EXE` and a DOSBox-X configuration in `build-dos/game`:
+
+```
+./build-dos.sh --assets <assets_dir>
+flatpak run com.dosbox_x.DOSBox-X -conf build-dos/game/dosbox-x.conf
+```
+
+Options starting with `-D` are passed to CMake, e.g.
+`./build-dos.sh -DSKIP_COPY_PROTECTION=ON`.
+
+To build by hand instead: libxmp has no DJGPP package, so build it and install
+it into the DJGPP directory:
 
 ```
 curl -LO https://github.com/libxmp/libxmp/releases/download/libxmp-4.7.3/libxmp-4.7.3.tar.gz
@@ -124,7 +136,7 @@ It carries debug information; `i686-pc-msdosdjgpp-strip src/franko.exe`
 shrinks it from about 27 MB to 3 MB.
 
 To play, put `franko.exe`, `CWSDPMI.EXE` (the DPMI host from
-[csdpmi7b.zip](http://www.delorie.com/pub/djgpp/current/v2misc/csdpmi7b.zip))
+[csdpmi7b.zip](https://www.delorie.com/pub/djgpp/current/v2misc/csdpmi7b.zip))
 and `assets` in one directory and run `franko` from it. The game needs:
 
 - long file names, as the asset names are not 8.3: DOS 7.1 under Windows
