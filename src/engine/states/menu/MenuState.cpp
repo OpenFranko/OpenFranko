@@ -15,7 +15,7 @@ constexpr int BACKDROP = 0x3B8;
 constexpr int TITLE = 0x3BA;
 constexpr int HISCORES = 0x3B9;
 constexpr int MENU_BOBS = 0x34;
-constexpr int LETTERS = 0x35;
+constexpr int LETTER_SET = 0x35;
 constexpr int MENU_TUNE = 0x261;
 
 constexpr int MENU_SCREEN_WIDTH = 368;
@@ -122,7 +122,7 @@ MenuState::MenuState(systems::graphics::VideoSystem &videoSystem,
       m_hiscores(loadPicture(HISCORES, session.version)),
       m_menuBobs(
           loadSprites(MENU_BOBS, menuImages(session.version), session.version)),
-      m_letters(loadSprites(LETTERS, LETTER_IMAGES, session.version)),
+      m_letters(loadSprites(LETTER_SET, LETTER_IMAGES, session.version)),
       m_menuScreen(menuScreen(options.ntsc)),
       m_menu(options, resized(m_backdrop.palette, MENU_COLORS),
              session.keyboard, session.version),

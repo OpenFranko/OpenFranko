@@ -180,7 +180,7 @@ struct Ending {
   uint32_t pixel(int x, int row) const {
     std::vector<uint32_t> frame;
     scene.compose(frame);
-    return frame[static_cast<std::size_t>(row * EndingScene::WIDTH + x)];
+    return frame[static_cast<std::size_t>(row * EndingScene::SCREEN_WIDTH + x)];
   }
 
   void run(int frames, int16_t joystick = 0) {

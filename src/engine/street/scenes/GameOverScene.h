@@ -23,8 +23,8 @@ namespace scenes {
 
 class GameOverScene {
 public:
-  static constexpr int WIDTH = 368;
-  static constexpr int HEIGHT = 256;
+  static constexpr int SCREEN_WIDTH = 368;
+  static constexpr int SCREEN_HEIGHT = 256;
   static constexpr int PICTURE_WIDTH = 1008;
   static constexpr int PICTURE_HEIGHT = 256;
   static constexpr int DISPLAY_LINE = 45;

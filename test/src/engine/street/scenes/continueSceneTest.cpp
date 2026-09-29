@@ -96,7 +96,7 @@ struct Choice {
   uint32_t pixel(int x, int y) const {
     std::vector<uint32_t> frame;
     scene.compose(frame);
-    return frame[static_cast<std::size_t>(y * ContinueScene::WIDTH + x)];
+    return frame[static_cast<std::size_t>(y * ContinueScene::SCREEN_WIDTH + x)];
   }
 };
 

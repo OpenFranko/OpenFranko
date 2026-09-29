@@ -115,7 +115,7 @@ constexpr int REST_WAIT = 50;
 constexpr int SIT_WAIT = 100;
 constexpr int FALL_WAIT = 15;
 constexpr int FALLEN_WAIT = 25;
-constexpr int VICTORY_POSE_DELAY = 90;
+constexpr int VICTORY_POSE_WAIT = 90;
 constexpr int POSE_IMAGE = 38;
 constexpr int GRIN_IMAGE = 39;
 constexpr int POSE_HOLD = 30;
@@ -1090,7 +1090,7 @@ void BossStage::runBasic(const StreetInput &input) {
       break;
     case Step::RailingQuiet:
       m_bobs.setImage(BOSS_BUBBLE, HIDDEN_IMAGE);
-      flow = waitFrames(VICTORY_POSE_DELAY, Step::RailingPose);
+      flow = waitFrames(VICTORY_POSE_WAIT, Step::RailingPose);
       break;
     case Step::RailingPose:
       m_bobs.setImage(PLAYER, POSE_IMAGE);

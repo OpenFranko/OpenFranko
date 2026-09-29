@@ -16,10 +16,10 @@ HighScoreState::HighScoreState(systems::graphics::VideoSystem &videoSystem,
                                street::session::GameSession &session)
     : m_videoSystem(videoSystem), m_host(audioSystem, session.version),
       m_scene(m_host, session, options, save),
-      m_rows(
-          visibleRows(pictureLine(street::scenes::HighScoreScene::DISPLAY_LINE,
-                                  options.ntsc),
-                      street::scenes::HighScoreScene::HEIGHT, options.ntsc)) {
+      m_rows(visibleRows(
+          pictureLine(street::scenes::HighScoreScene::DISPLAY_LINE,
+                      options.ntsc),
+          street::scenes::HighScoreScene::SCREEN_HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }
 

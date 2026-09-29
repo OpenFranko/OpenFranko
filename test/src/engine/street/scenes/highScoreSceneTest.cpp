@@ -81,7 +81,8 @@ public:
 
   Picture loadPicture(int resource) override {
     pictures.push_back(resource);
-    return box(HighScoreScene::WIDTH, HighScoreScene::HEIGHT, PAPER);
+    return box(HighScoreScene::SCREEN_WIDTH, HighScoreScene::SCREEN_HEIGHT,
+               PAPER);
   }
 
   effects::color::AmigaPalette loadPalette(int resource) override {
@@ -175,7 +176,8 @@ struct Board {
   uint32_t pixel(int x, int y) const {
     std::vector<uint32_t> frame;
     scene.compose(frame);
-    return frame[static_cast<std::size_t>(y * HighScoreScene::WIDTH + x)];
+    return frame[static_cast<std::size_t>(y * HighScoreScene::SCREEN_WIDTH +
+                                          x)];
   }
 };
 

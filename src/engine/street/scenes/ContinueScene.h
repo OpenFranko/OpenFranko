@@ -22,8 +22,8 @@ class ContinueScene {
 public:
   enum class Outcome { Choosing, Continue, NewGame };
 
-  static constexpr int WIDTH = 320;
-  static constexpr int HEIGHT = 256;
+  static constexpr int SCREEN_WIDTH = 320;
+  static constexpr int SCREEN_HEIGHT = 256;
   static constexpr int DISPLAY_LINE = 50;
   static constexpr int HAND = 10;
 

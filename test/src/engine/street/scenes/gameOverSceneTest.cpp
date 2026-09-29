@@ -132,15 +132,15 @@ struct Graveyard {
   uint32_t pixel(int x, int y) const {
     std::vector<uint32_t> frame;
     scene.compose(frame);
-    return frame[static_cast<std::size_t>(y * GameOverScene::WIDTH + x)];
+    return frame[static_cast<std::size_t>(y * GameOverScene::SCREEN_WIDTH + x)];
   }
 
   int leftmost(int y, uint32_t color) const {
     std::vector<uint32_t> frame;
     scene.compose(frame);
-    for (int x = 0; x < GameOverScene::WIDTH; ++x) {
-      if (frame[static_cast<std::size_t>(y * GameOverScene::WIDTH + x)] ==
-          color) {
+    for (int x = 0; x < GameOverScene::SCREEN_WIDTH; ++x) {
+      if (frame[static_cast<std::size_t>(y * GameOverScene::SCREEN_WIDTH +
+                                         x)] == color) {
         return x;
       }
     }

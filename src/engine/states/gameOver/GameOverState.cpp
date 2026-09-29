@@ -9,10 +9,10 @@ GameOverState::GameOverState(systems::graphics::VideoSystem &videoSystem,
                              street::session::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem, session.version), m_scene(m_host, session),
-      m_rows(
-          visibleRows(pictureLine(street::scenes::GameOverScene::DISPLAY_LINE,
-                                  options.ntsc),
-                      street::scenes::GameOverScene::HEIGHT, options.ntsc)) {
+      m_rows(visibleRows(
+          pictureLine(street::scenes::GameOverScene::DISPLAY_LINE,
+                      options.ntsc),
+          street::scenes::GameOverScene::SCREEN_HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }
 

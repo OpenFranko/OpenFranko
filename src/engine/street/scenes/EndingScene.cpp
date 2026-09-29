@@ -145,9 +145,9 @@ void EndingScene::compose(std::vector<uint32_t> &frame) const {
 
 systems::graphics::Display EndingScene::output() const {
   systems::graphics::Display display;
-  display.width = WIDTH;
-  display.height = HEIGHT;
-  display.displayHeight = HEIGHT;
+  display.width = SCREEN_WIDTH;
+  display.height = SCREEN_HEIGHT;
+  display.displayHeight = SCREEN_HEIGHT;
   display.border = m_border;
   if (m_stageShown && m_stage) {
     const core::IndexedSurface &shown = m_stage->buffer.shown();
@@ -161,7 +161,7 @@ systems::graphics::Display EndingScene::output() const {
     stage.sourceY = (m_displayLine - m_stage->displayY) * rowsPerLine;
     stage.sourceStep = rowsPerLine;
     stage.columns = STAGE_WIDTH;
-    stage.rows = HEIGHT;
+    stage.rows = SCREEN_HEIGHT;
     stage.mask = static_cast<uint8_t>(m_stage->palette.size() - 1);
     stage.palette = m_stage->palette;
     display.layers.push_back(std::move(stage));
@@ -193,7 +193,7 @@ systems::graphics::Display EndingScene::output() const {
     layer.sourceColumns = surface.width();
     layer.sourceRows = surface.height();
     layer.top = screen.top - m_displayLine;
-    layer.columns = std::min(WIDTH, surface.width());
+    layer.columns = std::min(SCREEN_WIDTH, surface.width());
     layer.rows = surface.height();
     layer.mask = static_cast<uint8_t>(screen.palette.size() - 1);
     layer.palette = screen.palette;
@@ -624,7 +624,7 @@ void EndingScene::openScreen(int number, int top, int height,
   screen.open = true;
   screen.hidden = false;
   screen.top = pictureLine(top, m_ntsc);
-  screen.surface = core::IndexedSurface(WIDTH, height);
+  screen.surface = core::IndexedSurface(SCREEN_WIDTH, height);
   screen.palette = std::move(palette);
   if (number == 0) {
     m_fader = effects::color::PaletteFader{};

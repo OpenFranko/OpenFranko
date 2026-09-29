@@ -10,7 +10,7 @@
 namespace openfranko::src::engine::states::kneeAnimation {
 namespace {
 
-constexpr int IMAGES = 0x3B7;
+constexpr int IMAGE_SET = 0x3B7;
 constexpr int MENU_TUNE = 0x261;
 
 constexpr auto SAMPLE = "knee";
@@ -53,7 +53,7 @@ KneeAnimationState::KneeAnimationState(
   if (!version12) {
     controllerSystem.clearFireLatch();
   }
-  const std::string images = assets::resourceName(IMAGES, m_version);
+  const std::string images = assets::resourceName(IMAGE_SET, m_version);
   for (int image = 0; image < IMAGE_COUNT; ++image) {
     m_images.push_back(
         systems::graphics::loadIndexedBitmap(assets::partPath(images, image)));

@@ -11,7 +11,8 @@ EndingState::EndingState(systems::graphics::VideoSystem &videoSystem,
       m_host(audioSystem, session.version),
       m_scene(m_host, session, options.ntsc),
       m_rows(visibleRows(m_scene.displayLine(),
-                         street::scenes::EndingScene::HEIGHT, options.ntsc)) {
+                         street::scenes::EndingScene::SCREEN_HEIGHT,
+                         options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }
 

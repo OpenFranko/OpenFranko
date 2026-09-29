@@ -51,8 +51,8 @@ effects::color::AmigaPalette continuePalette() {
 
 ContinueScene::ContinueScene(StreetHost &host, session::GameSession &session)
     : m_host(host), m_session(session), m_machine(session.registers),
-      m_screen(WIDTH, HEIGHT), m_display(WIDTH, HEIGHT),
-      m_palette(COLORS, BLACK) {
+      m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
+      m_display(SCREEN_WIDTH, SCREEN_HEIGHT), m_palette(COLORS, BLACK) {
   const bool voices = session.version == GameVersion::V12;
   m_images.load(FIRST_IMAGE,
                 host.loadSpriteSet(LETTER_SET, voices ? VOICE_BANK : 0));
@@ -103,21 +103,22 @@ void ContinueScene::compose(std::vector<uint32_t> &frame) const {
 
 systems::graphics::Display ContinueScene::output() const {
   systems::graphics::Display display;
-  display.width = WIDTH;
-  display.height = HEIGHT;
-  display.displayHeight = HEIGHT;
+  display.width = SCREEN_WIDTH;
+  display.height = SCREEN_HEIGHT;
+  display.displayHeight = SCREEN_HEIGHT;
   display.border = m_session.border;
   if (!m_shown) {
     return display;
   }
   systems::graphics::Layer layer;
   layer.pixels = m_display.pixels().data();
-  layer.stride = WIDTH;
-  layer.sourceColumns = WIDTH;
+  layer.stride = SCREEN_WIDTH;
+  layer.sourceColumns = SCREEN_WIDTH;
   layer.sourceRows =
-      std::min(HEIGHT, static_cast<int>(m_display.pixels().size() / WIDTH));
-  layer.columns = WIDTH;
-  layer.rows = HEIGHT;
+      std::min(SCREEN_HEIGHT,
+               static_cast<int>(m_display.pixels().size() / SCREEN_WIDTH));
+  layer.columns = SCREEN_WIDTH;
+  layer.rows = SCREEN_HEIGHT;
   layer.mask = COLORS - 1;
   layer.palette = m_palette;
   display.layers.push_back(std::move(layer));

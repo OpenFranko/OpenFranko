@@ -10,20 +10,20 @@ namespace openfranko::src::systems::graphics {
 namespace {
 
 constexpr std::size_t HOTSPOT_X = 6;
-constexpr std::size_t HOTSPOT_Y = 8;
+constexpr std::size_t HOTSPOT_Y_OFFSET = 8;
 constexpr std::size_t PIXEL_OFFSET = 10;
 constexpr std::size_t FILE_HEADER_SIZE = 14;
-constexpr std::size_t WIDTH = 18;
-constexpr std::size_t HEIGHT = 22;
-constexpr std::size_t BITS = 28;
-constexpr std::size_t COMPRESSION = 30;
-constexpr std::size_t COLORS_USED = 46;
+constexpr std::size_t WIDTH_OFFSET = 18;
+constexpr std::size_t HEIGHT_OFFSET = 22;
+constexpr std::size_t BITS_OFFSET = 28;
+constexpr std::size_t COMPRESSION_OFFSET = 30;
+constexpr std::size_t COLORS_USED_OFFSET = 46;
 
 constexpr uint32_t INFO_HEADER_SIZE = 40;
 constexpr uint32_t INDEXED_BITS = 8;
 constexpr uint32_t UNCOMPRESSED = 0;
 constexpr uint32_t MAX_COLORS = 256;
-constexpr std::size_t PALETTE_ENTRY = 4;
+constexpr std::size_t PALETTE_ENTRY_SIZE = 4;
 constexpr std::size_t ROW_ALIGNMENT = 4;
 constexpr int CHANNEL_STEP = 17;
 
@@ -69,19 +69,19 @@ IndexedBitmap readIndexedBitmap(const std::vector<uint8_t> &file) {
   if (headerSize < INFO_HEADER_SIZE) {
     fail("Unsupported bitmap header");
   }
-  if (readLittleEndian(file, BITS, 2) != INDEXED_BITS ||
-      readLittleEndian(file, COMPRESSION, 4) != UNCOMPRESSED) {
+  if (readLittleEndian(file, BITS_OFFSET, 2) != INDEXED_BITS ||
+      readLittleEndian(file, COMPRESSION_OFFSET, 4) != UNCOMPRESSED) {
     fail("Not an 8-bit indexed bitmap");
   }
   const auto width = static_cast<int64_t>(
-      static_cast<int32_t>(readLittleEndian(file, WIDTH, 4)));
+      static_cast<int32_t>(readLittleEndian(file, WIDTH_OFFSET, 4)));
   const auto height = static_cast<int64_t>(
-      static_cast<int32_t>(readLittleEndian(file, HEIGHT, 4)));
+      static_cast<int32_t>(readLittleEndian(file, HEIGHT_OFFSET, 4)));
   const int64_t rows = height < 0 ? -height : height;
   if (width <= 0 || rows == 0) {
     fail("Empty bitmap");
   }
-  const uint32_t colorsUsed = readLittleEndian(file, COLORS_USED, 4);
+  const uint32_t colorsUsed = readLittleEndian(file, COLORS_USED_OFFSET, 4);
   const uint32_t colors = colorsUsed == 0 ? MAX_COLORS : colorsUsed;
   if (colors > MAX_COLORS) {
     fail("Too many bitmap colours");
@@ -99,12 +99,13 @@ IndexedBitmap readIndexedBitmap(const std::vector<uint8_t> &file) {
   bitmap.width = static_cast<int>(width);
   bitmap.height = static_cast<int>(rows);
   bitmap.hotspotX = static_cast<int>(readLittleEndian(file, HOTSPOT_X, 2));
-  bitmap.hotspotY = static_cast<int>(readLittleEndian(file, HOTSPOT_Y, 2));
+  bitmap.hotspotY =
+      static_cast<int>(readLittleEndian(file, HOTSPOT_Y_OFFSET, 2));
 
   const std::size_t paletteStart = FILE_HEADER_SIZE + headerSize;
   for (uint32_t color = 0; color < colors; ++color) {
-    bitmap.palette.push_back(toAmigaColor(
-        bytes(file, paletteStart + color * PALETTE_ENTRY, PALETTE_ENTRY)));
+    bitmap.palette.push_back(toAmigaColor(bytes(
+        file, paletteStart + color * PALETTE_ENTRY_SIZE, PALETTE_ENTRY_SIZE)));
   }
 
   bitmap.pixels.resize(static_cast<std::size_t>(width * rows));

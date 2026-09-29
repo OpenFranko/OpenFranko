@@ -145,9 +145,9 @@ void GameOverScene::compose(std::vector<uint32_t> &frame) const {
 
 systems::graphics::Display GameOverScene::output() const {
   systems::graphics::Display display;
-  display.width = WIDTH;
-  display.height = HEIGHT;
-  display.displayHeight = HEIGHT;
+  display.width = SCREEN_WIDTH;
+  display.height = SCREEN_HEIGHT;
+  display.displayHeight = SCREEN_HEIGHT;
   display.border = m_border;
   if (!m_shown || !m_buffer) {
     return display;
@@ -160,12 +160,12 @@ systems::graphics::Display GameOverScene::output() const {
   layer.sourceRows = PICTURE_HEIGHT;
   layer.sourceX = m_shownOffset;
   layer.wrap = true;
-  layer.columns = WIDTH;
-  layer.rows = HEIGHT;
+  layer.columns = SCREEN_WIDTH;
+  layer.rows = SCREEN_HEIGHT;
   layer.palette = m_palette;
   const int top = std::max(RAINBOW_Y, FIRST_RAINBOW_LINE);
   const int size = static_cast<int>(m_rainbow.size());
-  for (int row = 0; m_rainbowShown && size > 0 && row < HEIGHT; ++row) {
+  for (int row = 0; m_rainbowShown && size > 0 && row < SCREEN_HEIGHT; ++row) {
     const int line = SCREEN_TOP + row;
     if (line >= top && line < top + RAINBOW_LINES) {
       layer.rowColors.push_back({row, 0,

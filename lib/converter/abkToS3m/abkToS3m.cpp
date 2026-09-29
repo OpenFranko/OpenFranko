@@ -42,7 +42,7 @@ constexpr uint8_t S3M_NOTE_NONE = 0xFF;
 constexpr uint8_t S3M_NOTE_OFF = 0xFE;
 constexpr uint8_t S3M_VOLUME_NONE = 0xFF;
 
-constexpr int NUM_CHANNELS = 4;
+constexpr int CHANNEL_COUNT = 4;
 constexpr size_t MAX_S3M_PATTERNS = 254;
 constexpr uint16_t FRANKO_MENU_TEMPO = 37;
 
@@ -95,7 +95,7 @@ struct RowEvent {
 };
 
 struct Pattern {
-  RowEvent channels[NUM_CHANNELS][64];
+  RowEvent channels[CHANNEL_COUNT][64];
 };
 
 std::vector<AmosSample> parseSamples(const uint8_t *music, size_t musicSize,
@@ -134,7 +134,7 @@ std::vector<AmosSample> parseSamples(const uint8_t *music, size_t musicSize,
 
 struct SongInfo {
   uint16_t speed;
-  std::vector<uint16_t> orders[NUM_CHANNELS];
+  std::vector<uint16_t> orders[CHANNEL_COUNT];
   char name[17];
 };
 
@@ -154,7 +154,7 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
     return info;
   }
 
-  uint16_t chOff[NUM_CHANNELS];
+  uint16_t chOff[CHANNEL_COUNT];
   chOff[0] = read16(songBase);
   chOff[1] = read16(songBase + 2);
   chOff[2] = read16(songBase + 4);
@@ -163,7 +163,7 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
   std::memcpy(info.name, music + songBase + 12, 16);
   info.name[16] = '\0';
 
-  for (int channel = 0; channel < NUM_CHANNELS; channel++) {
+  for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
     size_t pos = songBase + chOff[channel];
     while (pos + 2 <= musicSize) {
       uint16_t val = read16(pos);
@@ -194,7 +194,7 @@ TrackInfo parseTrackData(const uint8_t *music, size_t musicSize,
     return info;
   }
   info.numSteps = read16(trackOff);
-  size_t numOffsets = static_cast<size_t>(info.numSteps) * NUM_CHANNELS;
+  size_t numOffsets = static_cast<size_t>(info.numSteps) * CHANNEL_COUNT;
   for (size_t i = 0; i < numOffsets; i++) {
     size_t pos = trackOff + 2 + i * 2;
     if (pos + 2 > musicSize) {
@@ -213,7 +213,7 @@ struct DecodedPattern {
 void decodeChannel(Pattern &pattern, int channel, const uint8_t *music,
                    size_t musicSize, const TrackInfo &track, uint16_t stepIdx,
                    int &channelEndRow) {
-  size_t tableIdx = static_cast<size_t>(stepIdx) * NUM_CHANNELS + channel;
+  size_t tableIdx = static_cast<size_t>(stepIdx) * CHANNEL_COUNT + channel;
   if (tableIdx >= track.offsets.size()) {
     return;
   }
@@ -344,29 +344,29 @@ void decodeChannel(Pattern &pattern, int channel, const uint8_t *music,
 
 DecodedPattern decodePattern(const uint8_t *music, size_t musicSize,
                              const TrackInfo &track,
-                             const uint16_t stepIndices[NUM_CHANNELS]) {
+                             const uint16_t stepIndices[CHANNEL_COUNT]) {
   Pattern pattern{};
   for (int row = 0; row < 64; row++) {
-    for (int channel = 0; channel < NUM_CHANNELS; channel++) {
+    for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
       pattern.channels[channel][row] = {S3M_NOTE_NONE, 0, S3M_VOLUME_NONE, 0,
                                         0};
     }
   }
 
-  int channelEndRows[NUM_CHANNELS] = {64, 64, 64, 64};
-  for (int channel = 0; channel < NUM_CHANNELS; channel++) {
+  int channelEndRows[CHANNEL_COUNT] = {64, 64, 64, 64};
+  for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
     decodeChannel(pattern, channel, music, musicSize, track,
                   stepIndices[channel], channelEndRows[channel]);
   }
 
   int endRow = 64;
-  for (int channel = 0; channel < NUM_CHANNELS; channel++) {
+  for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
     if (channelEndRows[channel] < endRow) {
       endRow = channelEndRows[channel];
     }
   }
   if (endRow < 64) {
-    for (int channel = 0; channel < NUM_CHANNELS; channel++) {
+    for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
       if (pattern.channels[channel][endRow].effect == 0) {
         pattern.channels[channel][endRow].effect = S3M_EFFECT_PATTERN_BREAK;
         pattern.channels[channel][endRow].effectParam = 0;
@@ -384,7 +384,7 @@ std::vector<uint8_t> packPattern(const Pattern &pattern) {
   packed.push_back(0);
 
   for (int row = 0; row < 64; row++) {
-    for (int channel = 0; channel < NUM_CHANNELS; channel++) {
+    for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
       const auto &event = pattern.channels[channel][row];
       uint8_t what = 0;
       if (event.note != S3M_NOTE_NONE || event.instrument != 0) {
@@ -447,7 +447,7 @@ SpeedTempo amosTempoToS3m(uint8_t amosTempo) {
 
 void fixSpeedEffects(Pattern &pattern) {
   for (int row = 0; row < 64; row++) {
-    for (int channel = 0; channel < NUM_CHANNELS; channel++) {
+    for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
       auto &event = pattern.channels[channel][row];
       if (event.effect != S3M_EFFECT_SPEED) {
         continue;
@@ -455,7 +455,7 @@ void fixSpeedEffects(Pattern &pattern) {
       auto st = amosTempoToS3m(event.effectParam);
       event.effectParam = st.speed;
       if (st.hasTempo) {
-        for (int ch2 = 0; ch2 < NUM_CHANNELS; ch2++) {
+        for (int ch2 = 0; ch2 < CHANNEL_COUNT; ch2++) {
           if (ch2 != channel && pattern.channels[ch2][row].effect == 0) {
             pattern.channels[ch2][row].effect = S3M_EFFECT_TEMPO;
             pattern.channels[ch2][row].effectParam = st.tempo;
@@ -474,13 +474,13 @@ std::vector<Pattern> decodeAllPatterns(const uint8_t *music, size_t musicSize,
   std::vector<Pattern> patterns;
 
   size_t songLen = 0;
-  for (int channel = 0; channel < NUM_CHANNELS; channel++) {
+  for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
     songLen = std::max(songLen, song.orders[channel].size());
   }
 
   for (size_t pos = 0; pos < songLen; pos++) {
-    uint16_t steps[NUM_CHANNELS];
-    for (int channel = 0; channel < NUM_CHANNELS; channel++) {
+    uint16_t steps[CHANNEL_COUNT];
+    for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
       steps[channel] =
           pos < song.orders[channel].size() ? song.orders[channel][pos] : 0;
     }
