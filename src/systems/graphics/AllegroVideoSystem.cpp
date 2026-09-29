@@ -186,7 +186,6 @@ void VideoSystem::waitVbl() {
   }
   ++window.nextVbl;
   while (vbls < window.nextVbl) {
-    rest(0);
   }
   if (vbls - window.nextVbl > 1) {
     window.nextVbl = vbls;
