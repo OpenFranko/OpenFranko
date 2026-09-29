@@ -11,7 +11,7 @@ namespace amosCompact {
 
 std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData);
 
-}
+} // namespace amosCompact
 } // namespace converter
 } // namespace lib
 } // namespace openfranko

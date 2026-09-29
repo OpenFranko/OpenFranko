@@ -32,7 +32,7 @@ enum class EngineStateId {
   Continue
 };
 
-}
+} // namespace states
 } // namespace engine
 } // namespace src
 } // namespace openfranko

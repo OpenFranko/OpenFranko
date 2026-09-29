@@ -3,8 +3,6 @@
 #include "BitReader.h"
 #include "ByteReader.h"
 
-#include <algorithm>
-#include <cstring>
 #include <stdexcept>
 #include <string>
 
@@ -66,16 +64,16 @@ void unpackChunkyPixels(UnpackedBitmap &bitmap) {
   for (size_t y = 0; y < bitmap.height; y++) {
     for (size_t x = 0; x < widthByBytes; x++) {
       uint8_t planeBytes[headers::MAX_SUPPORTED_BITPLANES];
-      for (int p = 0; p < bitmap.numberOfBitplanes; p++) {
-        planeBytes[p] = bitmap.bitplaneData[p][y * widthByBytes + x];
+      for (int plane = 0; plane < bitmap.numberOfBitplanes; plane++) {
+        planeBytes[plane] = bitmap.bitplaneData[plane][y * widthByBytes + x];
       }
 
       for (int bit = 7; bit >= 0; bit--) {
         int shift = 7 - bit;
         uint8_t pixelValue = 0;
-        for (int p = 0; p < bitmap.numberOfBitplanes; p++) {
+        for (int plane = 0; plane < bitmap.numberOfBitplanes; plane++) {
           pixelValue |=
-              static_cast<uint8_t>(((planeBytes[p] >> shift) & 1) << p);
+              static_cast<uint8_t>(((planeBytes[plane] >> shift) & 1) << plane);
         }
         bitmap
             .chunkyPixels[y * bitmap.width + x * 8 + static_cast<size_t>(bit)] =
@@ -88,8 +86,7 @@ void unpackChunkyPixels(UnpackedBitmap &bitmap) {
 } // namespace
 
 UnpackedBitmap unpackBitmap(const std::vector<uint8_t> &packedData,
-                            const headers::BitmapHeader &header,
-                            const std::vector<uint16_t> &palette) {
+                            const headers::BitmapHeader &header) {
   const size_t widthFull = static_cast<size_t>(header.gridX) * 8;
   const size_t heightFull =
       static_cast<size_t>(header.gridY) * header.tileHeight;
@@ -133,12 +130,9 @@ UnpackedBitmap unpackBitmap(const std::vector<uint8_t> &packedData,
   bitmap.height = heightInLines;
   bitmap.numberOfBitplanes = header.numberOfBitplanes;
   bitmap.bytesPerPlane = planeSize;
-  size_t paletteCopySize =
-      std::min(palette.size() * sizeof(uint16_t), sizeof(bitmap.palette));
-  std::memcpy(bitmap.palette, palette.data(), paletteCopySize);
   bitmap.bitplaneData.resize(bitmap.numberOfBitplanes);
-  for (int p = 0; p < bitmap.numberOfBitplanes; p++) {
-    bitmap.bitplaneData[p].assign(planeSize, 0);
+  for (int plane = 0; plane < bitmap.numberOfBitplanes; plane++) {
+    bitmap.bitplaneData[plane].assign(planeSize, 0);
   }
 
   ByteReader bytes1(packedData, byteTable1Pointer);

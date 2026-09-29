@@ -1,10 +1,10 @@
 #include "BitReader.h"
-#include "../../binary/binary.h"
-#include "consts.h"
+#include "../../../binary/binary.h"
+#include "../consts.h"
 
 #include <stdexcept>
 
-namespace openfranko::lib::decompressor::backwardLZ77 {
+namespace openfranko::lib::decompressor::backwardLZ77::detail {
 
 BitReader::BitReader(const std::vector<uint8_t> &data, size_t endPos,
                      uint32_t initialBuffer, uint32_t xorChecksum)
@@ -18,7 +18,6 @@ uint32_t BitReader::readBit() {
   m_buffer >>= 1;
 
   if (m_buffer == 0) {
-    // refill() saves the LSB of the new word into m_lastBitBeforeRefill
     refill();
     return m_lastBitBeforeRefill;
   }
@@ -27,7 +26,7 @@ uint32_t BitReader::readBit() {
 
 uint32_t BitReader::readBits(int count) {
   uint32_t result = 0;
-  for (int i = 0; i < count; ++i) {
+  for (int i = 0; i < count; i++) {
     result = (result << 1) | readBit();
   }
   return result;
@@ -48,4 +47,4 @@ void BitReader::refill() {
   m_buffer = (nextWord >> 1) | consts::BIT_SENTINEL;
 }
 
-} // namespace openfranko::lib::decompressor::backwardLZ77
+} // namespace openfranko::lib::decompressor::backwardLZ77::detail

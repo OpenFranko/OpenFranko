@@ -9,7 +9,6 @@
 namespace openfranko::lib::filesystem::readFile {
 
 std::vector<uint8_t> readFile(const std::string &filePath) {
-
   std::ifstream stream(filePath, std::ios::in | std::ios::binary);
   if (!stream) {
     throw std::runtime_error("Cannot open file for reading: " + filePath);

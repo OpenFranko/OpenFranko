@@ -14,10 +14,9 @@ namespace amosCompact {
 namespace detail {
 
 UnpackedBitmap unpackBitmap(const std::vector<uint8_t> &packedData,
-                            const headers::BitmapHeader &header,
-                            const std::vector<uint16_t> &palette);
+                            const headers::BitmapHeader &header);
 
-}
+} // namespace detail
 } // namespace amosCompact
 } // namespace converter
 } // namespace lib

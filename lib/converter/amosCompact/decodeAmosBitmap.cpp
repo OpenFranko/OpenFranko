@@ -23,22 +23,21 @@ DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
 
   std::vector<uint8_t> slice(data.begin() + static_cast<std::ptrdiff_t>(offset),
                              data.end());
-  std::vector<uint16_t> paletteColors(palette, palette + numberOfColors);
-
   auto header = headers::parseBitmapHeader(slice);
-  auto bitmap = detail::unpackBitmap(slice, header, paletteColors);
+  auto bitmap = detail::unpackBitmap(slice, header);
 
   DecodedImage image;
   image.width = bitmap.width;
   image.height = bitmap.height;
   if (!bitmap.chunkyPixels.empty() && bitmap.width > 0 && bitmap.height > 0) {
-    size_t n = static_cast<size_t>(bitmap.width) * bitmap.height;
-    if (bitmap.chunkyPixels.size() < n) {
+    const size_t numberOfPixels =
+        static_cast<size_t>(bitmap.width) * bitmap.height;
+    if (bitmap.chunkyPixels.size() < numberOfPixels) {
       throw std::runtime_error(
           "Unpacked bitmap is smaller than its dimensions");
     }
     image.pixels.assign(bitmap.chunkyPixels.begin(),
-                        bitmap.chunkyPixels.begin() + n);
+                        bitmap.chunkyPixels.begin() + numberOfPixels);
   }
 
   return image;

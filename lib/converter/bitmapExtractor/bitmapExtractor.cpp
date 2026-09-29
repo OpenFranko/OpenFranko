@@ -11,11 +11,15 @@
 
 namespace openfranko::lib::converter::bitmapExtractor {
 
-namespace pal = gameData::palettes;
-using converter::amosCompact::decodeAmosBitmap;
-using converter::amosCompact::DecodedImage;
-
 namespace {
+
+constexpr size_t MAGIC_SIZE = 4;
+constexpr size_t LONG_ENTRY_SIZE = 4;
+constexpr size_t WORD_ENTRY_SIZE = 2;
+constexpr size_t TILE_HEADER_SIZE = 4;
+constexpr size_t TILE_COUNT_OFFSET = 3;
+constexpr size_t TILE_LENGTH_SIZE = 2;
+constexpr uint16_t MIN_BITMAP_SIDE = 2;
 
 std::vector<size_t> findBmCodeOffsets(const std::vector<uint8_t> &data) {
   std::vector<size_t> offsets;
@@ -47,12 +51,13 @@ bool isScreenAt(const std::vector<uint8_t> &data, size_t offset) {
 
 std::vector<size_t> readBitmapTable(const std::vector<uint8_t> &data) {
   binary::BigEndianReader reader(data);
-  for (size_t entrySize : {size_t{4}, size_t{2}}) {
+  for (size_t entrySize : {LONG_ENTRY_SIZE, WORD_ENTRY_SIZE}) {
     if (data.size() < entrySize) {
       continue;
     }
     auto entry = [&](size_t pos) -> size_t {
-      return entrySize == 4 ? reader.readUint32(pos) : reader.readUint16(pos);
+      return entrySize == LONG_ENTRY_SIZE ? reader.readUint32(pos)
+                                          : reader.readUint16(pos);
     };
     const size_t first = entry(0);
     if (first == 0 || first % entrySize != 0 || !isBitmapAt(data, first)) {
@@ -68,33 +73,32 @@ std::vector<size_t> readBitmapTable(const std::vector<uint8_t> &data) {
 }
 
 std::vector<size_t> readTileChain(const std::vector<uint8_t> &data) {
-  constexpr size_t TILE_HEADER_SIZE = 4;
-  if (data.size() < TILE_HEADER_SIZE + 2) {
+  if (data.size() < TILE_HEADER_SIZE + TILE_LENGTH_SIZE) {
     throw std::runtime_error("Tile file is too small for its header");
   }
-  const uint8_t count = data[3];
+  const uint8_t count = data[TILE_COUNT_OFFSET];
   if (count == 0) {
     throw std::runtime_error("Tile file has no tiles");
   }
 
   binary::BigEndianReader reader(data);
   std::vector<size_t> offsets;
-  size_t offset = TILE_HEADER_SIZE + 2;
+  size_t offset = TILE_HEADER_SIZE + TILE_LENGTH_SIZE;
   for (int i = 0; i < count; i++) {
     if (!isBitmapAt(data, offset)) {
       throw std::runtime_error("Tile chain is broken at tile " +
                                std::to_string(i));
     }
     offsets.push_back(offset);
-    offset += reader.readUint16(offset - 2);
+    offset += reader.readUint16(offset - TILE_LENGTH_SIZE);
   }
   return offsets;
 }
 
-bool isTileFile(const std::string &id) {
+bool isTileFile(const std::string &fileId) {
   return std::find(gameData::fileIds::TILE_FILES.begin(),
                    gameData::fileIds::TILE_FILES.end(),
-                   gameData::version10Id(id)) !=
+                   gameData::version10Id(fileId)) !=
          gameData::fileIds::TILE_FILES.end();
 }
 
@@ -109,7 +113,7 @@ std::vector<uint16_t> readSpackPalette(const std::vector<uint8_t> &data,
   return {std::begin(header.amigaPalette), std::end(header.amigaPalette)};
 }
 
-std::string skipReason(const DecodedImage &image) {
+std::string skipReason(const amosCompact::DecodedImage &image) {
   if (image.pixels.empty()) {
     return "Bitmap decoded to an empty image";
   }
@@ -121,10 +125,11 @@ ExtractedBitmap convertBitmap(const std::vector<uint8_t> &data, size_t offset,
                               const std::vector<uint16_t> &palette,
                               const std::string &name, bool skipTiny) {
   try {
-    auto image = decodeAmosBitmap(data, offset, palette.data(),
-                                  static_cast<int>(palette.size()));
+    auto image = amosCompact::decodeAmosBitmap(
+        data, offset, palette.data(), static_cast<int>(palette.size()));
     if (image.pixels.empty() ||
-        (skipTiny && (image.width < 2 || image.height < 2))) {
+        (skipTiny &&
+         (image.width < MIN_BITMAP_SIDE || image.height < MIN_BITMAP_SIDE))) {
       return {name, {}, skipReason(image)};
     }
     auto bmp = bmpWriter::pixelsToBmp(image.width, image.height,
@@ -138,13 +143,13 @@ ExtractedBitmap convertBitmap(const std::vector<uint8_t> &data, size_t offset,
 
 std::vector<ExtractedBitmap> extractScCode(const std::vector<uint8_t> &data,
                                            const std::string &fileId) {
-  auto p = readSpackPalette(data, 0);
+  const auto palette = readSpackPalette(data, 0);
   auto offsets = findBmCodeOffsets(data);
 
   std::vector<ExtractedBitmap> results;
   for (size_t i = 0; i < offsets.size(); i++) {
     std::string name = (i == 0) ? fileId : fileId + "_" + std::to_string(i);
-    results.push_back(convertBitmap(data, offsets[i], p, name, false));
+    results.push_back(convertBitmap(data, offsets[i], palette, name, false));
   }
   return results;
 }
@@ -153,12 +158,13 @@ std::vector<ExtractedBitmap> extractTiles(const std::vector<uint8_t> &data,
                                           const std::string &fileId) {
   auto offsets = readTileChain(data);
 
-  const std::vector<uint16_t> palette(pal::LEVEL.begin(), pal::LEVEL.end());
+  const std::vector<uint16_t> palette(gameData::palettes::LEVEL.begin(),
+                                      gameData::palettes::LEVEL.end());
   std::vector<ExtractedBitmap> results;
   for (size_t i = 0; i < offsets.size(); i++) {
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%s_%03zu", fileId.c_str(), i);
-    results.push_back(convertBitmap(data, offsets[i], palette, buf, false));
+    char name[32];
+    snprintf(name, sizeof(name), "%s_%03zu", fileId.c_str(), i);
+    results.push_back(convertBitmap(data, offsets[i], palette, name, false));
   }
   return results;
 }
@@ -166,7 +172,7 @@ std::vector<ExtractedBitmap> extractTiles(const std::vector<uint8_t> &data,
 std::vector<ExtractedBitmap>
 extractMultiBmCode(const std::vector<uint8_t> &data,
                    const std::string &fileId) {
-  auto p = pal::selectPalette(fileId);
+  const auto palette = gameData::palettes::selectPalette(fileId);
   auto offsets = readBitmapTable(data);
   if (offsets.empty()) {
     offsets = findBmCodeOffsets(data);
@@ -175,20 +181,22 @@ extractMultiBmCode(const std::vector<uint8_t> &data,
   std::vector<ExtractedBitmap> results;
   for (size_t i = 0; i < offsets.size(); i++) {
     std::string name = (i == 0) ? fileId : fileId + "_" + std::to_string(i);
-    results.push_back(convertBitmap(data, offsets[i], p, name, true));
+    results.push_back(convertBitmap(data, offsets[i], palette, name, true));
   }
   return results;
 }
 
 std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data,
                                          const std::string &fileId) {
-  std::vector<uint16_t> curPal(pal::HUD.begin(), pal::HUD.end());
+  std::vector<uint16_t> palette(gameData::palettes::HUD.begin(),
+                                gameData::palettes::HUD.end());
 
   std::vector<ExtractedBitmap> results;
   binary::BigEndianReader reader(data);
 
   size_t firstImage = data.size();
-  for (size_t pos = 0; pos + 2 <= firstImage; pos += 2) {
+  for (size_t pos = 0; pos + WORD_ENTRY_SIZE <= firstImage;
+       pos += WORD_ENTRY_SIZE) {
     size_t offset = reader.readUint16(pos);
     const bool screen = isScreenAt(data, offset);
     if (offset <= pos || (!screen && !isBitmapAt(data, offset))) {
@@ -196,22 +204,22 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data,
     }
     firstImage = std::min(firstImage, offset);
     if (screen) {
-      curPal = readSpackPalette(data, offset);
+      palette = readSpackPalette(data, offset);
       offset += headers::SPACK_HEADER_SIZE;
     }
     const size_t index = results.size();
     std::string name =
         (index == 0) ? fileId : fileId + "_" + std::to_string(index);
-    results.push_back(convertBitmap(data, offset, curPal, name, true));
+    results.push_back(convertBitmap(data, offset, palette, name, true));
   }
   return results;
 }
 
-} // anonymous namespace
+} // namespace
 
 std::vector<ExtractedBitmap> extract(const std::vector<uint8_t> &data,
                                      const std::string &fileId) {
-  if (data.size() < 4) {
+  if (data.size() < MAGIC_SIZE) {
     throw std::runtime_error("Data too small to extract bitmaps");
   }
 

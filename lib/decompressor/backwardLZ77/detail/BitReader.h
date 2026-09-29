@@ -8,6 +8,7 @@ namespace openfranko {
 namespace lib {
 namespace decompressor {
 namespace backwardLZ77 {
+namespace detail {
 
 class BitReader {
 public:
@@ -29,6 +30,7 @@ private:
   uint32_t m_lastBitBeforeRefill = 0;
 };
 
+} // namespace detail
 } // namespace backwardLZ77
 } // namespace decompressor
 } // namespace lib

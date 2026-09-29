@@ -14,7 +14,6 @@ struct UnpackedBitmap {
   uint16_t width = 0;
   uint16_t height = 0;
   uint16_t numberOfBitplanes = 0;
-  uint16_t palette[32] = {};
   std::vector<std::vector<uint8_t>> bitplaneData;
   size_t bytesPerPlane = 0;
   std::vector<uint8_t> chunkyPixels;

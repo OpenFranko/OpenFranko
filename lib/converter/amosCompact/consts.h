@@ -10,10 +10,10 @@ namespace converter {
 namespace amosCompact {
 namespace consts {
 
-constexpr uint32_t MINIMAL_SIZE = 4;
+inline constexpr uint32_t MINIMAL_SIZE = 4;
 
-constexpr size_t MAX_BITMAP_DIMENSION = 65535;
-constexpr size_t MAX_BITMAP_PIXELS = 64u * 1024u * 1024u;
+inline constexpr size_t MAX_BITMAP_DIMENSION = 65535;
+inline constexpr size_t MAX_BITMAP_PIXELS = 64u * 1024u * 1024u;
 
 } // namespace consts
 } // namespace amosCompact

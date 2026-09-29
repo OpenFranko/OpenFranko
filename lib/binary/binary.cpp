@@ -31,6 +31,10 @@ uint16_t BigEndianReader::readUint16(size_t pos) const {
          (static_cast<uint16_t>(m_data[pos + 1]) << 0);
 }
 
+int32_t BigEndianReader::readInt32(size_t pos) const {
+  return static_cast<int32_t>(readUint32(pos));
+}
+
 int16_t BigEndianReader::readInt16(size_t pos) const {
   return static_cast<int16_t>(readUint16(pos));
 }
@@ -60,28 +64,44 @@ void LittleEndianReader::require(size_t pos, size_t count) const {
   requireBytes(m_data, pos, count);
 }
 
-void pushBigEndian16(std::vector<uint8_t> &buf, uint16_t v) {
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v));
+void pushBigEndian16(std::vector<uint8_t> &buf, uint16_t value) {
+  buf.push_back(static_cast<uint8_t>(value >> 8));
+  buf.push_back(static_cast<uint8_t>(value));
 }
 
-void pushBigEndian32(std::vector<uint8_t> &buf, uint32_t v) {
-  buf.push_back(static_cast<uint8_t>(v >> 24));
-  buf.push_back(static_cast<uint8_t>(v >> 16));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v));
+void pushBigEndian32(std::vector<uint8_t> &buf, uint32_t value) {
+  buf.push_back(static_cast<uint8_t>(value >> 24));
+  buf.push_back(static_cast<uint8_t>(value >> 16));
+  buf.push_back(static_cast<uint8_t>(value >> 8));
+  buf.push_back(static_cast<uint8_t>(value));
 }
 
-void pushLittleEndian16(std::vector<uint8_t> &buf, uint16_t v) {
-  buf.push_back(static_cast<uint8_t>(v));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
+void pushLittleEndian16(std::vector<uint8_t> &buf, uint16_t value) {
+  buf.push_back(static_cast<uint8_t>(value));
+  buf.push_back(static_cast<uint8_t>(value >> 8));
 }
 
-void pushLittleEndian32(std::vector<uint8_t> &buf, uint32_t v) {
-  buf.push_back(static_cast<uint8_t>(v));
-  buf.push_back(static_cast<uint8_t>(v >> 8));
-  buf.push_back(static_cast<uint8_t>(v >> 16));
-  buf.push_back(static_cast<uint8_t>(v >> 24));
+void pushLittleEndian32(std::vector<uint8_t> &buf, uint32_t value) {
+  buf.push_back(static_cast<uint8_t>(value));
+  buf.push_back(static_cast<uint8_t>(value >> 8));
+  buf.push_back(static_cast<uint8_t>(value >> 16));
+  buf.push_back(static_cast<uint8_t>(value >> 24));
+}
+
+void writeLittleEndian16(std::vector<uint8_t> &buf, size_t pos,
+                         uint16_t value) {
+  requireBytes(buf, pos, 2);
+  buf[pos] = static_cast<uint8_t>(value);
+  buf[pos + 1] = static_cast<uint8_t>(value >> 8);
+}
+
+void writeLittleEndian32(std::vector<uint8_t> &buf, size_t pos,
+                         uint32_t value) {
+  requireBytes(buf, pos, 4);
+  buf[pos] = static_cast<uint8_t>(value);
+  buf[pos + 1] = static_cast<uint8_t>(value >> 8);
+  buf[pos + 2] = static_cast<uint8_t>(value >> 16);
+  buf[pos + 3] = static_cast<uint8_t>(value >> 24);
 }
 
 void padTo16(std::vector<uint8_t> &buf) {

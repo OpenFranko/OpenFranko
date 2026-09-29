@@ -17,7 +17,9 @@ namespace consts {
 inline constexpr uint8_t EMPTY_SLOT = 0xFF;
 inline constexpr size_t SLOTS_PER_WAVE = 3;
 inline constexpr size_t SLOT_SIZE = 8;
-inline constexpr size_t WAVE_SIZE = 2 + SLOTS_PER_WAVE * SLOT_SIZE;
+inline constexpr size_t TRIGGER_COLUMN_SIZE = 2;
+inline constexpr size_t WAVE_SIZE =
+    TRIGGER_COLUMN_SIZE + SLOTS_PER_WAVE * SLOT_SIZE;
 inline constexpr size_t HEADER_SIZE = 2;
 
 } // namespace consts
@@ -28,7 +30,7 @@ inline constexpr uint8_t BALD = 0;
 inline constexpr uint8_t FROG = 1;
 inline constexpr uint8_t KID = 2;
 
-inline constexpr const char *name(uint8_t kind) {
+constexpr const char *name(uint8_t kind) {
   switch (kind) {
   case BALD:
     return "bald";
@@ -64,7 +66,7 @@ struct Level {
   std::vector<Wave> waves;
 };
 
-Level parse(const std::vector<uint8_t> &decompressedData);
+Level parse(const std::vector<uint8_t> &data);
 
 std::vector<uint8_t> toJson(const Level &level, const std::string &fileId);
 

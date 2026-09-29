@@ -1,6 +1,7 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/gameData/gameData.h"
+#include "../../lib/converter/gameData/palettes.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
@@ -48,7 +49,7 @@ int main(int argc, char **argv) {
     const auto palette =
         paletteOption.has_value()
             ? converter::gameData::palettes::byName(paletteOption.value())
-            : converter::spriteSheet::selectPalette(fileId);
+            : converter::gameData::palettes::selectPalette(fileId);
 
     const auto &decompressed = resource.data;
     std::cerr << "Decompressed to " << decompressed.size() << " bytes"
@@ -57,7 +58,7 @@ int main(int argc, char **argv) {
     const auto header = converter::spriteSheet::parseHeader(decompressed);
     std::cerr << "Sprite bank: " << header.count << " sprites, max "
               << header.maxWidth << "x" << header.maxHeight << ", "
-              << header.numColors << " colors" << std::endl;
+              << header.numberOfColors << " colors" << std::endl;
 
     const auto sheet =
         converter::spriteSheet::convertToSheet(decompressed, palette);
@@ -68,8 +69,8 @@ int main(int argc, char **argv) {
       }
     }
     const std::string outputPath = outputOption.value_or(fileId + "_sheet.bmp");
-    filesystem::writeFile::writeFile(outputPath, sheet.bmpData);
-    std::cerr << "Wrote " << outputPath << " (" << sheet.bmpData.size()
+    filesystem::writeFile::writeFile(outputPath, sheet.data);
+    std::cerr << "Wrote " << outputPath << " (" << sheet.data.size()
               << " bytes)" << std::endl;
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;

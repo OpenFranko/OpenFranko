@@ -24,7 +24,7 @@ public:
   static constexpr int MAX_VOLUME = 64;
   static constexpr int SAMPLE_VOLUME = 56;
 
-  explicit Mixer(int rate);
+  explicit Mixer(int outputRate);
   ~Mixer();
 
   Mixer(const Mixer &) = delete;

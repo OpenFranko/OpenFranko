@@ -1,6 +1,7 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
 #include "../../lib/converter/gameData/gameData.h"
+#include "../../lib/converter/gameData/palettes.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
@@ -49,7 +50,7 @@ int main(int argc, char **argv) {
     const auto palette =
         paletteOption.has_value()
             ? converter::gameData::palettes::byName(paletteOption.value())
-            : converter::spriteSheet::selectPalette(fileId);
+            : converter::gameData::palettes::selectPalette(fileId);
 
     const auto &decompressed = resource.data;
     std::cerr << "Decompressed to " << decompressed.size() << " bytes"
@@ -83,7 +84,7 @@ int main(int argc, char **argv) {
     }
     int written = 0;
     for (int i = 0; i < static_cast<int>(sprites.size()); i++) {
-      if (sprites[i].bmpData.empty()) {
+      if (sprites[i].data.empty()) {
         std::cerr << "Skipped sprite " << i << ": " << sprites[i].error
                   << std::endl;
         continue;
@@ -91,8 +92,8 @@ int main(int argc, char **argv) {
       char name[32];
       snprintf(name, sizeof(name), "%s_%03d.bmp", fileId.c_str(), i);
       const std::string path = outputDir + "/" + name;
-      filesystem::writeFile::writeFile(path, sprites[i].bmpData);
-      std::cerr << "Wrote " << path << " (" << sprites[i].bmpData.size()
+      filesystem::writeFile::writeFile(path, sprites[i].data);
+      std::cerr << "Wrote " << path << " (" << sprites[i].data.size()
                 << " bytes)" << std::endl;
       written++;
     }

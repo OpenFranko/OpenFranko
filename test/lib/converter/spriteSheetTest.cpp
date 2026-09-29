@@ -1,5 +1,6 @@
 #include "../../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../../lib/binary/binary.h"
+#include "../../../lib/converter/gameData/palettes.h"
 #include "buildPackedBitmap.h"
 
 #include <catch2/catch_all.hpp>
@@ -50,7 +51,7 @@ SCENARIO("parseHeader reads sprite bank header and descriptors") {
         REQUIRE(header.count == 2);
         REQUIRE(header.maxWidth == 64);
         REQUIRE(header.maxHeight == 32);
-        REQUIRE(header.numColors == 16);
+        REQUIRE(header.numberOfColors == 16);
         REQUIRE(header.samBankOffset == 0x1000);
       }
 
@@ -108,77 +109,6 @@ SCENARIO("parseHeader reads sprite bank header and descriptors") {
   }
 }
 
-SCENARIO("selectPalette returns the correct palette for known file IDs") {
-  GIVEN("Known file IDs with specific palettes") {
-    WHEN("selectPalette is called with '0038'") {
-      auto p = selectPalette("0038");
-      THEN("It returns SUNSET") {
-        REQUIRE(p.size() == palettes::SUNSET.size());
-        REQUIRE(p[0] == palettes::SUNSET[0]);
-        REQUIRE(p[15] == palettes::SUNSET[15]);
-      }
-    }
-
-    WHEN("selectPalette is called with '0037'") {
-      auto p = selectPalette("0037");
-      THEN("It returns STORY") {
-        REQUIRE(p.size() == palettes::STORY.size());
-        REQUIRE(p[0] == palettes::STORY[0]);
-      }
-    }
-
-    WHEN("selectPalette is called with '0034'") {
-      auto p = selectPalette("0034");
-      THEN("It returns MENU") {
-        REQUIRE(p.size() == palettes::MENU.size());
-        REQUIRE(p[0] == palettes::MENU[0]);
-      }
-    }
-
-    WHEN("selectPalette is called with '0035'") {
-      auto p = selectPalette("0035");
-      THEN("It returns MENU_35") {
-        REQUIRE(p.size() == palettes::MENU_35.size());
-        REQUIRE(p[0] == palettes::MENU_35[0]);
-      }
-    }
-
-    WHEN("selectPalette is called with '0036'") {
-      auto p = selectPalette("0036");
-      THEN("It returns CEMETERY") {
-        REQUIRE(p.size() == palettes::CEMETERY.size());
-        REQUIRE(p[0] == palettes::CEMETERY[0]);
-      }
-    }
-
-    WHEN("selectPalette is called with the 1.2 counterparts of those files") {
-      THEN("They get the same palettes") {
-        REQUIRE(selectPalette("s56")[15] == palettes::SUNSET[15]);
-        REQUIRE(selectPalette("s55").size() == palettes::STORY.size());
-        REQUIRE(selectPalette("s52")[7] == palettes::MENU[7]);
-        REQUIRE(selectPalette("s53").size() == palettes::MENU_35.size());
-        REQUIRE(selectPalette("s54")[2] == palettes::CEMETERY[2]);
-      }
-    }
-
-    WHEN("selectPalette is called with 's50'") {
-      auto p = selectPalette("s50");
-      THEN("It returns WORLD_SOFTWARE") {
-        REQUIRE(p.size() == palettes::WORLD_SOFTWARE.size());
-        REQUIRE(p[1] == palettes::WORLD_SOFTWARE[1]);
-      }
-    }
-
-    WHEN("selectPalette is called with an unknown ID") {
-      auto p = selectPalette("9999");
-      THEN("It returns LEVEL as default") {
-        REQUIRE(p.size() == palettes::LEVEL.size());
-        REQUIRE(p[0] == palettes::LEVEL[0]);
-      }
-    }
-  }
-}
-
 SCENARIO("Sprite conversion says why a sprite could not be converted") {
   GIVEN("A bank with a valid sprite, one without a bitmap and one past the "
         "end") {
@@ -201,18 +131,18 @@ SCENARIO("Sprite conversion says why a sprite could not be converted") {
 
       THEN("The valid sprite is converted to a BMP") {
         REQUIRE(sprites[0].error.empty());
-        REQUIRE(sprites[0].bmpData.size() > 2);
-        REQUIRE(sprites[0].bmpData[0] == 'B');
-        REQUIRE(sprites[0].bmpData[1] == 'M');
+        REQUIRE(sprites[0].data.size() > 2);
+        REQUIRE(sprites[0].data[0] == 'B');
+        REQUIRE(sprites[0].data[1] == 'M');
       }
 
       THEN("A sprite pointing at non-bitmap data says so") {
-        REQUIRE(sprites[1].bmpData.empty());
+        REQUIRE(sprites[1].data.empty());
         REQUIRE(sprites[1].error == "Invalid bitmap magic number");
       }
 
       THEN("A sprite pointing past the end says so") {
-        REQUIRE(sprites[2].bmpData.empty());
+        REQUIRE(sprites[2].data.empty());
         REQUIRE(sprites[2].error == "Data too small for bitmap header");
       }
     }
@@ -222,9 +152,9 @@ SCENARIO("Sprite conversion says why a sprite could not be converted") {
       REQUIRE(sheet.spriteErrors.size() == 3);
 
       THEN("The sheet is still written as a BMP") {
-        REQUIRE(sheet.bmpData.size() > 2);
-        REQUIRE(sheet.bmpData[0] == 'B');
-        REQUIRE(sheet.bmpData[1] == 'M');
+        REQUIRE(sheet.data.size() > 2);
+        REQUIRE(sheet.data[0] == 'B');
+        REQUIRE(sheet.data[1] == 'M');
       }
 
       THEN("Each skipped sprite has its reason") {
@@ -243,8 +173,8 @@ SCENARIO("applySpritePaletteFixes makes the sunset bank's font white") {
     const std::vector<uint8_t> fixedEntries = {0xFF, 0xFF, 0xFF, 0x00,
                                                0xAA, 0xAA, 0xAA, 0x00};
     auto entries1And2 = [](const ConvertedSprite &sprite) {
-      return std::vector<uint8_t>(sprite.bmpData.begin() + 58,
-                                  sprite.bmpData.begin() + 66);
+      return std::vector<uint8_t>(sprite.data.begin() + 58,
+                                  sprite.data.begin() + 66);
     };
 
     WHEN("They come from bank 0038") {
@@ -282,13 +212,13 @@ SCENARIO("applySpritePaletteFixes makes the sunset bank's font white") {
       sprites[43] = {{}, "Invalid bitmap magic number"};
       applySpritePaletteFixes("0038", sprites);
 
-      THEN("It stays empty") { REQUIRE(sprites[43].bmpData.empty()); }
+      THEN("It stays empty") { REQUIRE(sprites[43].data.empty()); }
     }
   }
 }
 
 SCENARIO("applyScreenPalette colours s50's logo reflection like the logo") {
-  GIVEN("Eleven converted sprites and a 16-colour packed screen") {
+  GIVEN("Eleven converted sprites and a 16-color packed screen") {
     std::vector<ConvertedSprite> sprites(
         11, ConvertedSprite{std::vector<uint8_t>(1078, 0), {}});
     std::vector<uint8_t> screen;
@@ -296,14 +226,14 @@ SCENARIO("applyScreenPalette colours s50's logo reflection like the logo") {
     for (uint16_t value : {320, 256, 0, 0, 320, 256, 0, 0, 0, 16, 4}) {
       pushBigEndian16(screen, value);
     }
-    for (uint16_t colour = 0; colour < 32; colour++) {
-      pushBigEndian16(screen, colour == 14   ? 0x035
-                              : colour == 16 ? 0xFFF
-                                             : 0x000);
+    for (uint16_t color = 0; color < 32; color++) {
+      pushBigEndian16(screen, color == 14   ? 0x035
+                              : color == 16 ? 0xFFF
+                                            : 0x000);
     }
     auto entry = [](const ConvertedSprite &sprite, int index) {
-      return std::vector<uint8_t>(sprite.bmpData.begin() + 54 + index * 4,
-                                  sprite.bmpData.begin() + 58 + index * 4);
+      return std::vector<uint8_t>(sprite.data.begin() + 54 + index * 4,
+                                  sprite.data.begin() + 58 + index * 4);
     };
     const std::vector<uint8_t> unchanged(4, 0);
 

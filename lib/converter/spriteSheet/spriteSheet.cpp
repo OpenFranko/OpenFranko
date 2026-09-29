@@ -2,6 +2,7 @@
 #include "../../binary/binary.h"
 #include "../../bmpWriter/bmpWriter.h"
 #include "../amosCompact/decodeAmosBitmap.h"
+#include "../gameData/gameData.h"
 #include "../headers/headers.h"
 
 #include <algorithm>
@@ -10,25 +11,38 @@
 
 namespace openfranko::lib::converter::spriteSheet {
 
-using converter::amosCompact::decodeAmosBitmap;
-using converter::amosCompact::DecodedImage;
+namespace {
 
-static constexpr size_t BANK_HEADER_SIZE = 12;
-static constexpr size_t DESCRIPTOR_SIZE = 10;
-static constexpr size_t BMP_HOTSPOT_X_OFFSET = 6;
-static constexpr size_t BMP_HOTSPOT_Y_OFFSET = 8;
-static constexpr size_t BMP_PALETTE_OFFSET = 54;
+constexpr size_t BANK_HEADER_SIZE = 12;
+constexpr size_t BANK_MAX_WIDTH_OFFSET = 2;
+constexpr size_t BANK_MAX_HEIGHT_OFFSET = 4;
+constexpr size_t BANK_COLORS_OFFSET = 6;
+constexpr size_t BANK_SAM_BANK_POINTER_OFFSET = 8;
+constexpr uint16_t MAX_SPRITE_COUNT = 200;
 
-static constexpr int FONT_FIRST_SPRITE = 43;
-static constexpr int FONT_LAST_SPRITE = 100;
+constexpr size_t DESCRIPTOR_SIZE = 10;
+constexpr size_t DESCRIPTOR_WIDTH_WORDS_OFFSET = 2;
+constexpr size_t DESCRIPTOR_HEIGHT_OFFSET = 4;
+constexpr size_t DESCRIPTOR_HOTSPOT_X_OFFSET = 6;
+constexpr size_t DESCRIPTOR_HOTSPOT_Y_OFFSET = 8;
 
-static constexpr int LOGO_REFLECTION_FIRST_SPRITE = 4;
-static constexpr int LOGO_REFLECTION_LAST_SPRITE = 9;
+constexpr size_t BMP_HOTSPOT_X_OFFSET = 6;
+constexpr size_t BMP_HOTSPOT_Y_OFFSET = 8;
+constexpr size_t BMP_HOTSPOT_SIZE = 2;
+constexpr size_t BMP_PALETTE_OFFSET = 54;
+constexpr size_t BMP_PALETTE_ENTRY_SIZE = 4;
 
-static void setBmpPaletteEntry(std::vector<uint8_t> &bmp, int index, uint8_t r,
-                               uint8_t g, uint8_t b) {
-  size_t offset = BMP_PALETTE_OFFSET + static_cast<size_t>(index) * 4;
-  if (offset + 4 > bmp.size()) {
+constexpr int FONT_FIRST_SPRITE = 43;
+constexpr int FONT_LAST_SPRITE = 100;
+
+constexpr int LOGO_REFLECTION_FIRST_SPRITE = 4;
+constexpr int LOGO_REFLECTION_LAST_SPRITE = 9;
+
+void setBmpPaletteEntry(std::vector<uint8_t> &bmp, int index, uint8_t r,
+                        uint8_t g, uint8_t b) {
+  size_t offset =
+      BMP_PALETTE_OFFSET + static_cast<size_t>(index) * BMP_PALETTE_ENTRY_SIZE;
+  if (offset + BMP_PALETTE_ENTRY_SIZE > bmp.size()) {
     return;
   }
   bmp[offset + 0] = b;
@@ -38,15 +52,16 @@ static void setBmpPaletteEntry(std::vector<uint8_t> &bmp, int index, uint8_t r,
 }
 
 void embedBmpHotspot(std::vector<uint8_t> &bmp, uint16_t x, uint16_t y) {
-  if (bmp.size() < 10 || bmp[0] != 'B' || bmp[1] != 'M') {
+  if (bmp.size() < BMP_HOTSPOT_Y_OFFSET + BMP_HOTSPOT_SIZE || bmp[0] != 'B' ||
+      bmp[1] != 'M') {
     return;
   }
 
-  bmp[BMP_HOTSPOT_X_OFFSET + 0] = static_cast<uint8_t>(x & 0xFF);
-  bmp[BMP_HOTSPOT_X_OFFSET + 1] = static_cast<uint8_t>((x >> 8) & 0xFF);
-  bmp[BMP_HOTSPOT_Y_OFFSET + 0] = static_cast<uint8_t>(y & 0xFF);
-  bmp[BMP_HOTSPOT_Y_OFFSET + 1] = static_cast<uint8_t>((y >> 8) & 0xFF);
+  binary::writeLittleEndian16(bmp, BMP_HOTSPOT_X_OFFSET, x);
+  binary::writeLittleEndian16(bmp, BMP_HOTSPOT_Y_OFFSET, y);
 }
+
+} // namespace
 
 SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
   if (data.size() < BANK_HEADER_SIZE) {
@@ -56,12 +71,12 @@ SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
   SpriteBankHeader header;
   binary::BigEndianReader reader(data);
   header.count = reader.readUint16(0);
-  header.maxWidth = reader.readUint16(2);
-  header.maxHeight = reader.readUint16(4);
-  header.numColors = reader.readUint16(6);
-  header.samBankOffset = reader.readUint32(8);
+  header.maxWidth = reader.readUint16(BANK_MAX_WIDTH_OFFSET);
+  header.maxHeight = reader.readUint16(BANK_MAX_HEIGHT_OFFSET);
+  header.numberOfColors = reader.readUint16(BANK_COLORS_OFFSET);
+  header.samBankOffset = reader.readUint32(BANK_SAM_BANK_POINTER_OFFSET);
 
-  if (header.count == 0 || header.count > 200) {
+  if (header.count == 0 || header.count > MAX_SPRITE_COUNT) {
     throw std::runtime_error("Invalid sprite count: " +
                              std::to_string(header.count));
   }
@@ -74,11 +89,15 @@ SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
   header.descriptors.resize(header.count);
   for (uint16_t i = 0; i < header.count; i++) {
     size_t off = BANK_HEADER_SIZE + i * DESCRIPTOR_SIZE;
-    header.descriptors[i].wordOffset = reader.readUint16(off + 0);
-    header.descriptors[i].widthWords = reader.readUint16(off + 2);
-    header.descriptors[i].height = reader.readUint16(off + 4);
-    header.descriptors[i].hotspotX = reader.readUint16(off + 6);
-    header.descriptors[i].hotspotY = reader.readUint16(off + 8);
+    header.descriptors[i].wordOffset = reader.readUint16(off);
+    header.descriptors[i].widthWords =
+        reader.readUint16(off + DESCRIPTOR_WIDTH_WORDS_OFFSET);
+    header.descriptors[i].height =
+        reader.readUint16(off + DESCRIPTOR_HEIGHT_OFFSET);
+    header.descriptors[i].hotspotX =
+        reader.readUint16(off + DESCRIPTOR_HOTSPOT_X_OFFSET);
+    header.descriptors[i].hotspotY =
+        reader.readUint16(off + DESCRIPTOR_HOTSPOT_Y_OFFSET);
   }
 
   return header;
@@ -92,29 +111,30 @@ SpriteSheet convertToSheet(const std::vector<uint8_t> &data,
 
   auto header = parseHeader(data);
 
-  std::vector<DecodedImage> sprites;
+  std::vector<amosCompact::DecodedImage> sprites;
   sprites.reserve(header.count);
   std::vector<std::string> spriteErrors(header.count);
 
-  uint16_t maxW = 0;
-  uint16_t maxH = 0;
-  int okCount = 0;
+  uint16_t maxWidth = 0;
+  uint16_t maxHeight = 0;
+  int numberOfDecoded = 0;
 
   for (uint16_t i = 0; i < header.count; i++) {
-    size_t bmPos = BANK_HEADER_SIZE +
-                   static_cast<size_t>(header.descriptors[i].wordOffset) * 2;
+    size_t bitmapPos =
+        BANK_HEADER_SIZE +
+        static_cast<size_t>(header.descriptors[i].wordOffset) * 2;
 
     try {
-      auto image = decodeAmosBitmap(data, bmPos, palette.data(),
-                                    static_cast<int>(palette.size()));
+      auto image = amosCompact::decodeAmosBitmap(
+          data, bitmapPos, palette.data(), static_cast<int>(palette.size()));
       if (!image.pixels.empty()) {
-        if (image.width > maxW) {
-          maxW = image.width;
+        if (image.width > maxWidth) {
+          maxWidth = image.width;
         }
-        if (image.height > maxH) {
-          maxH = image.height;
+        if (image.height > maxHeight) {
+          maxHeight = image.height;
         }
-        okCount++;
+        numberOfDecoded++;
       } else {
         spriteErrors[i] = "Sprite decoded to an empty image";
       }
@@ -125,37 +145,39 @@ SpriteSheet convertToSheet(const std::vector<uint8_t> &data,
     }
   }
 
-  if (okCount == 0) {
+  if (numberOfDecoded == 0) {
     throw std::runtime_error("No valid sprites found in bank");
   }
 
   int rows = (header.count + columns - 1) / columns;
-  uint32_t cellW = maxW + 2;
-  uint32_t cellH = maxH + 2;
-  uint32_t sheetW = static_cast<uint32_t>(columns) * cellW;
-  uint32_t sheetH = static_cast<uint32_t>(rows) * cellH;
+  uint32_t cellWidth = maxWidth + 2;
+  uint32_t cellHeight = maxHeight + 2;
+  uint32_t sheetWidth = static_cast<uint32_t>(columns) * cellWidth;
+  uint32_t sheetHeight = static_cast<uint32_t>(rows) * cellHeight;
 
-  std::vector<uint8_t> sheet(sheetW * sheetH, 0);
+  std::vector<uint8_t> sheet(sheetWidth * sheetHeight, 0);
 
   for (int i = 0; i < static_cast<int>(sprites.size()); i++) {
-    const auto &spr = sprites[i];
-    if (spr.pixels.empty()) {
+    const auto &sprite = sprites[i];
+    if (sprite.pixels.empty()) {
       continue;
     }
 
-    int col = i % columns;
+    int column = i % columns;
     int row = i / columns;
-    uint32_t ox = static_cast<uint32_t>(col) * cellW + 1;
-    uint32_t oy = static_cast<uint32_t>(row) * cellH + 1;
+    uint32_t cellX = static_cast<uint32_t>(column) * cellWidth + 1;
+    uint32_t cellY = static_cast<uint32_t>(row) * cellHeight + 1;
 
-    for (uint32_t y = 0; y < spr.height; y++) {
-      for (uint32_t x = 0; x < spr.width; x++) {
-        sheet[(oy + y) * sheetW + (ox + x)] = spr.pixels[y * spr.width + x];
+    for (uint32_t y = 0; y < sprite.height; y++) {
+      for (uint32_t x = 0; x < sprite.width; x++) {
+        sheet[(cellY + y) * sheetWidth + (cellX + x)] =
+            sprite.pixels[y * sprite.width + x];
       }
     }
   }
 
-  return {bmpWriter::pixelsToBmp(sheetW, sheetH, sheet.data(), palette.data(),
+  return {bmpWriter::pixelsToBmp(sheetWidth, sheetHeight, sheet.data(),
+                                 palette.data(),
                                  static_cast<int>(palette.size())),
           std::move(spriteErrors)};
 }
@@ -170,12 +192,12 @@ convertToIndividual(const std::vector<uint8_t> &data,
 
   for (uint16_t i = 0; i < header.count; i++) {
     const auto &descriptor = header.descriptors[i];
-    size_t bmPos =
+    size_t bitmapPos =
         BANK_HEADER_SIZE + static_cast<size_t>(descriptor.wordOffset) * 2;
 
     try {
-      auto image = decodeAmosBitmap(data, bmPos, palette.data(),
-                                    static_cast<int>(palette.size()));
+      auto image = amosCompact::decodeAmosBitmap(
+          data, bitmapPos, palette.data(), static_cast<int>(palette.size()));
       if (!image.pixels.empty()) {
         auto bmp = bmpWriter::pixelsToBmp(image.width, image.height,
                                           image.pixels.data(), palette.data(),
@@ -201,8 +223,8 @@ void applySpritePaletteFixes(const std::string &fileId,
   }
   for (int i = FONT_FIRST_SPRITE;
        i <= FONT_LAST_SPRITE && i < static_cast<int>(sprites.size()); i++) {
-    setBmpPaletteEntry(sprites[i].bmpData, 1, 0xFF, 0xFF, 0xFF);
-    setBmpPaletteEntry(sprites[i].bmpData, 2, 0xAA, 0xAA, 0xAA);
+    setBmpPaletteEntry(sprites[i].data, 1, 0xFF, 0xFF, 0xFF);
+    setBmpPaletteEntry(sprites[i].data, 2, 0xAA, 0xAA, 0xAA);
   }
 }
 
@@ -224,23 +246,19 @@ void applyScreenPalette(const std::string &fileId,
     throw std::runtime_error("Not a packed screen");
   }
   const auto header = headers::parseSpackHeader(screen);
-  const int colours = std::min<int>(
-      header.numberOfColors, static_cast<int>(headers::SPACK_PALETTE_SIZE));
+  const int colors = std::min<int>(
+      header.numberOfColors, static_cast<int>(headers::SPACK_COLOR_COUNT));
   for (int i = LOGO_REFLECTION_FIRST_SPRITE;
        i <= LOGO_REFLECTION_LAST_SPRITE && i < static_cast<int>(sprites.size());
        i++) {
-    for (int colour = 0; colour < colours; colour++) {
-      const uint16_t amiga = header.amigaPalette[colour];
-      setBmpPaletteEntry(sprites[i].bmpData, colour,
+    for (int color = 0; color < colors; color++) {
+      const uint16_t amiga = header.amigaPalette[color];
+      setBmpPaletteEntry(sprites[i].data, color,
                          static_cast<uint8_t>(((amiga >> 8) & 0xF) * 17),
                          static_cast<uint8_t>(((amiga >> 4) & 0xF) * 17),
                          static_cast<uint8_t>((amiga & 0xF) * 17));
     }
   }
-}
-
-std::vector<uint16_t> selectPalette(const std::string &fileId) {
-  return gameData::palettes::selectPalette(fileId);
 }
 
 } // namespace openfranko::lib::converter::spriteSheet

@@ -13,10 +13,9 @@ namespace openfranko::lib::converter::fileContainer {
 
 namespace {
 
-namespace version12 = gameData::version12;
-namespace resourceTypes = gameData::resourceTypes;
-
 constexpr size_t SUFFIX_SIZE = 8;
+constexpr size_t SUFFIX_FILE_ID_OFFSET = 4;
+constexpr size_t SUFFIX_RESOURCE_TYPE_OFFSET = 6;
 
 constexpr size_t LONG_PREFIX_SIZE = 4;
 constexpr size_t WORD_PREFIX_SIZE = 2;
@@ -45,16 +44,16 @@ std::vector<uint8_t> slice(const std::vector<uint8_t> &data, size_t begin,
           data.begin() + static_cast<std::ptrdiff_t>(end)};
 }
 
-size_t prefixSize(version12::Loader loader) {
+size_t prefixSize(gameData::version12::Loader loader) {
   switch (loader) {
-  case version12::Loader::Data:
-  case version12::Loader::Music:
-  case version12::Loader::Bobs:
+  case gameData::version12::Loader::Data:
+  case gameData::version12::Loader::Music:
+  case gameData::version12::Loader::Bobs:
     return LONG_PREFIX_SIZE;
-  case version12::Loader::Data16:
-  case version12::Loader::Stage:
+  case gameData::version12::Loader::Data16:
+  case gameData::version12::Loader::Stage:
     return WORD_PREFIX_SIZE;
-  case version12::Loader::Coded:
+  case gameData::version12::Loader::Coded:
     break;
   }
   throw std::runtime_error("File is not squashed");
@@ -110,7 +109,7 @@ std::vector<uint8_t> decodedBank(const std::vector<uint8_t> &rawData) {
   return bank;
 }
 
-uint16_t bobColours(const std::vector<uint8_t> &unpacked, size_t count) {
+uint16_t bobColors(const std::vector<uint8_t> &unpacked, size_t count) {
   binary::BigEndianReader reader(unpacked);
   uint16_t planes = 0;
   for (size_t i = 0; i < count; i++) {
@@ -158,7 +157,7 @@ std::vector<uint8_t> bobsBank(const std::vector<uint8_t> &unpacked) {
   binary::pushBigEndian16(bank, static_cast<uint16_t>(count));
   binary::pushBigEndian16(bank, width);
   binary::pushBigEndian16(bank, unpacked[BOBS_HEIGHT_OFFSET]);
-  binary::pushBigEndian16(bank, bobColours(unpacked, count));
+  binary::pushBigEndian16(bank, bobColors(unpacked, count));
   binary::pushBigEndian32(
       bank, samples.empty()
                 ? 0
@@ -171,11 +170,11 @@ std::vector<uint8_t> bobsBank(const std::vector<uint8_t> &unpacked) {
   return bank;
 }
 
-Resource unpackVersion12(const version12::File &file,
+Resource unpackVersion12(const gameData::version12::File &file,
                          const std::vector<uint8_t> &rawData) {
-  Resource resource{std::string(file.name), resourceTypes::ICONS, {}};
-  if (file.loader == version12::Loader::Coded) {
-    resource.resourceType = resourceTypes::SCREEN_PACKAGE;
+  Resource resource{std::string(file.name), gameData::resourceTypes::ICONS, {}};
+  if (file.loader == gameData::version12::Loader::Coded) {
+    resource.resourceType = gameData::resourceTypes::SCREEN_PACKAGE;
     resource.data = decodedBank(rawData);
     return resource;
   }
@@ -183,24 +182,24 @@ Resource unpackVersion12(const version12::File &file,
   const std::vector<uint8_t> unpacked =
       unsquash(rawData, prefixSize(file.loader));
   switch (file.loader) {
-  case version12::Loader::Data:
+  case gameData::version12::Loader::Data:
     resource.data = dataBank(unpacked);
     break;
-  case version12::Loader::Data16:
+  case gameData::version12::Loader::Data16:
     resource.data = data16Bank(unpacked);
     break;
-  case version12::Loader::Music:
-    resource.resourceType = resourceTypes::MUSIC;
+  case gameData::version12::Loader::Music:
+    resource.resourceType = gameData::resourceTypes::MUSIC;
     resource.data = dataBank(unpacked);
     break;
-  case version12::Loader::Bobs:
-    resource.resourceType = resourceTypes::SPRITES;
+  case gameData::version12::Loader::Bobs:
+    resource.resourceType = gameData::resourceTypes::SPRITES;
     resource.data = bobsBank(unpacked);
     break;
-  case version12::Loader::Stage:
+  case gameData::version12::Loader::Stage:
     resource.data = stageBank(rawData, unpacked);
     break;
-  case version12::Loader::Coded:
+  case gameData::version12::Loader::Coded:
     break;
   }
   return resource;
@@ -227,8 +226,8 @@ FileInfo parseFooter(const std::vector<uint8_t> &rawData) {
 
   FileInfo info;
   info.unpackSize = reader.readUint32(off);
-  info.fileId = reader.readUint16(off + 4);
-  info.resourceType = reader.readUint16(off + 6);
+  info.fileId = reader.readUint16(off + SUFFIX_FILE_ID_OFFSET);
+  info.resourceType = reader.readUint16(off + SUFFIX_RESOURCE_TYPE_OFFSET);
   info.bankType = static_cast<uint8_t>(info.resourceType >> 8);
   info.compressed = (info.resourceType & 0xFF) == 0;
   return info;
@@ -242,18 +241,18 @@ std::string fileIdToHex(uint16_t fileId) {
 
 Resource unpack(const std::string &fileName,
                 const std::vector<uint8_t> &rawData) {
-  const version12::File *file = version12::find(fileName);
+  const gameData::version12::File *file = gameData::version12::find(fileName);
   return file == nullptr ? unpackVersion10(rawData)
                          : unpackVersion12(*file, rawData);
 }
 
 std::vector<uint8_t> unsquashVersion12(const std::string &fileName,
                                        const std::vector<uint8_t> &rawData) {
-  const version12::File *file = version12::find(fileName);
+  const gameData::version12::File *file = gameData::version12::find(fileName);
   if (file == nullptr) {
     throw std::runtime_error(fileName + " is not a Franko 1.2 data file");
   }
-  if (file->loader == version12::Loader::Coded) {
+  if (file->loader == gameData::version12::Loader::Coded) {
     throw std::runtime_error(fileName + " is not squashed");
   }
   return unsquash(rawData, prefixSize(file->loader));

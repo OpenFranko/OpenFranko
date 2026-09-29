@@ -44,7 +44,7 @@ private:
   };
 
   struct StoryImage {
-    StoryImage(int resource, GameVersion version);
+    StoryImage(int resourceId, GameVersion version);
 
     std::string resource;
     int index = -1;

@@ -140,13 +140,13 @@ SCENARIO("extract says why it skipped a bitmap") {
 
       THEN("The 8x2 bitmap is converted to a BMP") {
         REQUIRE(results[0].error.empty());
-        REQUIRE(results[0].bmpData.size() > 2);
-        REQUIRE(results[0].bmpData[0] == 'B');
-        REQUIRE(results[0].bmpData[1] == 'M');
+        REQUIRE(results[0].data.size() > 2);
+        REQUIRE(results[0].data[0] == 'B');
+        REQUIRE(results[0].data[1] == 'M');
       }
 
       THEN("The 8x1 bitmap is skipped with the reason") {
-        REQUIRE(results[1].bmpData.empty());
+        REQUIRE(results[1].data.empty());
         REQUIRE(results[1].error == "Bitmap is only 8x1 pixels");
       }
     }
@@ -161,11 +161,11 @@ SCENARIO("extract says why it skipped a bitmap") {
 
       THEN("The skipped bitmap keeps its place in the numbering") {
         REQUIRE(results[0].name == "0384");
-        REQUIRE(results[0].bmpData.empty());
+        REQUIRE(results[0].data.empty());
         REQUIRE(results[0].error == "Bitmap is only 8x1 pixels");
         REQUIRE(results[1].name == "0384_1");
         REQUIRE(results[1].error.empty());
-        REQUIRE_FALSE(results[1].bmpData.empty());
+        REQUIRE_FALSE(results[1].data.empty());
       }
     }
   }
@@ -184,12 +184,12 @@ SCENARIO("extract skips a bitmap that fails to decode and keeps the rest") {
       THEN("The first bitmap is still converted") {
         REQUIRE(results[0].name == "0388");
         REQUIRE(results[0].error.empty());
-        REQUIRE_FALSE(results[0].bmpData.empty());
+        REQUIRE_FALSE(results[0].data.empty());
       }
 
       THEN("The broken bitmap is skipped with the decoder's reason") {
         REQUIRE(results[1].name == "0388_1");
-        REQUIRE(results[1].bmpData.empty());
+        REQUIRE(results[1].data.empty());
         REQUIRE(results[1].error == "Unsupported bitplane count: 7");
       }
     }
@@ -205,9 +205,9 @@ SCENARIO("extract skips a bitmap that fails to decode and keeps the rest") {
       THEN("The first tile is converted and the broken one is skipped") {
         REQUIRE(results[0].name == "0137_000");
         REQUIRE(results[0].error.empty());
-        REQUIRE_FALSE(results[0].bmpData.empty());
+        REQUIRE_FALSE(results[0].data.empty());
         REQUIRE(results[1].name == "0137_001");
-        REQUIRE(results[1].bmpData.empty());
+        REQUIRE(results[1].data.empty());
         REQUIRE(results[1].error == "Unsupported bitplane count: 7");
       }
     }
@@ -241,7 +241,7 @@ SCENARIO("extract finds bitmaps through the file's own tables") {
 
       THEN("That entry is skipped with the reason") {
         REQUIRE(results[0].error.empty());
-        REQUIRE(results[1].bmpData.empty());
+        REQUIRE(results[1].data.empty());
         REQUIRE(results[1].error == "Invalid bitmap magic number");
       }
     }

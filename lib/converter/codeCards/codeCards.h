@@ -23,7 +23,7 @@ inline constexpr uint8_t COLOR_COUNT = 11;
 
 namespace colors {
 
-inline constexpr const char *name(uint8_t color) {
+constexpr const char *name(uint8_t color) {
   switch (color) {
   case 0:
     return "black";
@@ -61,7 +61,7 @@ struct Card {
 
 using CodeCards = std::array<Card, consts::CARD_COUNT>;
 
-CodeCards parse(const std::vector<uint8_t> &decompressedData,
+CodeCards parse(const std::vector<uint8_t> &data,
                 size_t cardSize = consts::CARD_SIZE);
 
 std::vector<uint8_t> toJson(const CodeCards &cards);

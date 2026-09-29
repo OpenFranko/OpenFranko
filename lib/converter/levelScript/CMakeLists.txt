@@ -1,4 +1,4 @@
 add_library(levelScript
     levelScript.cpp
     levelScript.h)
-target_link_libraries(levelScript PRIVATE binary)
+target_link_libraries(levelScript PRIVATE binary json)

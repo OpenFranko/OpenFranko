@@ -76,5 +76,5 @@ set(SPRITE_SHEET_TEST_TARGET spriteSheetTest)
 add_executable(${SPRITE_SHEET_TEST_TARGET}
     spriteSheetTest.cpp)
 target_link_libraries(${SPRITE_SHEET_TEST_TARGET}
-    PRIVATE Catch2::Catch2WithMain binary spriteSheet)
+    PRIVATE Catch2::Catch2WithMain binary gameData spriteSheet)
 add_test(NAME ${SPRITE_SHEET_TEST_TARGET} COMMAND ${SPRITE_SHEET_TEST_TARGET})

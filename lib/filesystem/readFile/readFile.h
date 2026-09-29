@@ -12,7 +12,7 @@ namespace readFile {
 
 std::vector<uint8_t> readFile(const std::string &filePath);
 
-}
+} // namespace readFile
 } // namespace filesystem
 } // namespace lib
 } // namespace openfranko

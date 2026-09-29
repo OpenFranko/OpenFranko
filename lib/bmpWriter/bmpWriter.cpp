@@ -3,22 +3,29 @@
 
 namespace openfranko::lib::bmpWriter {
 
-using binary::pushLittleEndian16;
-using binary::pushLittleEndian32;
+namespace {
 
+constexpr uint32_t BMP_FILE_HEADER_SIZE = 14;
+constexpr uint32_t BMP_INFO_HEADER_SIZE = 40;
+constexpr uint32_t BMP_PALETTE_ENTRY_SIZE = 4;
+constexpr uint32_t BMP_PALETTE_ENTRY_COUNT = 256;
+constexpr uint16_t BMP_PLANE_COUNT = 1;
+constexpr uint16_t BMP_BITS_PER_PIXEL = 8;
 constexpr uint32_t BMP_PIXELS_PER_METER_72DPI = 2835;
+
+} // namespace
 
 std::vector<uint8_t> pixelsToBmp(uint32_t width, uint32_t height,
                                  const uint8_t *pixels, const uint16_t *palette,
                                  int numberOfColors) {
   uint32_t bmpRowBytes = (width + 3) & ~3u;
-  uint32_t paletteEntries = 256;
-  uint32_t pixelOffset = 14 + 40 + paletteEntries * 4;
+  uint32_t pixelOffset = BMP_FILE_HEADER_SIZE + BMP_INFO_HEADER_SIZE +
+                         BMP_PALETTE_ENTRY_COUNT * BMP_PALETTE_ENTRY_SIZE;
   uint32_t pixelDataSize = bmpRowBytes * height;
   uint32_t fileSize = pixelOffset + pixelDataSize;
 
-  if (numberOfColors > 256) {
-    numberOfColors = 256;
+  if (numberOfColors > static_cast<int>(BMP_PALETTE_ENTRY_COUNT)) {
+    numberOfColors = static_cast<int>(BMP_PALETTE_ENTRY_COUNT);
   }
 
   std::vector<uint8_t> buf;
@@ -26,23 +33,23 @@ std::vector<uint8_t> pixelsToBmp(uint32_t width, uint32_t height,
 
   buf.push_back('B');
   buf.push_back('M');
-  pushLittleEndian32(buf, fileSize);
-  pushLittleEndian32(buf, 0);
-  pushLittleEndian32(buf, pixelOffset);
+  binary::pushLittleEndian32(buf, fileSize);
+  binary::pushLittleEndian32(buf, 0);
+  binary::pushLittleEndian32(buf, pixelOffset);
 
-  pushLittleEndian32(buf, 40);
-  pushLittleEndian32(buf, width);
-  pushLittleEndian32(buf, height);
-  pushLittleEndian16(buf, 1);
-  pushLittleEndian16(buf, 8);
-  pushLittleEndian32(buf, 0);
-  pushLittleEndian32(buf, pixelDataSize);
-  pushLittleEndian32(buf, BMP_PIXELS_PER_METER_72DPI);
-  pushLittleEndian32(buf, BMP_PIXELS_PER_METER_72DPI);
-  pushLittleEndian32(buf, static_cast<uint32_t>(numberOfColors));
-  pushLittleEndian32(buf, 0);
+  binary::pushLittleEndian32(buf, BMP_INFO_HEADER_SIZE);
+  binary::pushLittleEndian32(buf, width);
+  binary::pushLittleEndian32(buf, height);
+  binary::pushLittleEndian16(buf, BMP_PLANE_COUNT);
+  binary::pushLittleEndian16(buf, BMP_BITS_PER_PIXEL);
+  binary::pushLittleEndian32(buf, 0);
+  binary::pushLittleEndian32(buf, pixelDataSize);
+  binary::pushLittleEndian32(buf, BMP_PIXELS_PER_METER_72DPI);
+  binary::pushLittleEndian32(buf, BMP_PIXELS_PER_METER_72DPI);
+  binary::pushLittleEndian32(buf, static_cast<uint32_t>(numberOfColors));
+  binary::pushLittleEndian32(buf, 0);
 
-  for (uint32_t i = 0; i < paletteEntries; i++) {
+  for (uint32_t i = 0; i < BMP_PALETTE_ENTRY_COUNT; i++) {
     if (static_cast<int>(i) < numberOfColors) {
       auto r = static_cast<uint8_t>(((palette[i] >> 8) & 0xF) * 17);
       auto g = static_cast<uint8_t>(((palette[i] >> 4) & 0xF) * 17);
@@ -52,7 +59,7 @@ std::vector<uint8_t> pixelsToBmp(uint32_t width, uint32_t height,
       buf.push_back(r);
       buf.push_back(0);
     } else {
-      buf.insert(buf.end(), 4, 0);
+      buf.insert(buf.end(), BMP_PALETTE_ENTRY_SIZE, 0);
     }
   }
 

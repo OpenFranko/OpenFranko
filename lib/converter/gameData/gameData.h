@@ -56,7 +56,7 @@ inline constexpr uint16_t SCREEN_PACKAGE = 0x0201;
 inline constexpr uint16_t SAMPLES = 0x0300;
 inline constexpr uint16_t MUSIC = 0x0400;
 
-inline constexpr const char *name(uint16_t type) {
+constexpr const char *name(uint16_t type) {
   switch (type) {
   case SPRITES:
     return "Sprites";
@@ -94,7 +94,7 @@ enum class Loader { Data, Data16, Bobs, Music, Coded, Stage };
 
 struct File {
   std::string_view name;
-  Loader loader;
+  Loader loader = Loader::Data;
   std::string_view counterpart;
 };
 
@@ -153,7 +153,7 @@ inline constexpr std::array<File, 104> FILES = {{
     {"t35", Loader::Stage, "014F"},  {"t40", Loader::Stage, "0154"},
 }};
 
-inline constexpr const File *find(std::string_view name) {
+constexpr const File *find(std::string_view name) {
   for (const File &file : FILES) {
     if (file.name == name) {
       return &file;
@@ -164,7 +164,7 @@ inline constexpr const File *find(std::string_view name) {
 
 } // namespace version12
 
-inline constexpr std::string_view version10Id(std::string_view fileId) {
+constexpr std::string_view version10Id(std::string_view fileId) {
   const version12::File *file = version12::find(fileId);
   return file == nullptr ? fileId : file->counterpart;
 }

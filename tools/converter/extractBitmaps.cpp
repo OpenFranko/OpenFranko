@@ -58,9 +58,9 @@ int main(int argc, char **argv) {
         continue;
       }
       const std::string path = outputDir + "/" + bitmap.name + ".bmp";
-      filesystem::writeFile::writeFile(path, bitmap.bmpData);
-      std::cerr << "Wrote " << path << " (" << bitmap.bmpData.size()
-                << " bytes)" << std::endl;
+      filesystem::writeFile::writeFile(path, bitmap.data);
+      std::cerr << "Wrote " << path << " (" << bitmap.data.size() << " bytes)"
+                << std::endl;
       written++;
     }
 

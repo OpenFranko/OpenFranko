@@ -85,6 +85,51 @@ SCENARIO("BigEndianReader reads signed 16-bit values") {
   }
 }
 
+SCENARIO("BigEndianReader reads signed 32-bit values") {
+  GIVEN("A buffer with a positive value") {
+    std::vector<uint8_t> data = {0x00, 0x01, 0x00, 0x00};
+    BigEndianReader reader(data);
+    THEN("It returns 65536") { REQUIRE(reader.readInt32(0) == 65536); }
+  }
+
+  GIVEN("A buffer with a negative value (0xFFFFFFFE = -2)") {
+    std::vector<uint8_t> data = {0xFF, 0xFF, 0xFF, 0xFE};
+    BigEndianReader reader(data);
+    THEN("It returns -2") { REQUIRE(reader.readInt32(0) == -2); }
+  }
+}
+
+SCENARIO("writeLittleEndian16 and writeLittleEndian32 overwrite bytes in "
+         "place") {
+  GIVEN("A buffer of six zero bytes") {
+    std::vector<uint8_t> buf(6, 0);
+
+    WHEN("A 16-bit value is written at offset 1") {
+      writeLittleEndian16(buf, 1, 0xCAFE);
+      THEN("Its low byte comes first and the rest stays untouched") {
+        REQUIRE(buf ==
+                std::vector<uint8_t>{0x00, 0xFE, 0xCA, 0x00, 0x00, 0x00});
+      }
+    }
+
+    WHEN("A 32-bit value is written at offset 2") {
+      writeLittleEndian32(buf, 2, 0xDEADBEEF);
+      THEN("Its bytes come lowest first") {
+        REQUIRE(buf ==
+                std::vector<uint8_t>{0x00, 0x00, 0xEF, 0xBE, 0xAD, 0xDE});
+      }
+    }
+
+    WHEN("A value would run past the end") {
+      THEN("The write throws and leaves the buffer as it was") {
+        REQUIRE_THROWS_AS(writeLittleEndian16(buf, 5, 1), std::runtime_error);
+        REQUIRE_THROWS_AS(writeLittleEndian32(buf, 3, 1), std::runtime_error);
+        REQUIRE(buf == std::vector<uint8_t>(6, 0));
+      }
+    }
+  }
+}
+
 SCENARIO("BigEndianReader and LittleEndianReader reject truncated reads") {
   GIVEN("A short buffer") {
     std::vector<uint8_t> data = {0x12, 0x34, 0x56};

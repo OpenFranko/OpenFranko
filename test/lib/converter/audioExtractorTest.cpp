@@ -141,7 +141,7 @@ SCENARIO("extractEmbeddedSamBank handles edge cases") {
     }
   }
 
-  GIVEN("A buffer with sbOff pointing out of range") {
+  GIVEN("A buffer with samBankOffset pointing out of range") {
     std::vector<uint8_t> data(20, 0);
     data[8] = 0x00;
     data[9] = 0x00;
@@ -154,7 +154,7 @@ SCENARIO("extractEmbeddedSamBank handles edge cases") {
     }
   }
 
-  GIVEN("A buffer with sbOff = 0 (no sample bank)") {
+  GIVEN("A buffer with samBankOffset = 0 (no sample bank)") {
     std::vector<uint8_t> data(20, 0);
 
     WHEN("extractEmbeddedSamBank is called") {

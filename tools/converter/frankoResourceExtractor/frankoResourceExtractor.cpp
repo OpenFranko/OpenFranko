@@ -1,5 +1,4 @@
 #include "frankoResourceExtractor.h"
-#include "../../../lib/binary/binary.h"
 #include "../../../lib/converter/abkToS3m/abkToS3m.h"
 #include "../../../lib/converter/amosCompact/amosCompact.h"
 #include "../../../lib/converter/audioExtractor/audioExtractor.h"
@@ -8,6 +7,7 @@
 #include "../../../lib/converter/endingCredits/endingCredits.h"
 #include "../../../lib/converter/fileContainer/fileContainer.h"
 #include "../../../lib/converter/gameData/gameData.h"
+#include "../../../lib/converter/gameData/palettes.h"
 #include "../../../lib/converter/levelScript/levelScript.h"
 #include "../../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../../lib/filesystem/readFile/readFile.h"
@@ -24,17 +24,6 @@
 namespace openfranko::tools::converter::frankoResourceExtractor {
 
 namespace {
-
-std::vector<uint8_t> embeddedSamBank(const std::vector<uint8_t> &data) {
-  if (data.size() < 12) {
-    return {};
-  }
-  uint32_t sbOff = lib::binary::BigEndianReader(data).readUint32(8);
-  if (sbOff == 0 || sbOff >= data.size()) {
-    return {};
-  }
-  return {data.begin() + static_cast<std::ptrdiff_t>(sbOff), data.end()};
-}
 
 bool isLevelFile(const std::string &fileId) {
   const auto &levelFiles = lib::converter::gameData::fileIds::LEVEL_FILES;
@@ -196,32 +185,31 @@ int extractFile(const std::string &inputPath, const std::string &outputDir) {
   switch (resource.resourceType) {
   case lib::converter::gameData::resourceTypes::SPRITES: {
     try {
-      const auto palette = lib::converter::spriteSheet::selectPalette(fileId);
+      const auto palette =
+          lib::converter::gameData::palettes::selectPalette(fileId);
       auto sprites = lib::converter::spriteSheet::convertToIndividual(
           decompressed, palette);
       lib::converter::spriteSheet::applySpritePaletteFixes(fileId, sprites);
       applyScreenPalette(inputPath, fileId, sprites);
       for (int i = 0; i < static_cast<int>(sprites.size()); i++) {
-        if (sprites[i].bmpData.empty()) {
+        if (sprites[i].data.empty()) {
           std::cerr << "  Skipped sprite " << i << ": " << sprites[i].error
                     << std::endl;
           continue;
         }
         char name[32];
         snprintf(name, sizeof(name), "%s_%03d.bmp", fileId.c_str(), i);
-        outputs.push_back({name, std::move(sprites[i].bmpData)});
+        outputs.push_back({name, std::move(sprites[i].data)});
       }
     } catch (const std::exception &e) {
       std::cerr << "  Sprite error: " << e.what() << std::endl;
       failed = true;
     }
     try {
-      if (!embeddedSamBank(decompressed).empty()) {
-        auto samples = lib::converter::audioExtractor::extractEmbeddedSamBank(
-            decompressed, fileId);
-        for (auto &sample : samples) {
-          outputs.push_back({std::move(sample.name), std::move(sample.data)});
-        }
+      auto samples = lib::converter::audioExtractor::extractEmbeddedSamBank(
+          decompressed, fileId);
+      for (auto &sample : samples) {
+        outputs.push_back({std::move(sample.name), std::move(sample.data)});
       }
     } catch (const std::exception &e) {
       std::cerr << "  Sample error: " << e.what() << std::endl;
@@ -251,7 +239,7 @@ int extractFile(const std::string &inputPath, const std::string &outputDir) {
                     << std::endl;
           continue;
         }
-        outputs.push_back({bitmap.name + ".bmp", std::move(bitmap.bmpData)});
+        outputs.push_back({bitmap.name + ".bmp", std::move(bitmap.data)});
       }
       if (outputs.empty()) {
         std::cerr << "  No bitmaps extracted." << std::endl;
