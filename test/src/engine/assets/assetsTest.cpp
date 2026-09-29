@@ -57,7 +57,8 @@ SCENARIO("The version is told by the extracted files") {
     touch(directory.path() / "0384/0384.bmp");
 
     THEN("It is version 1.0") {
-      REQUIRE(assets::detectVersion(directory.path().string()) ==
+      const assets::DiskFiles files;
+      REQUIRE(assets::detectVersion(files, directory.path().string()) ==
               GameVersion::V10);
     }
   }
@@ -67,7 +68,8 @@ SCENARIO("The version is told by the extracted files") {
     touch(directory.path() / "p0/p0.bmp");
 
     THEN("It is version 1.2") {
-      REQUIRE(assets::detectVersion(directory.path().string()) ==
+      const assets::DiskFiles files;
+      REQUIRE(assets::detectVersion(files, directory.path().string()) ==
               GameVersion::V12);
     }
   }

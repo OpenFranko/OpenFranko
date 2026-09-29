@@ -1,4 +1,6 @@
 add_library(Assets
+    ArchiveFiles.cpp
+    ArchiveFiles.h
     Assets.cpp
     Assets.h
     DiskFiles.cpp

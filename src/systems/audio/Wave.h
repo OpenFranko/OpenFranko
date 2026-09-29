@@ -2,7 +2,6 @@
 #define SYSTEMS_AUDIO_WAVE_H_
 
 #include <cstdint>
-#include <string>
 #include <vector>
 
 namespace openfranko {
@@ -16,7 +15,6 @@ struct Sound {
 };
 
 Sound readWave(const std::vector<uint8_t> &file);
-Sound loadWave(const std::string &path);
 
 } // namespace audio
 } // namespace systems

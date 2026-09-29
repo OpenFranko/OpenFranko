@@ -3,7 +3,6 @@
 #include <allegro.h>
 #include <array>
 #include <cstddef>
-#include <fcntl.h>
 #include <stdexcept>
 #include <string>
 
@@ -95,9 +94,6 @@ void receiveKey(ControllerSystem &controller, int scancode, bool pressed) {
 } // namespace
 
 Platform::Platform() {
-  if (!_use_lfn(nullptr)) {
-    throwError("long file name support is required");
-  }
   if (allegro_init() != 0 || install_timer() != 0 || install_keyboard() != 0) {
     throwError(allegro_error);
   }

@@ -90,27 +90,31 @@ The DOS version is cross-compiled with DJGPP and uses Allegro 4 instead of
 SDL2. The tools and tests are not built for DOS; extract the game data with a
 Linux or Windows build of FrankoExtract.
 
-Install the DJGPP cross compiler, Allegro 4 and the CMake wrapper (Arch, from
-the AUR):
-
-```
-yay -S djgpp-gcc djgpp-allegro4 djgpp-cmake
-```
-
-`build-dos.sh` does the rest: it builds libxmp into `build-dos/libxmp` (no
-sudo needed), builds the game in `build-dos` and puts a runnable copy with
-`CWSDPMI.EXE` and a DOSBox-X configuration in `build-dos/game`:
+`build-dos.sh` needs no DJGPP installed: it downloads DJGPP (GCC 12 for
+`i586-pc-msdosdjgpp`, from [build-djgpp](https://github.com/andrewwutw/build-djgpp))
+and DJGPP's Allegro 4.2.2 into `build-dos/djgpp`, builds libxmp for them, builds
+the game in `build-dos` and puts a runnable copy in `build-dos/game`:
 
 ```
 ./build-dos.sh --assets <assets_dir>
-flatpak run com.dosbox_x.DOSBox-X -conf build-dos/game/dosbox-x.conf
+dosbox -conf build-dos/game/dosbox.conf
 ```
 
 Options starting with `-D` are passed to CMake, e.g.
 `./build-dos.sh -DSKIP_COPY_PROTECTION=ON`.
 
-To build by hand instead: libxmp has no DJGPP package, so build it and install
-it into the DJGPP directory:
+`build-dos/game` holds `franko.exe`, `CWSDPMI.EXE` (the DPMI host), the assets
+packed into `assets.tar` and a `dosbox.conf` for DOSBox, DOSBox Staging and
+DOSBox-X (`flatpak run com.dosbox_x.DOSBox-X -conf build-dos/game/dosbox.conf`).
+DOS has no long file names, so the game reads its assets from the archive;
+every build does that when `assets.tar` sits next to it instead of `assets`.
+On a real PC, copy the first three files into one directory and run `franko`.
+The game needs a Pentium, a VESA card with a 640x480 high colour mode and, for
+sound, a Sound Blaster compatible card. Ctrl+C or Ctrl+Break quits it.
+
+To build with an installed DJGPP instead, like the AUR packages `djgpp-gcc`,
+`djgpp-allegro4` and `djgpp-cmake`, build libxmp with its CMake wrapper and
+install it into the DJGPP directory, then build the game the same way:
 
 ```
 curl -LO https://github.com/libxmp/libxmp/releases/download/libxmp-4.7.3/libxmp-4.7.3.tar.gz
@@ -119,49 +123,17 @@ cd libxmp-4.7.3
 i686-pc-msdosdjgpp-cmake -B build -DBUILD_SHARED=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-march=i586
 cmake --build build -j $(nproc)
 sudo cmake --install build
-```
-
-Compilation:
-
-```
-git clone https://github.com/OpenFranko/OpenFranko.git
-cd OpenFranko
-mkdir build-dos && cd build-dos
+cd ../OpenFranko
+mkdir build-djgpp && cd build-djgpp
 i686-pc-msdosdjgpp-cmake ..
 cmake --build . -j $(nproc)
 ```
 
-The game is built as `build-dos/src/franko.exe`, as DOS needs 8.3 file names.
-It carries debug information; `i686-pc-msdosdjgpp-strip src/franko.exe`
-shrinks it from about 27 MB to 3 MB.
-
-To play, put `franko.exe`, `CWSDPMI.EXE` (the DPMI host from
-[csdpmi7b.zip](https://www.delorie.com/pub/djgpp/current/v2misc/csdpmi7b.zip))
-and `assets` in one directory and run `franko` from it. The game needs:
-
-- long file names, as the asset names are not 8.3: DOS 7.1 under Windows
-  95/98, the DOSLFN driver on MS-DOS or FreeDOS, or DOSBox-X,
-- a Pentium Pro/II class CPU, as the DJGPP C++ library is built for it,
-- a VESA card with a 640x480 high colour mode,
-- a Sound Blaster compatible card for sound (optional).
-
-Ctrl+C or Ctrl+Break quits the game.
-
-DOSBox and DOSBox Staging can't run it, as they emulate neither the Pentium
-Pro nor long file names. In DOSBox-X, set:
-
-```
-[cpu]
-cputype=pentium_ii
-cycles=max
-
-[dos]
-ver=7.1
-```
-
-The game's own code and libxmp are compiled for the Pentium (`-march=i586`),
-because DOSBox-X's fast CPU core mis-emulates the Pentium Pro floating point
-comparisons.
+The AUR packages build the C++ library and Allegro for the Pentium Pro, so that
+`src/franko.exe` needs a Pentium Pro or newer and does not run in DOSBox or
+DOSBox Staging (in DOSBox-X, set `cputype=pentium_ii`). The game's own code and
+libxmp are compiled for the Pentium (`-march=i586`), as DOSBox-X's fast CPU core
+mis-emulates the Pentium Pro floating point comparisons.
 
 # FrankoExtract
 

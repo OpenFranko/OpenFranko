@@ -2,10 +2,9 @@
 
 #include "audio/AudioOutput.h"
 
-#include <fstream>
-#include <iterator>
 #include <mutex>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace openfranko::src::systems::audio {
@@ -17,7 +16,9 @@ constexpr int PAL_VBL_RATE = 50;
 
 } // namespace
 
-AudioSystem::AudioSystem() : m_output(std::make_unique<Output>(OUTPUT_RATE)) {
+AudioSystem::AudioSystem(Read read)
+    : m_output(std::make_unique<Output>(OUTPUT_RATE)) {
+  m_output->read = std::move(read);
   m_output->vblRate = PAL_VBL_RATE;
   m_output->device = std::make_unique<AudioDevice>(
       OUTPUT_RATE, OUTPUT_FRAMES,
@@ -30,9 +31,13 @@ AudioSystem::~AudioSystem() = default;
 
 void AudioSystem::loadMusic(const std::string &path) {
   clearMusic();
-  std::ifstream file(path, std::ios::binary);
-  const std::vector<char> module{std::istreambuf_iterator<char>(file),
-                                 std::istreambuf_iterator<char>()};
+  std::vector<uint8_t> file;
+  try {
+    file = m_output->read(path);
+  } catch (const std::runtime_error &) {
+    return;
+  }
+  const std::vector<char> module(file.begin(), file.end());
   std::lock_guard<AudioDevice> lock(*m_output->device);
   if (m_output->mixer.loadModule(module)) {
     m_output->musicPath = path;
@@ -52,7 +57,8 @@ const std::string &AudioSystem::loadedMusic() const {
 void AudioSystem::loadSample(const std::string &name, const std::string &path) {
   clearSample(name);
   try {
-    m_output->sounds[name] = std::make_unique<Sound>(loadWave(path));
+    m_output->sounds[name] =
+        std::make_unique<Sound>(readWave(m_output->read(path)));
   } catch (const std::runtime_error &) {
     return;
   }

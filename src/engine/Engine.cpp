@@ -1,6 +1,8 @@
 #include "Engine.h"
 
+#include "assets/ArchiveFiles.h"
 #include "assets/Assets.h"
+#include "assets/DiskFiles.h"
 #include "states/adverts/AdvertsState.h"
 #include "states/characterSelection/CharacterSelectionState.h"
 #include "states/continueSelect/ContinueState.h"
@@ -24,6 +26,7 @@
 #include "states/titleAndStory/TitleAndStoryState.h"
 #include "states/worldSoftware/WorldSoftwareState.h"
 
+#include <filesystem>
 #include <utility>
 
 namespace openfranko::src::engine {
@@ -66,6 +69,13 @@ void saveHighScores(const street::core::HighScoreTable &table) {
                                    street::core::HighScoreTable::FILE_NAME);
 }
 
+std::unique_ptr<assets::Files> openFiles() {
+  if (std::filesystem::exists(assets::ARCHIVE)) {
+    return std::make_unique<assets::ArchiveFiles>(assets::ARCHIVE);
+  }
+  return std::make_unique<assets::DiskFiles>();
+}
+
 } // namespace
 
 Engine::Engine()
@@ -73,8 +83,11 @@ Engine::Engine()
 
 Engine::Engine(states::EngineStateId firstState,
                street::session::GameSession startingSession)
-    : m_session(std::move(startingSession)), m_running(true) {
-  m_session.version = assets::detectVersion();
+    : m_files(openFiles()), m_audioSystem([this](const std::string &path) {
+        return m_files->read(path);
+      }),
+      m_session(std::move(startingSession)), m_running(true) {
+  m_session.version = assets::detectVersion(*m_files);
   m_session.highScores =
       street::core::readHighScoreFile(street::core::HighScoreTable::FILE_NAME)
           .value_or(street::core::HighScoreTable(m_session.version));
@@ -138,51 +151,51 @@ void Engine::switchState(states::EngineStateId nextState) {
   switch (nextState) {
   case states::EngineStateId::Mirage:
     m_currentState =
-        std::make_unique<states::mirage::MirageState>(m_videoSystem, m_files);
+        std::make_unique<states::mirage::MirageState>(m_videoSystem, *m_files);
     break;
   case states::EngineStateId::SpiderLogo:
     m_currentState = std::make_unique<states::spiderLogo::SpiderLogoState>(
-        m_videoSystem, m_audioSystem, m_files);
+        m_videoSystem, m_audioSystem, *m_files);
     break;
   case states::EngineStateId::Adverts:
     m_currentState = std::make_unique<states::adverts::AdvertsState>(
-        m_videoSystem, m_controllerSystem, m_files);
+        m_videoSystem, m_controllerSystem, *m_files);
     break;
   case states::EngineStateId::Presents:
     m_currentState = std::make_unique<states::presents::PresentsState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_files);
+        m_videoSystem, m_audioSystem, m_controllerSystem, *m_files);
     break;
   case states::EngineStateId::WorldSoftware:
     m_currentState =
         std::make_unique<states::worldSoftware::WorldSoftwareState>(
-            m_videoSystem, m_audioSystem, m_files);
+            m_videoSystem, m_audioSystem, *m_files);
     break;
   case states::EngineStateId::KneeAnimation:
     m_currentState =
         std::make_unique<states::kneeAnimation::KneeAnimationState>(
-            m_videoSystem, m_audioSystem, m_controllerSystem, m_files,
+            m_videoSystem, m_audioSystem, m_controllerSystem, *m_files,
             m_session.version);
     break;
   case states::EngineStateId::TitleAndStory:
     m_currentState =
         std::make_unique<states::titleAndStory::TitleAndStoryState>(
-            m_videoSystem, m_audioSystem, m_controllerSystem, m_files,
+            m_videoSystem, m_audioSystem, m_controllerSystem, *m_files,
             m_session.version);
     break;
   case states::EngineStateId::ProtectionCheck:
     m_currentState =
         std::make_unique<states::protectionCheck::ProtectionCheckState>(
-            m_videoSystem, m_audioSystem, m_files, m_session.keyboard);
+            m_videoSystem, m_audioSystem, *m_files, m_session.keyboard);
     break;
   case states::EngineStateId::Menu:
     m_currentState = std::make_unique<states::menu::MenuState>(
-        m_videoSystem, m_audioSystem, m_controllerSystem, m_files, m_options,
+        m_videoSystem, m_audioSystem, m_controllerSystem, *m_files, m_options,
         m_session);
     break;
   case states::EngineStateId::CharacterSelectionSequence:
     m_currentState =
         std::make_unique<states::characterSelection::CharacterSelectionState>(
-            m_videoSystem, m_audioSystem, m_controllerSystem, m_files,
+            m_videoSystem, m_audioSystem, m_controllerSystem, *m_files,
             m_options, m_session);
     break;
   case states::EngineStateId::Level1:
@@ -218,7 +231,7 @@ void Engine::switchState(states::EngineStateId nextState) {
   case states::EngineStateId::StageProtectionCheck:
     m_currentState =
         std::make_unique<states::protectionCheck::ProtectionCheckState>(
-            m_videoSystem, m_audioSystem, m_files, m_session.keyboard,
+            m_videoSystem, m_audioSystem, *m_files, m_session.keyboard,
             states::protectionCheck::ProtectionCheckState::Check::Stage3);
     break;
   case states::EngineStateId::Level3:
@@ -255,7 +268,7 @@ void Engine::switchState(states::EngineStateId nextState) {
 
 states::shared::EngineStreetHost &Engine::makeStreetHost() {
   m_streetHost = std::make_unique<states::shared::EngineStreetHost>(
-      m_audioSystem, m_session.version);
+      m_audioSystem, *m_files, m_session.version);
   return *m_streetHost;
 }
 
