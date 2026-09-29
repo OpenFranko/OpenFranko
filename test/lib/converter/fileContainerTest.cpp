@@ -1,6 +1,6 @@
 #include "../../../lib/converter/fileContainer/fileContainer.h"
+#include "../../../lib/binary/binary.h"
 #include "../../../lib/converter/gameData/gameData.h"
-#include "../../../lib/helpers/helpers.h"
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <vector>
@@ -8,9 +8,9 @@
 using namespace openfranko::lib::converter::fileContainer;
 namespace gameData = openfranko::lib::converter::gameData;
 namespace resourceTypes = openfranko::lib::converter::gameData::resourceTypes;
-using openfranko::lib::helpers::BigEndianReader;
-using openfranko::lib::helpers::pushBigEndian16;
-using openfranko::lib::helpers::pushBigEndian32;
+using openfranko::lib::binary::BigEndianReader;
+using openfranko::lib::binary::pushBigEndian16;
+using openfranko::lib::binary::pushBigEndian32;
 
 namespace {
 

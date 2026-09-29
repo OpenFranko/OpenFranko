@@ -1,8 +1,8 @@
-#include "../../../lib/converter/shared/headers.h"
+#include "../../../lib/converter/headers/headers.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
-using namespace openfranko::lib::converter::shared;
+using namespace openfranko::lib::converter::headers;
 
 namespace {
 

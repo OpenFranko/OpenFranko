@@ -7,12 +7,12 @@
 #include "../../effects/color/PaletteFader.h"
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
+#include "../core/EndingCredits.h"
 #include "../core/IndexedSurface.h"
-#include "../ui/GameSession.h"
+#include "../session/GameSession.h"
 #include "../ui/LoadingMock.h"
 #include "../ui/StatusPanel.h"
-#include "EndingCredits.h"
-#include "StreetStage.h"
+#include "StreetHost.h"
 
 #include <array>
 #include <cstdint>
@@ -35,7 +35,8 @@ public:
   static constexpr int FILES = 4;
   static constexpr int SECOND_DANCE_PAGE = 10;
 
-  EndingScene(StreetHost &host, ui::GameSession &session, bool ntsc = false);
+  EndingScene(StreetHost &host, session::GameSession &session,
+              bool ntsc = false);
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
@@ -130,7 +131,7 @@ private:
   void stillTest();
 
   StreetHost &m_host;
-  ui::GameSession &m_session;
+  session::GameSession &m_session;
   amal::Machine m_machine;
   ui::LoadingMock m_loading;
   core::ImageBank m_images;
@@ -142,7 +143,7 @@ private:
   bool m_stillVbl = false;
   std::optional<core::DoubleBuffer> m_dancerBuffer;
   int m_bobScreen = 0;
-  std::optional<ui::BossExit> m_stage;
+  std::optional<session::BossExit> m_stage;
   std::unique_ptr<ui::StatusPanel> m_panel;
   bool m_stageShown = false;
   bool m_panelShown = false;
@@ -152,7 +153,7 @@ private:
   effects::color::PaletteFader m_fader;
   effects::color::AmigaColor m_border;
   bool m_dancerCopper = false;
-  EndingCredits m_credits;
+  core::EndingCredits m_credits;
 
   Step m_step = Step::Start;
   int m_frame = 0;

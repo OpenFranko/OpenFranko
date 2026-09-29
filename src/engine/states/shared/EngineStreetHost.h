@@ -3,7 +3,7 @@
 
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../GameVersion.h"
-#include "../../street/scenes/StreetStage.h"
+#include "../../street/scenes/StreetHost.h"
 
 #include <map>
 #include <random>
@@ -28,7 +28,7 @@ public:
   effects::color::AmigaPalette loadPalette(int resource) override;
   std::vector<street::core::Picture> loadScenery(int resource) override;
   street::core::LevelScript loadLevelScript(int resource) override;
-  street::scenes::EndingCredits loadEndingCredits() override;
+  street::core::EndingCredits loadEndingCredits() override;
   street::core::Picture loadPanelPicture(int part) override;
   void loadMusic(int resource) override;
   bool isMusicLoaded(int resource) const override;

@@ -4,9 +4,9 @@
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
 #include "../../../systems/graphics/VideoSystem.h"
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
 #include "../../effects/sequences/BlyskSequence.h"
-#include "../../street/scenes/EndingCredits.h"
+#include "../../street/core/EndingCredits.h"
 
 #include <map>
 #include <optional>
@@ -36,9 +36,9 @@ private:
 
   systems::graphics::VideoSystem &m_videoSystem;
   std::string m_directory;
-  std::vector<street::scenes::CreditPage> m_pages;
+  std::vector<street::core::CreditPage> m_pages;
   std::map<int, std::optional<systems::graphics::IndexedBitmap>> m_glyphs;
-  effects::color::VisibleRows m_rows;
+  VisibleRows m_rows;
   systems::graphics::Canvas m_frame;
   systems::graphics::IndexedBitmap m_strip;
   std::optional<int> m_pasted;

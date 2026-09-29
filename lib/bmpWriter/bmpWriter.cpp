@@ -1,10 +1,10 @@
 #include "bmpWriter.h"
-#include "../helpers/helpers.h"
+#include "../binary/binary.h"
 
 namespace openfranko::lib::bmpWriter {
 
-using helpers::pushLittleEndian16;
-using helpers::pushLittleEndian32;
+using binary::pushLittleEndian16;
+using binary::pushLittleEndian32;
 
 constexpr uint32_t BMP_PIXELS_PER_METER_72DPI = 2835;
 

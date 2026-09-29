@@ -28,8 +28,7 @@ screenPalette(const systems::graphics::IndexedBitmap &picture) {
 AdvertsState::AdvertsState(systems::graphics::VideoSystem &videoSystem,
                            systems::input::ControllerSystem &controllerSystem)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
-      m_rows(effects::color::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
-                                         videoSystem.isNtsc())),
+      m_rows(visibleRows(DISPLAY_LINE, SCREEN_HEIGHT, videoSystem.isNtsc())),
       m_screen(SCREEN_WIDTH, m_rows.count), m_palette(SCREEN_COLORS, BLACK) {
   for (int slide = 0; slide < SLIDES; ++slide) {
     m_slides.push_back(systems::graphics::loadIndexedBitmap(
@@ -52,7 +51,7 @@ void AdvertsState::runBasic(bool fire) {
   while (m_frame >= m_resumeFrame && m_step != Step::Finished) {
     switch (m_step) {
     case Step::Open:
-      wait(effects::color::SCREEN_OPEN_VBLS, Step::Show);
+      wait(SCREEN_OPEN_VBLS, Step::Show);
       break;
     case Step::Show:
       m_copied = m_slide;
@@ -79,12 +78,12 @@ void AdvertsState::runBasic(bool fire) {
       } else if (fire || ++m_slide == SLIDES) {
         m_step = Step::Close;
       } else {
-        wait(effects::color::SCREEN_REOPEN_VBLS, Step::Show);
+        wait(SCREEN_REOPEN_VBLS, Step::Show);
       }
       break;
     case Step::Close:
       m_closeFrame = m_frame;
-      wait(SCREENS * effects::color::SCREEN_CLOSE_VBLS, Step::Closed);
+      wait(SCREENS * SCREEN_CLOSE_VBLS, Step::Closed);
       break;
     case Step::Closed:
       m_step = Step::Finished;
@@ -102,8 +101,7 @@ void AdvertsState::wait(int frames, Step next) {
 
 void AdvertsState::show() {
   const bool closed =
-      m_closeFrame &&
-      m_frame >= *m_closeFrame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
+      m_closeFrame && m_frame >= *m_closeFrame + SCREEN_CLOSE_SHOWN_VBLS;
   if (!m_copied || closed) {
     m_screen.fill(BLACK);
   } else {

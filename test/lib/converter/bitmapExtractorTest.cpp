@@ -1,11 +1,11 @@
 #include "../../../lib/converter/bitmapExtractor/bitmapExtractor.h"
-#include "../../../lib/helpers/helpers.h"
+#include "../../../lib/binary/binary.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
 using namespace openfranko::lib::converter::bitmapExtractor;
-using openfranko::lib::helpers::pushBigEndian16;
-using openfranko::lib::helpers::pushBigEndian32;
+using openfranko::lib::binary::pushBigEndian16;
+using openfranko::lib::binary::pushBigEndian32;
 
 static std::vector<uint8_t> buildPackedBitmap(uint16_t height,
                                               uint16_t planes = 1) {

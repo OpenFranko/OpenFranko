@@ -1,6 +1,6 @@
 #include "StageFrame.h"
 
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
 
 #include <algorithm>
 #include <utility>
@@ -27,7 +27,7 @@ int wyb(const StageLayout &layout) { return layout.laced ? -1 : 0; }
 
 } // namespace
 
-StageLayout stageLayout(const effects::core::GameOptions &options) {
+StageLayout stageLayout(const GameOptions &options) {
   return {options.ntsc, options.tallScreen};
 }
 
@@ -51,8 +51,8 @@ int frameRows(const StageLayout &layout) {
   return FRAME_HEIGHT * rowsPerLine(layout);
 }
 
-void switchStandard(effects::core::GameOptions &options,
-                    amal::Object &screenDisplay, bool ntsc) {
+void switchStandard(GameOptions &options, amal::Object &screenDisplay,
+                    bool ntsc) {
   if (options.ntsc == ntsc) {
     return;
   }
@@ -141,8 +141,7 @@ stageOutput(const core::IndexedSurface *display,
   panelLayer.palette = panelColors;
   output.layers.push_back(std::move(panelLayer));
   output.layers.push_back(systems::graphics::solidLayer(
-      0x000, 0, (effects::color::FIRST_VISIBLE_LINE - top) * perLine,
-      FRAME_WIDTH));
+      0x000, 0, (FIRST_VISIBLE_LINE - top) * perLine, FRAME_WIDTH));
   return output;
 }
 

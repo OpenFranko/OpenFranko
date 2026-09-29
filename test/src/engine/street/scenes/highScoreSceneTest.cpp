@@ -8,6 +8,7 @@
 
 using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::street::scenes;
+using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
 using openfranko::src::systems::graphics::toArgb;
@@ -124,7 +125,7 @@ public:
 struct Board {
   FakeHost host;
   GameSession session;
-  effects::core::GameOptions options;
+  GameOptions options;
   std::vector<HighScoreTable> saves;
   HighScoreScene scene{
       host, session, options,

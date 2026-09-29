@@ -1,11 +1,9 @@
 #ifndef ENGINE_STATES_SHARED_STREETCONTROLS_H_
 #define ENGINE_STATES_SHARED_STREETCONTROLS_H_
 
-#include "../../../systems/graphics/VideoSystem.h"
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../GameVersion.h"
-#include "../../effects/core/GameOptions.h"
-#include "../../street/scenes/StreetStage.h"
+#include "../../street/scenes/StreetHost.h"
 
 namespace openfranko {
 namespace src {
@@ -16,9 +14,6 @@ namespace shared {
 street::scenes::StreetInput
 readStreetInput(const systems::input::ControllerSystem &controller,
                 GameVersion version);
-void showStageFrame(systems::graphics::VideoSystem &videoSystem,
-                    const systems::graphics::Display &frame,
-                    const effects::core::GameOptions &options);
 
 } // namespace shared
 } // namespace states

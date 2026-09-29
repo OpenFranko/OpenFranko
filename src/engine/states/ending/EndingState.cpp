@@ -5,14 +5,13 @@ namespace openfranko::src::engine::states::ending {
 EndingState::EndingState(systems::graphics::VideoSystem &videoSystem,
                          systems::audio::AudioSystem &audioSystem,
                          systems::input::ControllerSystem &controllerSystem,
-                         const effects::core::GameOptions &options,
-                         street::ui::GameSession &session)
+                         const GameOptions &options,
+                         street::session::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem, session.version),
       m_scene(m_host, session, options.ntsc),
-      m_rows(effects::color::visibleRows(m_scene.displayLine(),
-                                         street::scenes::EndingScene::HEIGHT,
-                                         options.ntsc)) {
+      m_rows(visibleRows(m_scene.displayLine(),
+                         street::scenes::EndingScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }
 

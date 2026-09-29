@@ -17,10 +17,10 @@
 namespace openfranko::src::engine::states::protectionCheck {
 namespace {
 
-using Cells = std::array<effects::sequences::CodeCardCheck::Cell,
-                         effects::sequences::CodeCardCheck::CARDS>;
-using Tries = std::array<effects::sequences::CodeCardCheck::Cell,
-                         effects::sequences::CodeCardCheck::STAGE_TRIES>;
+using Cells = std::array<effects::protection::CodeCardCheck::Cell,
+                         effects::protection::CodeCardCheck::CARDS>;
+using Tries = std::array<effects::protection::CodeCardCheck::Cell,
+                         effects::protection::CodeCardCheck::STAGE_TRIES>;
 
 constexpr auto QUESTION_PATH = "assets/03C1.bmp";
 constexpr auto FAILURE_PATH = "assets/03C2.bmp";
@@ -55,22 +55,23 @@ template <typename CellArray> CellArray randomCells() {
   std::random_device seed;
   std::mt19937 random(seed());
   std::uniform_int_distribution<int> coordinate(
-      0, effects::sequences::CodeCardCheck::CARD_SIZE - 1);
+      0, effects::protection::CodeCardCheck::CARD_SIZE - 1);
 
   CellArray cells{};
-  for (effects::sequences::CodeCardCheck::Cell &cell : cells) {
+  for (effects::protection::CodeCardCheck::Cell &cell : cells) {
     cell.x = coordinate(random);
     cell.y = coordinate(random);
   }
   return cells;
 }
 
-effects::sequences::CodeCardCheck makeCheck(ProtectionCheckState::Check check) {
+effects::protection::CodeCardCheck
+makeCheck(ProtectionCheckState::Check check) {
   if (check == ProtectionCheckState::Check::Stage3) {
-    return effects::sequences::CodeCardCheck::stageCheck(loadCards(),
-                                                         randomCells<Tries>());
+    return effects::protection::CodeCardCheck::stageCheck(loadCards(),
+                                                          randomCells<Tries>());
   }
-  return effects::sequences::CodeCardCheck(loadCards(), randomCells<Cells>());
+  return effects::protection::CodeCardCheck(loadCards(), randomCells<Cells>());
 }
 
 void xorRect(systems::graphics::IndexedBitmap &image, int x, int y, int width,
@@ -91,15 +92,15 @@ void xorRect(systems::graphics::IndexedBitmap &image, int x, int y, int width,
 
 ProtectionCheckState::ProtectionCheckState(
     systems::graphics::VideoSystem &videoSystem,
-    systems::audio::AudioSystem &audioSystem,
-    effects::core::InkeyBuffer &keyboard, Check check)
+    systems::audio::AudioSystem &audioSystem, InkeyBuffer &keyboard,
+    Check check)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_keyboard(keyboard), m_kind(check), m_check(makeCheck(check)),
       m_loadingFrames(check == Check::Stage3
                           ? STAGE_CHECK_FILES *
                                 street::ui::LoadingMock::FILE_FRAMES
                           : 0),
-      m_resumeFrame(effects::color::SCREEN_OPEN_VBLS),
+      m_resumeFrame(SCREEN_OPEN_VBLS),
       m_screen(QUESTION_SCREEN_WIDTH, QUESTION_SCREEN_HEIGHT),
       m_border(check == Check::Stage3 ? STAGE_BORDER : BLACK) {}
 
@@ -134,26 +135,25 @@ std::optional<EngineStateEnum> ProtectionCheckState::runCheck() {
       if (!takeAnswer()) {
         return std::nullopt;
       }
-      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_SHOWN_VBLS;
       m_step = Step::Hidden;
       break;
     case Step::Hidden:
       m_questionShown = false;
-      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::Closed;
       break;
     case Step::Closed:
       if (!m_check.isFinished()) {
-        m_resumeFrame = m_frame + effects::color::SCREEN_OPEN_VBLS;
+        m_resumeFrame = m_frame + SCREEN_OPEN_VBLS;
         m_step = Step::Unpack;
       } else if (m_check.isPassed()) {
         return m_kind == Check::Stage3 ? EngineStateEnum::Level3
                                        : EngineStateEnum::HighScore;
       } else {
         showFailure();
-        m_resumeFrame = m_frame + (m_kind == Check::Stage3
-                                       ? effects::color::SCREEN_REOPEN_VBLS
-                                       : effects::color::SCREEN_OPEN_VBLS);
+        m_resumeFrame = m_frame + (m_kind == Check::Stage3 ? SCREEN_REOPEN_VBLS
+                                                           : SCREEN_OPEN_VBLS);
         m_step = Step::FailureUnpacked;
       }
       break;
@@ -173,8 +173,8 @@ bool ProtectionCheckState::takeAnswer() {
   while (const std::optional<char> key = m_keyboard.inkey()) {
     const char letter =
         static_cast<char>(std::toupper(static_cast<unsigned char>(*key)));
-    if (letter >= effects::sequences::CodeCardCheck::FIRST_ANSWER &&
-        letter <= effects::sequences::CodeCardCheck::LAST_ANSWER) {
+    if (letter >= effects::protection::CodeCardCheck::FIRST_ANSWER &&
+        letter <= effects::protection::CodeCardCheck::LAST_ANSWER) {
       m_check.answer(letter);
       return true;
     }
@@ -197,7 +197,7 @@ void ProtectionCheckState::draw() {
 
 void ProtectionCheckState::show() { m_videoSystem.show(m_screen.output()); }
 
-const effects::sequences::CodeCardCheck &ProtectionCheckState::check() const {
+const effects::protection::CodeCardCheck &ProtectionCheckState::check() const {
   return m_check;
 }
 
@@ -206,16 +206,15 @@ void ProtectionCheckState::showQuestion() {
   m_questionPalette = m_question.palette;
   m_border = m_questionPalette[0];
   m_flasher.start(BOX_INK, BOX_FLASH);
-  const effects::sequences::CodeCardCheck::Cell cell = m_check.cell();
+  const effects::protection::CodeCardCheck::Cell cell = m_check.cell();
   xorRect(m_question, CELL_PITCH * cell.x + BOX_OFFSET,
           CELL_PITCH * cell.y + BOX_OFFSET, BOX_SIZE, BOX_SIZE, BOX_INK);
 }
 
 void ProtectionCheckState::showFailure() {
   const bool ntsc = m_videoSystem.isNtsc();
-  const effects::color::VisibleRows rows = effects::color::visibleRows(
-      effects::color::pictureLine(FAILURE_DISPLAY_LINE, ntsc),
-      FAILURE_SCREEN_HEIGHT, ntsc);
+  const VisibleRows rows = visibleRows(pictureLine(FAILURE_DISPLAY_LINE, ntsc),
+                                       FAILURE_SCREEN_HEIGHT, ntsc);
   m_failureTop = rows.first;
   m_screen = systems::graphics::Canvas(FAILURE_SCREEN_WIDTH, rows.count);
   m_failure = systems::graphics::loadIndexedBitmap(FAILURE_PATH);

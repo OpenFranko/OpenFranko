@@ -1,7 +1,7 @@
 #include "EndingScene.h"
 
-#include "../../amal/actors/Actors.h"
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
+#include "../actors/Actors.h"
 #include "../ui/StageFrame.h"
 
 #include <algorithm>
@@ -99,10 +99,11 @@ effects::color::AmigaPalette beat(effects::color::AmigaColor ink,
 
 } // namespace
 
-EndingScene::EndingScene(StreetHost &host, ui::GameSession &session, bool ntsc)
+EndingScene::EndingScene(StreetHost &host, session::GameSession &session,
+                         bool ntsc)
     : m_host(host), m_session(session), m_machine(session.registers),
       m_display(0, 0), m_border(ui::STAGE_BORDER), m_ntsc(ntsc),
-      m_displayLine(effects::color::pictureLine(DISPLAY_LINE, ntsc)) {}
+      m_displayLine(pictureLine(DISPLAY_LINE, ntsc)) {}
 
 void EndingScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
@@ -314,19 +315,19 @@ void EndingScene::runBasic(int16_t joystick) {
         flow = Flow::Yield;
         break;
       }
-      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::StageGone);
+      flow = hold(SCREEN_CLOSE_SHOWN_VBLS, Step::StageGone);
       break;
     case Step::StageGone:
       m_stageShown = false;
-      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::ClosePanel);
+      flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::ClosePanel);
       break;
     case Step::ClosePanel:
-      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::PanelGone);
+      flow = hold(SCREEN_CLOSE_SHOWN_VBLS, Step::PanelGone);
       break;
     case Step::PanelGone:
       m_panelShown = false;
       m_stage.reset();
-      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::Foto);
+      flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::Foto);
       break;
     case Step::Foto:
       m_host.setMusicVolume(FULL_VOLUME);
@@ -342,11 +343,11 @@ void EndingScene::runBasic(int16_t joystick) {
       flow = wait(FOTO_WAIT, Step::FotoClose);
       break;
     case Step::FotoClose:
-      flow = hold(effects::color::SCREEN_CLOSE_VBLS, Step::Still);
+      flow = hold(SCREEN_CLOSE_VBLS, Step::Still);
       break;
     case Step::Still:
       m_bobs.set(TEXT_BOX, TEXT_BOX_X, TEXT_BOX_Y, TEXT_BOX_IMAGE);
-      flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::StillHidden);
+      flow = hold(SCREEN_OPEN_VBLS, Step::StillHidden);
       break;
     case Step::StillHidden:
       hideStill();
@@ -391,19 +392,19 @@ void EndingScene::runBasic(int16_t joystick) {
       break;
     case Step::CloseStill:
       off();
-      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::StillGone);
+      flow = hold(SCREEN_CLOSE_SHOWN_VBLS, Step::StillGone);
       break;
     case Step::StillGone:
       closeScreen(0);
-      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::CloseHidden);
+      flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::CloseHidden);
       break;
     case Step::CloseHidden:
       closeScreen(1);
-      flow = hold(effects::color::SCREEN_CLOSE_VBLS, Step::Dancer);
+      flow = hold(SCREEN_CLOSE_VBLS, Step::Dancer);
       break;
     case Step::Dancer:
       std::swap(m_images, m_parked);
-      flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::DancerShown);
+      flow = hold(SCREEN_OPEN_VBLS, Step::DancerShown);
       break;
     case Step::DancerShown:
       openScreen(1, DANCER_TOP, DANCER_HEIGHT, DANCER_PALETTE);
@@ -415,7 +416,7 @@ void EndingScene::runBasic(int16_t joystick) {
     case Step::Dance:
       dance();
       m_dancerCopper = true;
-      flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::TextScreen);
+      flow = hold(SCREEN_OPEN_VBLS, Step::TextScreen);
       break;
     case Step::TextScreen:
       textScreen();
@@ -449,19 +450,19 @@ void EndingScene::runBasic(int16_t joystick) {
         break;
       }
       off();
-      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::TextGone);
+      flow = hold(SCREEN_CLOSE_SHOWN_VBLS, Step::TextGone);
       break;
     case Step::TextGone:
       closeScreen(0);
-      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::CloseDancer);
+      flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::CloseDancer);
       break;
     case Step::CloseDancer:
-      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::DancerGone);
+      flow = hold(SCREEN_CLOSE_SHOWN_VBLS, Step::DancerGone);
       break;
     case Step::DancerGone:
       closeScreen(1);
       m_count = FULL_VOLUME;
-      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::MusicFade);
+      flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::MusicFade);
       break;
     case Step::MusicFade:
       flow = musicFade();
@@ -493,7 +494,7 @@ void EndingScene::start() {
 void EndingScene::era() {
   m_credits = m_host.loadEndingCredits();
   m_panel = std::make_unique<ui::StatusPanel>(
-      m_host.loadPanelPicture(StreetStage::LOADING_STRIP), core::Picture{},
+      m_host.loadPanelPicture(StreetHost::LOADING_STRIP), core::Picture{},
       m_session.version);
   m_host.stopMusic();
   m_images.clear();
@@ -541,7 +542,7 @@ void EndingScene::farewell() {
   core::BobLayer::paste(still.surface, m_images, FAREWELL_X, FAREWELL_Y,
                         FAREWELL_IMAGE);
   m_bobs.set(WALKER, WALKER_X, WALKER_Y, WALKER_IMAGE);
-  m_machine.create(WALKER, amal::actors::walkAway());
+  m_machine.create(WALKER, actors::walkAway());
   m_machine.startAll();
 }
 
@@ -553,19 +554,17 @@ void EndingScene::dance() {
   for (int portrait = 1; portrait <= PORTRAITS; ++portrait) {
     m_bobs.set(DANCER + portrait, PORTRAIT_X, PORTRAIT_Y, portrait);
   }
-  m_machine.create(DANCER, amal::actors::breakDance());
+  m_machine.create(DANCER, actors::breakDance());
   for (int portrait = 1; portrait <= PORTRAITS; ++portrait) {
-    m_machine.create(DANCER + portrait,
-                     amal::actors::portraitEntrance(portrait));
+    m_machine.create(DANCER + portrait, actors::portraitEntrance(portrait));
   }
   m_machine.startAll();
 }
 
 void EndingScene::secondDance() {
-  m_machine.create(DANCER, amal::actors::danceFinale());
+  m_machine.create(DANCER, actors::danceFinale());
   for (int portrait = 1; portrait <= PORTRAITS; ++portrait) {
-    m_machine.create(DANCER + portrait,
-                     amal::actors::portraitShuttle(portrait));
+    m_machine.create(DANCER + portrait, actors::portraitShuttle(portrait));
   }
   m_machine.startAll();
 }
@@ -593,7 +592,7 @@ void EndingScene::pageUp() {
   if (m_page == SECOND_DANCE_PAGE) {
     secondDance();
   }
-  for (const CreditLine &line :
+  for (const core::CreditLine &line :
        m_credits.pages[static_cast<std::size_t>(m_page)].lines) {
     font(line.text, line.y);
   }
@@ -624,7 +623,7 @@ void EndingScene::openScreen(int number, int top, int height,
   Screen &screen = m_screens[static_cast<std::size_t>(number)];
   screen.open = true;
   screen.hidden = false;
-  screen.top = effects::color::pictureLine(top, m_ntsc);
+  screen.top = pictureLine(top, m_ntsc);
   screen.surface = core::IndexedSurface(WIDTH, height);
   screen.palette = std::move(palette);
   if (number == 0) {

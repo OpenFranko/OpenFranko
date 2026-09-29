@@ -1,32 +1,30 @@
 #include "StreetControls.h"
 
-#include "../../street/ui/StageFrame.h"
-
 namespace openfranko::src::engine::states::shared {
 
 namespace {
 
-street::ui::SystemKey
+street::session::SystemKey
 heldSystemKey(const systems::input::ControllerSystem &controller) {
   if (controller.isKeyHeld(systems::input::Key::Escape)) {
-    return street::ui::SystemKey::Escape;
+    return street::session::SystemKey::Escape;
   }
   if (controller.isKeyHeld(systems::input::Key::F9)) {
-    return street::ui::SystemKey::Lives;
+    return street::session::SystemKey::Lives;
   }
   if (controller.isKeyHeld(systems::input::Key::F1)) {
-    return street::ui::SystemKey::Pal;
+    return street::session::SystemKey::Pal;
   }
   if (controller.isKeyHeld(systems::input::Key::F2)) {
-    return street::ui::SystemKey::Ntsc;
+    return street::session::SystemKey::Ntsc;
   }
   if (controller.isKeyHeld(systems::input::Key::F3)) {
-    return street::ui::SystemKey::MusicOff;
+    return street::session::SystemKey::MusicOff;
   }
   if (controller.isKeyHeld(systems::input::Key::F4)) {
-    return street::ui::SystemKey::MusicOn;
+    return street::session::SystemKey::MusicOn;
   }
-  return street::ui::SystemKey::None;
+  return street::session::SystemKey::None;
 }
 
 } // namespace
@@ -44,33 +42,26 @@ readStreetInput(const systems::input::ControllerSystem &controller,
   if (const auto key = controller.functionKey()) {
     switch (*key) {
     case systems::input::FunctionKey::F1:
-      input.key = street::ui::SystemKey::MusicOn;
+      input.key = street::session::SystemKey::MusicOn;
       break;
     case systems::input::FunctionKey::F2:
-      input.key = street::ui::SystemKey::MusicOff;
+      input.key = street::session::SystemKey::MusicOff;
       break;
     case systems::input::FunctionKey::Escape:
-      input.key = street::ui::SystemKey::Escape;
+      input.key = street::session::SystemKey::Escape;
       break;
     case systems::input::FunctionKey::F3:
-      input.key = street::ui::SystemKey::Pal;
+      input.key = street::session::SystemKey::Pal;
       break;
     case systems::input::FunctionKey::F4:
-      input.key = street::ui::SystemKey::Ntsc;
+      input.key = street::session::SystemKey::Ntsc;
       break;
     case systems::input::FunctionKey::Other:
-      input.key = street::ui::SystemKey::Other;
+      input.key = street::session::SystemKey::Other;
       break;
     }
   }
   return input;
-}
-
-void showStageFrame(systems::graphics::VideoSystem &videoSystem,
-                    const systems::graphics::Display &frame,
-                    const effects::core::GameOptions &options) {
-  videoSystem.setNtsc(street::ui::stageLayout(options).ntsc);
-  videoSystem.show(frame);
 }
 
 } // namespace openfranko::src::engine::states::shared

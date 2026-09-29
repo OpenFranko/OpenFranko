@@ -5,8 +5,8 @@
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
 #include "../../../systems/graphics/VideoSystem.h"
+#include "../../AmigaDisplay.h"
 #include "../../amal/Machine.h"
-#include "../../effects/color/AmigaDisplay.h"
 #include "../../effects/sequences/FotoSequence.h"
 #include "../IEngineState.h"
 
@@ -45,8 +45,8 @@ private:
   amal::Machine m_machine;
   amal::Object m_bob;
   amal::Object m_shownBob;
-  effects::color::VisibleRows m_walkRows;
-  effects::color::VisibleRows m_logoRows;
+  VisibleRows m_walkRows;
+  VisibleRows m_logoRows;
   systems::graphics::Canvas m_walkScreen;
   systems::graphics::Canvas m_logoScreen;
   std::optional<effects::sequences::FotoSequence> m_foto;

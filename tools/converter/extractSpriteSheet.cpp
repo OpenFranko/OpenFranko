@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     std::string outputFilePath = outputOptional.value_or(fileId + "_sheet.bmp");
     auto palette =
         paletteOptional.has_value()
-            ? converter::spriteSheet::palettes::byName(paletteOptional.value())
+            ? converter::gameData::palettes::byName(paletteOptional.value())
             : converter::spriteSheet::selectPalette(fileId);
 
     std::cerr << "Decompressing " << inputFilePath << " (" << compressedData.size()

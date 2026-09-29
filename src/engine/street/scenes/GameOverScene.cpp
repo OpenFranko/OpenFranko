@@ -1,6 +1,6 @@
 #include "GameOverScene.h"
 
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
 
 #include "../../effects/color/Rainbow.h"
 #include "../ui/StageFrame.h"
@@ -57,7 +57,7 @@ effects::color::AmigaPalette graveyardPalette() {
 
 } // namespace
 
-GameOverScene::GameOverScene(StreetHost &host, ui::GameSession &session)
+GameOverScene::GameOverScene(StreetHost &host, session::GameSession &session)
     : m_host(host), m_session(session), m_screen(PICTURE_WIDTH, PICTURE_HEIGHT),
       m_palette(graveyardPalette()), m_border(session.border),
       m_copperBorder(session.border) {}
@@ -123,7 +123,7 @@ void GameOverScene::advance(int16_t joystick) {
       break;
     case Step::CloseShown:
       closeGraveyard();
-      flow = wait(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::Closed);
+      flow = wait(SCREEN_CLOSE_HIDDEN_VBLS, Step::Closed);
       break;
     case Step::Closed:
       m_step = Step::Finished;
@@ -287,7 +287,7 @@ GameOverScene::Flow GameOverScene::hold() {
     return Flow::Yield;
   }
   m_animating = false;
-  return wait(effects::color::SCREEN_CLOSE_SHOWN_VBLS, Step::CloseShown);
+  return wait(SCREEN_CLOSE_SHOWN_VBLS, Step::CloseShown);
 }
 
 void GameOverScene::closeGraveyard() {

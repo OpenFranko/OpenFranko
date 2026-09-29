@@ -105,7 +105,7 @@ SCENARIO("The stage layout follows state 09's Screen Display lines") {
   }
 
   THEN("The menu's options pick the layout") {
-    effects::core::GameOptions options;
+    GameOptions options;
     options.ntsc = true;
     options.tallScreen = true;
     const StageLayout layout = stageLayout(options);

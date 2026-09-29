@@ -1,17 +1,17 @@
 #ifndef ENGINE_STREET_SCENES_BOSSSTAGE_H_
 #define ENGINE_STREET_SCENES_BOSSSTAGE_H_
 
+#include "../../GameOptions.h"
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
-#include "../../effects/core/GameOptions.h"
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
-#include "../ui/GameSession.h"
+#include "../session/GameSession.h"
 #include "../ui/LoadingMock.h"
 #include "../ui/StageFrame.h"
 #include "../ui/StatusPanel.h"
-#include "StreetStage.h"
+#include "StreetHost.h"
 
 #include <cstdint>
 #include <memory>
@@ -33,8 +33,8 @@ public:
   static constexpr int APPROACH_COLUMNS = 19;
   static constexpr int BOSS_ENERGY = 80;
 
-  BossStage(StreetHost &host, ui::GameSession &session,
-            effects::core::GameOptions &options);
+  BossStage(StreetHost &host, session::GameSession &session,
+            GameOptions &options);
 
   void advance(const StreetInput &input);
   void compose(std::vector<uint32_t> &frame) const;
@@ -162,8 +162,8 @@ private:
   void runBasic(const StreetInput &input);
 
   StreetHost &m_host;
-  ui::GameSession &m_session;
-  effects::core::GameOptions &m_options;
+  session::GameSession &m_session;
+  GameOptions &m_options;
   amal::Machine m_machine;
   core::ImageBank m_images;
   core::BobLayer m_bobs;

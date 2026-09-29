@@ -9,6 +9,7 @@
 
 using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::street::scenes;
+using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
 
@@ -150,7 +151,7 @@ public:
 struct Drive {
   FakeHost host;
   GameSession session;
-  effects::core::GameOptions options;
+  GameOptions options;
   std::unique_ptr<CarStage> stage;
 
   Drive() {

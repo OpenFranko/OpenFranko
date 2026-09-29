@@ -1,18 +1,16 @@
 #include "bitmapExtractor.h"
+#include "../../binary/binary.h"
 #include "../../bmpWriter/bmpWriter.h"
-#include "../../helpers/helpers.h"
-#include "../amosCompact/Consts.h"
 #include "../amosCompact/decodeImage.h"
+#include "../gameData/Palettes.h"
 #include "../gameData/gameData.h"
-#include "../shared/headers.h"
-#include "../spriteSheet/Palettes.h"
+#include "../headers/headers.h"
 #include <algorithm>
 #include <stdexcept>
 
 namespace openfranko::lib::converter::bitmapExtractor {
 
-namespace amosConsts = amosCompact::consts;
-namespace pal = spriteSheet::palettes;
+namespace pal = gameData::palettes;
 using converter::amosCompact::decodeAmosBitmap;
 using converter::amosCompact::DecodedImage;
 
@@ -20,10 +18,10 @@ namespace {
 
 std::vector<size_t> findBMCodeOffsets(const std::vector<uint8_t> &data) {
   std::vector<size_t> offsets;
-  helpers::BigEndianReader reader(data);
-  for (size_t off = 0;
-       off + amosConsts::PACKED_BITMAP_HEADER_SIZE <= data.size(); off += 2) {
-    if (reader.readUint32(off) == amosConsts::AMOS_BMCODE) {
+  binary::BigEndianReader reader(data);
+  for (size_t off = 0; off + headers::PACKED_BITMAP_HEADER_SIZE <= data.size();
+       off += 2) {
+    if (reader.readUint32(off) == headers::AMOS_BMCODE) {
       offsets.push_back(off);
     }
   }
@@ -33,21 +31,21 @@ std::vector<size_t> findBMCodeOffsets(const std::vector<uint8_t> &data) {
 bool hasMagicAt(const std::vector<uint8_t> &data, size_t offset, uint32_t magic,
                 size_t headerSize) {
   return offset + headerSize <= data.size() &&
-         helpers::BigEndianReader(data).readUint32(offset) == magic;
+         binary::BigEndianReader(data).readUint32(offset) == magic;
 }
 
 bool isBitmapAt(const std::vector<uint8_t> &data, size_t offset) {
-  return hasMagicAt(data, offset, amosConsts::AMOS_BMCODE,
-                    amosConsts::PACKED_BITMAP_HEADER_SIZE);
+  return hasMagicAt(data, offset, headers::AMOS_BMCODE,
+                    headers::PACKED_BITMAP_HEADER_SIZE);
 }
 
 bool isScreenAt(const std::vector<uint8_t> &data, size_t offset) {
-  return hasMagicAt(data, offset, amosConsts::SPACK_SCREEN_HEADER,
-                    amosConsts::SPACK_HEADER_SIZE);
+  return hasMagicAt(data, offset, headers::SPACK_SCREEN_HEADER,
+                    headers::SPACK_HEADER_SIZE);
 }
 
 std::vector<size_t> readBitmapTable(const std::vector<uint8_t> &data) {
-  helpers::BigEndianReader reader(data);
+  binary::BigEndianReader reader(data);
   for (size_t entrySize : {size_t{4}, size_t{2}}) {
     if (data.size() < entrySize) {
       continue;
@@ -78,7 +76,7 @@ std::vector<size_t> readTileChain(const std::vector<uint8_t> &data) {
     throw std::runtime_error("Tile file has no tiles");
   }
 
-  helpers::BigEndianReader reader(data);
+  binary::BigEndianReader reader(data);
   std::vector<size_t> offsets;
   size_t offset = TILE_HEADER_SIZE + 2;
   for (int i = 0; i < count; i++) {
@@ -106,7 +104,7 @@ std::vector<uint16_t> readSPACKPalette(const std::vector<uint8_t> &data,
   }
   std::vector<uint8_t> slice(data.begin() + static_cast<std::ptrdiff_t>(offset),
                              data.end());
-  auto hdr = shared::parseSPACKHeader(slice);
+  auto hdr = headers::parseSPACKHeader(slice);
   return {std::begin(hdr.amigaPalette), std::end(hdr.amigaPalette)};
 }
 
@@ -185,7 +183,7 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data,
   std::vector<uint16_t> curPal(pal::HUD.begin(), pal::HUD.end());
 
   std::vector<ExtractedBitmap> results;
-  helpers::BigEndianReader reader(data);
+  binary::BigEndianReader reader(data);
 
   size_t firstImage = data.size();
   for (size_t pos = 0; pos + 2 <= firstImage; pos += 2) {
@@ -197,7 +195,7 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data,
     firstImage = std::min(firstImage, offset);
     if (screen) {
       curPal = readSPACKPalette(data, offset);
-      offset += amosConsts::SPACK_HEADER_SIZE;
+      offset += headers::SPACK_HEADER_SIZE;
     }
     const size_t index = results.size();
     std::string name =
@@ -215,7 +213,7 @@ std::vector<ExtractedBitmap> extract(const std::vector<uint8_t> &data,
     throw std::runtime_error("Data too small to extract bitmaps");
   }
 
-  helpers::BigEndianReader reader(data);
+  binary::BigEndianReader reader(data);
   uint32_t magic = reader.readUint32(0);
 
   const std::string_view role = gameData::version10Id(fileId);
@@ -224,7 +222,7 @@ std::vector<ExtractedBitmap> extract(const std::vector<uint8_t> &data,
     return extract0384(data, fileId);
   }
 
-  if (magic == amosConsts::SPACK_SCREEN_HEADER &&
+  if (magic == headers::SPACK_SCREEN_HEADER &&
       role != gameData::fileIds::CEMETERY_PICTURE) {
     return extractSCCode(data, fileId);
   }

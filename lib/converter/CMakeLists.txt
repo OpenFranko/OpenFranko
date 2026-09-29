@@ -1,5 +1,5 @@
 add_subdirectory(gameData)
-add_subdirectory(shared)
+add_subdirectory(headers)
 add_subdirectory(amosCompact)
 add_subdirectory(spriteSheet)
 add_subdirectory(fileContainer)

@@ -1,14 +1,15 @@
 #include "Level1State.h"
 
 #include "../shared/StreetControls.h"
+#include "../shared/StreetVideo.h"
 
 namespace openfranko::src::engine::states::level1 {
 
 Level1State::Level1State(systems::graphics::VideoSystem &videoSystem,
                          systems::audio::AudioSystem &audioSystem,
                          systems::input::ControllerSystem &controllerSystem,
-                         effects::core::GameOptions &options,
-                         street::ui::GameSession &session)
+                         GameOptions &options,
+                         street::session::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_options(options), m_host(audioSystem, session.version),
       m_stage(m_host, session, options) {}

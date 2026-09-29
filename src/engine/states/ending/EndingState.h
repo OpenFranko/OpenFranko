@@ -4,10 +4,10 @@
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../../systems/input/ControllerSystem.h"
-#include "../../effects/color/AmigaDisplay.h"
-#include "../../effects/core/GameOptions.h"
+#include "../../AmigaDisplay.h"
+#include "../../GameOptions.h"
 #include "../../street/scenes/EndingScene.h"
-#include "../../street/ui/GameSession.h"
+#include "../../street/session/GameSession.h"
 #include "../IEngineState.h"
 #include "../shared/EngineStreetHost.h"
 
@@ -22,8 +22,8 @@ public:
   EndingState(systems::graphics::VideoSystem &videoSystem,
               systems::audio::AudioSystem &audioSystem,
               systems::input::ControllerSystem &controllerSystem,
-              const effects::core::GameOptions &options,
-              street::ui::GameSession &session);
+              const GameOptions &options,
+              street::session::GameSession &session);
 
   std::optional<EngineStateEnum> update() override;
 
@@ -34,7 +34,7 @@ private:
   systems::input::ControllerSystem &m_controllerSystem;
   shared::EngineStreetHost m_host;
   street::scenes::EndingScene m_scene;
-  effects::color::VisibleRows m_rows;
+  VisibleRows m_rows;
 };
 
 } // namespace ending

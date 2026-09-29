@@ -6,10 +6,10 @@
 #include "../../../systems/graphics/Canvas.h"
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../../systems/input/ControllerSystem.h"
-#include "../../effects/animation/CharacterSelection.h"
-#include "../../effects/color/AmigaDisplay.h"
-#include "../../effects/core/GameOptions.h"
-#include "../../street/ui/GameSession.h"
+#include "../../AmigaDisplay.h"
+#include "../../GameOptions.h"
+#include "../../effects/sequences/CharacterSelection.h"
+#include "../../street/session/GameSession.h"
 #include "../IEngineState.h"
 
 #include <vector>
@@ -25,8 +25,8 @@ public:
   CharacterSelectionState(systems::graphics::VideoSystem &videoSystem,
                           systems::audio::AudioSystem &audioSystem,
                           systems::input::ControllerSystem &controllerSystem,
-                          effects::core::GameOptions &options,
-                          street::ui::GameSession &session);
+                          GameOptions &options,
+                          street::session::GameSession &session);
   ~CharacterSelectionState();
 
   std::optional<EngineStateEnum> update() override;
@@ -38,9 +38,9 @@ private:
   systems::graphics::VideoSystem &m_videoSystem;
   systems::audio::AudioSystem &m_audioSystem;
   systems::input::ControllerSystem &m_controllerSystem;
-  street::ui::GameSession &m_session;
-  effects::animation::CharacterSelection m_selection;
-  effects::color::VisibleRows m_rows;
+  street::session::GameSession &m_session;
+  effects::sequences::CharacterSelection m_selection;
+  VisibleRows m_rows;
   systems::graphics::IndexedBitmap m_picture;
   effects::color::AmigaPalette m_screenPalette;
   std::vector<systems::graphics::IndexedBitmap> m_sprites;

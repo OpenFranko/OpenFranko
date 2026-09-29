@@ -1,11 +1,12 @@
 #include "../../../../src/engine/amal/Machine.h"
-#include "../../../../src/engine/amal/actors/Actors.h"
+#include "../../../../src/engine/street/actors/Actors.h"
 #include <catch2/catch_all.hpp>
 #include <stdexcept>
 #include <utility>
 #include <vector>
 
 using namespace openfranko::src::engine::amal;
+using namespace openfranko::src::engine::street;
 
 namespace {
 

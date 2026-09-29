@@ -1,12 +1,12 @@
 #include "../../../lib/converter/levelScript/levelScript.h"
-#include "../../../lib/helpers/helpers.h"
+#include "../../../lib/binary/binary.h"
 #include <catch2/catch_all.hpp>
 #include <string>
 #include <string_view>
 #include <vector>
 
 using namespace openfranko::lib::converter::levelScript;
-using namespace openfranko::lib::helpers;
+using namespace openfranko::lib::binary;
 
 namespace {
 

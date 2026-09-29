@@ -5,10 +5,10 @@
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
 #include "../../../systems/graphics/VideoSystem.h"
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
+#include "../../InkeyBuffer.h"
 #include "../../effects/color/PaletteFlasher.h"
-#include "../../effects/core/InkeyBuffer.h"
-#include "../../effects/sequences/CodeCardCheck.h"
+#include "../../effects/protection/CodeCardCheck.h"
 #include "../IEngineState.h"
 
 namespace openfranko {
@@ -23,12 +23,11 @@ public:
 
   ProtectionCheckState(systems::graphics::VideoSystem &videoSystem,
                        systems::audio::AudioSystem &audioSystem,
-                       effects::core::InkeyBuffer &keyboard,
-                       Check check = Check::Title);
+                       InkeyBuffer &keyboard, Check check = Check::Title);
 
   std::optional<EngineStateEnum> update() override;
 
-  const effects::sequences::CodeCardCheck &check() const;
+  const effects::protection::CodeCardCheck &check() const;
 
 private:
   enum class Step { Unpack, Ask, Hidden, Closed, FailureUnpacked, Hang };
@@ -42,9 +41,9 @@ private:
 
   systems::graphics::VideoSystem &m_videoSystem;
   systems::audio::AudioSystem &m_audioSystem;
-  effects::core::InkeyBuffer &m_keyboard;
+  InkeyBuffer &m_keyboard;
   Check m_kind;
-  effects::sequences::CodeCardCheck m_check;
+  effects::protection::CodeCardCheck m_check;
   int m_loadingFrames;
   Step m_step = Step::Unpack;
   int m_frame = 0;

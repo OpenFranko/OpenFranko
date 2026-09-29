@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
 
     auto palette =
         paletteOptional.has_value()
-            ? converter::spriteSheet::palettes::byName(paletteOptional.value())
+            ? converter::gameData::palettes::byName(paletteOptional.value())
             : converter::spriteSheet::selectPalette(fileId);
 
     const auto &dec = resource.data;

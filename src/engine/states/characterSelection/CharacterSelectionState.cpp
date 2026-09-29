@@ -52,7 +52,7 @@ std::vector<systems::graphics::IndexedBitmap> loadSprites(GameVersion version) {
   return sprites;
 }
 
-effects::animation::CharacterSelection::Joystick
+effects::sequences::CharacterSelection::Joystick
 joystickFrom(const systems::input::ControllerSystem::ControllerStates &states) {
   return {states.left, states.right, states.button};
 }
@@ -62,14 +62,13 @@ joystickFrom(const systems::input::ControllerSystem::ControllerStates &states) {
 CharacterSelectionState::CharacterSelectionState(
     systems::graphics::VideoSystem &videoSystem,
     systems::audio::AudioSystem &audioSystem,
-    systems::input::ControllerSystem &controllerSystem,
-    effects::core::GameOptions &options, street::ui::GameSession &session)
+    systems::input::ControllerSystem &controllerSystem, GameOptions &options,
+    street::session::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_session(session),
       m_selection(options, session.nameScreenOpen ? 1 : 0, session.version),
-      m_rows(effects::color::visibleRows(
-          effects::color::pictureLine(DISPLAY_LINE, options.ntsc),
-          SCREEN_HEIGHT, options.ntsc)),
+      m_rows(visibleRows(pictureLine(DISPLAY_LINE, options.ntsc), SCREEN_HEIGHT,
+                         options.ntsc)),
       m_picture(systems::graphics::loadIndexedBitmap(
           assets::picturePath(assets::resourceName(PICTURE, session.version)))),
       m_screenPalette(screenPalette(m_picture)),
@@ -139,7 +138,7 @@ void CharacterSelectionState::draw() {
   } else {
     m_screen.setPalette(m_picture.palette);
     m_screen.draw(m_picture, 0, -m_rows.first);
-    for (const effects::animation::CharacterSelection::Bob *bob :
+    for (const effects::sequences::CharacterSelection::Bob *bob :
          {&m_selection.face(), &m_selection.hand()}) {
       const int sprite = bob->image - FIRST_SPRITE_IMAGE;
       if (bob->shown && bob->image != HIDDEN_IMAGE && sprite >= 0 &&

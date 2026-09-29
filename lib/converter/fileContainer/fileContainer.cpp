@@ -1,8 +1,8 @@
 #include "fileContainer.h"
+#include "../../binary/binary.h"
 #include "../../decompressor/backwardLZ77/backwardLZ77.h"
-#include "../../helpers/helpers.h"
-#include "../amosCompact/Consts.h"
 #include "../gameData/gameData.h"
+#include "../headers/headers.h"
 #include <algorithm>
 #include <cstddef>
 #include <cstdio>
@@ -64,7 +64,7 @@ std::vector<uint8_t> unsquash(const std::vector<uint8_t> &rawData,
   if (rawData.size() < prefix) {
     throw std::runtime_error("File too small for its packed length");
   }
-  helpers::BigEndianReader reader(rawData);
+  binary::BigEndianReader reader(rawData);
   const size_t packedLength =
       prefix == LONG_PREFIX_SIZE ? reader.readUint32(0) : reader.readUint16(0);
   return decompressor::backwardLZ77::decompressStream(
@@ -72,12 +72,12 @@ std::vector<uint8_t> unsquash(const std::vector<uint8_t> &rawData,
 }
 
 std::vector<uint8_t> dataBank(const std::vector<uint8_t> &unpacked) {
-  const size_t length = helpers::BigEndianReader(unpacked).readUint32(0);
+  const size_t length = binary::BigEndianReader(unpacked).readUint32(0);
   return slice(unpacked, DATA_HEADER_SIZE, DATA_HEADER_SIZE + length);
 }
 
 std::vector<uint8_t> data16Bank(const std::vector<uint8_t> &unpacked) {
-  const size_t length = helpers::BigEndianReader(unpacked).readUint16(0);
+  const size_t length = binary::BigEndianReader(unpacked).readUint16(0);
   if (length < WORD_PREFIX_SIZE) {
     throw std::runtime_error("Data bank is too short");
   }
@@ -100,17 +100,17 @@ std::vector<uint8_t> decodedBank(const std::vector<uint8_t> &rawData) {
   }
   std::vector<uint8_t> bank;
   bank.reserve(rawData.size());
-  helpers::BigEndianReader reader(rawData);
+  binary::BigEndianReader reader(rawData);
   for (size_t pos = 0; pos < rawData.size(); pos += LONGWORD_SIZE) {
     const uint32_t value = reader.readUint32(pos);
-    helpers::pushBigEndian32(bank, value << CODED_ROTATION |
-                                       value >> (32 - CODED_ROTATION));
+    binary::pushBigEndian32(bank, value << CODED_ROTATION |
+                                      value >> (32 - CODED_ROTATION));
   }
   return bank;
 }
 
 uint16_t bobColours(const std::vector<uint8_t> &unpacked, size_t count) {
-  helpers::BigEndianReader reader(unpacked);
+  binary::BigEndianReader reader(unpacked);
   uint16_t planes = 0;
   for (size_t i = 0; i < count; i++) {
     const size_t picture =
@@ -118,12 +118,12 @@ uint16_t bobColours(const std::vector<uint8_t> &unpacked, size_t count) {
         size_t{reader.readUint16(BOBS_HEADER_SIZE + i * BOB_DESCRIPTOR_SIZE)} *
             2;
     if (picture + BITMAP_PLANES_OFFSET + 2 > unpacked.size() ||
-        reader.readUint32(picture) != amosCompact::consts::AMOS_BMCODE) {
+        reader.readUint32(picture) != headers::AMOS_BMCODE) {
       continue;
     }
     const uint16_t picturePlanes =
         reader.readUint16(picture + BITMAP_PLANES_OFFSET);
-    if (picturePlanes <= amosCompact::consts::MAX_SUPPORTED_BITPLANES) {
+    if (picturePlanes <= headers::MAX_SUPPORTED_BITPLANES) {
       planes = std::max(planes, picturePlanes);
     }
   }
@@ -134,7 +134,7 @@ std::vector<uint8_t> bobsBank(const std::vector<uint8_t> &unpacked) {
   if (unpacked.size() < BOBS_HEADER_SIZE) {
     throw std::runtime_error("Data too small for a bob bank header");
   }
-  helpers::BigEndianReader reader(unpacked);
+  binary::BigEndianReader reader(unpacked);
   const size_t sampleOffset = reader.readUint32(0);
   const size_t count = unpacked[BOBS_COUNT_OFFSET];
   const size_t sampleLength = reader.readUint16(BOBS_SAMPLE_LENGTH_OFFSET);
@@ -154,11 +154,11 @@ std::vector<uint8_t> bobsBank(const std::vector<uint8_t> &unpacked) {
       slice(unpacked, picturesEnd, picturesEnd + sampleLength);
 
   std::vector<uint8_t> bank;
-  helpers::pushBigEndian16(bank, static_cast<uint16_t>(count));
-  helpers::pushBigEndian16(bank, width);
-  helpers::pushBigEndian16(bank, unpacked[BOBS_HEIGHT_OFFSET]);
-  helpers::pushBigEndian16(bank, bobColours(unpacked, count));
-  helpers::pushBigEndian32(
+  binary::pushBigEndian16(bank, static_cast<uint16_t>(count));
+  binary::pushBigEndian16(bank, width);
+  binary::pushBigEndian16(bank, unpacked[BOBS_HEIGHT_OFFSET]);
+  binary::pushBigEndian16(bank, bobColours(unpacked, count));
+  binary::pushBigEndian32(
       bank, samples.empty()
                 ? 0
                 : static_cast<uint32_t>(VERSION10_BOBS_HEADER_SIZE +
@@ -222,7 +222,7 @@ FileInfo parseFooter(const std::vector<uint8_t> &rawData) {
   }
 
   size_t off = rawData.size() - SUFFIX_SIZE;
-  helpers::BigEndianReader reader(rawData);
+  binary::BigEndianReader reader(rawData);
 
   FileInfo info;
   info.unpackSize = reader.readUint32(off);

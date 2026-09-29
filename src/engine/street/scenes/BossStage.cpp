@@ -1,8 +1,8 @@
 #include "BossStage.h"
 
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
 
-#include "../../amal/actors/Actors.h"
+#include "../actors/Actors.h"
 
 #include <cstdlib>
 #include <stdexcept>
@@ -12,7 +12,7 @@
 namespace openfranko::src::engine::street::scenes {
 namespace {
 
-using amal::actors::amosBool;
+using actors::amosBool;
 
 constexpr int RB = 1;
 constexpr int RC = 2;
@@ -129,8 +129,8 @@ int clampBound(int stage) { return stage == 2 ? 48 : 272; }
 
 } // namespace
 
-BossStage::BossStage(StreetHost &host, ui::GameSession &session,
-                     effects::core::GameOptions &options)
+BossStage::BossStage(StreetHost &host, session::GameSession &session,
+                     GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen),
@@ -148,7 +148,7 @@ void BossStage::advance(const StreetInput &input) {
     return;
   }
   ++m_frame;
-  if (input.key != ui::SystemKey::None) {
+  if (input.key != session::SystemKey::None) {
     m_session.keyLatch = input.key;
   }
   m_mouseButton = input.mouseButton;
@@ -321,8 +321,8 @@ BossStage::Flow BossStage::init() {
   m_facing = -32768 * amosBool(stage() == 2);
   m_screenOffsetX = stage() == 2 ? 16 : 0;
   m_panel = std::make_unique<ui::StatusPanel>(
-      m_host.loadPanelPicture(StreetStage::LOADING_STRIP),
-      m_host.loadPanelPicture(StreetStage::PANEL_ARTWORK), m_session.version);
+      m_host.loadPanelPicture(StreetHost::LOADING_STRIP),
+      m_host.loadPanelPicture(StreetHost::PANEL_ARTWORK), m_session.version);
 
   m_host.stopMusic();
   m_images.clear();
@@ -396,22 +396,21 @@ void BossStage::setUp() {
 
   m_machine.bind(SCREEN_SHAKE_CHANNEL, &m_screenDisplay);
   m_machine.create(SCREEN_SHAKE_CHANNEL,
-                   amal::actors::screenShake(m_session.version));
-  m_machine.create(PLAYER_BLOOD_CHANNEL, amal::actors::playerBlood());
-  m_machine.create(ENEMY_BLOOD_CHANNEL,
-                   amal::actors::enemyBlood(m_session.version));
-  const auto player = amal::actors::bossPlayer(stage());
+                   actors::screenShake(m_session.version));
+  m_machine.create(PLAYER_BLOOD_CHANNEL, actors::playerBlood());
+  m_machine.create(ENEMY_BLOOD_CHANNEL, actors::enemyBlood(m_session.version));
+  const auto player = actors::bossPlayer(stage());
   m_machine.create(PLAYER_WALK_CHANNEL, player.locomotion);
   m_machine.create(PLAYER_DAMAGE_CHANNEL, player.damage);
   m_machine.create(PLAYER_CLAMP_CHANNEL, player.clamp);
-  const auto boss = amal::actors::boss(stage());
+  const auto boss = actors::boss(stage());
   m_machine.create(BOSS_WALK_CHANNEL, boss.walk);
   m_machine.create(BOSS_DAMAGE_CHANNEL, boss.damage);
-  const std::string spectator = amal::actors::spectator(stage());
+  const std::string spectator = actors::spectator(stage());
   if (!spectator.empty()) {
     m_machine.create(SPECTATOR_CHANNEL, spectator);
   }
-  const auto dialogue = amal::actors::dialogue(stage());
+  const auto dialogue = actors::dialogue(stage());
   m_machine.create(PLAYER_TALK_CHANNEL, dialogue.player);
   m_machine.create(BOSS_TALK_CHANNEL, dialogue.boss);
   m_machine.startAll();
@@ -419,7 +418,7 @@ void BossStage::setUp() {
   reg(PLAYER_WALK_CHANNEL, 2) = APPROACH_TOP;
   reg(PLAYER_CLAMP_CHANNEL, 0) = word(clampBound(stage()));
   global(RI) = 1;
-  m_machine.create(INDICATOR_CHANNEL, amal::actors::indicatorArrow(m_facing));
+  m_machine.create(INDICATOR_CHANNEL, actors::indicatorArrow(m_facing));
   m_machine.start(INDICATOR_CHANNEL);
   m_panel->score(stats());
   m_bobs.set(BOSS_BLOOD, 120, 24, HIDDEN_IMAGE);
@@ -759,7 +758,7 @@ BossStage::Flow BossStage::finishStart() {
     global(RU) =
         word(xBob(BOSS) - xBob(PLAYER) - 48 - 96 * amosBool(global(RR) != 0));
     global(RS) = word((std::abs(global(RU)) + std::abs(global(RT))) / 2);
-    m_machine.create(PLAYER_WALK_CHANNEL, amal::actors::walkToBoss());
+    m_machine.create(PLAYER_WALK_CHANNEL, actors::walkToBoss());
     m_machine.startAll();
     return waitFrames(global(RS), Step::FinishWalkedToBoss);
   }
@@ -781,7 +780,7 @@ BossStage::Flow BossStage::railingStart() {
   global(RT) = word((std::abs(global(RU)) + std::abs(global(RS))) / 2);
   global(RR) = word(0x8000 * amosBool(global(RB) < 0));
   m_bobs.setImage(PLAYER, word(IDLE_IMAGE + global(RR)));
-  m_machine.create(BOSS_WALK_CHANNEL, amal::actors::bossRests());
+  m_machine.create(BOSS_WALK_CHANNEL, actors::bossRests());
   m_machine.startAll();
   return waitFrames(REST_WAIT, Step::RailingSpeech);
 }
@@ -789,7 +788,7 @@ BossStage::Flow BossStage::railingStart() {
 BossStage::Flow BossStage::railingSpeech() {
   m_bobs.set(BOSS_BUBBLE, xBob(BOSS) - 32 - 64 * amosBool(global(RR) != 0),
              yBob(BOSS) - 72, REST_BUBBLE);
-  m_machine.create(BOSS_TALK_CHANNEL, amal::actors::bubbleUntilFire());
+  m_machine.create(BOSS_TALK_CHANNEL, actors::bubbleUntilFire());
   m_machine.startAll();
   m_step = Step::RailingWaitFire;
   return Flow::Continue;
@@ -812,7 +811,7 @@ BossStage::Flow BossStage::pasteRailing(int image, Step next) {
 BossStage::Flow BossStage::liftStart() {
   global(RU) = word(xBob(BOSS) - xBob(PLAYER));
   global(RS) = word((std::abs(global(RU)) + std::abs(global(RT))) / 2);
-  m_machine.create(PLAYER_WALK_CHANNEL, amal::actors::walkToBoss());
+  m_machine.create(PLAYER_WALK_CHANNEL, actors::walkToBoss());
   m_machine.startAll();
   return waitFrames(global(RS), Step::LiftWalkedToBoss);
 }
@@ -821,8 +820,8 @@ BossStage::Flow BossStage::liftBoss() {
   m_machine.destroy(PLAYER_WALK_CHANNEL);
   global(RT) = word(global(RQ) * 2);
   m_bobs.set(PLAYER, xBob(BOSS), yBob(BOSS), word(IDLE_IMAGE + global(RR)));
-  m_machine.create(BOSS_WALK_CHANNEL, amal::actors::bossThrown());
-  m_machine.create(PLAYER_WALK_CHANNEL, amal::actors::victoryLift());
+  m_machine.create(BOSS_WALK_CHANNEL, actors::bossThrown());
+  m_machine.create(PLAYER_WALK_CHANNEL, actors::victoryLift());
   m_machine.startAll();
   return waitFrames(LIFT_WAIT, Step::LiftRaised);
 }
@@ -832,10 +831,10 @@ BossStage::Flow BossStage::finishPose() {
   m_machine.destroy(PLAYER_WALK_CHANNEL);
   m_bobs.set(PLAYER, xBob(BOSS) - 64 - 128 * facedLeft, yBob(BOSS),
              word(38 + global(RR)));
-  m_machine.create(PLAYER_WALK_CHANNEL, amal::actors::finishingPose());
+  m_machine.create(PLAYER_WALK_CHANNEL, actors::finishingPose());
   m_bobs.set(PLAYER_BUBBLE, xBob(PLAYER) + 8 + 16 * facedLeft,
              yBob(PLAYER) - 32, HIDDEN_IMAGE);
-  m_machine.create(PLAYER_TALK_CHANNEL, amal::actors::finishingBlood());
+  m_machine.create(PLAYER_TALK_CHANNEL, actors::finishingBlood());
   m_machine.start(PLAYER_WALK_CHANNEL);
   return waitFrames(POSE_WAIT, Step::FinishPosed);
 }
@@ -864,7 +863,7 @@ BossStage::Flow BossStage::finishStamp() {
     }
   }
   m_host.setSampleLoop(false);
-  m_machine.create(PLAYER_WALK_CHANNEL, amal::actors::finishingPoseBack());
+  m_machine.create(PLAYER_WALK_CHANNEL, actors::finishingPoseBack());
   m_machine.start(PLAYER_WALK_CHANNEL);
   m_machine.destroy(PLAYER_TALK_CHANNEL);
   m_bobs.setImage(PLAYER_BUBBLE, HIDDEN_IMAGE);
@@ -876,7 +875,7 @@ BossStage::Flow BossStage::finishWalkOff() {
   global(RT) = word(WALK_OFF_DISTANCE * amosBool(global(RC) != 0) -
                     WALK_OFF_DISTANCE * amosBool(global(RC) == 0));
   global(RU) = word(std::abs(global(RT)));
-  m_machine.create(PLAYER_WALK_CHANNEL, amal::actors::walkOff());
+  m_machine.create(PLAYER_WALK_CHANNEL, actors::walkOff());
   m_machine.startAll();
   return waitFrames(global(RU), Step::FinishWalkedOff);
 }
@@ -890,7 +889,7 @@ BossStage::Flow BossStage::finishCleanUp() {
   m_bobs.offAll();
   if (stage() == 3) {
     m_buffer.autoback([](core::IndexedSurface &surface) { surface.fill(0); });
-    m_session.bossExit.emplace(ui::BossExit{
+    m_session.bossExit.emplace(session::BossExit{
         m_buffer, m_palette, m_screenDisplay.y, m_screenOffsetX,
         m_panel->surface(), ui::panelDisplayY(ui::stageLayout(m_options)),
         m_options.tallScreen});
@@ -927,37 +926,38 @@ void BossStage::gameOver() {
 }
 
 void BossStage::closePlayScreen() {
-  m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
+  m_resumeFrame = m_frame + SCREEN_CLOSE_SHOWN_VBLS;
   m_step = Step::GameOverScreenGone;
 }
 
 void BossStage::sys() {
-  const ui::SystemKey key =
-      std::exchange(m_session.keyLatch, ui::SystemKey::None);
+  const session::SystemKey key =
+      std::exchange(m_session.keyLatch, session::SystemKey::None);
   switch (key) {
-  case ui::SystemKey::MusicOff:
+  case session::SystemKey::MusicOff:
     m_host.setMusicVolume(0);
     m_options.music = false;
     break;
-  case ui::SystemKey::MusicOn:
+  case session::SystemKey::MusicOn:
     m_options.music = true;
     m_host.setMusicVolume(MUSIC_VOLUME);
     break;
-  case ui::SystemKey::Pal:
-  case ui::SystemKey::Ntsc:
-    ui::switchStandard(m_options, m_screenDisplay, key == ui::SystemKey::Ntsc);
+  case session::SystemKey::Pal:
+  case session::SystemKey::Ntsc:
+    ui::switchStandard(m_options, m_screenDisplay,
+                       key == session::SystemKey::Ntsc);
     break;
-  case ui::SystemKey::Lives:
+  case session::SystemKey::Lives:
     global(RG) = CHEAT_LIVES;
     m_panel->score(stats());
     break;
-  case ui::SystemKey::Escape:
+  case session::SystemKey::Escape:
     global(RN) = 0;
     m_escape = true;
     m_machine.freezeAll();
     break;
-  case ui::SystemKey::None:
-  case ui::SystemKey::Other:
+  case session::SystemKey::None:
+  case session::SystemKey::Other:
     break;
   }
   if (m_mouseButton && global(RI) > 0) {
@@ -1130,18 +1130,18 @@ void BossStage::runBasic(const StreetInput &input) {
     case Step::GameOverScreenGone:
       m_screenShown = false;
       m_copper.hide();
-      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::GameOverPanelClose;
       flow = Flow::Yield;
       break;
     case Step::GameOverPanelClose:
-      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_SHOWN_VBLS;
       m_step = Step::GameOverPanelGone;
       flow = Flow::Yield;
       break;
     case Step::GameOverPanelGone:
       m_panelShown = false;
-      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::GameOverClosed;
       flow = Flow::Yield;
       break;

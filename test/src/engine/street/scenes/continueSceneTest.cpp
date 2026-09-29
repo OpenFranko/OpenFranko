@@ -6,7 +6,7 @@
 
 using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::street::scenes;
-using namespace openfranko::src::engine::street::ui;
+using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::core;
 
 namespace {

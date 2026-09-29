@@ -11,6 +11,7 @@
 
 using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::street::scenes;
+using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
 using openfranko::src::systems::graphics::toArgb;
@@ -171,7 +172,7 @@ public:
 struct Duel {
   FakeHost host;
   GameSession session;
-  effects::core::GameOptions options;
+  GameOptions options;
   std::unique_ptr<BossStage> stage;
 
   Duel() {

@@ -1,7 +1,7 @@
 #include "TitleAndStoryState.h"
 
+#include "../../AmigaDisplay.h"
 #include "../../assets/Assets.h"
-#include "../../effects/color/AmigaDisplay.h"
 
 #include <array>
 #include <cstddef>
@@ -145,7 +145,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::runPages() {
     m_phase = Phase::StripClosing;
     m_phaseFrames = 0;
   }
-  if (m_phaseFrames < effects::color::SCREEN_CLOSE_VBLS) {
+  if (m_phaseFrames < SCREEN_CLOSE_VBLS) {
     m_strip->showBlack();
     m_stripShown = true;
     ++m_phaseFrames;
@@ -166,7 +166,7 @@ std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
   }
   if (m_phase == Phase::StoryOpening) {
     m_background = STORY_BACKGROUND_GREY;
-    if (m_phaseFrames < STORY_SCREENS * effects::color::SCREEN_OPEN_VBLS) {
+    if (m_phaseFrames < STORY_SCREENS * SCREEN_OPEN_VBLS) {
       m_screen.fill(m_phaseFrames == 0 ? BLACK : STORY_BACKGROUND_GREY);
       ++m_phaseFrames;
       return std::nullopt;
@@ -189,10 +189,10 @@ std::optional<EngineStateEnum> TitleAndStoryState::runStory() {
     m_phase = Phase::StoryClosing;
     m_phaseFrames = 0;
   }
-  if (m_phaseFrames == STORY_SCREENS * effects::color::SCREEN_CLOSE_VBLS) {
+  if (m_phaseFrames == STORY_SCREENS * SCREEN_CLOSE_VBLS) {
     return leave();
   }
-  if (m_phaseFrames < effects::color::SCREEN_CLOSE_SHOWN_VBLS) {
+  if (m_phaseFrames < SCREEN_CLOSE_SHOWN_VBLS) {
     drawStory(m_lastView);
   } else {
     m_screen.fill(STORY_BACKGROUND_GREY);

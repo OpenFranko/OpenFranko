@@ -4,9 +4,9 @@
 #include "../../../systems/audio/AudioSystem.h"
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../../systems/input/ControllerSystem.h"
-#include "../../effects/core/GameOptions.h"
+#include "../../GameOptions.h"
 #include "../../street/scenes/StreetStage.h"
-#include "../../street/ui/GameSession.h"
+#include "../../street/session/GameSession.h"
 #include "../IEngineState.h"
 #include "../shared/EngineStreetHost.h"
 
@@ -21,8 +21,7 @@ public:
   Level2State(systems::graphics::VideoSystem &videoSystem,
               systems::audio::AudioSystem &audioSystem,
               systems::input::ControllerSystem &controllerSystem,
-              effects::core::GameOptions &options,
-              street::ui::GameSession &session);
+              GameOptions &options, street::session::GameSession &session);
 
   std::optional<EngineStateEnum> update() override;
 
@@ -31,7 +30,7 @@ public:
 private:
   systems::graphics::VideoSystem &m_videoSystem;
   systems::input::ControllerSystem &m_controllerSystem;
-  const effects::core::GameOptions &m_options;
+  const GameOptions &m_options;
   shared::EngineStreetHost m_host;
   street::scenes::StreetStage m_stage;
 };

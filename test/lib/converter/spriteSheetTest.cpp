@@ -1,12 +1,12 @@
 #include "../../../lib/converter/spriteSheet/spriteSheet.h"
-#include "../../../lib/helpers/helpers.h"
+#include "../../../lib/binary/binary.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
 using namespace openfranko::lib::converter::spriteSheet;
-using openfranko::lib::helpers::pushBigEndian16;
-using openfranko::lib::helpers::pushBigEndian32;
-namespace pal = openfranko::lib::converter::spriteSheet::palettes;
+using openfranko::lib::binary::pushBigEndian16;
+using openfranko::lib::binary::pushBigEndian32;
+namespace pal = openfranko::lib::converter::gameData::palettes;
 
 static std::vector<uint8_t>
 buildBankHeader(uint16_t count, uint16_t maxW, uint16_t maxH,

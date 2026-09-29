@@ -1,7 +1,6 @@
 #include "decodeImage.h"
-#include "../../helpers/helpers.h"
-#include "../shared/headers.h"
-#include "Consts.h"
+#include "../../binary/binary.h"
+#include "../headers/headers.h"
 #include "detail/bitmapUnpack.h"
 #include <stdexcept>
 
@@ -10,14 +9,14 @@ namespace openfranko::lib::converter::amosCompact {
 DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
                               const uint16_t *palette, int numberOfColors) {
   if (offset > data.size() ||
-      data.size() - offset < consts::PACKED_BITMAP_HEADER_SIZE) {
+      data.size() - offset < headers::PACKED_BITMAP_HEADER_SIZE) {
     throw std::runtime_error("Data too small for bitmap header");
   }
   if (palette == nullptr || numberOfColors <= 0) {
     throw std::runtime_error("A palette is required to decode a bitmap");
   }
-  if (helpers::BigEndianReader(data).readUint32(offset) !=
-      consts::AMOS_BMCODE) {
+  if (binary::BigEndianReader(data).readUint32(offset) !=
+      headers::AMOS_BMCODE) {
     throw std::runtime_error("Invalid bitmap magic number");
   }
 
@@ -25,7 +24,7 @@ DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
                              data.end());
   std::vector<uint16_t> palVec(palette, palette + numberOfColors);
 
-  auto hdr = shared::parseBitmapHeader(slice);
+  auto hdr = headers::parseBitmapHeader(slice);
   auto bm = detail::bitmapUnpack(slice, hdr, palVec);
 
   DecodedImage img;

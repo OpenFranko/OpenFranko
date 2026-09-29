@@ -1,6 +1,6 @@
 #include "endingCredits.h"
 
-#include "../../helpers/helpers.h"
+#include "../../binary/binary.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -244,7 +244,7 @@ std::string escapeJson(const std::string &text) {
 
 std::vector<std::vector<uint8_t>>
 readHunks(const std::vector<uint8_t> &executable) {
-  const helpers::BigEndianReader reader(executable);
+  const binary::BigEndianReader reader(executable);
   std::size_t at = 0;
   const auto next = [&reader, &at] {
     const uint32_t value = reader.readUint32(at);

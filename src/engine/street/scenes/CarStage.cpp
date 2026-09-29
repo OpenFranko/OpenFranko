@@ -1,8 +1,8 @@
 #include "CarStage.h"
 
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
 
-#include "../../amal/actors/Actors.h"
+#include "../actors/Actors.h"
 #include "../core/SystemText.h"
 
 #include <cstdlib>
@@ -12,7 +12,7 @@
 namespace openfranko::src::engine::street::scenes {
 namespace {
 
-using amal::actors::amosBool;
+using actors::amosBool;
 
 constexpr int RF = 5;
 constexpr int RG = 6;
@@ -123,14 +123,14 @@ std::string passwordFor(int stage) {
 
 } // namespace
 
-CarStage::CarStage(StreetHost &host, ui::GameSession &session,
-                   effects::core::GameOptions &options)
+CarStage::CarStage(StreetHost &host, session::GameSession &session,
+                   GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen), m_road(0, 0), m_strip(0, 0),
       m_panel(std::make_unique<ui::StatusPanel>(
-          host.loadPanelPicture(StreetStage::LOADING_STRIP),
-          host.loadPanelPicture(StreetStage::PANEL_ARTWORK), session.version)),
+          host.loadPanelPicture(StreetHost::LOADING_STRIP),
+          host.loadPanelPicture(StreetHost::PANEL_ARTWORK), session.version)),
       m_screenDisplay{
           ui::DISPLAY_X,
           static_cast<int16_t>(ui::playDisplayY(ui::stageLayout(options))), 0},
@@ -147,7 +147,7 @@ void CarStage::advance(const StreetInput &input) {
     return;
   }
   ++m_frame;
-  if (input.key != ui::SystemKey::None) {
+  if (input.key != session::SystemKey::None) {
     m_session.keyLatch = input.key;
   }
   m_mouseButton = input.mouseButton;
@@ -365,7 +365,7 @@ void CarStage::startDrive() {
   m_bush2 = BUSH_SPACING;
   m_trackBand = 10;
   m_pavementBand = 5;
-  const ui::DriveCarryOver &left = m_session.lastDrive;
+  const session::DriveCarryOver &left = m_session.lastDrive;
   m_ignition = left.ignition;
   m_roadBand = left.roadBand;
   m_fenceBand = left.fenceBand;
@@ -488,7 +488,7 @@ void CarStage::spawnPedestrians() {
     const int x = m_host.random(200) + SPAWN_X;
     const int y = SPAWN_TOP + m_host.random(20) * SPAWN_STEP;
     m_bobs.set(FIRST_PEDESTRIAN + channel - 1, x, y, kind);
-    m_machine.create(channel, amal::actors::pedestrian(kind));
+    m_machine.create(channel, actors::pedestrian(kind));
     m_machine.startAll();
   }
 }
@@ -551,7 +551,7 @@ CarStage::Flow CarStage::driveBottom() {
   if (m_distance < 0) {
     m_x = DRIVE_OFF_X;
     m_distance = 0;
-    m_machine.create(CAR_CHANNEL, amal::actors::carDriveOff());
+    m_machine.create(CAR_CHANNEL, actors::carDriveOff());
     m_machine.start(CAR_CHANNEL);
   }
   if ((m_distance == 0 && !m_machine.isRunning(CAR_CHANNEL)) ||
@@ -559,7 +559,7 @@ CarStage::Flow CarStage::driveBottom() {
     m_session.lastDrive = {m_ignition, m_roadBand, m_fenceBand, m_clock,
                            m_engineBeat};
     m_buffer.setUpdates(true);
-    return hold(effects::color::SCREEN_CLOSE_VBLS, Step::StripClosed);
+    return hold(SCREEN_CLOSE_VBLS, Step::StripClosed);
   }
   sys();
   m_step = Step::DriveTop;
@@ -620,21 +620,21 @@ void CarStage::gameOver() {
 }
 
 CarStage::Flow CarStage::closePlayScreen() {
-  return hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS,
-              Step::GameOverScreenGone);
+  return hold(SCREEN_CLOSE_SHOWN_VBLS, Step::GameOverScreenGone);
 }
 
 void CarStage::sys() {
-  const ui::SystemKey key =
-      std::exchange(m_session.keyLatch, ui::SystemKey::None);
-  if (key == ui::SystemKey::Pal || key == ui::SystemKey::Ntsc) {
-    ui::switchStandard(m_options, m_screenDisplay, key == ui::SystemKey::Ntsc);
+  const session::SystemKey key =
+      std::exchange(m_session.keyLatch, session::SystemKey::None);
+  if (key == session::SystemKey::Pal || key == session::SystemKey::Ntsc) {
+    ui::switchStandard(m_options, m_screenDisplay,
+                       key == session::SystemKey::Ntsc);
   }
-  if (key == ui::SystemKey::Lives) {
+  if (key == session::SystemKey::Lives) {
     global(RG) = CHEAT_LIVES;
     m_panel->score(stats());
   }
-  if (key == ui::SystemKey::Escape) {
+  if (key == session::SystemKey::Escape) {
     global(RN) = 0;
     m_escape = true;
     m_machine.freezeAll();
@@ -682,15 +682,15 @@ void CarStage::runBasic(const StreetInput &input) {
     case Step::Loaded:
       m_panel->score(stats());
       m_road = core::IndexedSurface(ROAD_WIDTH, SCREEN_HEIGHT);
-      flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::RoadOpened);
+      flow = hold(SCREEN_OPEN_VBLS, Step::RoadOpened);
       break;
     case Step::RoadOpened:
       openRoad();
-      flow = hold(effects::color::SCREEN_OPEN_VBLS, Step::StripOpened);
+      flow = hold(SCREEN_OPEN_VBLS, Step::StripOpened);
       break;
     case Step::StripOpened:
       openStrip();
-      flow = hold(effects::color::SCREEN_CLOSE_VBLS, Step::RoadClosed);
+      flow = hold(SCREEN_CLOSE_VBLS, Step::RoadClosed);
       break;
     case Step::RoadClosed:
       startDrive();
@@ -732,17 +732,14 @@ void CarStage::runBasic(const StreetInput &input) {
     case Step::GameOverScreenGone:
       m_screenShown = false;
       m_copper.hide();
-      flow = hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS,
-                  Step::GameOverPanelClose);
+      flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverPanelClose);
       break;
     case Step::GameOverPanelClose:
-      flow = hold(effects::color::SCREEN_CLOSE_SHOWN_VBLS,
-                  Step::GameOverPanelGone);
+      flow = hold(SCREEN_CLOSE_SHOWN_VBLS, Step::GameOverPanelGone);
       break;
     case Step::GameOverPanelGone:
       m_panelShown = false;
-      flow =
-          hold(effects::color::SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverClosed);
+      flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::GameOverClosed);
       break;
     case Step::GameOverClosed:
       m_outcome = quitsToHighScores() ? Outcome::Quit : Outcome::GameOver;

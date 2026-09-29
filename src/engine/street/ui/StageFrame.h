@@ -2,9 +2,9 @@
 #define ENGINE_STREET_UI_STAGEFRAME_H_
 
 #include "../../../systems/graphics/Display.h"
+#include "../../GameOptions.h"
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
-#include "../../effects/core/GameOptions.h"
 #include "../core/IndexedSurface.h"
 #include "StatusPanel.h"
 
@@ -52,14 +52,14 @@ private:
   bool m_beamNtsc = false;
 };
 
-StageLayout stageLayout(const effects::core::GameOptions &options);
+StageLayout stageLayout(const GameOptions &options);
 int playDisplayY(const StageLayout &layout);
 int panelDisplayY(const StageLayout &layout);
 int frameTop(const StageLayout &layout);
 int rowsPerLine(const StageLayout &layout);
 int frameRows(const StageLayout &layout);
-void switchStandard(effects::core::GameOptions &options,
-                    amal::Object &screenDisplay, bool ntsc);
+void switchStandard(GameOptions &options, amal::Object &screenDisplay,
+                    bool ntsc);
 
 const effects::color::AmigaPalette &levelPalette(bool mono);
 const effects::color::AmigaPalette &panelPalette();

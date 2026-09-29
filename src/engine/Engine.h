@@ -5,9 +5,9 @@
 #include "../systems/graphics/VideoSystem.h"
 #include "../systems/input/ControllerSystem.h"
 #include "../systems/input/Platform.h"
-#include "effects/core/GameOptions.h"
+#include "GameOptions.h"
 #include "states/IEngineState.h"
-#include "street/ui/GameSession.h"
+#include "street/session/GameSession.h"
 
 #include <memory>
 
@@ -19,7 +19,7 @@ class Engine {
 public:
   Engine();
   Engine(states::EngineStateEnum firstState,
-         street::ui::GameSession startingSession);
+         street::session::GameSession startingSession);
   ~Engine();
 
   bool isRunning();
@@ -39,8 +39,8 @@ private:
   systems::graphics::VideoSystem videoSystem;
   systems::audio::AudioSystem audioSystem;
   systems::input::ControllerSystem controllerSystem;
-  effects::core::GameOptions options;
-  street::ui::GameSession session;
+  GameOptions options;
+  street::session::GameSession session;
 
   std::unique_ptr<states::IEngineState> currentState;
   bool running;

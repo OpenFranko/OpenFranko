@@ -1,5 +1,5 @@
 #include "../../../lib/converter/endingCredits/endingCredits.h"
-#include "../../../lib/helpers/helpers.h"
+#include "../../../lib/binary/binary.h"
 #include <catch2/catch_all.hpp>
 #include <cstdint>
 #include <stdexcept>
@@ -78,10 +78,10 @@ public:
     for (uint32_t value :
          {0x3F3u, 0u, 1u, 0u, 0u, static_cast<uint32_t>(CODE_SIZE / 4), 0x3E9u,
           static_cast<uint32_t>(CODE_SIZE / 4)}) {
-      helpers::pushBigEndian32(file, value);
+      binary::pushBigEndian32(file, value);
     }
     file.insert(file.end(), m_code.begin(), m_code.end());
-    helpers::pushBigEndian32(file, 0x3F2);
+    binary::pushBigEndian32(file, 0x3F2);
     return file;
   }
 

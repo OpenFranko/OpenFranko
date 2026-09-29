@@ -3,8 +3,8 @@
 
 #include <string>
 
+using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::effects::sequences;
-using namespace openfranko::src::engine::effects::core;
 using namespace openfranko::src::engine::effects::color;
 
 namespace {

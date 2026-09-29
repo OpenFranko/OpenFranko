@@ -1,8 +1,8 @@
 #include "ContinueScene.h"
 
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
 
-#include "../../amal/actors/Actors.h"
+#include "../actors/Actors.h"
 #include "../ui/StageFrame.h"
 
 #include <algorithm>
@@ -49,7 +49,7 @@ effects::color::AmigaPalette continuePalette() {
 
 } // namespace
 
-ContinueScene::ContinueScene(StreetHost &host, ui::GameSession &session)
+ContinueScene::ContinueScene(StreetHost &host, session::GameSession &session)
     : m_host(host), m_session(session), m_machine(session.registers),
       m_screen(WIDTH, HEIGHT), m_display(WIDTH, HEIGHT),
       m_palette(COLORS, BLACK) {
@@ -79,7 +79,7 @@ void ContinueScene::advance(int16_t joystick) {
     case Step::Gone:
       m_bobs.offAll();
       m_shown = false;
-      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::Closed;
       flow = Flow::Yield;
       break;
@@ -142,7 +142,7 @@ void ContinueScene::open() {
                         QUESTION_IMAGE);
   m_bobs.set(HAND, LEFT_X, HAND_Y, HAND_IMAGE);
   m_machine.bind(HAND, &m_bobs.object(HAND));
-  m_machine.create(HAND, amal::actors::pointingHand());
+  m_machine.create(HAND, actors::pointingHand());
   m_machine.startAll();
   m_palette = continuePalette();
   m_session.border = m_palette[0];
@@ -173,7 +173,7 @@ void ContinueScene::close() {
     m_host.playSample(VOICE_BANK, m_session.registers[RQ] + 1, ALL_VOICES);
   }
   m_machine.destroyAll();
-  m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
+  m_resumeFrame = m_frame + SCREEN_CLOSE_SHOWN_VBLS;
   m_step = Step::Gone;
 }
 

@@ -1,6 +1,6 @@
 #include "StatusPanel.h"
 
-#include "../../amal/actors/Actors.h"
+#include "../actors/Actors.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -55,8 +55,8 @@ void StatusPanel::score(const Stats &stats) {
 void StatusPanel::drawKills(int kills) {
   const std::string digits = std::to_string(std::abs(kills));
   const int length = static_cast<int>(digits.size());
-  const int offset = -4 * amal::actors::amosBool(length == 2) -
-                     8 * amal::actors::amosBool(length == 1);
+  const int offset =
+      -4 * actors::amosBool(length == 2) - 8 * actors::amosBool(length == 1);
   for (int i = 0; i < length; ++i) {
     const int digit = digits[static_cast<std::size_t>(i)] - '0';
     m_surface.copy(m_surface, 8 * digit, GLYPH_TOP, 8 + 8 * digit, DIGIT_BOTTOM,

@@ -27,15 +27,14 @@ constexpr int LINE_WIDTH = 280;
 constexpr int GLYPH_WIDTH = 16;
 constexpr int GLYPH_OFFSET = 6;
 
-std::vector<street::scenes::CreditPage>
-loadPages(const std::string &directory) {
+std::vector<street::core::CreditPage> loadPages(const std::string &directory) {
   std::ifstream file(std::filesystem::path(directory) / INTRO_FILE);
   if (!file) {
     return {};
   }
   std::stringstream text;
   text << file.rdbuf();
-  return street::scenes::EndingCredits::fromJson(text.str()).pages;
+  return street::core::EndingCredits::fromJson(text.str()).pages;
 }
 
 } // namespace
@@ -44,8 +43,8 @@ IntroStrip::IntroStrip(systems::graphics::VideoSystem &videoSystem,
                        const std::string &directory)
     : m_videoSystem(videoSystem), m_directory(directory),
       m_pages(loadPages(directory)),
-      m_rows(effects::color::visibleRows(FRAME_DISPLAY_LINE, FRAME_HEIGHT,
-                                         videoSystem.isNtsc())),
+      m_rows(
+          visibleRows(FRAME_DISPLAY_LINE, FRAME_HEIGHT, videoSystem.isNtsc())),
       m_frame(FRAME_WIDTH, m_rows.count) {
   m_strip.width = STRIP_WIDTH;
   m_strip.height = STRIP_HEIGHT;
@@ -83,7 +82,7 @@ void IntroStrip::paste(int page) {
   if (page < 0 || page >= pages()) {
     return;
   }
-  for (const street::scenes::CreditLine &line :
+  for (const street::core::CreditLine &line :
        m_pages[static_cast<std::size_t>(page)].lines) {
     const int length = static_cast<int>(line.text.size());
     const int x = (LINE_WIDTH - length * GLYPH_WIDTH) / 2;

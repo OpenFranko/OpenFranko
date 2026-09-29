@@ -1,7 +1,7 @@
 #ifndef SPRITESHEET_H_
 #define SPRITESHEET_H_
 
-#include "Palettes.h"
+#include "../gameData/Palettes.h"
 #include <cstdint>
 #include <string>
 #include <string_view>

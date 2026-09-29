@@ -1,12 +1,12 @@
 #ifndef ENGINE_EFFECTS_SEQUENCES_MENUSEQUENCE_H_
 #define ENGINE_EFFECTS_SEQUENCES_MENUSEQUENCE_H_
 
+#include "../../GameOptions.h"
 #include "../../GameVersion.h"
+#include "../../InkeyBuffer.h"
 #include "../animation/AmalMotion.h"
 #include "../color/AmigaPalette.h"
 #include "../color/PaletteFader.h"
-#include "../core/GameOptions.h"
-#include "../core/InkeyBuffer.h"
 #include "CreditScroll.h"
 
 #include <array>
@@ -42,9 +42,8 @@ public:
   static constexpr std::size_t BOBS = 10;
   static constexpr int ATTRACT_AFTER = 300;
 
-  MenuSequence(core::GameOptions &options, color::AmigaPalette palette,
-               core::InkeyBuffer &keyboard,
-               GameVersion version = GameVersion::V10);
+  MenuSequence(GameOptions &options, color::AmigaPalette palette,
+               InkeyBuffer &keyboard, GameVersion version = GameVersion::V10);
 
   void setMouseButton(bool down);
   void advance(const Joystick &joystick);
@@ -75,7 +74,7 @@ private:
   void placeHand();
   Bob &bob(int number);
 
-  core::GameOptions &m_options;
+  GameOptions &m_options;
   GameVersion m_version;
   color::AmigaPalette m_palette;
   color::PaletteFader m_fader;
@@ -83,7 +82,7 @@ private:
   std::array<Bob, BOBS> m_shownBobs{};
   std::array<animation::AmalMotion, BOBS> m_motions{};
   std::array<std::optional<CreditScroll>, 3> m_credits{};
-  core::InkeyBuffer &m_keyboard;
+  InkeyBuffer &m_keyboard;
   std::string m_keysRead;
   Phase m_phase = Phase::Unpacking;
   Resume m_resume = Resume::Nothing;

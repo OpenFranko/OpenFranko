@@ -38,8 +38,7 @@ WorldSoftwareState::WorldSoftwareState(
     systems::graphics::VideoSystem &videoSystem,
     systems::audio::AudioSystem &audioSystem)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
-      m_rows(effects::color::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
-                                         videoSystem.isNtsc())),
+      m_rows(visibleRows(DISPLAY_LINE, SCREEN_HEIGHT, videoSystem.isNtsc())),
       m_picture(systems::graphics::loadIndexedBitmap(PICTURE_PATH)),
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_sequence(screenPalette(m_picture), TIMINGS) {

@@ -6,10 +6,10 @@
 #include "../../../systems/graphics/Canvas.h"
 #include "../../../systems/graphics/VideoSystem.h"
 #include "../../../systems/input/ControllerSystem.h"
-#include "../../effects/core/GameOptions.h"
+#include "../../GameOptions.h"
 #include "../../effects/sequences/AttractSequence.h"
 #include "../../effects/sequences/MenuSequence.h"
-#include "../../street/ui/GameSession.h"
+#include "../../street/session/GameSession.h"
 #include "../IEngineState.h"
 
 #include <optional>
@@ -26,8 +26,7 @@ public:
   MenuState(systems::graphics::VideoSystem &videoSystem,
             systems::audio::AudioSystem &audioSystem,
             systems::input::ControllerSystem &controllerSystem,
-            effects::core::GameOptions &options,
-            street::ui::GameSession &session);
+            GameOptions &options, street::session::GameSession &session);
 
   std::optional<EngineStateEnum> update() override;
 
@@ -45,8 +44,8 @@ private:
   systems::graphics::VideoSystem &m_videoSystem;
   systems::audio::AudioSystem &m_audioSystem;
   systems::input::ControllerSystem &m_controllerSystem;
-  effects::core::GameOptions &m_options;
-  street::ui::GameSession &m_session;
+  GameOptions &m_options;
+  street::session::GameSession &m_session;
   systems::graphics::IndexedBitmap m_backdrop;
   systems::graphics::IndexedBitmap m_title;
   systems::graphics::IndexedBitmap m_hiscores;

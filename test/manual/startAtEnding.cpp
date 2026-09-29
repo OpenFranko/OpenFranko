@@ -1,5 +1,5 @@
 #include "../../src/engine/Engine.h"
-#include "../../src/engine/effects/core/GameOptions.h"
+#include "../../src/engine/GameOptions.h"
 #include "../../src/engine/street/scenes/BossStage.h"
 #include "../../src/engine/street/ui/StageFrame.h"
 #include "../../src/engine/street/ui/StatusPanel.h"
@@ -28,28 +28,27 @@ street::core::Picture panelPicture(const std::string &file) {
                                bitmap.hotspotY, std::move(bitmap.pixels)};
 }
 
-street::ui::BossExit lastBossExit(const amal::Registers &registers) {
-  const street::ui::StageLayout layout =
-      street::ui::stageLayout(effects::core::GameOptions{});
+street::session::BossExit lastBossExit(const amal::Registers &registers) {
+  const street::ui::StageLayout layout = street::ui::stageLayout(GameOptions{});
   street::ui::StatusPanel panel(panelPicture("0384.bmp"),
                                 panelPicture("0384_1.bmp"));
   panel.score({registers[RF], registers[RO], registers[RN], registers[RG]});
   const street::core::IndexedSurface screen(
       street::scenes::BossStage::SCREEN_WIDTH,
       street::scenes::BossStage::SCREEN_HEIGHT);
-  return street::ui::BossExit{street::core::DoubleBuffer(screen),
-                              street::ui::levelPalette(false),
-                              street::ui::playDisplayY(layout),
-                              0,
-                              panel.surface(),
-                              street::ui::panelDisplayY(layout),
-                              layout.laced};
+  return street::session::BossExit{street::core::DoubleBuffer(screen),
+                                   street::ui::levelPalette(false),
+                                   street::ui::playDisplayY(layout),
+                                   0,
+                                   panel.surface(),
+                                   street::ui::panelDisplayY(layout),
+                                   layout.laced};
 }
 
 } // namespace
 
 int main() {
-  street::ui::GameSession session;
+  street::session::GameSession session;
   session.registers[RO] = LAST_STAGE;
   session.bossExit.emplace(lastBossExit(session.registers));
   Engine engine(states::EngineStateEnum::Ending, std::move(session));

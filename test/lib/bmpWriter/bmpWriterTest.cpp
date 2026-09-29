@@ -1,10 +1,10 @@
 #include "../../../lib/bmpWriter/bmpWriter.h"
-#include "../../../lib/helpers/helpers.h"
+#include "../../../lib/binary/binary.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
 using namespace openfranko::lib::bmpWriter;
-using openfranko::lib::helpers::LittleEndianReader;
+using openfranko::lib::binary::LittleEndianReader;
 
 SCENARIO("pixelsToBmp produces a valid Windows BMP v3") {
   GIVEN("A 2x2 image with a 2-color Amiga palette") {

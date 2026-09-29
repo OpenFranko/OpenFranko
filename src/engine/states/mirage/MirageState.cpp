@@ -27,8 +27,7 @@ screenPalette(const systems::graphics::IndexedBitmap &picture) {
 
 MirageState::MirageState(systems::graphics::VideoSystem &videoSystem)
     : m_videoSystem(videoSystem),
-      m_rows(effects::color::visibleRows(DISPLAY_LINE, SCREEN_HEIGHT,
-                                         videoSystem.isNtsc())),
+      m_rows(visibleRows(DISPLAY_LINE, SCREEN_HEIGHT, videoSystem.isNtsc())),
       m_picture(systems::graphics::loadIndexedBitmap(PICTURE_PATH)),
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_sequence(screenPalette(m_picture), TIMINGS) {}

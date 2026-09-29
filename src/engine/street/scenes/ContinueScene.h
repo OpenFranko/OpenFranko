@@ -6,8 +6,8 @@
 #include "../../effects/color/AmigaPalette.h"
 #include "../core/Bobs.h"
 #include "../core/IndexedSurface.h"
-#include "../ui/GameSession.h"
-#include "StreetStage.h"
+#include "../session/GameSession.h"
+#include "StreetHost.h"
 
 #include <cstdint>
 #include <vector>
@@ -27,7 +27,7 @@ public:
   static constexpr int DISPLAY_LINE = 50;
   static constexpr int HAND = 10;
 
-  ContinueScene(StreetHost &host, ui::GameSession &session);
+  ContinueScene(StreetHost &host, session::GameSession &session);
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
@@ -50,7 +50,7 @@ private:
   void redraw();
 
   StreetHost &m_host;
-  ui::GameSession &m_session;
+  session::GameSession &m_session;
   amal::Machine m_machine;
   core::ImageBank m_images;
   core::BobLayer m_bobs;

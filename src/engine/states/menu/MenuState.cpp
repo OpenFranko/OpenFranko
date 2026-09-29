@@ -1,8 +1,8 @@
 #include "MenuState.h"
 
+#include "../../AmigaDisplay.h"
 #include "../../assets/Assets.h"
-#include "../../effects/color/AmigaDisplay.h"
-#include "../../street/ui/CheatCodes.h"
+#include "../../street/session/CheatCodes.h"
 
 #include <cstddef>
 #include <string>
@@ -49,9 +49,8 @@ constexpr int RO = 14;
 
 systems::graphics::Canvas menuScreen(bool ntscDisplay) {
   return systems::graphics::Canvas(
-      MENU_SCREEN_WIDTH, effects::color::visibleRows(
-                             MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay)
-                             .count);
+      MENU_SCREEN_WIDTH,
+      visibleRows(MENU_DISPLAY_Y, MENU_SCREEN_HEIGHT, ntscDisplay).count);
 }
 
 systems::graphics::IndexedBitmap loadPicture(int resource,
@@ -113,8 +112,8 @@ bool isTouched(const effects::sequences::MenuSequence::Joystick &joystick) {
 MenuState::MenuState(systems::graphics::VideoSystem &videoSystem,
                      systems::audio::AudioSystem &audioSystem,
                      systems::input::ControllerSystem &controllerSystem,
-                     effects::core::GameOptions &options,
-                     street::ui::GameSession &session)
+                     GameOptions &options,
+                     street::session::GameSession &session)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_options(options),
       m_session(session), m_backdrop(loadPicture(BACKDROP, session.version)),
@@ -142,7 +141,7 @@ std::optional<EngineStateEnum> MenuState::update() {
   const effects::sequences::MenuSequence::Joystick joystick =
       joystickFrom(m_controllerSystem.states);
   if (m_musicWait > 0 && --m_musicWait == 0) {
-    m_audioSystem.setMusicTempo(effects::color::CONVERTED_MENU_TEMPO);
+    m_audioSystem.setMusicTempo(CONVERTED_MENU_TEMPO);
     m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
   }
 
@@ -153,7 +152,7 @@ std::optional<EngineStateEnum> MenuState::update() {
       return std::nullopt;
     }
     m_menu.resumeAfterAttract();
-    m_attractClosing = effects::color::SCREEN_CLOSE_SHOWN_VBLS;
+    m_attractClosing = SCREEN_CLOSE_SHOWN_VBLS;
   }
 
   const bool music = m_options.music;
@@ -166,7 +165,7 @@ std::optional<EngineStateEnum> MenuState::update() {
     m_session.border = m_menu.palette()[0];
   }
   for (const char key : m_menu.keysRead()) {
-    street::ui::typeCheatKey(m_session.textBuffer, key);
+    street::session::typeCheatKey(m_session.textBuffer, key);
   }
   if (m_options.music != music) {
     m_audioSystem.setMusicVolume(m_options.music ? MUSIC_ON_VOLUME : 0);
@@ -179,7 +178,7 @@ std::optional<EngineStateEnum> MenuState::update() {
   }
   if (m_menu.isFinished()) {
     m_session.registers[RO] = 0;
-    street::ui::applyCheatCodes(m_session);
+    street::session::applyCheatCodes(m_session);
     return EngineStateEnum::CharacterSelection;
   }
 
@@ -213,18 +212,17 @@ void MenuState::advanceAttract(
 void MenuState::switchStandard() {
   m_videoSystem.setNtsc(m_options.ntsc);
   if (m_session.version == GameVersion::V12) {
-    m_audioSystem.setMusicTempo(effects::color::menuTempo(m_options.ntsc));
+    m_audioSystem.setMusicTempo(menuTempo(m_options.ntsc));
   } else {
-    m_audioSystem.setMusicTempoScale(effects::color::menuTuneScale(
-        effects::color::menuTempo(m_options.ntsc)));
+    m_audioSystem.setMusicTempoScale(menuTuneScale(menuTempo(m_options.ntsc)));
   }
   m_menuScreen = menuScreen(m_options.ntsc);
 }
 
 void MenuState::startAttract() {
-  const effects::color::VisibleRows rows = effects::color::visibleRows(
-      effects::color::pictureLine(ATTRACT_DISPLAY_Y, m_options.ntsc),
-      ATTRACT_SCREEN_HEIGHT, m_videoSystem.isNtsc());
+  const VisibleRows rows =
+      visibleRows(pictureLine(ATTRACT_DISPLAY_Y, m_options.ntsc),
+                  ATTRACT_SCREEN_HEIGHT, m_videoSystem.isNtsc());
   m_attractTop = rows.first;
   m_attractScreen = systems::graphics::Canvas(ATTRACT_SCREEN_WIDTH, rows.count);
   const effects::sequences::AttractSequence::Kind kind = m_nextAttract;

@@ -12,7 +12,7 @@ namespace openfranko::lib::converter::amosCompact::detail {
 namespace {
 
 void mainDecompression(UnpackedBitmap &bitmap,
-                       const shared::BitmapHeader &header, ByteReader &bytes1,
+                       const headers::BitmapHeader &header, ByteReader &bytes1,
                        ByteReader &bytes2, BitReader &pointerBits) {
   const size_t lineSize = header.gridX;
   const size_t heightLines = bitmap.height;
@@ -64,7 +64,7 @@ void unpackChunkyPixels(UnpackedBitmap &bitmap) {
 
   for (size_t y = 0; y < bitmap.height; y++) {
     for (size_t x = 0; x < widthByBytes; x++) {
-      uint8_t planeBytes[consts::MAX_SUPPORTED_BITPLANES];
+      uint8_t planeBytes[headers::MAX_SUPPORTED_BITPLANES];
       for (int p = 0; p < bitmap.numberOfBitplanes; p++) {
         planeBytes[p] = bitmap.bitplaneData[p][y * widthByBytes + x];
       }
@@ -87,7 +87,7 @@ void unpackChunkyPixels(UnpackedBitmap &bitmap) {
 } // namespace
 
 UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
-                            const shared::BitmapHeader &header,
+                            const headers::BitmapHeader &header,
                             const std::vector<uint16_t> &palette) {
   const size_t widthFull = static_cast<size_t>(header.gridX) * 8;
   const size_t heightFull =
@@ -112,7 +112,7 @@ UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
   const uint16_t heightInLines = static_cast<uint16_t>(heightFull);
   const size_t planeSize = static_cast<size_t>(header.gridX) * heightInLines;
 
-  size_t byteTable1Pointer = consts::PACKED_BITMAP_HEADER_SIZE;
+  size_t byteTable1Pointer = headers::PACKED_BITMAP_HEADER_SIZE;
   size_t byteTable2Pointer = header.offsetToByteTable2;
   size_t bitstreamPointer = header.offsetToPointerBitstream;
 
@@ -122,7 +122,7 @@ UnpackedBitmap bitmapUnpack(const std::vector<uint8_t> &packedData,
   }
 
   if (header.numberOfBitplanes == 0 ||
-      header.numberOfBitplanes > consts::MAX_SUPPORTED_BITPLANES) {
+      header.numberOfBitplanes > headers::MAX_SUPPORTED_BITPLANES) {
     throw std::runtime_error("Unsupported bitplane count: " +
                              std::to_string(header.numberOfBitplanes));
   }

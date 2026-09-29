@@ -1,4 +1,5 @@
 #include "frankoResourceExtractor.h"
+#include "../../../lib/binary/binary.h"
 #include "../../../lib/converter/abkToS3m/abkToS3m.h"
 #include "../../../lib/converter/amosCompact/amosCompact.h"
 #include "../../../lib/converter/audioExtractor/audioExtractor.h"
@@ -11,7 +12,6 @@
 #include "../../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../../lib/filesystem/readFile/readFile.h"
 #include "../../../lib/filesystem/writeFile/writeFile.h"
-#include "../../../lib/helpers/helpers.h"
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -30,7 +30,7 @@ std::vector<uint8_t> embeddedSamBank(const std::vector<uint8_t> &data) {
   if (data.size() < 12) {
     return {};
   }
-  uint32_t sbOff = lib::helpers::BigEndianReader(data).readUint32(8);
+  uint32_t sbOff = lib::binary::BigEndianReader(data).readUint32(8);
   if (sbOff == 0 || sbOff >= data.size()) {
     return {};
   }

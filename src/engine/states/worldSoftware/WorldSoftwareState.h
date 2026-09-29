@@ -5,7 +5,7 @@
 #include "../../../systems/graphics/Bitmap.h"
 #include "../../../systems/graphics/Canvas.h"
 #include "../../../systems/graphics/VideoSystem.h"
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
 #include "../../effects/sequences/FotoSequence.h"
 #include "../IEngineState.h"
 
@@ -26,7 +26,7 @@ public:
 private:
   systems::graphics::VideoSystem &m_videoSystem;
   systems::audio::AudioSystem &m_audioSystem;
-  effects::color::VisibleRows m_rows;
+  VisibleRows m_rows;
   systems::graphics::IndexedBitmap m_picture;
   systems::graphics::Canvas m_screen;
   effects::sequences::FotoSequence m_sequence;

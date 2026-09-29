@@ -9,7 +9,7 @@
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
 #include "../ui/LoadingMock.h"
-#include "StreetStage.h"
+#include "StreetHost.h"
 
 #include <cstdint>
 #include <optional>
@@ -31,7 +31,7 @@ public:
   static constexpr int PAN_END = 680;
   static constexpr int FILES = 3;
 
-  GameOverScene(StreetHost &host, ui::GameSession &session);
+  GameOverScene(StreetHost &host, session::GameSession &session);
 
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
@@ -74,7 +74,7 @@ private:
   void closeGraveyard();
 
   StreetHost &m_host;
-  ui::GameSession &m_session;
+  session::GameSession &m_session;
   ui::LoadingMock m_loading;
   core::ImageBank m_images;
   core::BobLayer m_bobs;

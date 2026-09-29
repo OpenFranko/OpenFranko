@@ -5,14 +5,14 @@ namespace openfranko::src::engine::states::gameOver {
 GameOverState::GameOverState(systems::graphics::VideoSystem &videoSystem,
                              systems::audio::AudioSystem &audioSystem,
                              systems::input::ControllerSystem &controllerSystem,
-                             const effects::core::GameOptions &options,
-                             street::ui::GameSession &session)
+                             const GameOptions &options,
+                             street::session::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_host(audioSystem, session.version), m_scene(m_host, session),
-      m_rows(effects::color::visibleRows(
-          effects::color::pictureLine(
-              street::scenes::GameOverScene::DISPLAY_LINE, options.ntsc),
-          street::scenes::GameOverScene::HEIGHT, options.ntsc)) {
+      m_rows(
+          visibleRows(pictureLine(street::scenes::GameOverScene::DISPLAY_LINE,
+                                  options.ntsc),
+                      street::scenes::GameOverScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }
 

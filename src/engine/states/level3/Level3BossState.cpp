@@ -1,14 +1,15 @@
 #include "Level3BossState.h"
 
 #include "../shared/StreetControls.h"
+#include "../shared/StreetVideo.h"
 
 namespace openfranko::src::engine::states::level3 {
 
 Level3BossState::Level3BossState(
     systems::graphics::VideoSystem &videoSystem,
     systems::audio::AudioSystem &audioSystem,
-    systems::input::ControllerSystem &controllerSystem,
-    effects::core::GameOptions &options, street::ui::GameSession &session)
+    systems::input::ControllerSystem &controllerSystem, GameOptions &options,
+    street::session::GameSession &session)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_options(options), m_host(audioSystem, session.version),
       m_stage(m_host, session, options) {}

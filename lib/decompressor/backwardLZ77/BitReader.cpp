@@ -1,5 +1,5 @@
 #include "BitReader.h"
-#include "../../helpers/helpers.h"
+#include "../../binary/binary.h"
 #include "Consts.h"
 #include <stdexcept>
 
@@ -40,7 +40,7 @@ void BitReader::refill() {
   }
 
   m_readPos -= 4;
-  uint32_t nextWord = helpers::BigEndianReader(m_data).readUint32(m_readPos);
+  uint32_t nextWord = binary::BigEndianReader(m_data).readUint32(m_readPos);
 
   m_checksum ^= nextWord;
   m_lastBitBeforeRefill = nextWord & 1;

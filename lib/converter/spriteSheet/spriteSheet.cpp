@@ -1,9 +1,8 @@
 #include "spriteSheet.h"
+#include "../../binary/binary.h"
 #include "../../bmpWriter/bmpWriter.h"
-#include "../../helpers/helpers.h"
-#include "../amosCompact/Consts.h"
 #include "../amosCompact/decodeImage.h"
-#include "../shared/headers.h"
+#include "../headers/headers.h"
 #include <algorithm>
 #include <stdexcept>
 #include <string_view>
@@ -54,7 +53,7 @@ SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
   }
 
   SpriteBankHeader header;
-  helpers::BigEndianReader reader(data);
+  binary::BigEndianReader reader(data);
   header.count = reader.readUint16(0);
   header.maxWidth = reader.readUint16(2);
   header.maxHeight = reader.readUint16(4);
@@ -218,14 +217,14 @@ void applyScreenPalette(const std::string &fileId,
   if (paletteScreen(fileId).empty()) {
     return;
   }
-  if (screen.size() < amosCompact::consts::SPACK_HEADER_SIZE ||
-      helpers::BigEndianReader(screen).readUint32(0) !=
-          amosCompact::consts::SPACK_SCREEN_HEADER) {
+  if (screen.size() < headers::SPACK_HEADER_SIZE ||
+      binary::BigEndianReader(screen).readUint32(0) !=
+          headers::SPACK_SCREEN_HEADER) {
     throw std::runtime_error("Not a packed screen");
   }
-  const auto header = shared::parseSPACKHeader(screen);
+  const auto header = headers::parseSPACKHeader(screen);
   const int colours = std::min<int>(
-      header.numberOfColors, static_cast<int>(shared::SPACK_PALETTE_SIZE));
+      header.numberOfColors, static_cast<int>(headers::SPACK_PALETTE_SIZE));
   for (int i = LOGO_REFLECTION_FIRST_SPRITE;
        i <= LOGO_REFLECTION_LAST_SPRITE && i < static_cast<int>(sprites.size());
        i++) {
@@ -240,7 +239,7 @@ void applyScreenPalette(const std::string &fileId,
 }
 
 std::vector<uint16_t> selectPalette(const std::string &fileId) {
-  return palettes::selectPalette(fileId);
+  return gameData::palettes::selectPalette(fileId);
 }
 
 } // namespace openfranko::lib::converter::spriteSheet

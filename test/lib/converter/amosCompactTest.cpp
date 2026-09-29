@@ -1,16 +1,16 @@
 #include "../../../lib/converter/amosCompact/amosCompact.h"
+#include "../../../lib/binary/binary.h"
 #include "../../../lib/converter/amosCompact/Consts.h"
 #include "../../../lib/converter/amosCompact/detail/BitReader.h"
 #include "../../../lib/converter/amosCompact/detail/ByteReader.h"
-#include "../../../lib/converter/shared/headers.h"
-#include "../../../lib/helpers/helpers.h"
+#include "../../../lib/converter/headers/headers.h"
 #include <catch2/catch_all.hpp>
 #include <vector>
 
 using namespace openfranko::lib::converter::amosCompact;
 using namespace openfranko::lib::converter::amosCompact::detail;
-using namespace openfranko::lib::converter::shared;
-using openfranko::lib::helpers::LittleEndianReader;
+using namespace openfranko::lib::converter::headers;
+using openfranko::lib::binary::LittleEndianReader;
 
 static uint32_t bmpWidth(const std::vector<uint8_t> &bmp) {
   return LittleEndianReader(bmp).readUint32(18);

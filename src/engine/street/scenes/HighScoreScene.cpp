@@ -1,6 +1,6 @@
 #include "HighScoreScene.h"
 
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
 #include "../ui/StageFrame.h"
 
 #include <algorithm>
@@ -70,9 +70,8 @@ constexpr int FADE_WAIT = 30;
 
 } // namespace
 
-HighScoreScene::HighScoreScene(StreetHost &host, ui::GameSession &session,
-                               const effects::core::GameOptions &options,
-                               Save save)
+HighScoreScene::HighScoreScene(StreetHost &host, session::GameSession &session,
+                               const GameOptions &options, Save save)
     : m_host(host), m_session(session), m_options(options),
       m_save(std::move(save)), m_screen(WIDTH, HEIGHT),
       m_scratch(SCRATCH_WIDTH, SCRATCH_HEIGHT), m_display(WIDTH, HEIGHT),
@@ -161,7 +160,7 @@ void HighScoreScene::runBasic() {
       flow = wait(MUSIC_START_WAIT, Step::Pictures);
       break;
     case Step::Pictures:
-      m_host.setMusicTempo(effects::color::menuTempo(m_options.ntsc));
+      m_host.setMusicTempo(menuTempo(m_options.ntsc));
       m_loading.queue([this] { m_host.loadPicture(TITLE); });
       queuePictures();
       break;
@@ -209,7 +208,7 @@ void HighScoreScene::runBasic() {
 void HighScoreScene::reset() {
   amal::Registers &registers = m_session.registers;
   const int16_t kills = registers[RN];
-  registers = ui::GameSession::freshRegisters();
+  registers = session::GameSession::freshRegisters();
   registers[RN] = kills;
   if (m_session.version == GameVersion::V12) {
     m_host.stopMusic();
@@ -253,7 +252,7 @@ HighScoreScene::Flow HighScoreScene::loaded() {
   m_palette.resize(COLORS, BLACK);
   m_round = 0;
   m_session.nameScreenOpen = true;
-  return wait(UNPACK_VBLS + effects::color::SCREEN_OPEN_VBLS, Step::Dim);
+  return wait(UNPACK_VBLS + SCREEN_OPEN_VBLS, Step::Dim);
 }
 
 HighScoreScene::Flow HighScoreScene::dim() {
@@ -356,7 +355,7 @@ HighScoreScene::Flow HighScoreScene::entry() {
     if (typed == RETURN) {
       commit();
       m_session.nameScreenOpen = false;
-      return wait(effects::color::SCREEN_CLOSE_VBLS, Step::Hold);
+      return wait(SCREEN_CLOSE_VBLS, Step::Hold);
     }
   }
   return Flow::Yield;

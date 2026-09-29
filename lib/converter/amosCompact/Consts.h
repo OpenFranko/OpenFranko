@@ -12,17 +12,8 @@ namespace consts {
 
 constexpr uint32_t MINIMAL_SIZE = 4;
 
-constexpr uint32_t SPACK_SCREEN_HEADER = 0x12031990u;
-constexpr uint32_t AMOS_BMCODE = 0x06071963u;
-
-constexpr size_t MAX_SUPPORTED_BITPLANES = 6;
-
 constexpr size_t MAX_BITMAP_DIMENSION = 65535;
 constexpr size_t MAX_BITMAP_PIXELS = 64u * 1024u * 1024u;
-
-constexpr size_t SPACK_HEADER_SIZE = 90;
-
-constexpr size_t PACKED_BITMAP_HEADER_SIZE = 24;
 
 } // namespace consts
 } // namespace amosCompact

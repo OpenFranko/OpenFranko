@@ -1,18 +1,18 @@
 #ifndef ENGINE_STREET_SCENES_STREETSTAGE_H_
 #define ENGINE_STREET_SCENES_STREETSTAGE_H_
 
+#include "../../GameOptions.h"
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
-#include "../../effects/core/GameOptions.h"
 #include "../core/Bobs.h"
 #include "../core/DoubleBuffer.h"
 #include "../core/IndexedSurface.h"
 #include "../core/LevelScript.h"
-#include "../ui/GameSession.h"
+#include "../session/GameSession.h"
 #include "../ui/LoadingMock.h"
 #include "../ui/StageFrame.h"
 #include "../ui/StatusPanel.h"
-#include "EndingCredits.h"
+#include "StreetHost.h"
 
 #include <array>
 #include <cstdint>
@@ -26,48 +26,15 @@ namespace engine {
 namespace street {
 namespace scenes {
 
-class StreetHost {
-public:
-  virtual ~StreetHost() = default;
-
-  virtual std::vector<core::Picture> loadSpriteSet(int resource,
-                                                   int sampleBank) = 0;
-  virtual core::Picture loadPicture(int resource) = 0;
-  virtual effects::color::AmigaPalette loadPalette(int resource) = 0;
-  virtual std::vector<core::Picture> loadScenery(int resource) = 0;
-  virtual core::LevelScript loadLevelScript(int resource) = 0;
-  virtual EndingCredits loadEndingCredits() = 0;
-  virtual core::Picture loadPanelPicture(int part) = 0;
-  virtual void loadMusic(int resource) = 0;
-  virtual bool isMusicLoaded(int resource) const = 0;
-  virtual void playMusic() = 0;
-  virtual void stopMusic() = 0;
-  virtual void setMusicVolume(int volume) = 0;
-  virtual void setMusicTempo(int tempo) = 0;
-  virtual void playSample(int bank, int sample, int voices) = 0;
-  virtual void playSampleAt(int bank, int sample, int voices,
-                            int frequency) = 0;
-  virtual void setSampleLoop(bool loop) = 0;
-  virtual int random(int limit) = 0;
-};
-
-struct StreetInput {
-  int16_t joystick = 0;
-  ui::SystemKey key = ui::SystemKey::None;
-  bool mouseButton = false;
-};
-
 class StreetStage {
 public:
   enum class Outcome { Playing, LevelFinished, GameOver, Quit };
 
   static constexpr int SCREEN_WIDTH = 320;
   static constexpr int SCREEN_HEIGHT = 222;
-  static constexpr int LOADING_STRIP = 0;
-  static constexpr int PANEL_ARTWORK = 1;
 
-  StreetStage(StreetHost &host, ui::GameSession &session,
-              effects::core::GameOptions &options);
+  StreetStage(StreetHost &host, session::GameSession &session,
+              GameOptions &options);
 
   void advance(const StreetInput &input);
   void compose(std::vector<uint32_t> &frame) const;
@@ -177,8 +144,8 @@ private:
   void runBasic(const StreetInput &input);
 
   StreetHost &m_host;
-  ui::GameSession &m_session;
-  effects::core::GameOptions &m_options;
+  session::GameSession &m_session;
+  GameOptions &m_options;
   amal::Machine m_machine;
   core::ImageBank m_images;
   core::BobLayer m_bobs;

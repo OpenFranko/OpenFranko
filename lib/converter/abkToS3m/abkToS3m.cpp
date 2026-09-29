@@ -1,5 +1,5 @@
 #include "abkToS3m.h"
-#include "../../helpers/helpers.h"
+#include "../../binary/binary.h"
 #include "../gameData/gameData.h"
 #include <algorithm>
 #include <cstring>
@@ -8,8 +8,8 @@
 
 namespace openfranko::lib::converter::abkToS3m {
 
-using helpers::padTo16;
-using helpers::pushLittleEndian16;
+using binary::padTo16;
+using binary::pushLittleEndian16;
 
 namespace {
 
@@ -105,7 +105,7 @@ std::vector<AmosSample> parseSamples(const uint8_t *music, size_t musicSize,
     return samples;
   }
   const std::vector<uint8_t> musicVec(music, music + musicSize);
-  helpers::BigEndianReader reader(musicVec);
+  binary::BigEndianReader reader(musicVec);
   auto read32 = [&](size_t offset) { return reader.readUint32(offset); };
   auto read16 = [&](size_t offset) { return reader.readUint16(offset); };
   uint16_t count = read16(sampleInfoOff);
@@ -142,7 +142,7 @@ SongInfo parseSong(const uint8_t *music, size_t musicSize, size_t songOff) {
   SongInfo info{};
   info.speed = 17;
   const std::vector<uint8_t> musicVec(music, music + musicSize);
-  helpers::BigEndianReader reader(musicVec);
+  binary::BigEndianReader reader(musicVec);
   auto read16 = [&](size_t offset) { return reader.readUint16(offset); };
   if (songOff + 6 > musicSize) {
     return info;
@@ -188,7 +188,7 @@ TrackInfo parseTrackData(const uint8_t *music, size_t musicSize,
   TrackInfo info{};
   info.trackDataBase = trackOff;
   const std::vector<uint8_t> musicVec(music, music + musicSize);
-  helpers::BigEndianReader reader(musicVec);
+  binary::BigEndianReader reader(musicVec);
   auto read16 = [&](size_t offset) { return reader.readUint16(offset); };
   if (trackOff + 2 > musicSize) {
     return info;
@@ -616,7 +616,7 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
     throw std::runtime_error("music data too small");
   }
 
-  helpers::BigEndianReader reader(abkData);
+  binary::BigEndianReader reader(abkData);
   uint32_t sampleInfoOff = reader.readUint32(20);
   uint32_t songOff = reader.readUint32(24);
   uint32_t trackOff = reader.readUint32(28);

@@ -44,7 +44,7 @@ add_test(NAME ${ASSETS_TEST_TARGET} COMMAND ${ASSETS_TEST_TARGET})
 
 set(CODE_CARD_CHECK_TEST_TARGET codeCardCheckTest)
 add_executable(${CODE_CARD_CHECK_TEST_TARGET}
-    engine/effects/sequences/codeCardCheckTest.cpp
+    engine/effects/protection/codeCardCheckTest.cpp
 )
 target_link_libraries(${CODE_CARD_CHECK_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${CODE_CARD_CHECK_TEST_TARGET} COMMAND ${CODE_CARD_CHECK_TEST_TARGET})
@@ -72,9 +72,9 @@ add_test(NAME ${MENU_SEQUENCE_TEST_TARGET} COMMAND ${MENU_SEQUENCE_TEST_TARGET})
 
 set(INKEY_BUFFER_TEST_TARGET inkeyBufferTest)
 add_executable(${INKEY_BUFFER_TEST_TARGET}
-    engine/effects/core/inkeyBufferTest.cpp
+    engine/inkeyBufferTest.cpp
 )
-target_link_libraries(${INKEY_BUFFER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+target_link_libraries(${INKEY_BUFFER_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Common)
 add_test(NAME ${INKEY_BUFFER_TEST_TARGET} COMMAND ${INKEY_BUFFER_TEST_TARGET})
 
 set(ATTRACT_SEQUENCE_TEST_TARGET attractSequenceTest)
@@ -93,7 +93,7 @@ add_test(NAME ${AMAL_ANIM_TEST_TARGET} COMMAND ${AMAL_ANIM_TEST_TARGET})
 
 set(CHARACTER_SELECTION_TEST_TARGET characterSelectionTest)
 add_executable(${CHARACTER_SELECTION_TEST_TARGET}
-    engine/effects/animation/characterSelectionTest.cpp
+    engine/effects/sequences/characterSelectionTest.cpp
 )
 target_link_libraries(${CHARACTER_SELECTION_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${CHARACTER_SELECTION_TEST_TARGET} COMMAND ${CHARACTER_SELECTION_TEST_TARGET})
@@ -102,14 +102,14 @@ set(AMAL_MACHINE_TEST_TARGET amalMachineTest)
 add_executable(${AMAL_MACHINE_TEST_TARGET}
     engine/amal/amalMachineTest.cpp
 )
-target_link_libraries(${AMAL_MACHINE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Amal)
+target_link_libraries(${AMAL_MACHINE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${AMAL_MACHINE_TEST_TARGET} COMMAND ${AMAL_MACHINE_TEST_TARGET})
 
 set(AMAL_ACTORS_TEST_TARGET amalActorsTest)
 add_executable(${AMAL_ACTORS_TEST_TARGET}
-    engine/amal/actors/amalActorsTest.cpp
+    engine/street/actors/amalActorsTest.cpp
 )
-target_link_libraries(${AMAL_ACTORS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Amal)
+target_link_libraries(${AMAL_ACTORS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${AMAL_ACTORS_TEST_TARGET} COMMAND ${AMAL_ACTORS_TEST_TARGET})
 
 set(INDEXED_SURFACE_TEST_TARGET indexedSurfaceTest)
@@ -219,7 +219,7 @@ add_test(NAME ${DOUBLE_BUFFER_TEST_TARGET} COMMAND ${DOUBLE_BUFFER_TEST_TARGET})
 
 set(CHEAT_CODES_TEST_TARGET cheatCodesTest)
 add_executable(${CHEAT_CODES_TEST_TARGET}
-    engine/street/ui/cheatCodesTest.cpp
+    engine/street/session/cheatCodesTest.cpp
 )
 target_link_libraries(${CHEAT_CODES_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
 add_test(NAME ${CHEAT_CODES_TEST_TARGET} COMMAND ${CHEAT_CODES_TEST_TARGET})
@@ -233,9 +233,9 @@ add_test(NAME ${STAGE_FRAME_TEST_TARGET} COMMAND ${STAGE_FRAME_TEST_TARGET})
 
 set(AMIGA_DISPLAY_TEST_TARGET amigaDisplayTest)
 add_executable(${AMIGA_DISPLAY_TEST_TARGET}
-    engine/effects/color/amigaDisplayTest.cpp
+    engine/amigaDisplayTest.cpp
 )
-target_link_libraries(${AMIGA_DISPLAY_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
+target_link_libraries(${AMIGA_DISPLAY_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Common)
 add_test(NAME ${AMIGA_DISPLAY_TEST_TARGET} COMMAND ${AMIGA_DISPLAY_TEST_TARGET})
 
 set(BITMAP_TEST_TARGET bitmapTest)

@@ -1,6 +1,6 @@
 #include "FotoSequence.h"
 
-#include "../color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
 
 #include <utility>
 
@@ -12,7 +12,7 @@ constexpr color::AmigaColor BLACK = 0x000;
 
 constexpr int WHITE_FRAMES = 5;
 constexpr int FOTO_WAIT_PER_SPEED = 15;
-constexpr int FOTO_OPEN_VBLS = 2 * color::SCREEN_OPEN_VBLS;
+constexpr int FOTO_OPEN_VBLS = 2 * SCREEN_OPEN_VBLS;
 
 } // namespace
 
@@ -47,7 +47,7 @@ const color::AmigaPalette &FotoSequence::palette() const { return m_palette; }
 bool FotoSequence::isShown() const {
   const int shownFrame = m_frame - 1;
   return shownFrame >= whiteStart() &&
-         shownFrame < closeStart() + color::SCREEN_CLOSE_SHOWN_VBLS;
+         shownFrame < closeStart() + SCREEN_CLOSE_SHOWN_VBLS;
 }
 
 bool FotoSequence::isFinished() const { return m_frame >= totalFrames(); }
@@ -56,12 +56,11 @@ int FotoSequence::frame() const { return m_frame; }
 
 int FotoSequence::holdStart() const {
   return fadeInStart() + FOTO_WAIT_PER_SPEED * m_timings.fadeInSpeed +
-         color::SCREEN_CLOSE_VBLS;
+         SCREEN_CLOSE_VBLS;
 }
 
 int FotoSequence::whiteStart() const {
-  return FOTO_OPEN_VBLS +
-         (m_timings.replacesScreen ? color::SCREEN_CLOSE_VBLS : 0);
+  return FOTO_OPEN_VBLS + (m_timings.replacesScreen ? SCREEN_CLOSE_VBLS : 0);
 }
 
 int FotoSequence::fadeInStart() const { return whiteStart() + WHITE_FRAMES; }
@@ -75,7 +74,7 @@ int FotoSequence::closeStart() const {
 }
 
 int FotoSequence::totalFrames() const {
-  return closeStart() + color::SCREEN_CLOSE_VBLS;
+  return closeStart() + SCREEN_CLOSE_VBLS;
 }
 
 } // namespace openfranko::src::engine::effects::sequences

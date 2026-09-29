@@ -2,15 +2,15 @@
 #define ENGINE_STREET_SCENES_HIGHSCORESCENE_H_
 
 #include "../../../systems/graphics/Display.h"
+#include "../../GameOptions.h"
 #include "../../effects/color/AmigaPalette.h"
 #include "../../effects/color/PaletteFader.h"
-#include "../../effects/core/GameOptions.h"
 #include "../core/Bobs.h"
 #include "../core/HighScoreTable.h"
 #include "../core/IndexedSurface.h"
-#include "../ui/GameSession.h"
+#include "../session/GameSession.h"
 #include "../ui/LoadingMock.h"
-#include "StreetStage.h"
+#include "StreetHost.h"
 
 #include <cstdint>
 #include <functional>
@@ -36,8 +36,8 @@ public:
 
   using Save = std::function<void(const core::HighScoreTable &)>;
 
-  HighScoreScene(StreetHost &host, ui::GameSession &session,
-                 const effects::core::GameOptions &options, Save save);
+  HighScoreScene(StreetHost &host, session::GameSession &session,
+                 const GameOptions &options, Save save);
 
   void advance();
   void compose(std::vector<uint32_t> &frame) const;
@@ -91,8 +91,8 @@ private:
   void redraw();
 
   StreetHost &m_host;
-  ui::GameSession &m_session;
-  const effects::core::GameOptions &m_options;
+  session::GameSession &m_session;
+  const GameOptions &m_options;
   Save m_save;
   ui::LoadingMock m_loading;
   core::ImageBank m_images;

@@ -12,14 +12,14 @@ void save(const street::core::HighScoreTable &table) {
 
 HighScoreState::HighScoreState(systems::graphics::VideoSystem &videoSystem,
                                systems::audio::AudioSystem &audioSystem,
-                               effects::core::GameOptions &options,
-                               street::ui::GameSession &session)
+                               GameOptions &options,
+                               street::session::GameSession &session)
     : m_videoSystem(videoSystem), m_host(audioSystem, session.version),
       m_scene(m_host, session, options, save),
-      m_rows(effects::color::visibleRows(
-          effects::color::pictureLine(
-              street::scenes::HighScoreScene::DISPLAY_LINE, options.ntsc),
-          street::scenes::HighScoreScene::HEIGHT, options.ntsc)) {
+      m_rows(
+          visibleRows(pictureLine(street::scenes::HighScoreScene::DISPLAY_LINE,
+                                  options.ntsc),
+                      street::scenes::HighScoreScene::HEIGHT, options.ntsc)) {
   m_videoSystem.setNtsc(options.ntsc);
 }
 

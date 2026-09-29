@@ -1,8 +1,8 @@
 #include "EngineStreetHost.h"
 
 #include "../../../systems/graphics/Bitmap.h"
+#include "../../AmigaDisplay.h"
 #include "../../assets/Assets.h"
-#include "../../effects/color/AmigaDisplay.h"
 
 #include <cctype>
 #include <filesystem>
@@ -96,7 +96,7 @@ street::core::LevelScript EngineStreetHost::loadLevelScript(int resource) {
   return street::core::LevelScript::fromJson(text.str());
 }
 
-street::scenes::EndingCredits EngineStreetHost::loadEndingCredits() {
+street::core::EndingCredits EngineStreetHost::loadEndingCredits() {
   const std::string path = m_directory + "/" + CREDITS_FILE;
   std::ifstream file(path);
   if (!file) {
@@ -104,7 +104,7 @@ street::scenes::EndingCredits EngineStreetHost::loadEndingCredits() {
   }
   std::stringstream text;
   text << file.rdbuf();
-  return street::scenes::EndingCredits::fromJson(text.str());
+  return street::core::EndingCredits::fromJson(text.str());
 }
 
 street::core::Picture EngineStreetHost::loadPanelPicture(int part) {
@@ -129,7 +129,7 @@ void EngineStreetHost::setMusicVolume(int volume) {
 }
 
 void EngineStreetHost::setMusicTempo(int tempo) {
-  m_audioSystem.setMusicTempoScale(effects::color::menuTuneScale(tempo));
+  m_audioSystem.setMusicTempoScale(menuTuneScale(tempo));
 }
 
 void EngineStreetHost::playSample(int bank, int sample, int voices) {

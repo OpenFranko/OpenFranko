@@ -65,10 +65,10 @@ systems::input::KeyMode keyMode(states::EngineStateEnum state) {
 } // namespace
 
 Engine::Engine()
-    : Engine(states::EngineStateEnum::Mirage, street::ui::GameSession{}) {}
+    : Engine(states::EngineStateEnum::Mirage, street::session::GameSession{}) {}
 
 Engine::Engine(states::EngineStateEnum firstState,
-               street::ui::GameSession startingSession)
+               street::session::GameSession startingSession)
     : session(std::move(startingSession)), running(true) {
   session.version = assets::detectVersion();
   session.highScores =

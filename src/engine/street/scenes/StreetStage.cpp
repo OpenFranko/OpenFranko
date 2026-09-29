@@ -1,8 +1,8 @@
 #include "StreetStage.h"
 
-#include "../../effects/color/AmigaDisplay.h"
+#include "../../AmigaDisplay.h"
 
-#include "../../amal/actors/Actors.h"
+#include "../actors/Actors.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -11,7 +11,7 @@
 namespace openfranko::src::engine::street::scenes {
 namespace {
 
-using amal::actors::amosBool;
+using actors::amosBool;
 
 constexpr int RA = 0;
 constexpr int RB = 1;
@@ -78,8 +78,8 @@ int rebasedSample(int request) {
 
 } // namespace
 
-StreetStage::StreetStage(StreetHost &host, ui::GameSession &session,
-                         effects::core::GameOptions &options)
+StreetStage::StreetStage(StreetHost &host, session::GameSession &session,
+                         GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
       m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_buffer(m_screen),
@@ -96,7 +96,7 @@ void StreetStage::advance(const StreetInput &input) {
     return;
   }
   ++m_frame;
-  if (input.key != ui::SystemKey::None) {
+  if (input.key != session::SystemKey::None) {
     m_session.keyLatch = input.key;
   }
   m_mouseButton = input.mouseButton;
@@ -233,7 +233,7 @@ void StreetStage::playRouted(int request, int voices) {
 }
 
 void StreetStage::newGame() {
-  global(RQ) = m_options.character == effects::core::Character::Alex ? 1 : 0;
+  global(RQ) = m_options.character == Character::Alex ? 1 : 0;
   m_resident.fill(0);
   m_needed.fill(0);
   m_escape = false;
@@ -253,12 +253,12 @@ void StreetStage::openScreens(bool shown) {
   m_screen.fill(0);
   m_buffer = core::DoubleBuffer(m_screen);
   m_panel = std::make_unique<ui::StatusPanel>(
-      m_host.loadPanelPicture(LOADING_STRIP),
-      m_host.loadPanelPicture(PANEL_ARTWORK), m_session.version);
+      m_host.loadPanelPicture(StreetHost::LOADING_STRIP),
+      m_host.loadPanelPicture(StreetHost::PANEL_ARTWORK), m_session.version);
 }
 
 StreetStage::Flow StreetStage::stageInit() {
-  m_session.keyLatch = ui::SystemKey::None;
+  m_session.keyLatch = session::SystemKey::None;
   m_host.stopMusic();
   m_images.clear();
   global(RO) = word(global(RO) + 1);
@@ -319,7 +319,7 @@ void StreetStage::stageShown() {
     m_bobs.set(bob, 460, STREET_Y, 44);
   }
   for (int channel = 4; channel <= 9; ++channel) {
-    m_machine.create(channel, amal::actors::idle(m_session.version));
+    m_machine.create(channel, actors::idle(m_session.version));
   }
 }
 
@@ -360,14 +360,13 @@ void StreetStage::streetSetup() {
 
   m_machine.bind(SCREEN_SHAKE_CHANNEL, &m_screenDisplay);
   m_machine.create(SCREEN_SHAKE_CHANNEL,
-                   amal::actors::screenShake(m_session.version));
-  const auto player = amal::actors::streetPlayer(stage(), m_session.version);
+                   actors::screenShake(m_session.version));
+  const auto player = actors::streetPlayer(stage(), m_session.version);
   m_machine.create(1, player.locomotion);
   m_machine.create(2, player.damage);
   m_machine.create(3, player.clamp);
-  m_machine.create(PLAYER_BLOOD_CHANNEL, amal::actors::playerBlood());
-  m_machine.create(ENEMY_BLOOD_CHANNEL,
-                   amal::actors::enemyBlood(m_session.version));
+  m_machine.create(PLAYER_BLOOD_CHANNEL, actors::playerBlood());
+  m_machine.create(ENEMY_BLOOD_CHANNEL, actors::enemyBlood(m_session.version));
   m_machine.startAll();
 
   m_panel->score(stats());
@@ -698,7 +697,7 @@ void StreetStage::advanceSetup() {
   for (int channel = 4; channel <= 9; ++channel) {
     m_machine.destroy(channel);
   }
-  m_machine.create(INDICATOR_CHANNEL, amal::actors::indicatorArrow(m_facing));
+  m_machine.create(INDICATOR_CHANNEL, actors::indicatorArrow(m_facing));
   m_machine.start(INDICATOR_CHANNEL);
   m_scrollPhase = 1;
   m_bobs.set(PLAYER_BLOOD, 120, 24, HIDDEN_IMAGE);
@@ -801,7 +800,7 @@ StreetStage::Flow StreetStage::advanceLeaveFlushed() {
 }
 
 StreetStage::Flow StreetStage::advanceLeavePasted() {
-  m_session.streetExit.emplace(ui::StreetExit{
+  m_session.streetExit.emplace(session::StreetExit{
       m_screen, *m_block, m_playerX, m_energyShown, m_killsShown, m_buffer});
   m_block.reset();
   m_outcome = Outcome::LevelFinished;
@@ -873,8 +872,8 @@ void StreetStage::spawnLoaded() {
     m_machine.bind(j * 2 + 1, &m_bobs.object(j));
     if (enemy.spriteSet == core::EnemySlot::EMPTY) {
       m_bobs.set(j, 1000, 300, HIDDEN_IMAGE);
-      m_machine.create(j * 2, amal::actors::idle(m_session.version));
-      m_machine.create(j * 2 + 1, amal::actors::idle(m_session.version));
+      m_machine.create(j * 2, actors::idle(m_session.version));
+      m_machine.create(j * 2 + 1, actors::idle(m_session.version));
       global(RI) = word(global(RI) - 1);
       continue;
     }
@@ -883,8 +882,7 @@ void StreetStage::spawnLoaded() {
     m_bobs.set(j, enemy.x, enemy.y, HIDDEN_IMAGE);
     const int base = 0 - 25 * amosBool(m_resident[2] == enemy.spriteSet) -
                      50 * amosBool(m_resident[3] == enemy.spriteSet);
-    const auto programs =
-        amal::actors::enemy(base, enemy.type, m_session.version);
+    const auto programs = actors::enemy(base, enemy.type, m_session.version);
     m_machine.create(j * 2, programs.walk);
     m_machine.create(j * 2 + 1, programs.damage);
   }
@@ -920,37 +918,38 @@ bool StreetStage::quitsToHighScores() const {
 }
 
 void StreetStage::closePlayScreen() {
-  m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
+  m_resumeFrame = m_frame + SCREEN_CLOSE_SHOWN_VBLS;
   m_step = Step::GameOverScreenGone;
 }
 
 void StreetStage::sys() {
-  const ui::SystemKey key =
-      std::exchange(m_session.keyLatch, ui::SystemKey::None);
+  const session::SystemKey key =
+      std::exchange(m_session.keyLatch, session::SystemKey::None);
   switch (key) {
-  case ui::SystemKey::MusicOff:
+  case session::SystemKey::MusicOff:
     m_host.setMusicVolume(0);
     m_options.music = false;
     break;
-  case ui::SystemKey::MusicOn:
+  case session::SystemKey::MusicOn:
     m_options.music = true;
     m_host.setMusicVolume(STREET_MUSIC_VOLUME);
     break;
-  case ui::SystemKey::Pal:
-  case ui::SystemKey::Ntsc:
-    ui::switchStandard(m_options, m_screenDisplay, key == ui::SystemKey::Ntsc);
+  case session::SystemKey::Pal:
+  case session::SystemKey::Ntsc:
+    ui::switchStandard(m_options, m_screenDisplay,
+                       key == session::SystemKey::Ntsc);
     break;
-  case ui::SystemKey::Lives:
+  case session::SystemKey::Lives:
     global(RG) = CHEAT_LIVES;
     m_panel->score(stats());
     break;
-  case ui::SystemKey::Escape:
+  case session::SystemKey::Escape:
     global(RN) = 0;
     m_escape = true;
     m_machine.freezeAll();
     break;
-  case ui::SystemKey::None:
-  case ui::SystemKey::Other:
+  case session::SystemKey::None:
+  case session::SystemKey::Other:
     break;
   }
   if (m_mouseButton && global(RI) > 0) {
@@ -973,8 +972,8 @@ void StreetStage::runBasic(const StreetInput &input) {
       }
       newGame();
       gameInit();
-      m_resumeFrame = m_frame + effects::color::SCREEN_OPEN_VBLS +
-                      DOUBLE_BUFFER_VBLS + effects::color::SCREEN_OPEN_VBLS;
+      m_resumeFrame =
+          m_frame + SCREEN_OPEN_VBLS + DOUBLE_BUFFER_VBLS + SCREEN_OPEN_VBLS;
       m_step = Step::GameInitialized;
       flow = Flow::Yield;
       break;
@@ -1060,18 +1059,18 @@ void StreetStage::runBasic(const StreetInput &input) {
       break;
     case Step::GameOverScreenGone:
       hideScreen();
-      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::GameOverPanelClose;
       flow = Flow::Yield;
       break;
     case Step::GameOverPanelClose:
-      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_SHOWN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_SHOWN_VBLS;
       m_step = Step::GameOverPanelGone;
       flow = Flow::Yield;
       break;
     case Step::GameOverPanelGone:
       m_panelShown = false;
-      m_resumeFrame = m_frame + effects::color::SCREEN_CLOSE_HIDDEN_VBLS;
+      m_resumeFrame = m_frame + SCREEN_CLOSE_HIDDEN_VBLS;
       m_step = Step::GameOverClosed;
       flow = Flow::Yield;
       break;

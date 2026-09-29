@@ -1,5 +1,5 @@
 #include "backwardLZ77.h"
-#include "../../helpers/helpers.h"
+#include "../../binary/binary.h"
 #include "BitReader.h"
 #include "Consts.h"
 #include <cstddef>
@@ -78,7 +78,7 @@ std::vector<uint8_t> decompressStream(const std::vector<uint8_t> &stream) {
   }
 
   const size_t trailerStart = stream.size() - consts::TRAILER_SIZE;
-  helpers::BigEndianReader trailerReader(stream);
+  binary::BigEndianReader trailerReader(stream);
 
   uint32_t unpackedSize = trailerReader.readUint32(trailerStart + 8);
   uint32_t xorChecksum = trailerReader.readUint32(trailerStart + 4);

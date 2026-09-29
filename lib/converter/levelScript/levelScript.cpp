@@ -1,5 +1,5 @@
 #include "levelScript.h"
-#include "../../helpers/helpers.h"
+#include "../../binary/binary.h"
 #include <cstdio>
 #include <stdexcept>
 #include <string>
@@ -9,7 +9,7 @@ namespace openfranko::lib::converter::levelScript {
 namespace {
 
 EnemySlot parseSlot(const std::vector<uint8_t> &data,
-                    const helpers::BigEndianReader &reader, size_t off) {
+                    const binary::BigEndianReader &reader, size_t off) {
   EnemySlot slot;
   slot.spriteSetId = data.at(off);
 
@@ -73,7 +73,7 @@ Level parse(const std::vector<uint8_t> &decompressedData) {
     throw std::runtime_error("Level script is not a whole number of waves");
   }
 
-  helpers::BigEndianReader reader(decompressedData);
+  binary::BigEndianReader reader(decompressedData);
 
   Level level;
   level.lengthInColumns = reader.readUint16(0);

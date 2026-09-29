@@ -7,6 +7,7 @@
 
 using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::street::scenes;
+using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
 
@@ -167,7 +168,7 @@ public:
 struct Street {
   FakeHost host;
   GameSession session;
-  effects::core::GameOptions options;
+  GameOptions options;
   std::unique_ptr<StreetStage> stage;
   bool afterDrive = false;
 
@@ -314,7 +315,7 @@ SCENARIO("A new game opens the street as states 09 and 10 do") {
 
   GIVEN("Alex chosen with the music off") {
     Street street(emptyStreet(600));
-    street.options.character = effects::core::Character::Alex;
+    street.options.character = Character::Alex;
     street.options.music = false;
     street.start();
     street.open();
