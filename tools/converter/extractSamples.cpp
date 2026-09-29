@@ -4,8 +4,10 @@
 #include "../../lib/converter/gameData/gameData.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
+
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 using namespace openfranko::lib;
 
@@ -27,53 +29,57 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOption.value();
-
-  std::string outDir = ".";
+  const std::string inputPath = inputOption.value();
   const auto outputOption = parser.option("-o");
-  if (outputOption.has_value())
-    outDir = outputOption.value();
-
   const auto modeOption = parser.option("-m");
 
   try {
-    auto raw = filesystem::readFile::readFile(inputPath);
+    const auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
-    auto resource = converter::fileContainer::unpack(
+    const auto resource = converter::fileContainer::unpack(
         std::filesystem::path(inputPath).filename().string(), raw);
     const std::string &fileId = resource.fileId;
+    const bool embedded = modeOption.has_value()
+                              ? modeOption.value() == "embedded"
+                              : resource.resourceType ==
+                                    converter::gameData::resourceTypes::SPRITES;
+    if (embedded &&
+        resource.resourceType != converter::gameData::resourceTypes::SPRITES) {
+      std::cerr << "Warning: " << fileId
+                << " is not a sprite bank (type 0x0000, or a version 1.2 s "
+                   "file)"
+                << std::endl;
+    }
+    if (!embedded &&
+        resource.resourceType != converter::gameData::resourceTypes::SAMPLES) {
+      std::cerr << "Warning: " << fileId
+                << " is not a sample bank (type 0x0300)" << std::endl;
+    }
 
     const auto &decompressed = resource.data;
     std::cerr << "Decompressed to " << decompressed.size() << " bytes"
               << std::endl;
 
-    const bool embedded = modeOption.has_value()
-                              ? modeOption.value() == "embedded"
-                              : resource.resourceType ==
-                                    converter::gameData::resourceTypes::SPRITES;
+    const std::string outputDir = outputOption.value_or("extracted");
+    std::filesystem::create_directories(outputDir);
 
-    std::filesystem::create_directories(outDir);
-
-    std::vector<converter::audioExtractor::ExtractedAudio> samples;
-    if (embedded) {
-      samples = converter::audioExtractor::extractEmbeddedSamBank(decompressed,
+    const auto samples =
+        embedded
+            ? converter::audioExtractor::extractEmbeddedSamBank(decompressed,
+                                                                fileId)
+            : converter::audioExtractor::extractStandaloneSamBank(decompressed,
                                                                   fileId);
-    } else {
-      samples = converter::audioExtractor::extractStandaloneSamBank(
-          decompressed, fileId);
-    }
-
-    for (const auto &s : samples) {
-      std::string path = outDir + "/" + s.name;
-      filesystem::writeFile::writeFile(path, s.data);
-      std::cerr << "  -> " << path << " (" << s.data.size() << " bytes)"
+    for (const auto &sample : samples) {
+      const std::string path = outputDir + "/" + sample.name;
+      filesystem::writeFile::writeFile(path, sample.data);
+      std::cerr << "Wrote " << path << " (" << sample.data.size() << " bytes)"
                 << std::endl;
     }
 
     if (samples.empty()) {
-      std::cerr << "(no samples found)" << std::endl;
+      std::cerr << "No samples extracted." << std::endl;
     } else {
-      std::cerr << "Wrote " << samples.size() << " samples to " << outDir
+      std::cerr << "Wrote " << samples.size() << " samples to " << outputDir
                 << std::endl;
     }
   } catch (const std::exception &e) {

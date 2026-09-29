@@ -3,6 +3,7 @@
 
 #include "../../headers/headers.h"
 #include "UnpackedBitmap.h"
+
 #include <cstdint>
 #include <vector>
 

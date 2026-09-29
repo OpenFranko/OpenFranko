@@ -3,6 +3,7 @@
 #include "../../bmpWriter/bmpWriter.h"
 #include "consts.h"
 #include "detail/unpackBitmap.h"
+
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>

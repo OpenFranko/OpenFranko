@@ -1,6 +1,7 @@
 #include "abkToS3m.h"
 #include "../../binary/binary.h"
 #include "../gameData/gameData.h"
+
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>

@@ -3,6 +3,7 @@
 #include "../../decompressor/backwardLZ77/backwardLZ77.h"
 #include "../gameData/gameData.h"
 #include "../headers/headers.h"
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdio>

@@ -2,6 +2,7 @@
 #define GAMEDATA_PALETTES_H_
 
 #include "gameData.h"
+
 #include <algorithm>
 #include <array>
 #include <cstdint>

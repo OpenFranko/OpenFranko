@@ -9,13 +9,14 @@ namespace tools {
 namespace converter {
 namespace frankoResourceExtractor {
 
-std::vector<std::string> dataFiles(const std::string &dirPath);
+std::vector<std::string> dataFiles(const std::string &inputDir);
 
-int validateDirectory(const std::string &dirPath);
+int validateDirectory(const std::string &inputDir);
 
-int processFile(const std::string &inputPath, const std::string &outDir);
+int processFile(const std::string &inputPath, const std::string &outputDir);
 
-int processExecutable(const std::string &inputPath, const std::string &outDir);
+int processExecutable(const std::string &inputPath,
+                      const std::string &outputDir);
 
 } // namespace frankoResourceExtractor
 } // namespace converter

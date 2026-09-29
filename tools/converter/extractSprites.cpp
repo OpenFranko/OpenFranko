@@ -1,11 +1,14 @@
 #include "../../lib/argumentParser/ArgumentParser.h"
 #include "../../lib/converter/fileContainer/fileContainer.h"
+#include "../../lib/converter/gameData/gameData.h"
 #include "../../lib/converter/spriteSheet/spriteSheet.h"
 #include "../../lib/filesystem/readFile/readFile.h"
 #include "../../lib/filesystem/writeFile/writeFile.h"
+
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 using namespace openfranko::lib;
 
@@ -26,23 +29,24 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::string inputPath = inputOption.value();
-
-  std::string outDir = ".";
+  const std::string inputPath = inputOption.value();
   const auto outputOption = parser.option("-o");
-  if (outputOption.has_value())
-    outDir = outputOption.value();
-
   const auto paletteOption = parser.option("-p");
 
   try {
-    auto raw = filesystem::readFile::readFile(inputPath);
+    const auto raw = filesystem::readFile::readFile(inputPath);
     std::cerr << "Read " << raw.size() << " bytes" << std::endl;
-    auto resource = converter::fileContainer::unpack(
+    const auto resource = converter::fileContainer::unpack(
         std::filesystem::path(inputPath).filename().string(), raw);
     const std::string &fileId = resource.fileId;
+    if (resource.resourceType != converter::gameData::resourceTypes::SPRITES) {
+      std::cerr << "Warning: " << fileId
+                << " is not a sprite bank (type 0x0000, or a version 1.2 s "
+                   "file)"
+                << std::endl;
+    }
 
-    auto palette =
+    const auto palette =
         paletteOption.has_value()
             ? converter::gameData::palettes::byName(paletteOption.value())
             : converter::spriteSheet::selectPalette(fileId);
@@ -51,11 +55,12 @@ int main(int argc, char **argv) {
     std::cerr << "Decompressed to " << decompressed.size() << " bytes"
               << std::endl;
 
-    auto header = converter::spriteSheet::parseHeader(decompressed);
+    const auto header = converter::spriteSheet::parseHeader(decompressed);
     std::cerr << "Sprite bank: " << header.count << " sprites, max "
               << header.maxWidth << "x" << header.maxHeight << std::endl;
 
-    std::filesystem::create_directories(outDir);
+    const std::string outputDir = outputOption.value_or("extracted");
+    std::filesystem::create_directories(outputDir);
 
     auto sprites =
         converter::spriteSheet::convertToIndividual(decompressed, palette);
@@ -71,8 +76,8 @@ int main(int argc, char **argv) {
           converter::spriteSheet::applyScreenPalette(fileId, bank.data,
                                                      sprites);
         } catch (const std::exception &e) {
-          std::cerr << e.what() << ": the sprites shown on " << screen
-                    << " keep the bank's palette" << std::endl;
+          std::cerr << "Warning: " << e.what() << ": the sprites shown on "
+                    << screen << " keep the bank's palette" << std::endl;
         }
       }
     }
@@ -85,11 +90,19 @@ int main(int argc, char **argv) {
       }
       char name[32];
       snprintf(name, sizeof(name), "%s_%03d.bmp", fileId.c_str(), i);
-      std::string bmpPath = outDir + "/" + name;
-      filesystem::writeFile::writeFile(bmpPath, sprites[i].bmpData);
+      const std::string path = outputDir + "/" + name;
+      filesystem::writeFile::writeFile(path, sprites[i].bmpData);
+      std::cerr << "Wrote " << path << " (" << sprites[i].bmpData.size()
+                << " bytes)" << std::endl;
       written++;
     }
-    std::cerr << "Wrote " << written << " sprites to " << outDir << std::endl;
+
+    if (written == 0) {
+      std::cerr << "No sprites extracted." << std::endl;
+    } else {
+      std::cerr << "Wrote " << written << " sprites to " << outputDir
+                << std::endl;
+    }
   } catch (const std::exception &e) {
     std::cerr << "Error: " << e.what() << std::endl;
     return 1;

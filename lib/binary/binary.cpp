@@ -1,4 +1,5 @@
 #include "binary.h"
+
 #include <stdexcept>
 
 namespace openfranko::lib::binary {

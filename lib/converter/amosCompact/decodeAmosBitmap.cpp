@@ -2,6 +2,7 @@
 #include "../../binary/binary.h"
 #include "../headers/headers.h"
 #include "detail/unpackBitmap.h"
+
 #include <stdexcept>
 
 namespace openfranko::lib::converter::amosCompact {

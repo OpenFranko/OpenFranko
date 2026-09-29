@@ -2,6 +2,7 @@
 #define SPRITESHEET_H_
 
 #include "../gameData/palettes.h"
+
 #include <cstdint>
 #include <string>
 #include <string_view>

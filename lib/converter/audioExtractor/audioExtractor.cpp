@@ -1,6 +1,7 @@
 #include "audioExtractor.h"
 #include "../../binary/binary.h"
 #include "../gameData/gameData.h"
+
 #include <cstring>
 
 namespace openfranko::lib::converter::audioExtractor {

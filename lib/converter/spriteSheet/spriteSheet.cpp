@@ -3,6 +3,7 @@
 #include "../../bmpWriter/bmpWriter.h"
 #include "../amosCompact/decodeAmosBitmap.h"
 #include "../headers/headers.h"
+
 #include <algorithm>
 #include <stdexcept>
 #include <string_view>

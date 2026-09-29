@@ -1,5 +1,6 @@
 #include "levelScript.h"
 #include "../../binary/binary.h"
+
 #include <cstdio>
 #include <stdexcept>
 #include <string>
@@ -97,16 +98,16 @@ std::vector<uint8_t> toJson(const Level &level, const std::string &fileId) {
   std::string out;
   out += "{\n";
   out += "  \"fileId\": \"" + escapeJson(fileId) + "\",\n";
-  out += "  \"lengthInColumns\": " + std::to_string(level.lengthInColumns) +
-         ",\n";
+  out +=
+      "  \"lengthInColumns\": " + std::to_string(level.lengthInColumns) + ",\n";
   out += "  \"waveCount\": " + std::to_string(level.waves.size()) + ",\n";
   out += "  \"waves\": [\n";
 
   for (size_t w = 0; w < level.waves.size(); ++w) {
     const Wave &wave = level.waves[w];
     out += "    {\n";
-    out +=
-        "      \"triggerColumn\": " + std::to_string(wave.triggerColumn) + ",\n";
+    out += "      \"triggerColumn\": " + std::to_string(wave.triggerColumn) +
+           ",\n";
     out += "      \"slots\": [\n";
 
     for (size_t i = 0; i < consts::SLOTS_PER_WAVE; ++i) {

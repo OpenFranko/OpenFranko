@@ -1,6 +1,7 @@
 #include "BitReader.h"
 #include "../../binary/binary.h"
 #include "consts.h"
+
 #include <stdexcept>
 
 namespace openfranko::lib::decompressor::backwardLZ77 {

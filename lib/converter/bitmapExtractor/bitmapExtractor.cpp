@@ -5,6 +5,7 @@
 #include "../gameData/gameData.h"
 #include "../gameData/palettes.h"
 #include "../headers/headers.h"
+
 #include <algorithm>
 #include <stdexcept>
 
