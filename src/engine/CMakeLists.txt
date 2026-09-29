@@ -6,14 +6,11 @@ add_library(Common
     InkeyBuffer.cpp
     InkeyBuffer.h)
 
-add_library(Assets assets/Assets.cpp assets/Assets.h)
-target_link_libraries(Assets PUBLIC Common)
-
-add_library(Amal amal/Program.cpp amal/Program.h amal/Machine.cpp amal/Machine.h)
-
+add_subdirectory(amal)
+add_subdirectory(assets)
 add_subdirectory(effects)
-add_subdirectory(street)
 add_subdirectory(states)
+add_subdirectory(street)
 
 add_library(Engine Engine.cpp Engine.h)
 target_link_libraries(Engine
