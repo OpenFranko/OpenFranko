@@ -1,5 +1,5 @@
-#ifndef ENGINE_EFFECTS_SEQUENCES_CREDITSCROLL_H_
-#define ENGINE_EFFECTS_SEQUENCES_CREDITSCROLL_H_
+#ifndef ENGINE_EFFECTS_ANIMATION_CREDITSCROLL_H_
+#define ENGINE_EFFECTS_ANIMATION_CREDITSCROLL_H_
 
 #include <cstdint>
 
@@ -7,7 +7,7 @@ namespace openfranko {
 namespace src {
 namespace engine {
 namespace effects {
-namespace sequences {
+namespace animation {
 
 class CreditScroll {
 public:
@@ -27,10 +27,10 @@ private:
   bool m_liftNext = false;
 };
 
-} // namespace sequences
+} // namespace animation
 } // namespace effects
 } // namespace engine
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_EFFECTS_SEQUENCES_CREDITSCROLL_H_
+#endif // ENGINE_EFFECTS_ANIMATION_CREDITSCROLL_H_

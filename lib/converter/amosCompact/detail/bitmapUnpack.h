@@ -2,7 +2,7 @@
 #define AMOSCOMPACT_BITMAPUNPACK_H_
 
 #include "../../headers/headers.h"
-#include "unpackedBitmap.h"
+#include "UnpackedBitmap.h"
 #include <cstdint>
 #include <vector>
 

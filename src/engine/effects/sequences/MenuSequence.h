@@ -5,9 +5,9 @@
 #include "../../GameVersion.h"
 #include "../../InkeyBuffer.h"
 #include "../animation/AmalMotion.h"
+#include "../animation/CreditScroll.h"
 #include "../color/AmigaPalette.h"
 #include "../color/PaletteFader.h"
-#include "CreditScroll.h"
 
 #include <array>
 #include <cstddef>
@@ -81,7 +81,7 @@ private:
   std::array<Bob, BOBS> m_bobs{};
   std::array<Bob, BOBS> m_shownBobs{};
   std::array<animation::AmalMotion, BOBS> m_motions{};
-  std::array<std::optional<CreditScroll>, 3> m_credits{};
+  std::array<std::optional<animation::CreditScroll>, 3> m_credits{};
   InkeyBuffer &m_keyboard;
   std::string m_keysRead;
   Phase m_phase = Phase::Unpacking;

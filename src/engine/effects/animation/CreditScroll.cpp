@@ -1,6 +1,6 @@
 #include "CreditScroll.h"
 
-namespace openfranko::src::engine::effects::sequences {
+namespace openfranko::src::engine::effects::animation {
 namespace {
 
 constexpr int16_t TOP = -40;
@@ -35,4 +35,4 @@ int16_t CreditScroll::y() const { return m_y; }
 
 int CreditScroll::image() const { return m_image; }
 
-} // namespace openfranko::src::engine::effects::sequences
+} // namespace openfranko::src::engine::effects::animation

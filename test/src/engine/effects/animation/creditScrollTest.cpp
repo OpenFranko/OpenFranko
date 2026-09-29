@@ -1,9 +1,9 @@
-#include "../../../../../src/engine/effects/sequences/CreditScroll.h"
+#include "../../../../../src/engine/effects/animation/CreditScroll.h"
 #include <catch2/catch_all.hpp>
 #include <cstdint>
 #include <vector>
 
-using namespace openfranko::src::engine::effects::sequences;
+using namespace openfranko::src::engine::effects::animation;
 
 namespace {
 

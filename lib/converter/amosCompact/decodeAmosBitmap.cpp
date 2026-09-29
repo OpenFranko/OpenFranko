@@ -1,4 +1,4 @@
-#include "decodeImage.h"
+#include "decodeAmosBitmap.h"
 #include "../../binary/binary.h"
 #include "../headers/headers.h"
 #include "detail/bitmapUnpack.h"

@@ -1,7 +1,7 @@
 #include "EngineStreetHost.h"
 
 #include "../../../systems/graphics/Bitmap.h"
-#include "../../AmigaDisplay.h"
+#include "../../MenuTempo.h"
 #include "../../assets/Assets.h"
 
 #include <cctype>

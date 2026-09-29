@@ -1,7 +1,7 @@
 #include "amosCompact.h"
 #include "../../binary/binary.h"
 #include "../../bmpWriter/bmpWriter.h"
-#include "Consts.h"
+#include "consts.h"
 #include "detail/bitmapUnpack.h"
 #include <algorithm>
 #include <iterator>

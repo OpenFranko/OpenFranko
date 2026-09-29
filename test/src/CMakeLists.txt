@@ -58,7 +58,7 @@ add_test(NAME ${AMAL_MOTION_TEST_TARGET} COMMAND ${AMAL_MOTION_TEST_TARGET})
 
 set(CREDIT_SCROLL_TEST_TARGET creditScrollTest)
 add_executable(${CREDIT_SCROLL_TEST_TARGET}
-    engine/effects/sequences/creditScrollTest.cpp
+    engine/effects/animation/creditScrollTest.cpp
 )
 target_link_libraries(${CREDIT_SCROLL_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${CREDIT_SCROLL_TEST_TARGET} COMMAND ${CREDIT_SCROLL_TEST_TARGET})

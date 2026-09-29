@@ -1,5 +1,5 @@
-#ifndef AMOSCOMPACT_DECODEIMAGE_H_
-#define AMOSCOMPACT_DECODEIMAGE_H_
+#ifndef AMOSCOMPACT_DECODEAMOSBITMAP_H_
+#define AMOSCOMPACT_DECODEAMOSBITMAP_H_
 
 #include <cstdint>
 #include <vector>
@@ -23,4 +23,4 @@ DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset,
 } // namespace lib
 } // namespace openfranko
 
-#endif // AMOSCOMPACT_DECODEIMAGE_H_
+#endif // AMOSCOMPACT_DECODEAMOSBITMAP_H_

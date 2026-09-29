@@ -2,6 +2,7 @@ add_library(Common
     GameVersion.h
     GameOptions.h
     AmigaDisplay.h
+    MenuTempo.h
     InkeyBuffer.cpp
     InkeyBuffer.h)
 
@@ -21,8 +22,8 @@ add_library(Effects
     effects/protection/CodeCardCheck.h
     effects/animation/AmalMotion.cpp
     effects/animation/AmalMotion.h
-    effects/sequences/CreditScroll.cpp
-    effects/sequences/CreditScroll.h
+    effects/animation/CreditScroll.cpp
+    effects/animation/CreditScroll.h
     effects/sequences/MenuSequence.cpp
     effects/sequences/MenuSequence.h
     effects/sequences/AttractSequence.cpp

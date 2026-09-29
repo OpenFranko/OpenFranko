@@ -1,9 +1,9 @@
 #include "bitmapExtractor.h"
 #include "../../binary/binary.h"
 #include "../../bmpWriter/bmpWriter.h"
-#include "../amosCompact/decodeImage.h"
-#include "../gameData/Palettes.h"
+#include "../amosCompact/decodeAmosBitmap.h"
 #include "../gameData/gameData.h"
+#include "../gameData/palettes.h"
 #include "../headers/headers.h"
 #include <algorithm>
 #include <stdexcept>

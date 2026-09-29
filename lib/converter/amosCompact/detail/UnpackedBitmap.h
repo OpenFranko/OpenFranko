@@ -1,5 +1,5 @@
-#ifndef UNPACKEDBITMAP_H_
-#define UNPACKEDBITMAP_H_
+#ifndef AMOSCOMPACT_UNPACKEDBITMAP_H_
+#define AMOSCOMPACT_UNPACKEDBITMAP_H_
 
 #include <cstdint>
 #include <vector>
@@ -26,4 +26,4 @@ struct UnpackedBitmap {
 } // namespace lib
 } // namespace openfranko
 
-#endif // UNPACKEDBITMAP_H_
+#endif // AMOSCOMPACT_UNPACKEDBITMAP_H_

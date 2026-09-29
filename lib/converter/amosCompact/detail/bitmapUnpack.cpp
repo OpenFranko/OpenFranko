@@ -1,5 +1,5 @@
 #include "bitmapUnpack.h"
-#include "../Consts.h"
+#include "../consts.h"
 #include "BitReader.h"
 #include "ByteReader.h"
 #include <algorithm>

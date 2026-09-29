@@ -1,7 +1,7 @@
 #include "spriteSheet.h"
 #include "../../binary/binary.h"
 #include "../../bmpWriter/bmpWriter.h"
-#include "../amosCompact/decodeImage.h"
+#include "../amosCompact/decodeAmosBitmap.h"
 #include "../headers/headers.h"
 #include <algorithm>
 #include <stdexcept>

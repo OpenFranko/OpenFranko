@@ -1,2 +1,2 @@
-add_library(amosCompact amosCompact.cpp amosCompact.h decodeImage.cpp decodeImage.h detail/bitmapUnpack.cpp detail/bitmapUnpack.h detail/BitReader.cpp detail/BitReader.h detail/ByteReader.cpp detail/ByteReader.h)
+add_library(amosCompact amosCompact.cpp amosCompact.h decodeAmosBitmap.cpp decodeAmosBitmap.h detail/bitmapUnpack.cpp detail/bitmapUnpack.h detail/BitReader.cpp detail/BitReader.h detail/ByteReader.cpp detail/ByteReader.h)
 target_link_libraries(amosCompact binary bmpWriter headers)

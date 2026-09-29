@@ -1,4 +1,4 @@
-add_executable(backwardLZ77Decompressor decompressor/backwardLZ77.cpp)
+add_executable(backwardLZ77Decompressor decompressor/backwardLZ77Decompressor.cpp)
 target_link_libraries(backwardLZ77Decompressor argumentParser readFile backwardLZ77 writeFile fileContainer gameData)
 
 add_executable(extractSpriteSheet converter/extractSpriteSheet.cpp)

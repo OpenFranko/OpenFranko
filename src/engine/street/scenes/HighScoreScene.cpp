@@ -1,6 +1,7 @@
 #include "HighScoreScene.h"
 
 #include "../../AmigaDisplay.h"
+#include "../../MenuTempo.h"
 #include "../ui/StageFrame.h"
 
 #include <algorithm>

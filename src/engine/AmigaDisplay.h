@@ -39,17 +39,6 @@ constexpr VisibleRows visibleRows(int displayY, int height, bool ntsc) {
   return {first, std::max(0, last - first + 1)};
 }
 
-constexpr int CONVERTED_MENU_TEMPO = 37;
-constexpr int NTSC_TEMPO_DROP = 5;
-
-constexpr int menuTempo(bool ntsc) {
-  return CONVERTED_MENU_TEMPO - (ntsc ? NTSC_TEMPO_DROP : 0);
-}
-
-constexpr double menuTuneScale(int tempo) {
-  return static_cast<double>(tempo) / CONVERTED_MENU_TEMPO;
-}
-
 } // namespace engine
 } // namespace src
 } // namespace openfranko

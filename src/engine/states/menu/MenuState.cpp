@@ -1,6 +1,7 @@
 #include "MenuState.h"
 
 #include "../../AmigaDisplay.h"
+#include "../../MenuTempo.h"
 #include "../../assets/Assets.h"
 #include "../../street/session/CheatCodes.h"
 

@@ -1,7 +1,7 @@
 #include "backwardLZ77.h"
 #include "../../binary/binary.h"
 #include "BitReader.h"
-#include "Consts.h"
+#include "consts.h"
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>

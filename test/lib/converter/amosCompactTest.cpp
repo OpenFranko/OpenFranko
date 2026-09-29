@@ -1,6 +1,6 @@
 #include "../../../lib/converter/amosCompact/amosCompact.h"
 #include "../../../lib/binary/binary.h"
-#include "../../../lib/converter/amosCompact/Consts.h"
+#include "../../../lib/converter/amosCompact/consts.h"
 #include "../../../lib/converter/amosCompact/detail/BitReader.h"
 #include "../../../lib/converter/amosCompact/detail/ByteReader.h"
 #include <catch2/catch_all.hpp>
