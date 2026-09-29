@@ -98,19 +98,19 @@ add_executable(${CHARACTER_SELECTION_TEST_TARGET}
 target_link_libraries(${CHARACTER_SELECTION_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Effects)
 add_test(NAME ${CHARACTER_SELECTION_TEST_TARGET} COMMAND ${CHARACTER_SELECTION_TEST_TARGET})
 
-set(AMAL_MACHINE_TEST_TARGET amalMachineTest)
-add_executable(${AMAL_MACHINE_TEST_TARGET}
-    engine/amal/amalMachineTest.cpp
+set(MACHINE_TEST_TARGET machineTest)
+add_executable(${MACHINE_TEST_TARGET}
+    engine/amal/machineTest.cpp
 )
-target_link_libraries(${AMAL_MACHINE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
-add_test(NAME ${AMAL_MACHINE_TEST_TARGET} COMMAND ${AMAL_MACHINE_TEST_TARGET})
+target_link_libraries(${MACHINE_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${MACHINE_TEST_TARGET} COMMAND ${MACHINE_TEST_TARGET})
 
-set(STREET_ACTORS_TEST_TARGET streetActorsTest)
-add_executable(${STREET_ACTORS_TEST_TARGET}
-    engine/street/actors/streetActorsTest.cpp
+set(ACTORS_TEST_TARGET actorsTest)
+add_executable(${ACTORS_TEST_TARGET}
+    engine/street/actors/actorsTest.cpp
 )
-target_link_libraries(${STREET_ACTORS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
-add_test(NAME ${STREET_ACTORS_TEST_TARGET} COMMAND ${STREET_ACTORS_TEST_TARGET})
+target_link_libraries(${ACTORS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain Street)
+add_test(NAME ${ACTORS_TEST_TARGET} COMMAND ${ACTORS_TEST_TARGET})
 
 set(INDEXED_SURFACE_TEST_TARGET indexedSurfaceTest)
 add_executable(${INDEXED_SURFACE_TEST_TARGET}

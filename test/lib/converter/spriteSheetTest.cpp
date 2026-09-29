@@ -246,32 +246,6 @@ SCENARIO("Sprite conversion says why a sprite could not be converted") {
   }
 }
 
-SCENARIO("byName picks a palette by its command line name") {
-  GIVEN("The palette names the tools accept") {
-    THEN("Each returns its palette") {
-      using Pal = std::vector<uint16_t>;
-      REQUIRE(pal::byName("sunset") ==
-              Pal(pal::SUNSET.begin(), pal::SUNSET.end()));
-      REQUIRE(pal::byName("story") ==
-              Pal(pal::STORY.begin(), pal::STORY.end()));
-      REQUIRE(pal::byName("menu") == Pal(pal::MENU.begin(), pal::MENU.end()));
-      REQUIRE(pal::byName("menu35") ==
-              Pal(pal::MENU_35.begin(), pal::MENU_35.end()));
-      REQUIRE(pal::byName("cemetery") ==
-              Pal(pal::CEMETERY.begin(), pal::CEMETERY.end()));
-    }
-  }
-
-  GIVEN("\"level\" or an unknown name") {
-    THEN("It returns the level palette") {
-      using Pal = std::vector<uint16_t>;
-      REQUIRE(pal::byName("level") ==
-              Pal(pal::LEVEL.begin(), pal::LEVEL.end()));
-      REQUIRE(pal::byName("nope") == Pal(pal::LEVEL.begin(), pal::LEVEL.end()));
-    }
-  }
-}
-
 SCENARIO("applySpritePaletteFixes makes the sunset bank's font white") {
   GIVEN("44 converted sprites") {
     std::vector<ConvertedSprite> sprites(

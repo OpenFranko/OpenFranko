@@ -111,3 +111,10 @@ add_executable(${ENDING_CREDITS_TEST_TARGET}
 )
 target_link_libraries(${ENDING_CREDITS_TEST_TARGET} PRIVATE Catch2::Catch2WithMain endingCredits binary)
 add_test(NAME ${ENDING_CREDITS_TEST_TARGET} COMMAND ${ENDING_CREDITS_TEST_TARGET})
+
+set(GAME_DATA_TEST_TARGET gameDataTest)
+add_executable(${GAME_DATA_TEST_TARGET}
+    converter/gameDataTest.cpp
+)
+target_link_libraries(${GAME_DATA_TEST_TARGET} PRIVATE Catch2::Catch2WithMain gameData)
+add_test(NAME ${GAME_DATA_TEST_TARGET} COMMAND ${GAME_DATA_TEST_TARGET})

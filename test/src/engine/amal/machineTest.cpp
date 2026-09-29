@@ -11,17 +11,9 @@ using namespace openfranko::src::engine::street;
 namespace {
 
 constexpr int RA = 0;
-constexpr int RB = 1;
 constexpr int RC = 2;
-constexpr int RD = 3;
-constexpr int RM = 12;
-constexpr int RU = 20;
 constexpr int RZ = 25;
-constexpr int FRAME_LIMIT = 1000;
 
-constexpr int16_t JOY_UP = 1;
-constexpr int16_t JOY_DOWN = 2;
-constexpr int16_t JOY_RIGHT = 8;
 constexpr int16_t JOY_FIRE = 16;
 
 struct Run {
@@ -109,75 +101,6 @@ SCENARIO("Move is AMOS's 16.16 fixed point interpolation") {
     THEN("A quotient past 32767 flips sign and one past 65535 is dropped") {
       REQUIRE(flipped.x == 100 - 56);
       REQUIRE(overflowed.x == 100);
-    }
-  }
-}
-
-SCENARIO("TRZES shakes the screen in three four-frame jolts") {
-  GIVEN("The shake bound to the display at y 47") {
-    Registers globals{};
-    Machine machine(globals);
-    Object display{128, 47, 0};
-    machine.bind(0, &display);
-    machine.create(0, actors::screenShake());
-    machine.start(0);
-
-    WHEN("Nothing asks for a shake") {
-      const auto frames = run(machine, display, 20);
-
-      THEN("The idle loop yields on its jump budget and nothing moves") {
-        REQUIRE(frames.ys == std::vector<int16_t>(20, 47));
-      }
-    }
-
-    WHEN("RM is set") {
-      globals[RM] = 1;
-      const auto frames = run(machine, display, 13);
-
-      THEN("The looping Next waits a frame, so each jolt is 8, 4, 0, 0") {
-        const std::vector<int16_t> jolts = {55, 51, 47, 47, 55, 51, 47,
-                                            47, 55, 51, 47, 47, 47};
-        REQUIRE(frames.ys == jolts);
-        REQUIRE(globals[RM] == 0);
-      }
-    }
-  }
-}
-
-SCENARIO("KREW animates while it moves") {
-  GIVEN("The player's blood, triggered with RZ 60") {
-    Registers globals{};
-    Machine machine(globals);
-    Object blood{100, 100, 10};
-    machine.bind(15, &blood);
-    machine.create(15, actors::playerBlood());
-    machine.start(15);
-    globals[RZ] = 60;
-    globals[RA] = 100;
-    globals[RB] = 200;
-    globals[RC] = 0;
-
-    WHEN("It runs") {
-      const auto frames = run(machine, blood, 30);
-
-      THEN("The splat image 9 arrives on frame 15, with the arc") {
-        REQUIRE(frames.images[14] == 8);
-        REQUIRE(frames.images[15] == 9);
-        REQUIRE(frames.ys[1] == 144);
-        REQUIRE(frames.ys[14] == 200);
-      }
-
-      THEN("Images 2 to 8 are each held their full 2 frames") {
-        const auto runs = holds(frames.images);
-        REQUIRE(runs[1] == std::make_pair<int16_t, int>(2, 2));
-        REQUIRE(runs[4] == std::make_pair<int16_t, int>(5, 2));
-        REQUIRE(runs[7] == std::make_pair<int16_t, int>(8, 2));
-      }
-
-      THEN("It hides itself and clears RZ when done") {
-        REQUIRE(frames.images[21] == 10);
-        REQUIRE(globals[RZ] == 0);
-      }
     }
   }
 }
@@ -342,32 +265,6 @@ SCENARIO("Expressions follow AMAL's rules") {
   }
 }
 
-SCENARIO("A run-over walker slides off the left edge and ends") {
-  GIVEN("Walker type 9 squashed at x 103 while RU is 5") {
-    Registers globals{};
-    globals[RU] = 5;
-    Machine machine(globals);
-    Object walker{103, 150, 9};
-    machine.bind(1, &walker);
-    machine.create(1, actors::pedestrian(9));
-    machine.channelRegister(1, 4) = 1;
-    machine.start(1);
-
-    WHEN("It runs") {
-      int frames = 0;
-      while (machine.isRunning(1) && frames < FRAME_LIMIT) {
-        machine.tick();
-        ++frames;
-      }
-
-      THEN("IX>-80JC lets it go at the first x past -80") {
-        REQUIRE_FALSE(machine.isRunning(1));
-        REQUIRE(walker.x == -82);
-      }
-    }
-  }
-}
-
 SCENARIO("The scheduler's budget and loops") {
   GIVEN("A loop with no Pause") {
     Registers globals{};
@@ -411,76 +308,6 @@ SCENARIO("The scheduler's budget and loops") {
     THEN("They run in ascending channel order, sharing RA to RZ") {
       REQUIRE(machine.channelRegister(2, 0) == 5);
       REQUIRE(globals[RZ] == 5);
-    }
-  }
-}
-
-SCENARIO("FRAN plays the street player") {
-  GIVEN("The stage 1 player at (160,172) facing right") {
-    Registers globals{};
-    Machine machine(globals);
-    Object player{160, 172, 17};
-    machine.bind(1, &player);
-    const auto programs = actors::streetPlayer(1);
-    machine.create(1, programs.locomotion);
-    machine.start(1);
-
-    WHEN("Right is held") {
-      machine.setJoystick(JOY_RIGHT);
-      const auto frames = run(machine, player, 30);
-
-      THEN("It decides once every 3 frames, walking 6 px a step") {
-        std::vector<int> steps;
-        for (std::size_t i = 1; i < frames.xs.size(); ++i) {
-          if (frames.xs[i] != frames.xs[i - 1]) {
-            steps.push_back(frames.xs[i] - frames.xs[i - 1]);
-          }
-        }
-        REQUIRE(steps == std::vector<int>(9, 6));
-      }
-    }
-
-    WHEN("Fire is held") {
-      machine.setJoystick(JOY_FIRE);
-      const auto frames = run(machine, player, 33);
-
-      THEN("It punches: 20, 16, 31, 16 held 7 frames each") {
-        const auto runs = holds(frames.images);
-        REQUIRE(runs[1] == std::make_pair<int16_t, int>(20, 7));
-        REQUIRE(runs[2] == std::make_pair<int16_t, int>(16, 7));
-        REQUIRE(runs[3] == std::make_pair<int16_t, int>(31, 7));
-        REQUIRE(runs[4] == std::make_pair<int16_t, int>(16, 7));
-      }
-    }
-
-    WHEN("Up or down is held for long") {
-      machine.setJoystick(JOY_UP);
-      const auto upward = run(machine, player, 300);
-      machine.setJoystick(JOY_DOWN);
-      const auto downward = run(machine, player, 300);
-
-      THEN("The bounds are tested before stepping: the band is 168 to 216") {
-        REQUIRE(upward.ys.back() == 168);
-        REQUIRE(downward.ys.back() == 216);
-      }
-    }
-  }
-
-  GIVEN("A punch in progress") {
-    Registers globals{};
-    Machine machine(globals);
-    Object player{160, 172, 17};
-    machine.bind(1, &player);
-    machine.create(1, actors::streetPlayer(1).locomotion);
-    machine.start(1);
-    machine.setJoystick(JOY_FIRE);
-    run(machine, player, 6);
-
-    THEN("RD holds the attack and is cleared when it ends") {
-      REQUIRE(globals[RD] == 1);
-      machine.setJoystick(0);
-      run(machine, player, 30);
-      REQUIRE(globals[RD] == 0);
     }
   }
 }

@@ -105,3 +105,81 @@ SCENARIO("parseBitmapHeader reads all fields from big-endian data") {
     }
   }
 }
+
+SCENARIO("SPACK header parsing extracts all fields correctly") {
+  GIVEN("A 90-byte SPACK header with known values") {
+    std::vector<uint8_t> data(90, 0);
+    data[0] = 0x12;
+    data[1] = 0x03;
+    data[2] = 0x19;
+    data[3] = 0x90;
+    data[4] = 0x01;
+    data[5] = 0x40;
+    data[6] = 0x00;
+    data[7] = 0xC8;
+    data[8] = 0x00;
+    data[9] = 0x10;
+    data[10] = 0x00;
+    data[11] = 0x20;
+    data[12] = 0x01;
+    data[13] = 0x30;
+    data[14] = 0x00;
+    data[15] = 0xB8;
+    data[16] = 0x00;
+    data[17] = 0x05;
+    data[18] = 0x00;
+    data[19] = 0x0A;
+    data[20] = 0x80;
+    data[21] = 0x00;
+    data[22] = 0x00;
+    data[23] = 0x10;
+    data[24] = 0x00;
+    data[25] = 0x04;
+    data[28] = 0x0F;
+    data[29] = 0x00;
+
+    WHEN("Parsing the header") {
+      auto hdr = parseSPACKHeader(data);
+
+      THEN("All fields are correct") {
+        REQUIRE(hdr.screenWidth == 320);
+        REQUIRE(hdr.screenHeight == 200);
+        REQUIRE(hdr.windowX == 16);
+        REQUIRE(hdr.windowY == 32);
+        REQUIRE(hdr.windowWidth == 304);
+        REQUIRE(hdr.windowHeight == 184);
+        REQUIRE(hdr.viewX == 5);
+        REQUIRE(hdr.viewY == 10);
+        REQUIRE(hdr.displayModeFlags == 0x8000);
+        REQUIRE(hdr.numberOfColors == 16);
+        REQUIRE(hdr.numberOfBitplanes == 4);
+        REQUIRE(hdr.amigaPalette[0] == 0x000);
+        REQUIRE(hdr.amigaPalette[1] == 0xF00);
+      }
+    }
+  }
+}
+
+SCENARIO("Bitmap header parsing extracts all fields correctly") {
+  GIVEN("A 24-byte bitmap header with known values") {
+    std::vector<uint8_t> data = {
+        0x06, 0x07, 0x19, 0x63, 0xFF, 0xFE, 0x00, 0x03, 0x00, 0x28, 0x00, 0x0A,
+        0x00, 0x10, 0x00, 0x04, 0x00, 0x00, 0x12, 0x34, 0x00, 0x00, 0x56, 0x78,
+    };
+
+    WHEN("Parsing the header") {
+      auto hdr = parseBitmapHeader(data);
+
+      THEN("All fields are correct including signed offsets") {
+        REQUIRE(hdr.xOffset == -2);
+        REQUIRE(hdr.yOffset == 3);
+        REQUIRE(hdr.gridX == 40);
+        REQUIRE(hdr.gridY == 10);
+        REQUIRE(hdr.tileHeight == 16);
+        REQUIRE(hdr.numberOfBitplanes == 4);
+        REQUIRE(hdr.offsetToByteTable2 == 0x1234);
+        REQUIRE(hdr.offsetToPointerBitstream == 0x5678);
+      }
+    }
+  }
+}

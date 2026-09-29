@@ -6,7 +6,6 @@
 #include <vector>
 
 using namespace openfranko::lib::converter::fileContainer;
-namespace gameData = openfranko::lib::converter::gameData;
 namespace resourceTypes = openfranko::lib::converter::gameData::resourceTypes;
 using openfranko::lib::binary::BigEndianReader;
 using openfranko::lib::binary::pushBigEndian16;
@@ -346,18 +345,6 @@ SCENARIO("unsquashVersion12 gives the whole squashed block of a 1.2 file") {
                         std::runtime_error);
       REQUIRE_THROWS_AS(unsquashVersion12("0384", squash({1})),
                         std::runtime_error);
-    }
-  }
-}
-
-SCENARIO("version10Id names the 1.0 file whose role a 1.2 file has") {
-  GIVEN("1.2 files with and without a 1.0 counterpart, and a 1.0 file") {
-    THEN("Each maps to its counterpart, new files to nothing") {
-      REQUIRE(gameData::version10Id("s56") == "0038");
-      REQUIRE(gameData::version10Id("t40") == "0154");
-      REQUIRE(gameData::version10Id("p52") == "03B8");
-      REQUIRE(gameData::version10Id("s50").empty());
-      REQUIRE(gameData::version10Id("0384") == "0384");
     }
   }
 }
