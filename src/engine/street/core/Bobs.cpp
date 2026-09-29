@@ -193,8 +193,7 @@ bool BobLayer::collide(int number, const ImageBank &images, int first,
     return false;
   }
   bool any = false;
-  for (int other = std::max(first, 0); other <= last && other < COUNT;
-       ++other) {
+  for (int other = std::max(first, 0); other <= last && other < BOBS; ++other) {
     Shape shape;
     if (other == number ||
         !shapeOf(m_bobs[static_cast<std::size_t>(other)], shape)) {
@@ -216,7 +215,7 @@ std::vector<BobLayer::Placement>
 BobLayer::placements(const IndexedSurface &surface,
                      const ImageBank &images) const {
   std::vector<int> order;
-  for (int number = 0; number < COUNT; ++number) {
+  for (int number = 0; number < BOBS; ++number) {
     if (m_bobs[static_cast<std::size_t>(number)].active) {
       order.push_back(number);
     }

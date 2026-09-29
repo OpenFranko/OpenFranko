@@ -10,9 +10,9 @@ namespace openfranko::src::engine::effects::color {
 namespace {
 
 struct Move {
-  int speed;
-  int step;
-  int count;
+  int speed = 0;
+  int step = 0;
+  int count = 0;
 };
 
 struct Channel {

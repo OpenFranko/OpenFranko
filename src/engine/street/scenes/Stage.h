@@ -49,7 +49,17 @@ public:
 protected:
   enum class Flow { Continue, Yield };
 
-  static constexpr int FULL_ENERGY = 64;
+  static constexpr int PLAYER = 1;
+  static constexpr int INDICATOR = 12;
+  static constexpr int HIDDEN_IMAGE = 10;
+  static constexpr int SPLAT_IMAGE = 9;
+  static constexpr int IDLE_IMAGE = 17;
+  static constexpr int SCREEN_SHAKE_CHANNEL = 0;
+  static constexpr int INDICATOR_CHANNEL = 13;
+  static constexpr int ENEMY_BLOOD_CHANNEL = 14;
+  static constexpr int PLAYER_BLOOD_CHANNEL = 15;
+  static constexpr int PRIORITY_VOICE = 1;
+  static constexpr int STREET_Y = 172;
 
   Stage(StreetHost &host, session::GameSession &session, GameOptions &options);
 

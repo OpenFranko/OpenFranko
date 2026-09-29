@@ -12,10 +12,10 @@ namespace src {
 namespace engine {
 namespace amal {
 
-constexpr int16_t REGISTER_GLOBAL_BASE = 10;
-constexpr int16_t REGISTER_X = 36;
-constexpr int16_t REGISTER_Y = 37;
-constexpr int16_t REGISTER_A = 38;
+inline constexpr int16_t REGISTER_GLOBAL_BASE = 10;
+inline constexpr int16_t REGISTER_X = 36;
+inline constexpr int16_t REGISTER_Y = 37;
+inline constexpr int16_t REGISTER_A = 38;
 
 enum class TermKind : uint8_t { Number, Register, Joystick, Operator };
 

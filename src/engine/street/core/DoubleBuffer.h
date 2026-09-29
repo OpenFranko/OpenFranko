@@ -56,7 +56,7 @@ private:
     }
   };
 
-  using Snapshot = std::array<BobState, BobLayer::COUNT>;
+  using Snapshot = std::array<BobState, BobLayer::BOBS>;
 
   static Snapshot snapshot(const BobLayer &bobs);
   void update(const BobLayer &bobs, ImageBank &images);

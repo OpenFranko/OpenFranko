@@ -129,9 +129,10 @@ bool ControllerSystem::isHeld(Key key) const {
 }
 
 int16_t ControllerSystem::joystick() const {
-  return static_cast<int16_t>((states.up ? 1 : 0) | (states.down ? 2 : 0) |
-                              (states.left ? 4 : 0) | (states.right ? 8 : 0) |
-                              (states.button ? 16 : 0));
+  return static_cast<int16_t>(
+      (states.up ? JOY_UP : 0) | (states.down ? JOY_DOWN : 0) |
+      (states.left ? JOY_LEFT : 0) | (states.right ? JOY_RIGHT : 0) |
+      (states.button ? JOY_FIRE : 0));
 }
 
 } // namespace openfranko::src::systems::input

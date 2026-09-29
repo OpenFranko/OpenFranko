@@ -6,3 +6,4 @@ add_library(EffectsColor
     PaletteFlasher.h
     Rainbow.cpp
     Rainbow.h)
+target_link_libraries(EffectsColor PUBLIC Graphics)

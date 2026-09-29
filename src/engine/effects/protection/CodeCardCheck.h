@@ -15,8 +15,8 @@ namespace protection {
 class CodeCardCheck {
 public:
   struct Cell {
-    int x;
-    int y;
+    int x = 0;
+    int y = 0;
   };
 
   static constexpr int CARD_SIZE = 10;
@@ -39,7 +39,7 @@ public:
 
 private:
   struct Question {
-    std::size_t card;
+    std::size_t card = 0;
     Cell cell;
   };
 

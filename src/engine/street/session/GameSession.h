@@ -19,6 +19,8 @@ namespace engine {
 namespace street {
 namespace session {
 
+inline constexpr int FULL_ENERGY = 64;
+
 enum class SystemKey {
   None,
   Other,

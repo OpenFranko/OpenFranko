@@ -1,4 +1,5 @@
 #include "unpackBitmap.h"
+
 #include "../consts.h"
 #include "BitReader.h"
 #include "ByteReader.h"
@@ -7,14 +8,13 @@
 #include <string>
 
 namespace openfranko::lib::converter::amosCompact::detail {
-
 namespace {
 
 void mainDecompression(UnpackedBitmap &bitmap,
                        const headers::BitmapHeader &header, ByteReader &bytes1,
                        ByteReader &bytes2, BitReader &pointerBits) {
-  const size_t lineSize = header.gridX;
-  const size_t heightLines = bitmap.height;
+  const std::size_t lineSize = header.gridX;
+  const std::size_t heightLines = bitmap.height;
 
   uint8_t mask = bytes2.read();
   uint8_t val = bytes1.read();
@@ -25,19 +25,19 @@ void mainDecompression(UnpackedBitmap &bitmap,
 
   int maskBit = 7;
 
-  for (int plane = 0; plane < bitmap.numberOfBitplanes; plane++) {
+  for (int plane = 0; plane < bitmap.numberOfBitplanes; ++plane) {
     uint8_t *planeData = bitmap.bitplaneData[plane].data();
 
-    for (int tileRow = 0; tileRow < header.gridY; tileRow++) {
-      for (int tileCol = 0; tileCol < header.gridX; tileCol++) {
-        for (int row = 0; row < header.tileHeight; row++) {
+    for (int tileRow = 0; tileRow < header.gridY; ++tileRow) {
+      for (int tileCol = 0; tileCol < header.gridX; ++tileCol) {
+        for (int row = 0; row < header.tileHeight; ++row) {
           if ((mask >> maskBit) & 1) {
             val = bytes1.read();
           }
 
-          const size_t outY =
-              static_cast<size_t>(tileRow) * header.tileHeight + row;
-          const size_t outX = tileCol;
+          const std::size_t outY =
+              static_cast<std::size_t>(tileRow) * header.tileHeight + row;
+          const std::size_t outX = tileCol;
 
           if (outY < heightLines && outX < lineSize) {
             planeData[outY * lineSize + outX] = val;
@@ -56,28 +56,28 @@ void mainDecompression(UnpackedBitmap &bitmap,
 }
 
 void unpackChunkyPixels(UnpackedBitmap &bitmap) {
-  size_t totalPixels = static_cast<size_t>(bitmap.width) * bitmap.height;
+  std::size_t totalPixels =
+      static_cast<std::size_t>(bitmap.width) * bitmap.height;
   uint16_t widthByBytes = bitmap.width / 8;
 
   bitmap.chunkyPixels.assign(totalPixels, 0);
 
-  for (size_t y = 0; y < bitmap.height; y++) {
-    for (size_t x = 0; x < widthByBytes; x++) {
+  for (std::size_t y = 0; y < bitmap.height; ++y) {
+    for (std::size_t x = 0; x < widthByBytes; ++x) {
       uint8_t planeBytes[headers::MAX_SUPPORTED_BITPLANES];
-      for (int plane = 0; plane < bitmap.numberOfBitplanes; plane++) {
+      for (int plane = 0; plane < bitmap.numberOfBitplanes; ++plane) {
         planeBytes[plane] = bitmap.bitplaneData[plane][y * widthByBytes + x];
       }
 
-      for (int bit = 7; bit >= 0; bit--) {
+      for (int bit = 7; bit >= 0; --bit) {
         int shift = 7 - bit;
         uint8_t pixelValue = 0;
-        for (int plane = 0; plane < bitmap.numberOfBitplanes; plane++) {
+        for (int plane = 0; plane < bitmap.numberOfBitplanes; ++plane) {
           pixelValue |=
               static_cast<uint8_t>(((planeBytes[plane] >> shift) & 1) << plane);
         }
-        bitmap
-            .chunkyPixels[y * bitmap.width + x * 8 + static_cast<size_t>(bit)] =
-            pixelValue;
+        bitmap.chunkyPixels[y * bitmap.width + x * 8 +
+                            static_cast<std::size_t>(bit)] = pixelValue;
       }
     }
   }
@@ -87,9 +87,9 @@ void unpackChunkyPixels(UnpackedBitmap &bitmap) {
 
 UnpackedBitmap unpackBitmap(const std::vector<uint8_t> &packedData,
                             const headers::BitmapHeader &header) {
-  const size_t widthFull = static_cast<size_t>(header.gridX) * 8;
-  const size_t heightFull =
-      static_cast<size_t>(header.gridY) * header.tileHeight;
+  const std::size_t widthFull = static_cast<std::size_t>(header.gridX) * 8;
+  const std::size_t heightFull =
+      static_cast<std::size_t>(header.gridY) * header.tileHeight;
 
   if (widthFull == 0 || heightFull == 0) {
     throw std::runtime_error("Bitmap has zero dimensions");
@@ -108,11 +108,12 @@ UnpackedBitmap unpackBitmap(const std::vector<uint8_t> &packedData,
 
   const uint16_t widthInPixels = static_cast<uint16_t>(widthFull);
   const uint16_t heightInLines = static_cast<uint16_t>(heightFull);
-  const size_t planeSize = static_cast<size_t>(header.gridX) * heightInLines;
+  const std::size_t planeSize =
+      static_cast<std::size_t>(header.gridX) * heightInLines;
 
-  size_t byteTable1Pointer = headers::PACKED_BITMAP_HEADER_SIZE;
-  size_t byteTable2Pointer = header.offsetToByteTable2;
-  size_t bitstreamPointer = header.offsetToPointerBitstream;
+  std::size_t byteTable1Pointer = headers::PACKED_BITMAP_HEADER_SIZE;
+  std::size_t byteTable2Pointer = header.offsetToByteTable2;
+  std::size_t bitstreamPointer = header.offsetToPointerBitstream;
 
   if (packedData.size() <= bitstreamPointer ||
       packedData.size() <= byteTable2Pointer) {
@@ -131,7 +132,7 @@ UnpackedBitmap unpackBitmap(const std::vector<uint8_t> &packedData,
   bitmap.numberOfBitplanes = header.numberOfBitplanes;
   bitmap.bytesPerPlane = planeSize;
   bitmap.bitplaneData.resize(bitmap.numberOfBitplanes);
-  for (int plane = 0; plane < bitmap.numberOfBitplanes; plane++) {
+  for (int plane = 0; plane < bitmap.numberOfBitplanes; ++plane) {
     bitmap.bitplaneData[plane].assign(planeSize, 0);
   }
 

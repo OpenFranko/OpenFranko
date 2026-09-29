@@ -11,8 +11,6 @@
 namespace openfranko::src::systems::audio {
 namespace {
 
-constexpr int DEFAULT_MUSIC_VOLUME = 56;
-constexpr int STEREO = 2;
 constexpr int VOICES_PER_SIDE = 2;
 constexpr int FRACTION_BITS = 32;
 constexpr int BYTE_SCALE = 256;
@@ -21,14 +19,14 @@ constexpr double BUTTERWORTH_Q = 0.7071067811865476;
 constexpr double PI = 3.14159265358979323846;
 
 constexpr double AMOS_TEMPO_PER_BPM = 4.0 / 5.0;
-constexpr std::size_t TRACKED_SAMPLES = 256 * STEREO;
+constexpr std::size_t TRACKED_SAMPLES = 256 * Mixer::STEREO;
 
-constexpr std::size_t S3M_ORDER_COUNT = 0x20;
-constexpr std::size_t S3M_INSTRUMENT_COUNT = 0x22;
-constexpr std::size_t S3M_PATTERN_COUNT = 0x24;
-constexpr std::size_t S3M_MAGIC = 0x2C;
-constexpr std::size_t S3M_ORDERS = 0x60;
-constexpr std::size_t S3M_PARAGRAPH = 16;
+constexpr std::size_t S3M_ORDER_COUNT_OFFSET = 0x20;
+constexpr std::size_t S3M_INSTRUMENT_COUNT_OFFSET = 0x22;
+constexpr std::size_t S3M_PATTERN_COUNT_OFFSET = 0x24;
+constexpr std::size_t S3M_SIGNATURE_OFFSET = 0x2C;
+constexpr std::size_t S3M_ORDERS_OFFSET = 0x60;
+constexpr std::size_t S3M_PARAGRAPH_SIZE = 16;
 constexpr std::size_t S3M_LENGTH_SIZE = 2;
 constexpr int S3M_ROWS = 64;
 constexpr uint8_t S3M_NOTE = 0x20;
@@ -47,16 +45,17 @@ std::set<std::pair<int, int>> s3mTempoRows(const std::vector<char> &data) {
     return byteAt(at) | byteAt(at + 1) << 8;
   };
   std::set<std::pair<int, int>> rows;
-  if (data.size() < S3M_ORDERS ||
-      std::memcmp(data.data() + S3M_MAGIC, "SCRM", 4) != 0) {
+  if (data.size() < S3M_ORDERS_OFFSET ||
+      std::memcmp(data.data() + S3M_SIGNATURE_OFFSET, "SCRM", 4) != 0) {
     return rows;
   }
-  const std::size_t pointers = S3M_ORDERS + wordAt(S3M_ORDER_COUNT) +
-                               S3M_LENGTH_SIZE * wordAt(S3M_INSTRUMENT_COUNT);
-  const std::size_t patterns = wordAt(S3M_PATTERN_COUNT);
+  const std::size_t pointers =
+      S3M_ORDERS_OFFSET + wordAt(S3M_ORDER_COUNT_OFFSET) +
+      S3M_LENGTH_SIZE * wordAt(S3M_INSTRUMENT_COUNT_OFFSET);
+  const std::size_t patterns = wordAt(S3M_PATTERN_COUNT_OFFSET);
   for (std::size_t pattern = 0; pattern < patterns; ++pattern) {
     const std::size_t start =
-        wordAt(pointers + S3M_LENGTH_SIZE * pattern) * S3M_PARAGRAPH;
+        wordAt(pointers + S3M_LENGTH_SIZE * pattern) * S3M_PARAGRAPH_SIZE;
     if (start == 0) {
       continue;
     }
@@ -110,8 +109,7 @@ struct Mixer::Module {
 };
 
 Mixer::Mixer(int outputRate)
-    : m_rate(outputRate), m_module(std::make_unique<Module>()),
-      m_musicVolume(DEFAULT_MUSIC_VOLUME) {
+    : m_rate(outputRate), m_module(std::make_unique<Module>()) {
   if (!m_module->player) {
     throw std::runtime_error("Mixer error: no module player");
   }
@@ -270,7 +268,7 @@ bool Mixer::isMusicSilenced() const {
 
 void Mixer::render(int16_t *stereo, int frames) {
   std::lock_guard<std::mutex> lock(m_mutex);
-  const std::size_t samples = static_cast<std::size_t>(frames) * STEREO;
+  const std::size_t samples = static_cast<std::size_t>(frames) * Mixer::STEREO;
   m_musicBuffer.assign(samples, 0);
   if (m_modulePlaying && !playModule(samples) && m_moduleLoops > 0) {
     stopPlayer();
@@ -279,10 +277,11 @@ void Mixer::render(int16_t *stereo, int frames) {
   const int musicLevel = m_silencing ? 0 : m_musicVolume;
   for (std::size_t frame = 0; frame < static_cast<std::size_t>(frames);
        ++frame) {
-    int16_t *out = stereo + frame * STEREO;
-    for (std::size_t channel = 0; channel < STEREO; ++channel) {
-      out[channel] = clampSample(m_musicBuffer[frame * STEREO + channel] *
-                                 musicLevel / MAX_VOLUME);
+    int16_t *out = stereo + frame * Mixer::STEREO;
+    for (std::size_t channel = 0; channel < Mixer::STEREO; ++channel) {
+      out[channel] =
+          clampSample(m_musicBuffer[frame * Mixer::STEREO + channel] *
+                      musicLevel / MAX_VOLUME);
     }
     for (int voice = 0; voice < VOICES; ++voice) {
       Voice &playing = m_voices[static_cast<std::size_t>(voice)];
@@ -410,9 +409,9 @@ int Mixer::nextSample(Voice &voice) {
 }
 
 void Mixer::filter(int16_t *stereo, int frames) {
-  const std::size_t samples = static_cast<std::size_t>(frames) * STEREO;
+  const std::size_t samples = static_cast<std::size_t>(frames) * Mixer::STEREO;
   for (std::size_t i = 0; i < samples; ++i) {
-    std::array<double, 4> &history = m_filterHistory[i % STEREO];
+    std::array<double, 4> &history = m_filterHistory[i % Mixer::STEREO];
     const double input = stereo[i];
     const double output = m_lowPass.b0 * input + m_lowPass.b1 * history[0] +
                           m_lowPass.b2 * history[1] -

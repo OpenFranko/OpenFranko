@@ -1,4 +1,5 @@
 #include "amosCompact.h"
+
 #include "../../binary/binary.h"
 #include "../../bmpWriter/bmpWriter.h"
 #include "../headers/headers.h"
@@ -10,7 +11,6 @@
 #include <stdexcept>
 
 namespace openfranko::lib::converter::amosCompact {
-
 namespace {
 
 bool isSpack(const std::vector<uint8_t> &data) {
@@ -28,7 +28,7 @@ std::vector<uint16_t> defaultPalette(uint16_t numberOfBitplanes) {
       1 << numberOfBitplanes, static_cast<int>(headers::SPACK_COLOR_COUNT));
 
   std::vector<uint16_t> palette(headers::SPACK_COLOR_COUNT, 0);
-  for (int i = 0; i < numberOfColors; i++) {
+  for (int i = 0; i < numberOfColors; ++i) {
     const auto level = static_cast<uint16_t>(i * 15 / (numberOfColors - 1));
     palette[i] = static_cast<uint16_t>(level * 0x111);
   }
@@ -72,8 +72,8 @@ std::vector<uint8_t> decompress(const std::vector<uint8_t> &compressedData) {
 
   const int numberOfColors = 1 << unpackedBitmap.numberOfBitplanes;
   if (numberOfColors > static_cast<int>(headers::SPACK_COLOR_COUNT)) {
-    palette.resize(static_cast<size_t>(numberOfColors));
-    for (size_t i = headers::SPACK_COLOR_COUNT; i < palette.size(); i++) {
+    palette.resize(static_cast<std::size_t>(numberOfColors));
+    for (std::size_t i = headers::SPACK_COLOR_COUNT; i < palette.size(); ++i) {
       const uint16_t base = palette[i - headers::SPACK_COLOR_COUNT];
       palette[i] = static_cast<uint16_t>((base >> 1) & 0x777);
     }

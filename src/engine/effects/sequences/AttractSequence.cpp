@@ -21,17 +21,6 @@ constexpr int HISCORE_INPUT_FROM =
     ROWS_FROM + AttractSequence::HISCORE_ROWS * ROW_EVERY + WAIT_AFTER_ROWS;
 constexpr int HISCORE_HOLD = 400;
 
-struct Relit {
-  std::size_t index;
-  color::AmigaColor color;
-};
-
-constexpr std::array<Relit, 3> RELIT = {{
-    {29, 0x769},
-    {30, 0xB95},
-    {31, 0xFC0},
-}};
-
 bool isOver(int frame, int inputFrom, int hold, bool joystickTouched) {
   return frame >= inputFrom && (joystickTouched || frame > inputFrom + hold);
 }

@@ -1,4 +1,5 @@
 #include "../../../../../src/engine/street/scenes/HighScoreScene.h"
+
 #include "../../../../../src/engine/street/ui/StageFrame.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
@@ -18,13 +19,9 @@ using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
 using namespace openfranko::src::systems::graphics;
+using namespace openfranko::src::engine::amal;
 
 namespace {
-
-constexpr int RF = 5;
-constexpr int RG = 6;
-constexpr int RN = 13;
-constexpr int RO = 14;
 
 constexpr int MUSIC = 1 + LoadingQueue::FILE_FRAMES;
 constexpr int LOADED = MUSIC + 2 + 3 * LoadingQueue::FILE_FRAMES;

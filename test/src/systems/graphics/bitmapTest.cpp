@@ -1,4 +1,5 @@
 #include "../../../../src/systems/graphics/Bitmap.h"
+
 #include "../../../TemporaryPath.h"
 
 #include <catch2/catch_all.hpp>

@@ -18,6 +18,8 @@ public:
   static constexpr std::size_t COLORS = 4;
   static constexpr int FADE_SPEED = 2;
   static constexpr int LIT_FRAMES = 60;
+  static constexpr color::AmigaColor INK = 0xFFF;
+  static constexpr color::AmigaColor SHADE = 0xAAA;
   static constexpr int DARK_FRAMES = 30;
   static constexpr int PAGE_FRAMES = LIT_FRAMES + DARK_FRAMES;
 

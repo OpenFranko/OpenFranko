@@ -12,6 +12,7 @@
 #include "../core/UpdateHold.h"
 #include "../session/GameSession.h"
 #include "../ui/LoadingQueue.h"
+#include "../ui/StageFrame.h"
 #include "../ui/StatusPanel.h"
 #include "StreetHost.h"
 
@@ -148,7 +149,7 @@ private:
   core::Picture m_picture;
   effects::color::AmigaPalette m_picturePalette;
   effects::color::PaletteFader m_fader;
-  effects::color::AmigaColor m_border;
+  effects::color::AmigaColor m_border = ui::STAGE_BORDER;
   bool m_dancerCopper = false;
   core::EndingCredits m_credits;
 

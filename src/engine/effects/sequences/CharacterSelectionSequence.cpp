@@ -8,11 +8,11 @@ namespace openfranko::src::engine::effects::sequences {
 namespace {
 
 struct Pose {
-  int16_t handX;
-  bool handFlipped;
-  int16_t faceX;
-  int faceImage;
-  int sample;
+  int16_t handX = 0;
+  bool handFlipped = false;
+  int16_t faceX = 0;
+  int faceImage = 0;
+  int sample = 0;
 };
 
 constexpr Pose FRANKO = {64, false, 148, 2, 1};

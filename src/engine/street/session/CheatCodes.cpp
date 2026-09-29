@@ -6,14 +6,11 @@
 namespace openfranko::src::engine::street::session {
 namespace {
 
-constexpr int RG = 6;
-constexpr int RO = 14;
-
 constexpr int KEY_SHIFT = 4;
 
 struct RegisterCheat {
-  const char *word;
-  int16_t value;
+  const char *word = nullptr;
+  int16_t value = 0;
 };
 
 constexpr std::array<RegisterCheat, 3> LIVES = {{
@@ -62,13 +59,13 @@ void applyCheatCodes(GameSession &session) {
   const bool version12 = session.version == GameVersion::V12;
   for (const RegisterCheat &cheat : version12 ? VERSION12_LIVES : LIVES) {
     if (contains(text, cheat.word)) {
-      session.registers[RG] = cheat.value;
+      session.registers[amal::RG] = cheat.value;
     }
   }
   session.shortLevels = contains(text, SHORT_LEVELS);
   for (const RegisterCheat &cheat : STAGES) {
     if (contains(text, cheat.word)) {
-      session.registers[RO] = cheat.value;
+      session.registers[amal::RO] = cheat.value;
     }
   }
   if (!version12 && contains(text, BRUTALITY)) {

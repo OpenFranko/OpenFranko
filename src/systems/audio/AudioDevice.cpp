@@ -1,5 +1,7 @@
 #include "audio/AudioDevice.h"
 
+#include "audio/Mixer.h"
+
 #include <SDL2/SDL.h>
 #include <stdexcept>
 #include <string>
@@ -8,8 +10,7 @@
 namespace openfranko::src::systems::audio {
 namespace {
 
-constexpr int STEREO = 2;
-constexpr int FRAME_BYTES = STEREO * static_cast<int>(sizeof(int16_t));
+constexpr int FRAME_BYTES = Mixer::STEREO * static_cast<int>(sizeof(int16_t));
 
 [[noreturn]] void throwError(const std::string &cause) {
   throw std::runtime_error("Audio device error: " + cause + ": " +
@@ -38,7 +39,7 @@ AudioDevice::AudioDevice(int rate, int frames, Render render)
   SDL_AudioSpec wanted{};
   wanted.freq = rate;
   wanted.format = AUDIO_S16SYS;
-  wanted.channels = STEREO;
+  wanted.channels = Mixer::STEREO;
   wanted.samples = static_cast<Uint16>(frames);
   wanted.callback = &Stream::fill;
   wanted.userdata = m_stream.get();

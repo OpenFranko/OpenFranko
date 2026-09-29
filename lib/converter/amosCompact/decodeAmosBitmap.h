@@ -15,7 +15,8 @@ struct DecodedImage {
   std::vector<uint8_t> pixels;
 };
 
-DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data, size_t offset);
+DecodedImage decodeAmosBitmap(const std::vector<uint8_t> &data,
+                              std::size_t offset);
 
 } // namespace amosCompact
 } // namespace converter

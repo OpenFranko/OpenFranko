@@ -1,5 +1,7 @@
 #include "../../../../../src/engine/street/scenes/CarStage.h"
+
 #include "../../../../../src/engine/AmigaDisplay.h"
+#include "../../../../../src/systems/input/ControllerSystem.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
 #include "StageRunner.h"
@@ -17,19 +19,12 @@ using namespace openfranko::src::engine::street::scenes;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::src::engine::amal;
+using namespace openfranko::src::systems::input;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
 
 namespace {
-
-constexpr int RF = 5;
-constexpr int RG = 6;
-constexpr int RN = 13;
-constexpr int RO = 14;
-
-constexpr int16_t JOY_UP = 1;
-constexpr int16_t JOY_RIGHT = 8;
-constexpr int16_t JOY_FIRE = 16;
 
 constexpr int PASSWORD_FRAMES = 6;
 constexpr int SKIP_FRAME = PASSWORD_FRAMES + 1;

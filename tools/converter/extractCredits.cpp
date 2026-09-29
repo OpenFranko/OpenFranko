@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
     std::cerr << "Read " << executable.size() << " bytes" << std::endl;
 
     const auto pages = converter::endingCredits::extract(executable);
-    size_t lines = 0;
+    std::size_t lines = 0;
     for (const auto &page : pages) {
       lines += page.lines.size();
     }

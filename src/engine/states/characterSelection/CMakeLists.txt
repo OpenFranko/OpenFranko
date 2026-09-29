@@ -4,4 +4,4 @@ add_library(StatesCharacterSelection
 target_link_libraries(StatesCharacterSelection
     PUBLIC AudioSystem Common EffectsSequences Graphics Input States
            StreetSession VideoSystem
-    PRIVATE Assets)
+    PRIVATE Assets Audio)

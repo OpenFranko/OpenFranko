@@ -83,11 +83,11 @@ bool Machine::isRunning(int channel) const {
   return it != m_channels.end() && !it->second.frozen && it->second.alive;
 }
 
-int16_t &Machine::channelRegister(int channel, int index) {
+int16_t &Machine::channelRegister(int number, int index) {
   if (index < 0 || index > 9) {
     throw std::out_of_range("AMAL: no such channel register");
   }
-  return this->channel(channel).registers[static_cast<std::size_t>(index)];
+  return channel(number).registers[static_cast<std::size_t>(index)];
 }
 
 int16_t &Machine::globalRegister(int index) {

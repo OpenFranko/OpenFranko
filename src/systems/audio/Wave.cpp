@@ -19,10 +19,10 @@ constexpr int BYTE_OFFSET = 128;
 constexpr int BYTE_SHIFT = 8;
 
 struct Format {
-  uint16_t tag;
-  uint16_t channels;
-  uint32_t rate;
-  uint16_t bits;
+  uint16_t tag = 0;
+  uint16_t channels = 0;
+  uint32_t rate = 0;
+  uint16_t bits = 0;
 };
 
 [[noreturn]] void fail(const std::string &cause) {

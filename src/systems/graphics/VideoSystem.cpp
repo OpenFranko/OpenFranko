@@ -15,8 +15,6 @@ namespace {
 constexpr auto WINDOW_NAME = "OpenFranko";
 constexpr auto WINDOW_WIDTH = 800;
 constexpr auto WINDOW_HEIGHT = 600;
-constexpr int PAL_HERTZ = 50;
-constexpr int NTSC_HERTZ = 60;
 
 } // namespace
 

@@ -2,6 +2,7 @@
 #define ENGINE_STATES_SHARED_MUSICFADEOUT_H_
 
 #include "../../../systems/audio/AudioSystem.h"
+#include "../../../systems/audio/Mixer.h"
 
 namespace openfranko {
 namespace src {
@@ -11,12 +12,10 @@ namespace shared {
 
 class MusicFadeOut {
 public:
-  static constexpr int FULL_VOLUME = 63;
-
   bool advance(systems::audio::AudioSystem &audioSystem);
 
 private:
-  int m_volume = FULL_VOLUME;
+  int m_volume = systems::audio::Mixer::FULL_VOLUME;
 };
 
 } // namespace shared

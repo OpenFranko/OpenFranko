@@ -1,5 +1,7 @@
 #include "../../../../../src/engine/street/scenes/BossStage.h"
+
 #include "../../../../../src/engine/street/ui/StageFrame.h"
+#include "../../../../../src/systems/input/ControllerSystem.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
 #include "StageRunner.h"
@@ -22,28 +24,10 @@ using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
 using namespace openfranko::src::systems::graphics;
+using namespace openfranko::src::engine::amal;
+using namespace openfranko::src::systems::input;
 
 namespace {
-
-constexpr int RB = 1;
-constexpr int RD = 3;
-constexpr int RE = 4;
-constexpr int RF = 5;
-constexpr int RG = 6;
-constexpr int RI = 8;
-constexpr int RN = 13;
-constexpr int RO = 14;
-constexpr int RQ = 16;
-constexpr int RR = 17;
-constexpr int RS = 18;
-constexpr int RT = 19;
-constexpr int RU = 20;
-constexpr int RW = 22;
-constexpr int RX = 23;
-
-constexpr int16_t JOY_LEFT = 4;
-constexpr int16_t JOY_RIGHT = 8;
-constexpr int16_t JOY_FIRE = 16;
 
 constexpr int FRANKO_BOSS_SET = 0xFE;
 constexpr int FRANKO_EXTRA_PHASES = 0xFD;

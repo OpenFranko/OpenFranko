@@ -1,6 +1,7 @@
 #ifndef ENGINE_EFFECTS_SEQUENCES_FOTOSEQUENCE_H_
 #define ENGINE_EFFECTS_SEQUENCES_FOTOSEQUENCE_H_
 
+#include "../../AmigaDisplay.h"
 #include "../color/PaletteFader.h"
 #include "../color/PaletteFlasher.h"
 
@@ -14,12 +15,14 @@ namespace sequences {
 
 class FotoSequence {
 public:
+  static constexpr int FOTO_OPEN_VBLS = 2 * SCREEN_OPEN_VBLS;
+
   struct Timings {
-    int fadeInSpeed;
-    int holdFrames;
-    int fadeOutSpeed;
-    int fadeOutFrames;
-    bool replacesScreen;
+    int fadeInSpeed = 0;
+    int holdFrames = 0;
+    int fadeOutSpeed = 0;
+    int fadeOutFrames = 0;
+    bool replacesScreen = false;
   };
 
   FotoSequence(color::AmigaPalette picturePalette, Timings timings);

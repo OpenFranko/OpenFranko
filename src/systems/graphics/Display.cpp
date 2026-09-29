@@ -7,7 +7,6 @@ namespace openfranko::src::systems::graphics {
 namespace {
 
 constexpr uint32_t OPAQUE = 0xFF000000u;
-constexpr int CHANNEL_STEP = 17;
 
 void mapPalette(const Layer &layer, int row, std::vector<uint32_t> &colors) {
   colors.assign(256, OPAQUE);

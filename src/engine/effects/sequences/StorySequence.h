@@ -14,9 +14,9 @@ namespace sequences {
 class StorySequence {
 public:
   struct Page {
-    int firstFrame;
-    int lastFrame;
-    int picture;
+    int firstFrame = 0;
+    int lastFrame = 0;
+    int picture = 0;
   };
 
   struct View {

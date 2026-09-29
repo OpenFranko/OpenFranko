@@ -16,6 +16,33 @@ namespace amal {
 
 using Registers = std::array<int16_t, 26>;
 
+inline constexpr int RA = 0;
+inline constexpr int RB = 1;
+inline constexpr int RC = 2;
+inline constexpr int RD = 3;
+inline constexpr int RE = 4;
+inline constexpr int RF = 5;
+inline constexpr int RG = 6;
+inline constexpr int RH = 7;
+inline constexpr int RI = 8;
+inline constexpr int RJ = 9;
+inline constexpr int RK = 10;
+inline constexpr int RL = 11;
+inline constexpr int RM = 12;
+inline constexpr int RN = 13;
+inline constexpr int RO = 14;
+inline constexpr int RP = 15;
+inline constexpr int RQ = 16;
+inline constexpr int RR = 17;
+inline constexpr int RS = 18;
+inline constexpr int RT = 19;
+inline constexpr int RU = 20;
+inline constexpr int RV = 21;
+inline constexpr int RW = 22;
+inline constexpr int RX = 23;
+inline constexpr int RY = 24;
+inline constexpr int RZ = 25;
+
 struct Object {
   int16_t x = 0;
   int16_t y = 0;
@@ -41,7 +68,7 @@ public:
   bool isFrozen(int channel) const;
   bool isRunning(int channel) const;
 
-  int16_t &channelRegister(int channel, int index);
+  int16_t &channelRegister(int number, int index);
   int16_t &globalRegister(int index);
 
   void setJoystick(int16_t joystick);

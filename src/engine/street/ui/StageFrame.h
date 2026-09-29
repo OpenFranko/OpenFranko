@@ -17,12 +17,12 @@ namespace engine {
 namespace street {
 namespace ui {
 
-constexpr effects::color::AmigaColor STAGE_BORDER = 0x555;
-constexpr int FRAME_WIDTH = 304;
-constexpr int FRAME_HEIGHT = 255;
-constexpr int DISPLAY_X = 128;
-constexpr int DISPLAY_TOP = 47;
-constexpr int PANEL_DISPLAY_Y = 270;
+inline constexpr effects::color::AmigaColor STAGE_BORDER = 0x555;
+inline constexpr int FRAME_WIDTH = 304;
+inline constexpr int FRAME_HEIGHT = 255;
+inline constexpr int DISPLAY_X = 128;
+inline constexpr int DISPLAY_TOP = 47;
+inline constexpr int PANEL_DISPLAY_Y = 270;
 
 struct StageLayout {
   bool ntsc = false;

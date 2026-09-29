@@ -1,7 +1,10 @@
 #include "HighScoreScene.h"
 
+#include "../../../systems/audio/Mixer.h"
 #include "../../AmigaDisplay.h"
 #include "../../MenuTempo.h"
+#include "../../assets/Assets.h"
+#include "../../effects/sequences/AttractSequence.h"
 #include "../ui/ScreenOutput.h"
 
 #include <array>
@@ -13,36 +16,16 @@
 namespace openfranko::src::engine::street::scenes {
 namespace {
 
-constexpr int RN = 13;
-
-constexpr int MENU_TUNE = 0x261;
-constexpr int TITLE = 0x3BA;
-constexpr int PICTURE = 0x3B9;
-constexpr int LETTER_SET = 0x35;
 constexpr int LETTER_SAMPLES = 5;
-constexpr int FIRST_IMAGE = 1;
 
-constexpr int FULL_VOLUME = 63;
 constexpr int MUSIC_START_WAIT = 2;
 
 constexpr std::size_t COLORS = 32;
-using effects::color::BLACK;
 constexpr int DIM_ROUNDS = 4;
 constexpr int DIM_SPEED = 100;
 constexpr int DIM_WAIT = 1;
 constexpr int DIMMED_WAIT = 3;
 constexpr int ROW_WAIT = 10;
-
-struct Relit {
-  std::size_t index;
-  effects::color::AmigaColor color;
-};
-
-constexpr std::array<Relit, 3> RELIT = {{
-    {29, 0x769},
-    {30, 0xB95},
-    {31, 0xFC0},
-}};
 
 constexpr int NAME_X = 56;
 constexpr int LAST_CELL_X = 196;
@@ -74,7 +57,8 @@ HighScoreScene::HighScoreScene(StreetHost &host, session::GameSession &session,
     : m_host(host), m_session(session), m_options(options),
       m_save(std::move(save)), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_scratch(SCRATCH_WIDTH, SCRATCH_HEIGHT),
-      m_display(SCREEN_WIDTH, SCREEN_HEIGHT), m_palette(COLORS, BLACK) {}
+      m_display(SCREEN_WIDTH, SCREEN_HEIGHT),
+      m_palette(COLORS, effects::color::BLACK) {}
 
 void HighScoreScene::advance() {
   if (m_step == Step::Finished) {
@@ -136,12 +120,13 @@ void HighScoreScene::runBasic() {
       break;
     case Step::MenuMusic:
       m_host.playMusic();
-      m_host.setMusicVolume(m_options.music ? FULL_VOLUME : 0);
+      m_host.setMusicVolume(m_options.music ? systems::audio::Mixer::FULL_VOLUME
+                                            : 0);
       flow = wait(MUSIC_START_WAIT, Step::Pictures);
       break;
     case Step::Pictures:
       m_host.setMusicTempo(menuTempo(m_options.ntsc));
-      m_loading.queue([this] { m_host.loadPicture(TITLE); });
+      m_loading.queue([this] { m_host.loadPicture(assets::TITLE_SCREEN); });
       queuePictures();
       break;
     case Step::Loaded:
@@ -170,8 +155,9 @@ void HighScoreScene::runBasic() {
       flow = wait(HOLD_FRAMES, Step::FadeOut);
       break;
     case Step::FadeOut:
-      m_fader.start(m_palette, FADE_SPEED,
-                    effects::color::AmigaPalette(COLORS, BLACK));
+      m_fader.start(
+          m_palette, FADE_SPEED,
+          effects::color::AmigaPalette(COLORS, effects::color::BLACK));
       flow = wait(FADE_WAIT, Step::Clear);
       break;
     case Step::Clear:
@@ -187,39 +173,39 @@ void HighScoreScene::runBasic() {
 
 void HighScoreScene::reset() {
   amal::Registers &registers = m_session.registers;
-  const int16_t kills = registers[RN];
+  const int16_t kills = registers[amal::RN];
   registers = session::GameSession::freshRegisters();
-  registers[RN] = kills;
+  registers[amal::RN] = kills;
   if (m_session.version == GameVersion::V12) {
     m_host.stopMusic();
     queuePictures();
     return;
   }
-  if (m_host.isMusicLoaded(MENU_TUNE)) {
+  if (m_host.isMusicLoaded(assets::MENU_TUNE)) {
     queuePictures();
     return;
   }
   m_host.stopMusic();
-  m_loading.queue([this] { m_host.loadMusic(MENU_TUNE); });
+  m_loading.queue([this] { m_host.loadMusic(assets::MENU_TUNE); });
   m_afterLoading = Step::MenuMusic;
   m_step = Step::Loading;
 }
 
 void HighScoreScene::queuePictures() {
   m_loading.queue([this] {
-    m_picture = m_host.loadPicture(PICTURE);
-    m_picturePalette = m_host.loadPalette(PICTURE);
+    m_picture = m_host.loadPicture(assets::HISCORE_LETTERS);
+    m_picturePalette = m_host.loadPalette(assets::HISCORE_LETTERS);
   });
   m_loading.queue([this] {
-    m_images.load(FIRST_IMAGE,
-                  m_host.loadSpriteSet(LETTER_SET, LETTER_SAMPLES));
+    m_images.load(core::ImageBank::FIRST_IMAGE,
+                  m_host.loadSpriteSet(assets::LETTER_SET, LETTER_SAMPLES));
   });
   m_afterLoading = Step::Loaded;
   m_step = Step::Loading;
 }
 
 HighScoreScene::Flow HighScoreScene::loaded() {
-  const int kills = m_session.registers[RN];
+  const int kills = m_session.registers[amal::RN];
   if (kills == 0) {
     m_outcome = Outcome::Menu;
     m_step = Step::Finished;
@@ -229,7 +215,7 @@ HighScoreScene::Flow HighScoreScene::loaded() {
   m_screen.unpack(m_picture, 0, 0);
   m_picture = core::Picture{};
   m_palette = m_picturePalette;
-  m_palette.resize(COLORS, BLACK);
+  m_palette.resize(COLORS, effects::color::BLACK);
   m_round = 0;
   m_session.nameScreenOpen = true;
   return wait(UNPACK_VBLS + SCREEN_OPEN_VBLS, Step::Dim);
@@ -237,7 +223,7 @@ HighScoreScene::Flow HighScoreScene::loaded() {
 
 HighScoreScene::Flow HighScoreScene::dim() {
   m_fader.start(m_palette, DIM_SPEED,
-                effects::color::AmigaPalette(COLORS, BLACK));
+                effects::color::AmigaPalette(COLORS, effects::color::BLACK));
   return wait(DIM_WAIT, Step::Dimmed);
 }
 
@@ -250,7 +236,7 @@ HighScoreScene::Flow HighScoreScene::dimmed() {
 }
 
 void HighScoreScene::relight() {
-  for (const Relit &relit : RELIT) {
+  for (const auto &relit : effects::sequences::AttractSequence::RELIT) {
     m_palette[relit.index] = relit.color;
   }
   m_row = core::HighScoreTable::ROWS - 1;

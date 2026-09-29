@@ -13,7 +13,6 @@ constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
 constexpr int DISPLAY_LINE = 42;
 constexpr std::size_t SCREEN_COLORS = 32;
-using effects::color::BLACK;
 constexpr int SCREENS = 2;
 
 effects::color::AmigaPalette
@@ -29,7 +28,8 @@ AdvertsState::AdvertsState(systems::graphics::VideoSystem &videoSystem,
                            systems::input::ControllerSystem &controllerSystem)
     : m_videoSystem(videoSystem), m_controllerSystem(controllerSystem),
       m_rows(visibleRows(DISPLAY_LINE, SCREEN_HEIGHT, videoSystem.isNtsc())),
-      m_screen(SCREEN_WIDTH, m_rows.count), m_palette(SCREEN_COLORS, BLACK) {
+      m_screen(SCREEN_WIDTH, m_rows.count),
+      m_palette(SCREEN_COLORS, effects::color::BLACK) {
   for (int slide = 0; slide < SLIDES; ++slide) {
     m_slides.push_back(systems::graphics::loadIndexedBitmap(
         assets::picturePath("p" + std::to_string(FIRST_SLIDE + slide))));
@@ -66,8 +66,9 @@ void AdvertsState::runBasic(bool fire) {
       } else if (fire) {
         m_step = Step::Close;
       } else {
-        m_fader.start(m_palette, FADE_SPEED,
-                      effects::color::AmigaPalette(SCREEN_COLORS, BLACK));
+        m_fader.start(
+            m_palette, FADE_SPEED,
+            effects::color::AmigaPalette(SCREEN_COLORS, effects::color::BLACK));
         m_count = 0;
         m_step = Step::SecondPause;
       }
@@ -103,7 +104,7 @@ void AdvertsState::show() {
   const bool closed =
       m_closeFrame && m_frame >= *m_closeFrame + SCREEN_CLOSE_SHOWN_VBLS;
   if (!m_copied || closed) {
-    m_screen.fill(BLACK);
+    m_screen.fill(effects::color::BLACK);
   } else {
     m_screen.setPalette(m_palette);
     m_screen.draw(m_slides[static_cast<std::size_t>(*m_copied)], 0,

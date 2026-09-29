@@ -27,7 +27,7 @@ public:
                           systems::input::ControllerSystem &controllerSystem,
                           GameOptions &options,
                           street::session::GameSession &session);
-  ~CharacterSelectionState();
+  ~CharacterSelectionState() override;
 
   std::optional<EngineStateId> update() override;
 

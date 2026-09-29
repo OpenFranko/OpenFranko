@@ -1,4 +1,5 @@
 #include "frankoResourceExtractor.h"
+
 #include "../../../lib/converter/abkToS3m/abkToS3m.h"
 #include "../../../lib/converter/amosCompact/amosCompact.h"
 #include "../../../lib/converter/audioExtractor/audioExtractor.h"
@@ -22,7 +23,6 @@
 #include <vector>
 
 namespace openfranko::tools::converter::frankoResourceExtractor {
-
 namespace {
 
 bool isLevelFile(const std::string &fileId) {
@@ -141,7 +141,7 @@ int validateDirectory(const std::string &inputDir) {
     const std::string path = inputDir + "/" + std::string(name);
     if (!std::filesystem::exists(path)) {
       std::cerr << "Missing file: " << path << std::endl;
-      missing++;
+      ++missing;
     }
   }
   return missing;
@@ -191,7 +191,7 @@ int extractFile(const std::string &inputPath, const std::string &outputDir) {
           decompressed, palette);
       lib::converter::spriteSheet::applySpritePaletteFixes(fileId, sprites);
       applyScreenPalette(inputPath, fileId, sprites);
-      for (int i = 0; i < static_cast<int>(sprites.size()); i++) {
+      for (int i = 0; i < static_cast<int>(sprites.size()); ++i) {
         if (sprites[i].data.empty()) {
           std::cerr << "  Skipped sprite " << i << ": " << sprites[i].error
                     << std::endl;
@@ -250,7 +250,7 @@ int extractFile(const std::string &inputPath, const std::string &outputDir) {
     }
     if (lib::converter::gameData::version10Id(fileId) ==
         lib::converter::gameData::fileIds::CODE_CARDS) {
-      const size_t cardSize =
+      const std::size_t cardSize =
           isVersion12(fileId)
               ? lib::converter::codeCards::consts::VERSION12_CARD_SIZE
               : lib::converter::codeCards::consts::CARD_SIZE;
@@ -263,9 +263,11 @@ int extractFile(const std::string &inputPath, const std::string &outputDir) {
         std::cerr << "  Code card error: " << e.what() << std::endl;
         failed = true;
       }
-      const size_t start = lib::converter::codeCards::consts::FIRST_CARD_OFFSET;
-      const size_t end = start + lib::converter::codeCards::consts::CARD_COUNT *
-                                     cardSize * cardSize;
+      const std::size_t start =
+          lib::converter::codeCards::consts::FIRST_CARD_OFFSET;
+      const std::size_t end =
+          start +
+          lib::converter::codeCards::consts::CARD_COUNT * cardSize * cardSize;
       if (decompressed.size() >= end) {
         outputs.push_back({fileId + "_cards.bin",
                            std::vector<uint8_t>(decompressed.begin() + start,

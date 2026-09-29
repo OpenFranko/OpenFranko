@@ -1,7 +1,7 @@
 #include "CarStage.h"
 
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../AmigaDisplay.h"
-
 #include "../actors/Actors.h"
 #include "../core/SystemText.h"
 
@@ -12,16 +12,7 @@
 namespace openfranko::src::engine::street::scenes {
 namespace {
 
-using actors::amosBool;
-
-constexpr int RF = 5;
-constexpr int RG = 6;
-constexpr int RT = 19;
-constexpr int RU = 20;
-
 constexpr int IGNITION_WAIT = 30;
-constexpr int PAL_HERTZ = 50;
-constexpr int NTSC_HERTZ = 60;
 
 constexpr int PASSWORD_X = 124;
 constexpr int PASSWORD_BASELINE = 111;
@@ -86,12 +77,6 @@ constexpr int KERB_SAMPLE = 7;
 constexpr int ENGINE_VOICE = 8;
 constexpr int ENGINE_PITCH = 5000;
 constexpr int ENGINE_PITCH_STEP = 200;
-
-constexpr int16_t JOY_UP = 1;
-constexpr int16_t JOY_DOWN = 2;
-constexpr int16_t JOY_LEFT = 4;
-constexpr int16_t JOY_RIGHT = 8;
-constexpr int16_t JOY_FIRE = 16;
 
 void addWrap(int &value, int step, int low, int high) {
   value += step;
@@ -166,24 +151,24 @@ void CarStage::play(int voices, int sample) {
 }
 
 void CarStage::loseEnergy(int amount) {
-  global(RF) = word(global(RF) - amount);
-  if (global(RF) < 0) {
-    global(RF) = word(FULL_ENERGY + global(RF));
-    global(RG) = word(global(RG) - 1);
+  global(amal::RF) = word(global(amal::RF) - amount);
+  if (global(amal::RF) < 0) {
+    global(amal::RF) = word(session::FULL_ENERGY + global(amal::RF));
+    global(amal::RG) = word(global(amal::RG) - 1);
     m_panel->score(stats());
   } else {
-    m_panel->loseEnergy(global(RF));
+    m_panel->loseEnergy(global(amal::RF));
   }
 }
 
 void CarStage::gainEnergy(int amount) {
-  global(RF) = word(global(RF) + amount);
-  if (global(RF) > FULL_ENERGY) {
-    global(RF) = word(global(RF) - FULL_ENERGY);
-    global(RG) = word(global(RG) + 1);
+  global(amal::RF) = word(global(amal::RF) + amount);
+  if (global(amal::RF) > session::FULL_ENERGY) {
+    global(amal::RF) = word(global(amal::RF) - session::FULL_ENERGY);
+    global(amal::RG) = word(global(amal::RG) + 1);
     m_panel->score(stats());
   } else {
-    m_panel->gainEnergy(global(RF));
+    m_panel->gainEnergy(global(amal::RF));
   }
 }
 
@@ -280,7 +265,7 @@ void CarStage::startDrive() {
 
 CarStage::Flow CarStage::driveTop(const StreetInput &input) {
   ++m_passes;
-  if (m_distance > 0 && (input.joystick & JOY_FIRE)) {
+  if (m_distance > 0 && (input.joystick & systems::input::JOY_FIRE)) {
     if (m_speed != 0) {
       addWrap(m_horn, 1, 0, HORN_CYCLE);
       if (m_horn == 0) {
@@ -300,11 +285,11 @@ CarStage::Flow CarStage::driveTop(const StreetInput &input) {
 CarStage::Flow CarStage::driveInput(const StreetInput &input) {
   if (m_distance > 0) {
     const int16_t joystick = input.joystick;
-    if ((joystick & JOY_UP) && m_speed != 0) {
+    if ((joystick & systems::input::JOY_UP) && m_speed != 0) {
       m_steer = 2;
       m_y += -m_speed / 2 + 1;
     }
-    if ((joystick & JOY_DOWN) && m_speed != 0) {
+    if ((joystick & systems::input::JOY_DOWN) && m_speed != 0) {
       m_steer = 4;
       m_y += m_speed / 2 - 1;
     }
@@ -315,7 +300,7 @@ CarStage::Flow CarStage::driveInput(const StreetInput &input) {
       hitKerb(BOTTOM_KERB);
     }
     addWrap(m_accel, 1, 1, m_pull);
-    if ((joystick & JOY_RIGHT) && m_ignition != 0) {
+    if ((joystick & systems::input::JOY_RIGHT) && m_ignition != 0) {
       if (m_x < FORWARD_X) {
         ++m_x;
       }
@@ -337,7 +322,8 @@ CarStage::Flow CarStage::driveInput(const StreetInput &input) {
         }
       }
     }
-    if ((joystick & JOY_LEFT) && m_ignition != 0 && m_trail > m_distance) {
+    if ((joystick & systems::input::JOY_LEFT) && m_ignition != 0 &&
+        m_trail > m_distance) {
       addWrap(m_accel, 1, 1, m_pull / 4);
       if (m_accel == 1) {
         --m_speed;
@@ -349,8 +335,8 @@ CarStage::Flow CarStage::driveInput(const StreetInput &input) {
         }
       }
     }
-    global(RT) = word(8 * m_speed);
-    global(RU) = word(5 * m_speed);
+    global(amal::RT) = word(8 * m_speed);
+    global(amal::RU) = word(5 * m_speed);
     spawnPedestrians();
   }
   const int frames = nextPassFrames();
@@ -361,7 +347,8 @@ CarStage::Flow CarStage::driveInput(const StreetInput &input) {
 }
 
 int CarStage::nextPassFrames() {
-  m_passTime += m_options.ntsc ? NTSC_HERTZ : PAL_HERTZ;
+  m_passTime += m_options.ntsc ? systems::graphics::NTSC_HERTZ
+                               : systems::graphics::PAL_HERTZ;
   const int frames = m_passTime / PASSES_PER_SECOND;
   m_passTime %= PASSES_PER_SECOND;
   return frames;
@@ -369,7 +356,7 @@ int CarStage::nextPassFrames() {
 
 void CarStage::hitKerb(int kerb) {
   m_y = kerb;
-  m_speed = -1 - 2 * amosBool(m_speed < 0);
+  m_speed = -1 - 2 * actors::amosBool(m_speed < 0);
   play(1, KERB_SAMPLE);
   loseEnergy(KERB_DAMAGE);
 }
@@ -453,7 +440,7 @@ CarStage::Flow CarStage::driveBottom() {
     m_machine.start(CAR_CHANNEL);
   }
   if ((m_distance == 0 && !m_machine.isRunning(CAR_CHANNEL)) ||
-      global(RG) < 0 || m_escape) {
+      global(amal::RG) < 0 || m_escape) {
     m_session.lastDrive = {m_ignition, m_roadBand, m_fenceBand, m_clock,
                            m_engineBeat};
     m_buffer.setUpdates(true);
@@ -490,7 +477,7 @@ void CarStage::runOver() {
 
 CarStage::Flow CarStage::leave() {
   m_strip = core::IndexedSurface(0, 0);
-  if (global(RG) < 0 || m_escape) {
+  if (global(amal::RG) < 0 || m_escape) {
     gameOver();
     return Flow::Yield;
   }

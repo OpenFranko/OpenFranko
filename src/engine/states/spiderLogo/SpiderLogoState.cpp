@@ -30,7 +30,6 @@ constexpr int LOGO_DISPLAY_LINE = 42;
 constexpr int REFLECTION_TOP = 133;
 constexpr int REFLECTION_BOTTOM = 200;
 constexpr std::size_t LOGO_COLORS = 16;
-using effects::color::BLACK;
 
 const effects::color::AmigaPalette WALK_PALETTE = {
     0x000, 0x600, 0x333, 0x550, 0x444, 0x770, 0x008, 0x009,
@@ -190,7 +189,7 @@ void SpiderLogoState::logo() {
 }
 
 void SpiderLogoState::showWalk() {
-  m_walkScreen.fill(BLACK);
+  m_walkScreen.fill(effects::color::BLACK);
   m_walkScreen.setPalette(WALK_PALETTE);
   m_walkScreen.draw(m_water, 0, WATER_TOP - m_walkRows.first);
   drawBob(m_walkScreen, m_walkRows.first);
@@ -208,7 +207,7 @@ void SpiderLogoState::showLogo() {
 }
 
 void SpiderLogoState::showBlack(systems::graphics::Canvas &screen, bool hires) {
-  screen.fill(BLACK);
+  screen.fill(effects::color::BLACK);
   systems::graphics::Display display = screen.output();
   if (hires) {
     display.displayHeight = 2 * display.height;

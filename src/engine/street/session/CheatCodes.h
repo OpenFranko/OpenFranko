@@ -12,7 +12,7 @@ namespace engine {
 namespace street {
 namespace session {
 
-constexpr std::size_t CHEAT_TEXT_LENGTH = 15;
+inline constexpr std::size_t CHEAT_TEXT_LENGTH = 15;
 
 void typeCheatKey(std::string &text, char key);
 void applyCheatCodes(GameSession &session);

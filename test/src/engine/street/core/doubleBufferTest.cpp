@@ -1,4 +1,5 @@
 #include "../../../../../src/engine/street/core/DoubleBuffer.h"
+
 #include "box.h"
 
 #include <catch2/catch_all.hpp>

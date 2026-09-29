@@ -7,12 +7,6 @@
 namespace openfranko::src::engine::street::scenes {
 namespace {
 
-constexpr int RF = 5;
-constexpr int RG = 6;
-constexpr int RI = 8;
-constexpr int RN = 13;
-constexpr int RO = 14;
-
 constexpr int GAME_OVER_WAIT = 200;
 constexpr int EXTRA_LIFE_STEP = 40;
 constexpr int MUSIC_VOLUME = 30;
@@ -104,11 +98,12 @@ int Stage::iBob(int number) const { return m_bobs.image(number); }
 
 bool Stage::col(int number) const { return m_bobs.collided(number); }
 
-int Stage::stage() const { return m_session.registers[RO]; }
+int Stage::stage() const { return m_session.registers[amal::RO]; }
 
 ui::StatusPanel::Stats Stage::stats() const {
   const amal::Registers &registers = m_session.registers;
-  return {registers[RF], registers[RO], registers[RN], registers[RG]};
+  return {registers[amal::RF], registers[amal::RO], registers[amal::RN],
+          registers[amal::RG]};
 }
 
 void Stage::openPanel() {
@@ -123,21 +118,21 @@ void Stage::playMusic() {
 }
 
 void Stage::updatePanel() {
-  if (m_energyShown != global(RF)) {
-    if (m_energyShown > global(RF)) {
-      m_panel->loseEnergy(global(RF));
+  if (m_energyShown != global(amal::RF)) {
+    if (m_energyShown > global(amal::RF)) {
+      m_panel->loseEnergy(global(amal::RF));
     } else {
       m_panel->score(stats());
     }
-    m_energyShown = global(RF);
+    m_energyShown = global(amal::RF);
   }
-  if (m_killsShown != global(RN)) {
-    m_panel->drawKills(global(RN));
-    m_killsShown = global(RN);
+  if (m_killsShown != global(amal::RN)) {
+    m_panel->drawKills(global(amal::RN));
+    m_killsShown = global(amal::RN);
   }
-  if (m_session.extraLifeKills == global(RN)) {
-    global(RF) = FULL_ENERGY;
-    global(RG) = word(global(RG) + 1);
+  if (m_session.extraLifeKills == global(amal::RN)) {
+    global(amal::RF) = session::FULL_ENERGY;
+    global(amal::RG) = word(global(amal::RG) + 1);
     m_panel->score(stats());
     m_session.extraLifeKills += EXTRA_LIFE_STEP;
   }
@@ -203,10 +198,10 @@ void Stage::hideScreen() {
 }
 
 void Stage::gameOver() {
-  m_session.stageReached = global(RO);
-  global(RO) = -1;
+  m_session.stageReached = global(amal::RO);
+  global(amal::RO) = -1;
   if (quitsToHighScores()) {
-    global(RN) = 0;
+    global(amal::RN) = 0;
     closePlayScreen();
     return;
   }
@@ -283,11 +278,11 @@ void Stage::sys() {
                        key == session::SystemKey::Ntsc);
     break;
   case session::SystemKey::Lives:
-    global(RG) = CHEAT_LIVES;
+    global(amal::RG) = CHEAT_LIVES;
     m_panel->score(stats());
     break;
   case session::SystemKey::Escape:
-    global(RN) = 0;
+    global(amal::RN) = 0;
     m_escape = true;
     m_machine.freezeAll();
     break;
@@ -295,9 +290,9 @@ void Stage::sys() {
   case session::SystemKey::Other:
     break;
   }
-  if (m_mouseButton && global(RI) > 0) {
-    global(RN) = word(global(RN) + global(RI));
-    global(RI) = 0;
+  if (m_mouseButton && global(amal::RI) > 0) {
+    global(amal::RN) = word(global(amal::RN) + global(amal::RI));
+    global(amal::RI) = 0;
     m_machine.start(PLAYER_CHANNEL);
   }
 }

@@ -7,11 +7,11 @@ namespace openfranko::src::engine::effects::color {
 
 void PaletteFlasher::start(std::size_t color, FlashSteps steps) {
   if (steps.size() > MAX_STEPS) {
-    throw std::invalid_argument("A flash list holds at most 16 colours");
+    throw std::invalid_argument("Flash: a list holds at most 16 colours");
   }
   for (const FlashStep &step : steps) {
     if (step.frames < 1) {
-      throw std::invalid_argument("A flash colour must stay at least 1 frame");
+      throw std::invalid_argument("Flash: a colour must stay at least 1 frame");
     }
   }
 

@@ -1,4 +1,5 @@
 #include "BitReader.h"
+
 #include "../../../binary/binary.h"
 #include "../consts.h"
 
@@ -6,7 +7,7 @@
 
 namespace openfranko::lib::decompressor::backwardLZ77::detail {
 
-BitReader::BitReader(const std::vector<uint8_t> &data, size_t endPos,
+BitReader::BitReader(const std::vector<uint8_t> &data, std::size_t endPos,
                      uint32_t initialBuffer, uint32_t xorChecksum)
     : m_data(data), m_readPos(endPos), m_buffer(initialBuffer),
       m_checksum(xorChecksum) {}
@@ -26,7 +27,7 @@ uint32_t BitReader::readBit() {
 
 uint32_t BitReader::readBits(int count) {
   uint32_t result = 0;
-  for (int i = 0; i < count; i++) {
+  for (int i = 0; i < count; ++i) {
     result = (result << 1) | readBit();
   }
   return result;

@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
       }
     }
     int written = 0;
-    for (int i = 0; i < static_cast<int>(sprites.size()); i++) {
+    for (int i = 0; i < static_cast<int>(sprites.size()); ++i) {
       if (sprites[i].data.empty()) {
         std::cerr << "Skipped sprite " << i << ": " << sprites[i].error
                   << std::endl;
@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
       filesystem::writeFile::writeFile(path, sprites[i].data);
       std::cerr << "Wrote " << path << " (" << sprites[i].data.size()
                 << " bytes)" << std::endl;
-      written++;
+      ++written;
     }
 
     if (written == 0) {

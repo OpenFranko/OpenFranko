@@ -12,7 +12,7 @@ namespace detail {
 
 class BitReader {
 public:
-  BitReader(const std::vector<uint8_t> &data, size_t endPos,
+  BitReader(const std::vector<uint8_t> &data, std::size_t endPos,
             uint32_t initialBuffer, uint32_t xorChecksum);
 
   uint8_t readRawByte();
@@ -24,7 +24,7 @@ private:
   void refill();
 
   const std::vector<uint8_t> &m_data;
-  size_t m_readPos;
+  std::size_t m_readPos;
   uint32_t m_buffer;
   uint32_t m_checksum;
   uint32_t m_lastBitBeforeRefill = 0;

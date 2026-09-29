@@ -1,5 +1,6 @@
 #include "CharacterSelectionState.h"
 
+#include "../../../systems/audio/Mixer.h"
 #include "../../assets/Assets.h"
 
 #include <array>
@@ -8,7 +9,6 @@
 namespace openfranko::src::engine::states::characterSelection {
 namespace {
 
-constexpr int PICTURE = 0x3B9;
 constexpr int SPRITE_SET = 0x35;
 constexpr int SPRITES = 3;
 
@@ -20,8 +20,8 @@ constexpr std::size_t SCREEN_COLORS = 32;
 constexpr int FIRST_SPRITE_IMAGE = 1;
 
 struct Voice {
-  int sample;
-  const char *name;
+  int sample = 0;
+  const char *name = nullptr;
 };
 
 constexpr std::array<Voice, 2> VOICES = {{
@@ -31,7 +31,6 @@ constexpr std::array<Voice, 2> VOICES = {{
 
 constexpr int HIDDEN_IMAGE = 0;
 
-constexpr int RO = 14;
 constexpr int SECOND_STAGE = 2;
 constexpr int THIRD_STAGE = 3;
 
@@ -69,8 +68,8 @@ CharacterSelectionState::CharacterSelectionState(
       m_selection(options, session.nameScreenOpen ? 1 : 0, session.version),
       m_rows(visibleRows(pictureLine(DISPLAY_LINE, options.ntsc), SCREEN_HEIGHT,
                          options.ntsc)),
-      m_picture(systems::graphics::loadIndexedBitmap(
-          assets::picturePath(assets::resourceName(PICTURE, session.version)))),
+      m_picture(systems::graphics::loadIndexedBitmap(assets::picturePath(
+          assets::resourceName(assets::HISCORE_LETTERS, session.version)))),
       m_screenPalette(screenPalette(m_picture)),
       m_sprites(loadSprites(session.version)),
       m_screen(SCREEN_WIDTH, m_rows.count) {
@@ -102,8 +101,7 @@ std::optional<EngineStateId> CharacterSelectionState::update() {
   if (const auto sample = m_selection.sample()) {
     for (const Voice &voice : VOICES) {
       if (voice.sample == *sample) {
-        m_audioSystem.playSample(voice.name,
-                                 systems::audio::AudioSystem::ALL_VOICES);
+        m_audioSystem.playSample(voice.name, systems::audio::Mixer::ALL_VOICES);
       }
     }
   }
@@ -123,7 +121,7 @@ std::optional<EngineStateId> CharacterSelectionState::update() {
 }
 
 EngineStateId CharacterSelectionState::firstStreet() const {
-  switch (m_session.registers[RO] + 1) {
+  switch (m_session.registers[amal::RO] + 1) {
   case SECOND_STAGE:
     return EngineStateId::Level2;
   case THIRD_STAGE:

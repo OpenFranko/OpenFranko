@@ -15,12 +15,12 @@ namespace levelScript {
 namespace consts {
 
 inline constexpr uint8_t EMPTY_SLOT = 0xFF;
-inline constexpr size_t SLOTS_PER_WAVE = 3;
-inline constexpr size_t SLOT_SIZE = 8;
-inline constexpr size_t TRIGGER_COLUMN_SIZE = 2;
-inline constexpr size_t WAVE_SIZE =
+inline constexpr std::size_t SLOTS_PER_WAVE = 3;
+inline constexpr std::size_t SLOT_SIZE = 8;
+inline constexpr std::size_t TRIGGER_COLUMN_SIZE = 2;
+inline constexpr std::size_t WAVE_SIZE =
     TRIGGER_COLUMN_SIZE + SLOTS_PER_WAVE * SLOT_SIZE;
-inline constexpr size_t HEADER_SIZE = 2;
+inline constexpr std::size_t HEADER_SIZE = 2;
 
 } // namespace consts
 

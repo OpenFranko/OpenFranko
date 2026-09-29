@@ -9,39 +9,14 @@
 namespace openfranko::src::engine::street::scenes {
 namespace {
 
-using actors::amosBool;
-
-constexpr int RB = 1;
-constexpr int RC = 2;
-constexpr int RD = 3;
-constexpr int RE = 4;
-constexpr int RG = 6;
-constexpr int RI = 8;
-constexpr int RN = 13;
-constexpr int RP = 15;
-constexpr int RQ = 16;
-constexpr int RR = 17;
-constexpr int RS = 18;
-constexpr int RT = 19;
-constexpr int RU = 20;
-constexpr int RV = 21;
-constexpr int RW = 22;
-constexpr int RX = 23;
-
-constexpr int PLAYER = 1;
 constexpr int BOSS = 2;
 constexpr int SPECTATOR = 3;
 constexpr int PLAYER_BUBBLE = 4;
 constexpr int BOSS_BUBBLE = 5;
 constexpr int BOSS_BLOOD = 10;
 constexpr int PLAYER_BLOOD = 11;
-constexpr int INDICATOR = 12;
-constexpr int HIDDEN_IMAGE = 10;
-constexpr int SPLAT_IMAGE = 9;
-constexpr int IDLE_IMAGE = 17;
 constexpr int BOSS_BUBBLE_IMAGE = 91;
 
-constexpr int SCREEN_SHAKE_CHANNEL = 0;
 constexpr int PLAYER_WALK_CHANNEL = 1;
 constexpr int PLAYER_DAMAGE_CHANNEL = 2;
 constexpr int PLAYER_CLAMP_CHANNEL = 3;
@@ -50,18 +25,13 @@ constexpr int BOSS_DAMAGE_CHANNEL = 5;
 constexpr int SPECTATOR_CHANNEL = 6;
 constexpr int PLAYER_TALK_CHANNEL = 7;
 constexpr int BOSS_TALK_CHANNEL = 8;
-constexpr int INDICATOR_CHANNEL = 13;
-constexpr int ENEMY_BLOOD_CHANNEL = 14;
-constexpr int PLAYER_BLOOD_CHANNEL = 15;
 
-constexpr int PRIORITY_VOICE = 1;
 constexpr int PLAYER_SAMPLE_BANK = 2;
 constexpr int BOSS_SAMPLE_BANK = 4;
 constexpr int FIGHT_SHOUT = 9;
 constexpr int WALK_OFF_SAMPLE = 4;
 constexpr int FINISHING_SAMPLE = 9;
 
-constexpr int STREET_Y = 172;
 constexpr int APPROACH_TOP = 164;
 constexpr int ARENA_TOP = 124;
 constexpr int DIALOGUE_START = 1;
@@ -166,7 +136,7 @@ BossStage::Flow BossStage::waitFrames(int frames, Step next) {
 }
 
 void BossStage::playRequest(int request) {
-  const int boss = amosBool(request > 8);
+  const int boss = actors::amosBool(request > 8);
   m_host.playSample(PLAYER_SAMPLE_BANK - 2 * boss, request + 8 * boss,
                     PRIORITY_VOICE);
 }
@@ -183,7 +153,7 @@ BossStage::Flow BossStage::init() {
   m_energyShown = m_session.streetExit->energyShown;
   m_killsShown = m_session.streetExit->killsShown;
   m_session.streetExit.reset();
-  m_facing = -32768 * amosBool(stage() == 2);
+  m_facing = -32768 * actors::amosBool(stage() == 2);
   m_screenOffsetX = stage() == 2 ? 16 : 0;
   openPanel();
 
@@ -198,7 +168,7 @@ BossStage::Flow BossStage::bossMusic() {
   m_loading.queue(
       [this] { m_columns = m_host.loadScenery(stage() * 10 + 310); });
   m_loading.queue([this] { m_images.load(1, m_host.loadSpriteSet(0, 0)); });
-  const int player = 254 - 5 * global(RQ);
+  const int player = 254 - 5 * global(amal::RQ);
   m_loading.queue([this, player] {
     m_images.load(11, m_host.loadSpriteSet(player, PLAYER_SAMPLE_BANK));
   });
@@ -214,7 +184,8 @@ BossStage::Flow BossStage::bossMusic() {
 void BossStage::bossLoaded() {
   m_columnsWalked = 0;
   m_panel->score(stats());
-  m_bobs.set(PLAYER, m_playerX, (global(RB) / 4) * 4, IDLE_IMAGE + m_facing);
+  m_bobs.set(PLAYER, m_playerX, (global(amal::RB) / 4) * 4,
+             IDLE_IMAGE + m_facing);
   putBlock(*m_block);
   m_block.reset();
 }
@@ -241,16 +212,18 @@ void BossStage::setUp() {
   m_machine.bind(ENEMY_BLOOD_CHANNEL, &m_bobs.object(BOSS_BLOOD));
   m_machine.bind(INDICATOR_CHANNEL, &m_bobs.object(INDICATOR));
 
-  m_bobs.set(PLAYER, m_playerX, (global(RB) / 4) * 4, IDLE_IMAGE + m_facing);
-  m_bobs.set(INDICATOR, 242 + 164 * amosBool(stage() == 2), 32, HIDDEN_IMAGE);
+  m_bobs.set(PLAYER, m_playerX, (global(amal::RB) / 4) * 4,
+             IDLE_IMAGE + m_facing);
+  m_bobs.set(INDICATOR, 242 + 164 * actors::amosBool(stage() == 2), 32,
+             HIDDEN_IMAGE);
   m_bobs.set(PLAYER_BLOOD, 1000, yBob(PLAYER_BLOOD), HIDDEN_IMAGE);
   m_bobs.set(BOSS_BLOOD, 1000, yBob(BOSS_BLOOD), HIDDEN_IMAGE);
   for (int bob = BOSS; bob <= BOSS_BUBBLE; ++bob) {
     m_bobs.set(bob, 1000, STREET_Y, HIDDEN_IMAGE);
   }
-  global(RT) = 0;
-  global(RU) = 0;
-  global(RX) = 0;
+  global(amal::RT) = 0;
+  global(amal::RU) = 0;
+  global(amal::RX) = 0;
 
   m_machine.bind(SCREEN_SHAKE_CHANNEL, &m_screenDisplay);
   m_machine.create(SCREEN_SHAKE_CHANNEL,
@@ -275,7 +248,7 @@ void BossStage::setUp() {
 
   reg(PLAYER_WALK_CHANNEL, 2) = APPROACH_TOP;
   reg(PLAYER_CLAMP_CHANNEL, 0) = word(clampBound(stage()));
-  global(RI) = 1;
+  global(amal::RI) = 1;
   m_machine.create(INDICATOR_CHANNEL, actors::indicatorArrow(m_facing));
   m_machine.start(INDICATOR_CHANNEL);
   m_panel->score(stats());
@@ -290,12 +263,12 @@ BossStage::Flow BossStage::approachTop(const StreetInput &input) {
   int bias = 0;
   if (stage() == 2) {
     walking = xBob(PLAYER) < 232 && joystick < 16 && (joystick & 4) &&
-              global(RD) == 0 && iBob(PLAYER) < 17;
-    bias = 6 - 2 * amosBool(xBob(PLAYER) < 220);
+              global(amal::RD) == 0 && iBob(PLAYER) < 17;
+    bias = 6 - 2 * actors::amosBool(xBob(PLAYER) < 220);
   } else {
     walking = xBob(PLAYER) > 96 && joystick < 16 && (joystick & 8) &&
-              global(RD) == 0 && iBob(PLAYER) < 17;
-    bias = 6 - 2 * amosBool(xBob(PLAYER) > 108);
+              global(amal::RD) == 0 && iBob(PLAYER) < 17;
+    bias = 6 - 2 * actors::amosBool(xBob(PLAYER) > 108);
   }
   if (!walking) {
     return approachTail();
@@ -315,7 +288,7 @@ BossStage::Flow BossStage::approachTop(const StreetInput &input) {
 }
 
 BossStage::Flow BossStage::approachScroll() {
-  global(RX) = 1;
+  global(amal::RX) = 1;
   m_step = Step::ApproachScrolled;
   scrollStep();
   return Flow::Yield;
@@ -330,7 +303,7 @@ BossStage::Flow BossStage::approachScrolled() {
 
 BossStage::Flow BossStage::approachTail() {
   if (m_columnsWalked == APPROACH_COLUMNS) {
-    global(RX) = 2;
+    global(amal::RX) = 2;
     startDialogue();
     if (stage() == 3) {
       return beatChild();
@@ -339,14 +312,14 @@ BossStage::Flow BossStage::approachTail() {
     m_step = Step::Dialogue;
     return Flow::Continue;
   }
-  if (stage() == 3 && iBob(BOSS) == TAUNT_POSE && global(RE) == 0 &&
+  if (stage() == 3 && iBob(BOSS) == TAUNT_POSE && global(amal::RE) == 0 &&
       (!m_lastTaunt || m_frame - *m_lastTaunt > TAUNT_EVERY)) {
     m_lastTaunt = m_frame;
     m_host.playSample(PLAYER_SAMPLE_BANK, TAUNT_SAMPLE, PRIORITY_VOICE);
   }
-  if (global(RE) != 0) {
-    m_host.playSample(PLAYER_SAMPLE_BANK, global(RE), PRIORITY_VOICE);
-    global(RE) = 0;
+  if (global(amal::RE) != 0) {
+    m_host.playSample(PLAYER_SAMPLE_BANK, global(amal::RE), PRIORITY_VOICE);
+    global(amal::RE) = 0;
   }
   sys();
   if (m_escape) {
@@ -366,7 +339,7 @@ void BossStage::startDialogue() {
 }
 
 void BossStage::beginTalk() {
-  global(RT) = DIALOGUE_START;
+  global(amal::RT) = DIALOGUE_START;
   if (stage() == 1) {
     m_bobs.set(BOSS_BUBBLE, 176, 40, BOSS_BUBBLE_IMAGE);
   }
@@ -390,7 +363,7 @@ BossStage::Flow BossStage::childRaised() {
 }
 
 BossStage::Flow BossStage::dialogue() {
-  if (global(RT) != DIALOGUE_OVER) {
+  if (global(amal::RT) != DIALOGUE_OVER) {
     return Flow::Yield;
   }
   reg(PLAYER_CLAMP_CHANNEL, 0) = word(clampBound(stage()));
@@ -416,20 +389,21 @@ BossStage::Flow BossStage::fightTop() {
            (reg(BOSS_WALK_CHANNEL, 2) != 0 && xBob(PLAYER) < xBob(BOSS));
   };
   const auto facingBoss = [this]() {
-    return (global(RC) == 0 && xBob(PLAYER) < xBob(BOSS)) ||
-           (global(RC) != 0 && xBob(PLAYER) > xBob(BOSS));
+    return (global(amal::RC) == 0 && xBob(PLAYER) < xBob(BOSS)) ||
+           (global(amal::RC) != 0 && xBob(PLAYER) > xBob(BOSS));
   };
   const auto inFront = [this]() {
-    return (xBob(BOSS) < xBob(PLAYER) && global(RC) != 0) ||
-           (xBob(BOSS) > xBob(PLAYER) && global(RC) == 0);
+    return (xBob(BOSS) < xBob(PLAYER) && global(amal::RC) != 0) ||
+           (xBob(BOSS) > xBob(PLAYER) && global(amal::RC) == 0);
   };
   const auto snapBoss = [this]() {
     m_machine.freeze(PLAYER_WALK_CHANNEL);
-    global(RV) = 0;
+    global(amal::RV) = 0;
     reg(PLAYER_DAMAGE_CHANNEL, 5) = 0;
-    m_bobs.setX(BOSS, xBob(PLAYER) + 32 +
-                          64 * amosBool(reg(BOSS_WALK_CHANNEL, 2) == 0));
-    global(RC) = word(0x8000 - reg(BOSS_WALK_CHANNEL, 2));
+    m_bobs.setX(BOSS,
+                xBob(PLAYER) + 32 +
+                    64 * actors::amosBool(reg(BOSS_WALK_CHANNEL, 2) == 0));
+    global(amal::RC) = word(0x8000 - reg(BOSS_WALK_CHANNEL, 2));
   };
 
   const bool taunt = m_host.random(40) == 0;
@@ -437,9 +411,9 @@ BossStage::Flow BossStage::fightTop() {
       reg(BOSS_WALK_CHANNEL, 8) == 0) {
     reg(BOSS_WALK_CHANNEL, 1) = word(m_host.random(2) + 2);
     reg(BOSS_WALK_CHANNEL, 6) =
-        word(32 + 64 * amosBool(reg(BOSS_WALK_CHANNEL, 2) != 0));
+        word(32 + 64 * actors::amosBool(reg(BOSS_WALK_CHANNEL, 2) != 0));
   }
-  const bool jumping = global(RD) == 4 || global(RD) == 5;
+  const bool jumping = global(amal::RD) == 4 || global(amal::RD) == 5;
   const bool duck = m_host.random(10) > 3;
   if (jumping && duck) {
     reg(BOSS_WALK_CHANNEL, 1) = 1;
@@ -452,11 +426,11 @@ BossStage::Flow BossStage::fightTop() {
          xBob(PLAYER) < xBob(BOSS) + SPECIAL_RANGE) ||
         (reg(BOSS_WALK_CHANNEL, 2) != 0 && xBob(PLAYER) < xBob(BOSS) &&
          xBob(PLAYER) > xBob(BOSS) - SPECIAL_RANGE);
-    if (close && global(RD) == 0) {
+    if (close && global(amal::RD) == 0) {
       const int move = m_host.random(2) + 1;
       snapBoss();
-      global(RD) = 0;
-      global(RP) = BOSS_ENERGY;
+      global(amal::RD) = 0;
+      global(amal::RP) = BOSS_ENERGY;
       reg(BOSS_WALK_CHANNEL, 7) = word(move);
       reg(BOSS_WALK_CHANNEL, 9) = word(move + 2);
       reg(PLAYER_DAMAGE_CHANNEL, 1) = reg(BOSS_WALK_CHANNEL, 9);
@@ -466,8 +440,9 @@ BossStage::Flow BossStage::fightTop() {
     const bool touching = bobCol(BOSS) && col(PLAYER);
     if (attack && touching && idle() && clear() && facingPlayer()) {
       snapBoss();
-      reg(PLAYER_DAMAGE_CHANNEL, 2) = word(32 + 64 * amosBool(global(RC) == 0));
-      global(RD) = 0;
+      reg(PLAYER_DAMAGE_CHANNEL, 2) =
+          word(32 + 64 * actors::amosBool(global(amal::RC) == 0));
+      global(amal::RD) = 0;
       reg(BOSS_WALK_CHANNEL, 9) = word(m_host.random(1) + 1);
       reg(PLAYER_DAMAGE_CHANNEL, 1) = reg(BOSS_WALK_CHANNEL, 9);
     }
@@ -482,64 +457,66 @@ BossStage::Flow BossStage::fightTop() {
     m_machine.start(PLAYER_WALK_CHANNEL);
   }
 
-  if (global(RD) == 1 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
+  if (global(amal::RD) == 1 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
     if (bobCol(PLAYER) && col(BOSS) && inFront() &&
         yBob(BOSS) == yBob(PLAYER)) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
-      reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(RC));
+      reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(amal::RC));
       reg(BOSS_DAMAGE_CHANNEL, 2) = 1;
       reg(BOSS_DAMAGE_CHANNEL, 0) = 1;
     }
   }
-  if (global(RD) == 2 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
+  if (global(amal::RD) == 2 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
     if (bobCol(PLAYER) && col(BOSS) && inFront() &&
         yBob(BOSS) == yBob(PLAYER)) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
       reg(BOSS_DAMAGE_CHANNEL, 3) =
-          word(32 + 64 * amosBool(reg(BOSS_DAMAGE_CHANNEL, 1) == 0));
-      reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(RC));
+          word(32 + 64 * actors::amosBool(reg(BOSS_DAMAGE_CHANNEL, 1) == 0));
+      reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(amal::RC));
       reg(BOSS_DAMAGE_CHANNEL, 2) = 1;
       reg(BOSS_DAMAGE_CHANNEL, 0) = 2;
     }
   }
-  if (global(RD) == 4 || global(RD) == 5) {
-    const int move = global(RD);
+  if (global(amal::RD) == 4 || global(amal::RD) == 5) {
+    const int move = global(amal::RD);
     if (bobCol(PLAYER) && col(BOSS) && reg(BOSS_WALK_CHANNEL, 1) != 1 &&
-        global(RB) == yBob(BOSS) && reg(BOSS_DAMAGE_CHANNEL, 2) != 1 &&
+        global(amal::RB) == yBob(BOSS) && reg(BOSS_DAMAGE_CHANNEL, 2) != 1 &&
         reg(BOSS_WALK_CHANNEL, 3) == 0 && facingBoss()) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
-      reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(RC));
+      reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(amal::RC));
       reg(BOSS_DAMAGE_CHANNEL, 3) =
-          word(48 + 96 * amosBool(reg(BOSS_DAMAGE_CHANNEL, 1) == 0));
+          word(48 + 96 * actors::amosBool(reg(BOSS_DAMAGE_CHANNEL, 1) == 0));
       reg(BOSS_DAMAGE_CHANNEL, 2) = 1;
       reg(BOSS_DAMAGE_CHANNEL, 0) = word(move);
     }
   }
-  if (global(RD) == 6 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
+  if (global(amal::RD) == 6 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
     if (bobCol(PLAYER) && reg(BOSS_DAMAGE_CHANNEL, 5) == 0 &&
-        global(RC) != reg(BOSS_WALK_CHANNEL, 2) && col(BOSS) &&
+        global(amal::RC) != reg(BOSS_WALK_CHANNEL, 2) && col(BOSS) &&
         reg(PLAYER_DAMAGE_CHANNEL, 5) == 0 && yBob(PLAYER) == yBob(BOSS) &&
         facingBoss()) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
       m_machine.freeze(PLAYER_WALK_CHANNEL);
-      reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(RC));
-      m_bobs.setX(BOSS, xBob(PLAYER) + 40 + 80 * amosBool(global(RC) != 0));
-      reg(BOSS_DAMAGE_CHANNEL, 6) = word(16 + 32 * amosBool(global(RC) == 0));
+      reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(amal::RC));
+      m_bobs.setX(BOSS, xBob(PLAYER) + 40 +
+                            80 * actors::amosBool(global(amal::RC) != 0));
+      reg(BOSS_DAMAGE_CHANNEL, 6) =
+          word(16 + 32 * actors::amosBool(global(amal::RC) == 0));
       reg(BOSS_DAMAGE_CHANNEL, 2) = 1;
       reg(BOSS_DAMAGE_CHANNEL, 3) =
-          word(16 + 32 * amosBool(reg(BOSS_DAMAGE_CHANNEL, 1) == 0));
+          word(16 + 32 * actors::amosBool(reg(BOSS_DAMAGE_CHANNEL, 1) == 0));
       reg(PLAYER_DAMAGE_CHANNEL, 5) = 1;
       reg(BOSS_DAMAGE_CHANNEL, 0) = 6;
     }
   }
 
-  if (global(RW) != 0) {
-    const int request = global(RW);
-    global(RW) = 0;
+  if (global(amal::RW) != 0) {
+    const int request = global(amal::RW);
+    global(amal::RW) = 0;
     playRequest(request);
-  } else if (global(RE) != 0) {
-    const int request = global(RE);
-    global(RE) = 0;
+  } else if (global(amal::RE) != 0) {
+    const int request = global(amal::RE);
+    global(amal::RE) = 0;
     playRequest(request);
   }
 
@@ -574,12 +551,12 @@ BossStage::Flow BossStage::fightBloodStamped() {
 
 BossStage::Flow BossStage::fightTail() {
   updatePanel();
-  if (global(RI) == 0) {
-    m_panel->drawKills(global(RN));
-    global(RC) = word(m_facing);
+  if (global(amal::RI) == 0) {
+    m_panel->drawKills(global(amal::RN));
+    global(amal::RC) = word(m_facing);
     return finishStart();
   }
-  if (m_escape || global(RG) == -2) {
+  if (m_escape || global(amal::RG) == -2) {
     gameOver();
     return Flow::Continue;
   }
@@ -589,19 +566,20 @@ BossStage::Flow BossStage::fightTail() {
 }
 
 BossStage::Flow BossStage::finishStart() {
-  global(RR) = reg(BOSS_WALK_CHANNEL, 2);
+  global(amal::RR) = reg(BOSS_WALK_CHANNEL, 2);
   m_machine.destroy(PLAYER_WALK_CHANNEL);
   m_machine.destroy(BOSS_WALK_CHANNEL);
   m_machine.destroy(PLAYER_CLAMP_CHANNEL);
-  global(RT) = word(yBob(BOSS) - yBob(PLAYER));
+  global(amal::RT) = word(yBob(BOSS) - yBob(PLAYER));
   if (stage() == 1 &&
       (m_session.brutality || m_session.version == GameVersion::V12)) {
-    global(RU) =
-        word(xBob(BOSS) - xBob(PLAYER) - 48 - 96 * amosBool(global(RR) != 0));
-    global(RS) = word((std::abs(global(RU)) + std::abs(global(RT))) / 2);
+    global(amal::RU) = word(xBob(BOSS) - xBob(PLAYER) - 48 -
+                            96 * actors::amosBool(global(amal::RR) != 0));
+    global(amal::RS) =
+        word((std::abs(global(amal::RU)) + std::abs(global(amal::RT))) / 2);
     m_machine.create(PLAYER_WALK_CHANNEL, actors::walkToBoss());
     m_machine.startAll();
-    return waitFrames(global(RS), Step::FinishWalkedToBoss);
+    return waitFrames(global(amal::RS), Step::FinishWalkedToBoss);
   }
   if (stage() == 2) {
     return liftStart();
@@ -616,18 +594,20 @@ BossStage::Flow BossStage::railingStart() {
   for (int image = RAILING_SIT; image <= RAILING_BROKEN; ++image) {
     m_images.noMask(image);
   }
-  global(RU) = word(RAILING_X - xBob(BOSS));
-  global(RS) = word(RAILING_Y - yBob(BOSS));
-  global(RT) = word((std::abs(global(RU)) + std::abs(global(RS))) / 2);
-  global(RR) = word(0x8000 * amosBool(global(RB) < 0));
-  m_bobs.setImage(PLAYER, word(IDLE_IMAGE + global(RR)));
+  global(amal::RU) = word(RAILING_X - xBob(BOSS));
+  global(amal::RS) = word(RAILING_Y - yBob(BOSS));
+  global(amal::RT) =
+      word((std::abs(global(amal::RU)) + std::abs(global(amal::RS))) / 2);
+  global(amal::RR) = word(0x8000 * actors::amosBool(global(amal::RB) < 0));
+  m_bobs.setImage(PLAYER, word(IDLE_IMAGE + global(amal::RR)));
   m_machine.create(BOSS_WALK_CHANNEL, actors::bossRests());
   m_machine.startAll();
   return waitFrames(REST_WAIT, Step::RailingSpeech);
 }
 
 BossStage::Flow BossStage::railingSpeech() {
-  m_bobs.set(BOSS_BUBBLE, xBob(BOSS) - 32 - 64 * amosBool(global(RR) != 0),
+  m_bobs.set(BOSS_BUBBLE,
+             xBob(BOSS) - 32 - 64 * actors::amosBool(global(amal::RR) != 0),
              yBob(BOSS) - 72, REST_BUBBLE);
   m_machine.create(BOSS_TALK_CHANNEL, actors::bubbleUntilFire());
   m_machine.startAll();
@@ -640,7 +620,7 @@ BossStage::Flow BossStage::railingWaitFire() {
     return Flow::Yield;
   }
   reg(BOSS_WALK_CHANNEL, 0) = 1;
-  return waitFrames(global(RT), Step::RailingReached);
+  return waitFrames(global(amal::RT), Step::RailingReached);
 }
 
 BossStage::Flow BossStage::pasteRailing(int image, Step next) {
@@ -650,17 +630,19 @@ BossStage::Flow BossStage::pasteRailing(int image, Step next) {
 }
 
 BossStage::Flow BossStage::liftStart() {
-  global(RU) = word(xBob(BOSS) - xBob(PLAYER));
-  global(RS) = word((std::abs(global(RU)) + std::abs(global(RT))) / 2);
+  global(amal::RU) = word(xBob(BOSS) - xBob(PLAYER));
+  global(amal::RS) =
+      word((std::abs(global(amal::RU)) + std::abs(global(amal::RT))) / 2);
   m_machine.create(PLAYER_WALK_CHANNEL, actors::walkToBoss());
   m_machine.startAll();
-  return waitFrames(global(RS), Step::LiftWalkedToBoss);
+  return waitFrames(global(amal::RS), Step::LiftWalkedToBoss);
 }
 
 BossStage::Flow BossStage::liftBoss() {
   m_machine.destroy(PLAYER_WALK_CHANNEL);
-  global(RT) = word(global(RQ) * 2);
-  m_bobs.set(PLAYER, xBob(BOSS), yBob(BOSS), word(IDLE_IMAGE + global(RR)));
+  global(amal::RT) = word(global(amal::RQ) * 2);
+  m_bobs.set(PLAYER, xBob(BOSS), yBob(BOSS),
+             word(IDLE_IMAGE + global(amal::RR)));
   m_machine.create(BOSS_WALK_CHANNEL, actors::bossThrown());
   m_machine.create(PLAYER_WALK_CHANNEL, actors::victoryLift());
   m_machine.startAll();
@@ -668,10 +650,10 @@ BossStage::Flow BossStage::liftBoss() {
 }
 
 BossStage::Flow BossStage::finishPose() {
-  const int facedLeft = amosBool(global(RR) != 0);
+  const int facedLeft = actors::amosBool(global(amal::RR) != 0);
   m_machine.destroy(PLAYER_WALK_CHANNEL);
   m_bobs.set(PLAYER, xBob(BOSS) - 64 - 128 * facedLeft, yBob(BOSS),
-             word(38 + global(RR)));
+             word(38 + global(amal::RR)));
   m_machine.create(PLAYER_WALK_CHANNEL, actors::finishingPose());
   m_bobs.set(PLAYER_BUBBLE, xBob(PLAYER) + 8 + 16 * facedLeft,
              yBob(PLAYER) - 32, HIDDEN_IMAGE);
@@ -681,7 +663,7 @@ BossStage::Flow BossStage::finishPose() {
 }
 
 BossStage::Flow BossStage::finishBlood() {
-  m_bobs.setImage(PLAYER, word(39 + global(RR)));
+  m_bobs.setImage(PLAYER, word(39 + global(amal::RR)));
   m_machine.start(PLAYER_TALK_CHANNEL);
   m_host.setSampleLooping(true);
   m_host.playSample(BOSS_SAMPLE_BANK, FINISHING_SAMPLE, PRIORITY_VOICE);
@@ -695,10 +677,10 @@ BossStage::Flow BossStage::finishStamp() {
     const int right = m_host.random(10);
     const int up = m_host.random(10);
     const int down = m_host.random(10);
-    const int x = xBob(PLAYER_BUBBLE) - 32 - 40 * amosBool(global(RR) == 0) -
-                  left + right;
+    const int x = xBob(PLAYER_BUBBLE) - 32 -
+                  40 * actors::amosBool(global(amal::RR) == 0) - left + right;
     const int y = yBob(PLAYER) - 4 - up + down;
-    if (pasteStalled(x, y, word(90 - global(RR)))) {
+    if (pasteStalled(x, y, word(90 - global(amal::RR)))) {
       m_step = Step::FinishStamped;
       return Flow::Yield;
     }
@@ -713,16 +695,17 @@ BossStage::Flow BossStage::finishStamp() {
 
 BossStage::Flow BossStage::finishWalkOff() {
   m_host.playSample(PLAYER_SAMPLE_BANK, WALK_OFF_SAMPLE, PRIORITY_VOICE);
-  global(RT) = word(WALK_OFF_DISTANCE * amosBool(global(RC) != 0) -
-                    WALK_OFF_DISTANCE * amosBool(global(RC) == 0));
-  global(RU) = word(std::abs(global(RT)));
+  global(amal::RT) =
+      word(WALK_OFF_DISTANCE * actors::amosBool(global(amal::RC) != 0) -
+           WALK_OFF_DISTANCE * actors::amosBool(global(amal::RC) == 0));
+  global(amal::RU) = word(std::abs(global(amal::RT)));
   m_machine.create(PLAYER_WALK_CHANNEL, actors::walkOff());
   m_machine.startAll();
-  return waitFrames(global(RU), Step::FinishWalkedOff);
+  return waitFrames(global(amal::RU), Step::FinishWalkedOff);
 }
 
 BossStage::Flow BossStage::finishCleanUp() {
-  if (global(RG) == -2 || m_escape) {
+  if (global(amal::RG) == -2 || m_escape) {
     gameOver();
     return Flow::Continue;
   }

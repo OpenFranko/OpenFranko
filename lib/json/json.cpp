@@ -3,7 +3,6 @@
 #include <cstdio>
 
 namespace openfranko::lib::json {
-
 namespace {
 
 constexpr unsigned char FIRST_PRINTABLE = 0x20;

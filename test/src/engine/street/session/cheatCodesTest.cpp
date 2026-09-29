@@ -7,13 +7,9 @@
 using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::src::engine::amal;
 
 namespace {
-
-constexpr int RF = 5;
-constexpr int RG = 6;
-constexpr int RN = 13;
-constexpr int RO = 14;
 
 std::string typed(const std::string &keys, std::string text = "") {
   for (const char key : keys) {

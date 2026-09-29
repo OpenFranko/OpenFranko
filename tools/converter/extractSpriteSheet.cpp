@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
 
     const auto sheet =
         converter::spriteSheet::convertToSheet(decompressed, palette);
-    for (size_t i = 0; i < sheet.spriteErrors.size(); i++) {
+    for (std::size_t i = 0; i < sheet.spriteErrors.size(); ++i) {
       if (!sheet.spriteErrors[i].empty()) {
         std::cerr << "Skipped sprite " << i << ": " << sheet.spriteErrors[i]
                   << std::endl;

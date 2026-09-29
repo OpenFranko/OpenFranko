@@ -1,4 +1,5 @@
 #include "fileContainer.h"
+
 #include "../../binary/binary.h"
 #include "../../decompressor/backwardLZ77/backwardLZ77.h"
 #include "../gameData/gameData.h"
@@ -10,33 +11,32 @@
 #include <stdexcept>
 
 namespace openfranko::lib::converter::fileContainer {
-
 namespace {
 
-constexpr size_t SUFFIX_SIZE = 8;
-constexpr size_t SUFFIX_FILE_ID_OFFSET = 4;
-constexpr size_t SUFFIX_RESOURCE_TYPE_OFFSET = 6;
+constexpr std::size_t SUFFIX_SIZE = 8;
+constexpr std::size_t SUFFIX_FILE_ID_OFFSET = 4;
+constexpr std::size_t SUFFIX_RESOURCE_TYPE_OFFSET = 6;
 
-constexpr size_t LONG_PREFIX_SIZE = 4;
-constexpr size_t WORD_PREFIX_SIZE = 2;
-constexpr size_t LONGWORD_SIZE = 4;
-constexpr size_t DATA_HEADER_SIZE = 6;
-constexpr size_t DATA16_HEADER_SIZE = 4;
+constexpr std::size_t LONG_PREFIX_SIZE = 4;
+constexpr std::size_t WORD_PREFIX_SIZE = 2;
+constexpr std::size_t LONGWORD_SIZE = 4;
+constexpr std::size_t DATA_HEADER_SIZE = 6;
+constexpr std::size_t DATA16_HEADER_SIZE = 4;
 
-constexpr size_t BOBS_HEADER_SIZE = 10;
-constexpr size_t BOBS_COUNT_OFFSET = 4;
-constexpr size_t BOBS_SAMPLE_LENGTH_OFFSET = 6;
-constexpr size_t BOBS_WIDTH_OFFSET = 8;
-constexpr size_t BOBS_HEIGHT_OFFSET = 9;
-constexpr size_t BOB_DESCRIPTOR_SIZE = 10;
-constexpr size_t BITMAP_PLANES_OFFSET = 14;
+constexpr std::size_t BOBS_HEADER_SIZE = 10;
+constexpr std::size_t BOBS_COUNT_OFFSET = 4;
+constexpr std::size_t BOBS_SAMPLE_LENGTH_OFFSET = 6;
+constexpr std::size_t BOBS_WIDTH_OFFSET = 8;
+constexpr std::size_t BOBS_HEIGHT_OFFSET = 9;
+constexpr std::size_t BOB_DESCRIPTOR_SIZE = 10;
+constexpr std::size_t BITMAP_PLANES_OFFSET = 14;
 constexpr uint16_t FULL_SCREEN_WIDTH = 320;
-constexpr size_t VERSION10_BOBS_HEADER_SIZE = 12;
+constexpr std::size_t VERSION10_BOBS_HEADER_SIZE = 12;
 
 constexpr int CODED_ROTATION = 5;
 
-std::vector<uint8_t> slice(const std::vector<uint8_t> &data, size_t begin,
-                           size_t end) {
+std::vector<uint8_t> slice(const std::vector<uint8_t> &data, std::size_t begin,
+                           std::size_t end) {
   if (begin > end || end > data.size()) {
     throw std::runtime_error("File is shorter than its header says");
   }
@@ -44,7 +44,7 @@ std::vector<uint8_t> slice(const std::vector<uint8_t> &data, size_t begin,
           data.begin() + static_cast<std::ptrdiff_t>(end)};
 }
 
-size_t prefixSize(gameData::version12::Loader loader) {
+std::size_t prefixSize(gameData::version12::Loader loader) {
   switch (loader) {
   case gameData::version12::Loader::Data:
   case gameData::version12::Loader::Music:
@@ -60,24 +60,24 @@ size_t prefixSize(gameData::version12::Loader loader) {
 }
 
 std::vector<uint8_t> unsquash(const std::vector<uint8_t> &rawData,
-                              size_t prefix) {
+                              std::size_t prefix) {
   if (rawData.size() < prefix) {
     throw std::runtime_error("File too small for its packed length");
   }
   binary::BigEndianReader reader(rawData);
-  const size_t packedLength =
+  const std::size_t packedLength =
       prefix == LONG_PREFIX_SIZE ? reader.readUint32(0) : reader.readUint16(0);
   return decompressor::backwardLZ77::decompressStream(
       slice(rawData, prefix, prefix + packedLength));
 }
 
 std::vector<uint8_t> dataBank(const std::vector<uint8_t> &unpacked) {
-  const size_t length = binary::BigEndianReader(unpacked).readUint32(0);
+  const std::size_t length = binary::BigEndianReader(unpacked).readUint32(0);
   return slice(unpacked, DATA_HEADER_SIZE, DATA_HEADER_SIZE + length);
 }
 
 std::vector<uint8_t> data16Bank(const std::vector<uint8_t> &unpacked) {
-  const size_t length = binary::BigEndianReader(unpacked).readUint16(0);
+  const std::size_t length = binary::BigEndianReader(unpacked).readUint16(0);
   if (length < WORD_PREFIX_SIZE) {
     throw std::runtime_error("Data bank is too short");
   }
@@ -101,7 +101,7 @@ std::vector<uint8_t> decodedBank(const std::vector<uint8_t> &rawData) {
   std::vector<uint8_t> bank;
   bank.reserve(rawData.size());
   binary::BigEndianReader reader(rawData);
-  for (size_t pos = 0; pos < rawData.size(); pos += LONGWORD_SIZE) {
+  for (std::size_t pos = 0; pos < rawData.size(); pos += LONGWORD_SIZE) {
     const uint32_t value = reader.readUint32(pos);
     binary::pushBigEndian32(bank, value << CODED_ROTATION |
                                       value >> (32 - CODED_ROTATION));
@@ -109,14 +109,14 @@ std::vector<uint8_t> decodedBank(const std::vector<uint8_t> &rawData) {
   return bank;
 }
 
-uint16_t bobColors(const std::vector<uint8_t> &unpacked, size_t count) {
+uint16_t bobColors(const std::vector<uint8_t> &unpacked, std::size_t count) {
   binary::BigEndianReader reader(unpacked);
   uint16_t planes = 0;
-  for (size_t i = 0; i < count; i++) {
-    const size_t picture =
-        BOBS_HEADER_SIZE +
-        size_t{reader.readUint16(BOBS_HEADER_SIZE + i * BOB_DESCRIPTOR_SIZE)} *
-            2;
+  for (std::size_t i = 0; i < count; ++i) {
+    const std::size_t picture =
+        BOBS_HEADER_SIZE + std::size_t{reader.readUint16(
+                               BOBS_HEADER_SIZE + i * BOB_DESCRIPTOR_SIZE)} *
+                               2;
     if (picture + BITMAP_PLANES_OFFSET + 2 > unpacked.size() ||
         reader.readUint32(picture) != headers::AMOS_BMCODE) {
       continue;
@@ -135,20 +135,20 @@ std::vector<uint8_t> bobsBank(const std::vector<uint8_t> &unpacked) {
     throw std::runtime_error("Data too small for a bob bank header");
   }
   binary::BigEndianReader reader(unpacked);
-  const size_t sampleOffset = reader.readUint32(0);
-  const size_t count = unpacked[BOBS_COUNT_OFFSET];
-  const size_t sampleLength = reader.readUint16(BOBS_SAMPLE_LENGTH_OFFSET);
+  const std::size_t sampleOffset = reader.readUint32(0);
+  const std::size_t count = unpacked[BOBS_COUNT_OFFSET];
+  const std::size_t sampleLength = reader.readUint16(BOBS_SAMPLE_LENGTH_OFFSET);
   const uint16_t width = unpacked[BOBS_WIDTH_OFFSET] == 0
                              ? FULL_SCREEN_WIDTH
                              : unpacked[BOBS_WIDTH_OFFSET];
-  const size_t tableEnd = BOBS_HEADER_SIZE + count * BOB_DESCRIPTOR_SIZE;
+  const std::size_t tableEnd = BOBS_HEADER_SIZE + count * BOB_DESCRIPTOR_SIZE;
   if (tableEnd > unpacked.size()) {
     throw std::runtime_error("Data too small for the bob descriptor table");
   }
 
   const bool offsetInside = sampleOffset >= LONG_PREFIX_SIZE + tableEnd &&
                             sampleOffset - LONG_PREFIX_SIZE <= unpacked.size();
-  const size_t picturesEnd =
+  const std::size_t picturesEnd =
       offsetInside ? sampleOffset - LONG_PREFIX_SIZE : unpacked.size();
   const std::vector<uint8_t> samples =
       slice(unpacked, picturesEnd, picturesEnd + sampleLength);
@@ -221,7 +221,7 @@ FileInfo parseFooter(const std::vector<uint8_t> &rawData) {
     throw std::runtime_error("File too small for game suffix");
   }
 
-  size_t off = rawData.size() - SUFFIX_SIZE;
+  std::size_t off = rawData.size() - SUFFIX_SIZE;
   binary::BigEndianReader reader(rawData);
 
   FileInfo info;

@@ -1,4 +1,5 @@
 #include "../../../../../src/engine/effects/sequences/MenuSequence.h"
+
 #include "../../../../../src/engine/AmigaDisplay.h"
 
 #include <catch2/catch_all.hpp>

@@ -1,4 +1,5 @@
 #include "../../../lib/filesystem/readFile/readFile.h"
+
 #include "../../TemporaryPath.h"
 
 #include <catch2/catch_all.hpp>

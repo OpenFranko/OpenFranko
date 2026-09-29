@@ -13,6 +13,12 @@ namespace src {
 namespace systems {
 namespace input {
 
+inline constexpr int16_t JOY_UP = 1;
+inline constexpr int16_t JOY_DOWN = 2;
+inline constexpr int16_t JOY_LEFT = 4;
+inline constexpr int16_t JOY_RIGHT = 8;
+inline constexpr int16_t JOY_FIRE = 16;
+
 enum class FunctionKey { F1, F2, F3, F4, Escape, Other };
 
 enum class KeyMode { Game, FrontEnd, NameEntry };

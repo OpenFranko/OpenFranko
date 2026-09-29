@@ -88,7 +88,7 @@ void DoubleBuffer::autobackStep(const BobLayer &bobs, ImageBank &images) {
 
 DoubleBuffer::Snapshot DoubleBuffer::snapshot(const BobLayer &bobs) {
   Snapshot state{};
-  for (int number = 0; number < BobLayer::COUNT; ++number) {
+  for (int number = 0; number < BobLayer::BOBS; ++number) {
     BobState &bob = state[static_cast<std::size_t>(number)];
     bob.active = bobs.isActive(number);
     if (bob.active) {

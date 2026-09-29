@@ -49,7 +49,7 @@ private:
     Finished
   };
 
-  bool bobCol(int number, int first = 0, int last = core::BobLayer::COUNT - 1);
+  bool bobCol(int number, int first = 0, int last = core::BobLayer::BOBS - 1);
   void playRouted(int request, int voices);
 
   void newGame();

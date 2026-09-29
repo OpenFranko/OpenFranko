@@ -1,4 +1,5 @@
 #include "../../../lib/converter/fileContainer/fileContainer.h"
+
 #include "../../../lib/binary/binary.h"
 #include "../../../lib/converter/gameData/gameData.h"
 
@@ -20,16 +21,16 @@ std::vector<uint8_t> squash(const std::vector<uint8_t> &data) {
       bits.push_back(((value >> i) & 1u) != 0);
     }
   };
-  for (size_t end = data.size(); end > 0;) {
-    const size_t run = std::min<size_t>(8, end);
+  for (std::size_t end = data.size(); end > 0;) {
+    const std::size_t run = std::min<std::size_t>(8, end);
     put(0, 2);
     put(static_cast<uint32_t>(run - 1), 3);
-    for (size_t i = 0; i < run; ++i) {
+    for (std::size_t i = 0; i < run; ++i) {
       put(data[--end], 8);
     }
   }
   std::vector<uint32_t> words((bits.size() + 31) / 32, 0);
-  for (size_t i = 0; i < bits.size(); ++i) {
+  for (std::size_t i = 0; i < bits.size(); ++i) {
     words[i / 32] |= static_cast<uint32_t>(bits[i]) << (i % 32);
   }
   std::vector<uint8_t> stream;

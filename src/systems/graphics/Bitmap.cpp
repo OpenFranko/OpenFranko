@@ -1,5 +1,7 @@
 #include "graphics/Bitmap.h"
 
+#include "graphics/Display.h"
+
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
@@ -25,7 +27,6 @@ constexpr uint32_t UNCOMPRESSED = 0;
 constexpr uint32_t MAX_COLORS = 256;
 constexpr std::size_t PALETTE_ENTRY_SIZE = 4;
 constexpr std::size_t ROW_ALIGNMENT = 4;
-constexpr int CHANNEL_STEP = 17;
 
 [[noreturn]] void fail(const std::string &cause) {
   throw std::runtime_error(cause);

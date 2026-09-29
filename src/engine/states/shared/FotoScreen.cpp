@@ -8,7 +8,6 @@ namespace {
 constexpr int SCREEN_WIDTH = 368;
 constexpr int SCREEN_HEIGHT = 290;
 constexpr std::size_t SCREEN_COLORS = 32;
-using effects::color::BLACK;
 
 effects::color::AmigaPalette
 screenPalette(const systems::graphics::IndexedBitmap &picture) {
@@ -36,7 +35,7 @@ void FotoScreen::advance() {
     m_screen.setPalette(m_sequence.palette());
     m_screen.draw(m_picture, 0, -m_rows.first);
   } else {
-    m_screen.fill(BLACK);
+    m_screen.fill(effects::color::BLACK);
   }
   m_videoSystem.show(m_screen.output());
 }

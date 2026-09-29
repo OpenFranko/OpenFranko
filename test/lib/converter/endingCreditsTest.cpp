@@ -1,4 +1,5 @@
 #include "../../../lib/converter/endingCredits/endingCredits.h"
+
 #include "../../../lib/binary/binary.h"
 
 #include <catch2/catch_all.hpp>

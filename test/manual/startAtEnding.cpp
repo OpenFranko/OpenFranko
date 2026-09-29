@@ -11,13 +11,10 @@
 
 using namespace openfranko::src;
 using namespace openfranko::src::engine;
+using namespace openfranko::src::engine::amal;
 
 namespace {
 
-constexpr int RF = 5;
-constexpr int RG = 6;
-constexpr int RN = 13;
-constexpr int RO = 14;
 constexpr int16_t LAST_STAGE = 3;
 constexpr auto PANEL_DIRECTORY = "assets/0384/";
 

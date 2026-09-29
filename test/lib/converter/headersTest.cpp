@@ -8,19 +8,20 @@ using namespace openfranko::lib::converter::headers;
 
 namespace {
 
-void putBigEndian16(std::vector<uint8_t> &buf, size_t off, uint16_t v) {
+void putBigEndian16(std::vector<uint8_t> &buf, std::size_t off, uint16_t v) {
   buf[off] = static_cast<uint8_t>(v >> 8);
   buf[off + 1] = static_cast<uint8_t>(v);
 }
 
-void putBigEndian32(std::vector<uint8_t> &buf, size_t off, uint32_t v) {
+void putBigEndian32(std::vector<uint8_t> &buf, std::size_t off, uint32_t v) {
   buf[off] = static_cast<uint8_t>(v >> 24);
   buf[off + 1] = static_cast<uint8_t>(v >> 16);
   buf[off + 2] = static_cast<uint8_t>(v >> 8);
   buf[off + 3] = static_cast<uint8_t>(v);
 }
 
-void putBigEndian16Signed(std::vector<uint8_t> &buf, size_t off, int16_t v) {
+void putBigEndian16Signed(std::vector<uint8_t> &buf, std::size_t off,
+                          int16_t v) {
   putBigEndian16(buf, off, static_cast<uint16_t>(v));
 }
 

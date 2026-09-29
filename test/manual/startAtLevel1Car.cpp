@@ -4,10 +4,10 @@
 #include <utility>
 
 using namespace openfranko::src::engine;
+using namespace openfranko::src::engine::amal;
 
 namespace {
 
-constexpr int RO = 14;
 constexpr int16_t FIRST_STAGE = 1;
 
 } // namespace

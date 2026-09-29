@@ -7,18 +7,14 @@
 namespace openfranko::src::engine::effects::sequences {
 namespace {
 
-using color::BLACK;
-using color::WHITE;
-
 constexpr int WHITE_FRAMES = 5;
 constexpr int FOTO_WAIT_PER_SPEED = 15;
-constexpr int FOTO_OPEN_VBLS = 2 * SCREEN_OPEN_VBLS;
 
 } // namespace
 
 FotoSequence::FotoSequence(color::AmigaPalette picturePalette, Timings timings)
     : m_picturePalette(std::move(picturePalette)),
-      m_palette(m_picturePalette.size(), WHITE), m_timings(timings) {}
+      m_palette(m_picturePalette.size(), color::WHITE), m_timings(timings) {}
 
 bool FotoSequence::advance() {
   if (isFinished()) {
@@ -29,7 +25,7 @@ bool FotoSequence::advance() {
     m_fader.start(m_palette, m_timings.fadeInSpeed, m_picturePalette);
   } else if (m_frame == fadeOutStart()) {
     m_fader.start(m_palette, m_timings.fadeOutSpeed,
-                  color::AmigaPalette(m_palette.size(), BLACK));
+                  color::AmigaPalette(m_palette.size(), color::BLACK));
   }
 
   const bool flashed = m_flasher.advance(m_palette);

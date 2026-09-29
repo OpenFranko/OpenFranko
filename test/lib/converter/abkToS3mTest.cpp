@@ -1,4 +1,5 @@
 #include "../../../lib/converter/abkToS3m/abkToS3m.h"
+
 #include "../../../lib/binary/binary.h"
 
 #include <catch2/catch_all.hpp>
@@ -14,9 +15,9 @@ std::vector<uint8_t> buildMinimalAbk(const char *songName = "test song",
                                      uint16_t amosTempo = 17) {
   std::vector<uint8_t> music;
 
-  size_t sampleInfoOff = 12;
-  size_t songOff = 12 + 36;
-  size_t trackOff = songOff + 6 + 28 + 6;
+  std::size_t sampleInfoOff = 12;
+  std::size_t songOff = 12 + 36;
+  std::size_t trackOff = songOff + 6 + 28 + 6;
 
   pushBigEndian32(music, static_cast<uint32_t>(sampleInfoOff));
   pushBigEndian32(music, static_cast<uint32_t>(songOff));
@@ -55,7 +56,7 @@ std::vector<uint8_t> buildMinimalAbk(const char *songName = "test song",
   pushBigEndian16(music, 0);
   pushBigEndian16(music, 0xFFFF);
 
-  size_t expectedTrackOff = trackOff;
+  std::size_t expectedTrackOff = trackOff;
   while (music.size() < expectedTrackOff) {
     music.push_back(0);
   }

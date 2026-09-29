@@ -1,6 +1,8 @@
 #include "../../../../../src/engine/street/scenes/GameOverScene.h"
+
 #include "../../../../../src/engine/effects/color/Rainbow.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
+#include "../../../../../src/systems/input/ControllerSystem.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
 #include "SceneRunner.h"
@@ -19,6 +21,7 @@ using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
 using namespace openfranko::src::systems::graphics;
+using namespace openfranko::src::systems::input;
 
 namespace {
 
@@ -30,7 +33,6 @@ constexpr int OPENED_FRAME = OPEN_FRAME + 1 + 3;
 constexpr uint32_t GREY = 0xFF555555u;
 constexpr uint32_t RED = 0xFFFF0000u;
 constexpr int PAN_FRAMES = 545;
-constexpr int16_t JOY_FIRE = 16;
 constexpr uint8_t SILHOUETTE = 1;
 constexpr uint8_t TITLE_INK = 2;
 

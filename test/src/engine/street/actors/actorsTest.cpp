@@ -1,6 +1,8 @@
 #include "../../../../../src/engine/street/actors/Actors.h"
+
 #include "../../../../../src/engine/amal/Machine.h"
 #include "../../../../../src/engine/amal/Program.h"
+#include "../../../../../src/systems/input/ControllerSystem.h"
 #include "../../amal/Run.h"
 
 #include <catch2/catch_all.hpp>
@@ -11,23 +13,12 @@
 
 using namespace openfranko::src::engine::amal;
 using namespace openfranko::src::engine::street;
+using namespace openfranko::src::systems::input;
 using namespace openfranko::test::src::engine::amal;
 
 namespace {
 
-constexpr int RA = 0;
-constexpr int RB = 1;
-constexpr int RC = 2;
-constexpr int RD = 3;
-constexpr int RM = 12;
-constexpr int RU = 20;
-constexpr int RZ = 25;
 constexpr int FRAME_LIMIT = 1000;
-
-constexpr int16_t JOY_UP = 1;
-constexpr int16_t JOY_DOWN = 2;
-constexpr int16_t JOY_RIGHT = 8;
-constexpr int16_t JOY_FIRE = 16;
 
 bool contains(const std::string &program, const std::string &part) {
   return program.find(part) != std::string::npos;

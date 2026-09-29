@@ -13,11 +13,8 @@ namespace openfranko::src::engine::states::menu {
 namespace {
 
 constexpr int BACKDROP = 0x3B8;
-constexpr int TITLE = 0x3BA;
 constexpr int HISCORES = 0x3B9;
 constexpr int MENU_BOBS = 0x34;
-constexpr int LETTER_SET = 0x35;
-constexpr int MENU_TUNE = 0x261;
 
 constexpr int MENU_SCREEN_WIDTH = 368;
 constexpr int MENU_SCREEN_HEIGHT = 290;
@@ -36,9 +33,6 @@ constexpr int FIRST_LETTER_IMAGE = 1;
 constexpr int LETTER_IMAGES = 41;
 
 constexpr int MUSIC_ON_VOLUME = 63;
-constexpr int VERSION12_MUSIC_WAIT = 2;
-
-constexpr int RO = 14;
 
 systems::graphics::Canvas menuScreen(bool ntscDisplay) {
   return systems::graphics::Canvas(
@@ -110,11 +104,12 @@ MenuState::MenuState(systems::graphics::VideoSystem &videoSystem,
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_options(options),
       m_session(session), m_backdrop(loadPicture(BACKDROP, session.version)),
-      m_title(loadPicture(TITLE, session.version)),
+      m_title(loadPicture(assets::TITLE_SCREEN, session.version)),
       m_hiscores(loadPicture(HISCORES, session.version)),
       m_menuBobs(
           loadSprites(MENU_BOBS, menuImages(session.version), session.version)),
-      m_letters(loadSprites(LETTER_SET, LETTER_IMAGES, session.version)),
+      m_letters(
+          loadSprites(assets::LETTER_SET, LETTER_IMAGES, session.version)),
       m_menuScreen(menuScreen(options.ntsc)),
       m_menu(options, resized(m_backdrop.palette, MENU_COLORS),
              session.keyboard, session.version),
@@ -123,10 +118,10 @@ MenuState::MenuState(systems::graphics::VideoSystem &videoSystem,
   m_videoSystem.setNtsc(options.ntsc);
   m_session.nameScreenOpen = false;
   if (session.version == GameVersion::V12) {
-    m_audioSystem.loadMusic(
-        assets::musicPath(assets::resourceName(MENU_TUNE, session.version)));
+    m_audioSystem.loadMusic(assets::musicPath(
+        assets::resourceName(assets::MENU_TUNE, session.version)));
     m_audioSystem.playMusic();
-    m_musicWait = VERSION12_MUSIC_WAIT;
+    m_musicWait = effects::sequences::MenuSequence::VERSION12_MUSIC_WAIT;
   }
 }
 
@@ -170,7 +165,7 @@ std::optional<EngineStateId> MenuState::update() {
     switchStandard();
   }
   if (m_menu.isFinished()) {
-    m_session.registers[RO] = 0;
+    m_session.registers[amal::RO] = 0;
     street::session::applyCheatCodes(m_session);
     return EngineStateId::CharacterSelectionSequence;
   }

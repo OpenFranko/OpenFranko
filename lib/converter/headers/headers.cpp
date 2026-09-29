@@ -1,31 +1,31 @@
 #include "headers.h"
+
 #include "../../binary/binary.h"
 
 namespace openfranko::lib::converter::headers {
-
 namespace {
 
-constexpr size_t SPACK_SCREEN_WIDTH_OFFSET = 4;
-constexpr size_t SPACK_SCREEN_HEIGHT_OFFSET = 6;
-constexpr size_t SPACK_WINDOW_X_OFFSET = 8;
-constexpr size_t SPACK_WINDOW_Y_OFFSET = 10;
-constexpr size_t SPACK_WINDOW_WIDTH_OFFSET = 12;
-constexpr size_t SPACK_WINDOW_HEIGHT_OFFSET = 14;
-constexpr size_t SPACK_VIEW_X_OFFSET = 16;
-constexpr size_t SPACK_VIEW_Y_OFFSET = 18;
-constexpr size_t SPACK_DISPLAY_MODE_FLAGS_OFFSET = 20;
-constexpr size_t SPACK_COLORS_OFFSET = 22;
-constexpr size_t SPACK_BITPLANES_OFFSET = 24;
-constexpr size_t SPACK_PALETTE_OFFSET = 26;
+constexpr std::size_t SPACK_SCREEN_WIDTH_OFFSET = 4;
+constexpr std::size_t SPACK_SCREEN_HEIGHT_OFFSET = 6;
+constexpr std::size_t SPACK_WINDOW_X_OFFSET = 8;
+constexpr std::size_t SPACK_WINDOW_Y_OFFSET = 10;
+constexpr std::size_t SPACK_WINDOW_WIDTH_OFFSET = 12;
+constexpr std::size_t SPACK_WINDOW_HEIGHT_OFFSET = 14;
+constexpr std::size_t SPACK_VIEW_X_OFFSET = 16;
+constexpr std::size_t SPACK_VIEW_Y_OFFSET = 18;
+constexpr std::size_t SPACK_DISPLAY_MODE_FLAGS_OFFSET = 20;
+constexpr std::size_t SPACK_COLORS_OFFSET = 22;
+constexpr std::size_t SPACK_BITPLANES_OFFSET = 24;
+constexpr std::size_t SPACK_PALETTE_OFFSET = 26;
 
-constexpr size_t BITMAP_X_OFFSET_OFFSET = 4;
-constexpr size_t BITMAP_Y_OFFSET_OFFSET = 6;
-constexpr size_t BITMAP_GRID_X_OFFSET = 8;
-constexpr size_t BITMAP_GRID_Y_OFFSET = 10;
-constexpr size_t BITMAP_TILE_HEIGHT_OFFSET = 12;
-constexpr size_t BITMAP_BITPLANES_OFFSET = 14;
-constexpr size_t BITMAP_BYTE_TABLE2_POINTER_OFFSET = 16;
-constexpr size_t BITMAP_BITSTREAM_POINTER_OFFSET = 20;
+constexpr std::size_t BITMAP_X_OFFSET_OFFSET = 4;
+constexpr std::size_t BITMAP_Y_OFFSET_OFFSET = 6;
+constexpr std::size_t BITMAP_GRID_X_OFFSET = 8;
+constexpr std::size_t BITMAP_GRID_Y_OFFSET = 10;
+constexpr std::size_t BITMAP_TILE_HEIGHT_OFFSET = 12;
+constexpr std::size_t BITMAP_BITPLANES_OFFSET = 14;
+constexpr std::size_t BITMAP_BYTE_TABLE2_POINTER_OFFSET = 16;
+constexpr std::size_t BITMAP_BITSTREAM_POINTER_OFFSET = 20;
 
 } // namespace
 
@@ -45,7 +45,7 @@ SpackHeader parseSpackHeader(const std::vector<uint8_t> &data) {
   header.numberOfColors = reader.readUint16(SPACK_COLORS_OFFSET);
   header.numberOfBitplanes = reader.readUint16(SPACK_BITPLANES_OFFSET);
 
-  for (size_t i = 0; i < SPACK_COLOR_COUNT; i++) {
+  for (std::size_t i = 0; i < SPACK_COLOR_COUNT; ++i) {
     header.amigaPalette[i] = reader.readUint16(SPACK_PALETTE_OFFSET + i * 2);
   }
   return header;

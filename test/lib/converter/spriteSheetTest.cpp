@@ -1,4 +1,5 @@
 #include "../../../lib/converter/spriteSheet/spriteSheet.h"
+
 #include "../../../lib/binary/binary.h"
 #include "../../../lib/converter/gameData/palettes.h"
 #include "buildPackedBitmap.h"
@@ -98,7 +99,7 @@ SCENARIO("parseHeader reads sprite bank header and descriptors") {
     pushBigEndian16(buf, 16);
     pushBigEndian32(buf, 0);
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 10; ++i)
       buf.push_back(0);
 
     WHEN("parseHeader is called") {
@@ -120,7 +121,7 @@ SCENARIO("Sprite conversion says why a sprite could not be converted") {
     auto data = buildBankHeader(3, 8, 1, 16, 0, descs);
     auto bitmap = buildPackedBitmap(1, 1, 1, 1, {0x42}, {0x00}, {0x00});
     data.insert(data.end(), bitmap.begin(), bitmap.end());
-    const size_t noBitmapPos = 12 + 29 * 2;
+    const std::size_t noBitmapPos = 12 + 29 * 2;
     data.resize(noBitmapPos + 24, 0);
     std::vector<uint16_t> palette(palettes::LEVEL.begin(),
                                   palettes::LEVEL.end());
@@ -226,7 +227,7 @@ SCENARIO("applyScreenPalette colours s50's logo reflection like the logo") {
     for (uint16_t value : {320, 256, 0, 0, 320, 256, 0, 0, 0, 16, 4}) {
       pushBigEndian16(screen, value);
     }
-    for (uint16_t color = 0; color < 32; color++) {
+    for (uint16_t color = 0; color < 32; ++color) {
       pushBigEndian16(screen, color == 14   ? 0x035
                               : color == 16 ? 0xFFF
                                             : 0x000);

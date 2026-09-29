@@ -13,8 +13,8 @@ namespace animation {
 class AmalAnim {
 public:
   struct Frame {
-    int image;
-    int frames;
+    int image = 0;
+    int frames = 0;
   };
 
   AmalAnim() = default;

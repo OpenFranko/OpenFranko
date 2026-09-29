@@ -9,10 +9,10 @@ namespace openfranko::src::engine::effects::sequences {
 namespace {
 
 struct Icon {
-  int bob;
-  int16_t y;
-  bool left;
-  bool GameOptions::*option;
+  int bob = 0;
+  int16_t y = 0;
+  bool left = false;
+  bool GameOptions::*option = nullptr;
 };
 
 constexpr std::array<Icon, 6> ICONS = {{
@@ -32,18 +32,18 @@ constexpr std::array<int16_t, 2> HAND_X = {128, 240};
 constexpr std::array<int16_t, ROWS> HAND_Y = {32, 102, 172};
 
 struct Credit {
-  int bob;
-  int16_t y;
-  int firstImage;
-  int lastImage;
+  int bob = 0;
+  int16_t y = 0;
+  int firstImage = 0;
+  int lastImage = 0;
 };
 
 struct Layout {
-  std::array<int, 6> iconImages;
-  int startPressedImage;
-  int handImage;
-  std::array<Credit, 3> credits;
-  int16_t creditX;
+  std::array<int, 6> iconImages{};
+  int startPressedImage = 0;
+  int handImage = 0;
+  std::array<Credit, 3> credits{};
+  int16_t creditX = 0;
 };
 
 constexpr Layout VERSION10_LAYOUT = {
@@ -65,7 +65,6 @@ const Layout &layout(GameVersion version) {
 }
 
 constexpr int DIRECTIONS = 4;
-constexpr int VERSION12_MUSIC_WAIT = 2;
 constexpr int VERSION12_LEAVING_CLOSE_AT = 50;
 
 constexpr int ICON_PAIR_EVERY = 10;

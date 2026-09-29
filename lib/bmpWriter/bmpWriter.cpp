@@ -1,8 +1,8 @@
 #include "bmpWriter.h"
+
 #include "../binary/binary.h"
 
 namespace openfranko::lib::bmpWriter {
-
 namespace {
 
 constexpr uint32_t BMP_FILE_HEADER_SIZE = 14;
@@ -49,7 +49,7 @@ std::vector<uint8_t> pixelsToBmp(uint32_t width, uint32_t height,
   binary::pushLittleEndian32(buf, static_cast<uint32_t>(numberOfColors));
   binary::pushLittleEndian32(buf, 0);
 
-  for (uint32_t i = 0; i < BMP_PALETTE_ENTRY_COUNT; i++) {
+  for (uint32_t i = 0; i < BMP_PALETTE_ENTRY_COUNT; ++i) {
     if (static_cast<int>(i) < numberOfColors) {
       auto r = static_cast<uint8_t>(((palette[i] >> 8) & 0xF) * 17);
       auto g = static_cast<uint8_t>(((palette[i] >> 4) & 0xF) * 17);
@@ -63,7 +63,7 @@ std::vector<uint8_t> pixelsToBmp(uint32_t width, uint32_t height,
     }
   }
 
-  for (int y = static_cast<int>(height) - 1; y >= 0; y--) {
+  for (int y = static_cast<int>(height) - 1; y >= 0; --y) {
     const uint8_t *row = pixels + y * width;
     buf.insert(buf.end(), row, row + width);
     if (bmpRowBytes > width) {

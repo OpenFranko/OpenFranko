@@ -1,7 +1,7 @@
 #include "GameOverScene.h"
 
+#include "../../../systems/audio/Mixer.h"
 #include "../../AmigaDisplay.h"
-
 #include "../../effects/color/Rainbow.h"
 #include "../ui/StageFrame.h"
 
@@ -15,9 +15,6 @@ namespace {
 constexpr int OBJECTS = 0x36;
 constexpr int GRAVEYARD = 0x3BB;
 constexpr int GAME_OVER_TUNE = 0x262;
-
-constexpr int FULL_VOLUME = 63;
-using effects::color::BLACK;
 
 constexpr int TITLE = 1;
 constexpr int HAND = 2;
@@ -47,7 +44,7 @@ const std::vector<effects::animation::AmalAnim::Frame> HAND_FRAMES = {
     {1, 5}, {2, 5}, {3, 5}, {4, 5}, {5, 25}, {3, 5}, {2, 5}, {1, 25}};
 
 effects::color::AmigaPalette graveyardPalette() {
-  effects::color::AmigaPalette palette(32, BLACK);
+  effects::color::AmigaPalette palette(32, effects::color::BLACK);
   palette[2] = 0xF00;
   palette[9] = 0x222;
   return palette;
@@ -208,7 +205,7 @@ GameOverScene::Flow GameOverScene::wait(int frames, Step next) {
 }
 
 void GameOverScene::unpack() {
-  m_host.setMusicVolume(FULL_VOLUME);
+  m_host.setMusicVolume(systems::audio::Mixer::FULL_VOLUME);
   m_host.playMusic();
   m_screen.unpack(m_picture, 0, 0);
   m_picture = core::Picture{};
@@ -225,8 +222,8 @@ void GameOverScene::open() {
   m_animating = true;
   m_copperShown = true;
   m_copperOffset = m_offset;
-  m_copperBorder = BLACK;
-  m_session.border = BLACK;
+  m_copperBorder = effects::color::BLACK;
+  m_session.border = effects::color::BLACK;
   m_buffer->test(m_bobs, m_images);
 }
 
@@ -251,9 +248,10 @@ GameOverScene::Flow GameOverScene::click(int16_t joystick) {
   if (m_count <= CLICK_FRAMES && !pressed) {
     return Flow::Yield;
   }
-  m_fader.start(m_palette, FADE_SPEED,
-                effects::color::AmigaPalette(m_palette.size(), BLACK));
-  m_count = FULL_VOLUME;
+  m_fader.start(
+      m_palette, FADE_SPEED,
+      effects::color::AmigaPalette(m_palette.size(), effects::color::BLACK));
+  m_count = systems::audio::Mixer::FULL_VOLUME;
   m_step = Step::MusicFade;
   return Flow::Continue;
 }
@@ -261,7 +259,7 @@ GameOverScene::Flow GameOverScene::click(int16_t joystick) {
 GameOverScene::Flow GameOverScene::musicFade() {
   if (m_count < 0) {
     m_host.stopMusic();
-    m_host.setMusicVolume(FULL_VOLUME);
+    m_host.setMusicVolume(systems::audio::Mixer::FULL_VOLUME);
     m_count = HOLD_FRAMES;
     m_step = Step::Hold;
     return Flow::Yield;

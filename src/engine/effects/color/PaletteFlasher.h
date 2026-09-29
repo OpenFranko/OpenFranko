@@ -13,8 +13,8 @@ namespace effects {
 namespace color {
 
 struct FlashStep {
-  AmigaColor color;
-  int frames;
+  AmigaColor color = 0;
+  int frames = 0;
 };
 using FlashSteps = std::vector<FlashStep>;
 

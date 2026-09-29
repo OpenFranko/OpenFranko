@@ -1,4 +1,6 @@
 #include "../../../../../src/engine/street/scenes/StreetStage.h"
+
+#include "../../../../../src/systems/input/ControllerSystem.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
 #include "StageRunner.h"
@@ -15,26 +17,12 @@ using namespace openfranko::src::engine::street::scenes;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::ui;
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::src::engine::amal;
+using namespace openfranko::src::systems::input;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
 
 namespace {
-
-constexpr int RA = 0;
-constexpr int RB = 1;
-constexpr int RE = 4;
-constexpr int RF = 5;
-constexpr int RG = 6;
-constexpr int RI = 8;
-constexpr int RM = 12;
-constexpr int RN = 13;
-constexpr int RO = 14;
-constexpr int RQ = 16;
-constexpr int RW = 22;
-constexpr int RZ = 25;
-
-constexpr int16_t JOY_RIGHT = 8;
-constexpr int16_t JOY_FIRE = 16;
 
 constexpr int FRANKO = 0xFF;
 constexpr int ALEX = 0xFA;

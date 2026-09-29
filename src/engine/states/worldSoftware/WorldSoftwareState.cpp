@@ -1,5 +1,7 @@
 #include "WorldSoftwareState.h"
 
+#include "../../../systems/audio/Mixer.h"
+
 #include <cstddef>
 
 namespace openfranko::src::engine::states::worldSoftware {
@@ -41,7 +43,7 @@ std::optional<EngineStateId> WorldSoftwareState::update() {
 
   if (sequence.frame() == sequence.holdStart()) {
     sequence.flash(EYES_COLOR, EYES_FLASH);
-    m_audioSystem.playSample(SAMPLE, systems::audio::AudioSystem::ALL_VOICES);
+    m_audioSystem.playSample(SAMPLE, systems::audio::Mixer::ALL_VOICES);
   }
 
   m_foto.advance();

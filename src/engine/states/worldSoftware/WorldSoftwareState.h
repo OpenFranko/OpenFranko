@@ -16,7 +16,7 @@ class WorldSoftwareState : public EngineState {
 public:
   WorldSoftwareState(systems::graphics::VideoSystem &videoSystem,
                      systems::audio::AudioSystem &audioSystem);
-  ~WorldSoftwareState();
+  ~WorldSoftwareState() override;
 
   std::optional<EngineStateId> update() override;
 

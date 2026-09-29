@@ -1,4 +1,5 @@
 #include "spriteSheet.h"
+
 #include "../../binary/binary.h"
 #include "../../bmpWriter/bmpWriter.h"
 #include "../amosCompact/decodeAmosBitmap.h"
@@ -10,27 +11,26 @@
 #include <string_view>
 
 namespace openfranko::lib::converter::spriteSheet {
-
 namespace {
 
-constexpr size_t BANK_HEADER_SIZE = 12;
-constexpr size_t BANK_MAX_WIDTH_OFFSET = 2;
-constexpr size_t BANK_MAX_HEIGHT_OFFSET = 4;
-constexpr size_t BANK_COLORS_OFFSET = 6;
-constexpr size_t BANK_SAM_BANK_POINTER_OFFSET = 8;
+constexpr std::size_t BANK_HEADER_SIZE = 12;
+constexpr std::size_t BANK_MAX_WIDTH_OFFSET = 2;
+constexpr std::size_t BANK_MAX_HEIGHT_OFFSET = 4;
+constexpr std::size_t BANK_COLORS_OFFSET = 6;
+constexpr std::size_t BANK_SAM_BANK_POINTER_OFFSET = 8;
 constexpr uint16_t MAX_SPRITE_COUNT = 200;
 
-constexpr size_t DESCRIPTOR_SIZE = 10;
-constexpr size_t DESCRIPTOR_WIDTH_WORDS_OFFSET = 2;
-constexpr size_t DESCRIPTOR_HEIGHT_OFFSET = 4;
-constexpr size_t DESCRIPTOR_HOTSPOT_X_OFFSET = 6;
-constexpr size_t DESCRIPTOR_HOTSPOT_Y_OFFSET = 8;
+constexpr std::size_t DESCRIPTOR_SIZE = 10;
+constexpr std::size_t DESCRIPTOR_WIDTH_WORDS_OFFSET = 2;
+constexpr std::size_t DESCRIPTOR_HEIGHT_OFFSET = 4;
+constexpr std::size_t DESCRIPTOR_HOTSPOT_X_OFFSET = 6;
+constexpr std::size_t DESCRIPTOR_HOTSPOT_Y_OFFSET = 8;
 
-constexpr size_t BMP_HOTSPOT_X_OFFSET = 6;
-constexpr size_t BMP_HOTSPOT_Y_OFFSET = 8;
-constexpr size_t BMP_HOTSPOT_SIZE = 2;
-constexpr size_t BMP_PALETTE_OFFSET = 54;
-constexpr size_t BMP_PALETTE_ENTRY_SIZE = 4;
+constexpr std::size_t BMP_HOTSPOT_X_OFFSET = 6;
+constexpr std::size_t BMP_HOTSPOT_Y_OFFSET = 8;
+constexpr std::size_t BMP_HOTSPOT_SIZE = 2;
+constexpr std::size_t BMP_PALETTE_OFFSET = 54;
+constexpr std::size_t BMP_PALETTE_ENTRY_SIZE = 4;
 
 constexpr int FONT_FIRST_SPRITE = 43;
 constexpr int FONT_LAST_SPRITE = 100;
@@ -40,8 +40,8 @@ constexpr int LOGO_REFLECTION_LAST_SPRITE = 9;
 
 void setBmpPaletteEntry(std::vector<uint8_t> &bmp, int index, uint8_t r,
                         uint8_t g, uint8_t b) {
-  size_t offset =
-      BMP_PALETTE_OFFSET + static_cast<size_t>(index) * BMP_PALETTE_ENTRY_SIZE;
+  std::size_t offset = BMP_PALETTE_OFFSET +
+                       static_cast<std::size_t>(index) * BMP_PALETTE_ENTRY_SIZE;
   if (offset + BMP_PALETTE_ENTRY_SIZE > bmp.size()) {
     return;
   }
@@ -81,14 +81,14 @@ SpriteBankHeader parseHeader(const std::vector<uint8_t> &data) {
                              std::to_string(header.count));
   }
 
-  size_t tableEnd = BANK_HEADER_SIZE + header.count * DESCRIPTOR_SIZE;
+  std::size_t tableEnd = BANK_HEADER_SIZE + header.count * DESCRIPTOR_SIZE;
   if (data.size() < tableEnd) {
     throw std::runtime_error("Data too small for descriptor table");
   }
 
   header.descriptors.resize(header.count);
-  for (uint16_t i = 0; i < header.count; i++) {
-    size_t off = BANK_HEADER_SIZE + i * DESCRIPTOR_SIZE;
+  for (uint16_t i = 0; i < header.count; ++i) {
+    std::size_t off = BANK_HEADER_SIZE + i * DESCRIPTOR_SIZE;
     header.descriptors[i].wordOffset = reader.readUint16(off);
     header.descriptors[i].widthWords =
         reader.readUint16(off + DESCRIPTOR_WIDTH_WORDS_OFFSET);
@@ -119,10 +119,10 @@ SpriteSheet convertToSheet(const std::vector<uint8_t> &data,
   uint16_t maxHeight = 0;
   int numberOfDecoded = 0;
 
-  for (uint16_t i = 0; i < header.count; i++) {
-    size_t bitmapPos =
+  for (uint16_t i = 0; i < header.count; ++i) {
+    std::size_t bitmapPos =
         BANK_HEADER_SIZE +
-        static_cast<size_t>(header.descriptors[i].wordOffset) * 2;
+        static_cast<std::size_t>(header.descriptors[i].wordOffset) * 2;
 
     try {
       auto image = amosCompact::decodeAmosBitmap(data, bitmapPos);
@@ -133,7 +133,7 @@ SpriteSheet convertToSheet(const std::vector<uint8_t> &data,
         if (image.height > maxHeight) {
           maxHeight = image.height;
         }
-        numberOfDecoded++;
+        ++numberOfDecoded;
       } else {
         spriteErrors[i] = "Sprite decoded to an empty image";
       }
@@ -156,7 +156,7 @@ SpriteSheet convertToSheet(const std::vector<uint8_t> &data,
 
   std::vector<uint8_t> sheet(sheetWidth * sheetHeight, 0);
 
-  for (int i = 0; i < static_cast<int>(sprites.size()); i++) {
+  for (int i = 0; i < static_cast<int>(sprites.size()); ++i) {
     const auto &sprite = sprites[i];
     if (sprite.pixels.empty()) {
       continue;
@@ -167,8 +167,8 @@ SpriteSheet convertToSheet(const std::vector<uint8_t> &data,
     uint32_t cellX = static_cast<uint32_t>(column) * cellWidth + 1;
     uint32_t cellY = static_cast<uint32_t>(row) * cellHeight + 1;
 
-    for (uint32_t y = 0; y < sprite.height; y++) {
-      for (uint32_t x = 0; x < sprite.width; x++) {
+    for (uint32_t y = 0; y < sprite.height; ++y) {
+      for (uint32_t x = 0; x < sprite.width; ++x) {
         sheet[(cellY + y) * sheetWidth + (cellX + x)] =
             sprite.pixels[y * sprite.width + x];
       }
@@ -189,10 +189,10 @@ convertToIndividual(const std::vector<uint8_t> &data,
   std::vector<ConvertedSprite> results;
   results.reserve(header.count);
 
-  for (uint16_t i = 0; i < header.count; i++) {
+  for (uint16_t i = 0; i < header.count; ++i) {
     const auto &descriptor = header.descriptors[i];
-    size_t bitmapPos =
-        BANK_HEADER_SIZE + static_cast<size_t>(descriptor.wordOffset) * 2;
+    std::size_t bitmapPos =
+        BANK_HEADER_SIZE + static_cast<std::size_t>(descriptor.wordOffset) * 2;
 
     try {
       auto image = amosCompact::decodeAmosBitmap(data, bitmapPos);
@@ -220,7 +220,7 @@ void applySpritePaletteFixes(const std::string &fileId,
     return;
   }
   for (int i = FONT_FIRST_SPRITE;
-       i <= FONT_LAST_SPRITE && i < static_cast<int>(sprites.size()); i++) {
+       i <= FONT_LAST_SPRITE && i < static_cast<int>(sprites.size()); ++i) {
     setBmpPaletteEntry(sprites[i].data, 1, 0xFF, 0xFF, 0xFF);
     setBmpPaletteEntry(sprites[i].data, 2, 0xAA, 0xAA, 0xAA);
   }
@@ -249,7 +249,7 @@ void applyScreenPalette(const std::string &fileId,
   for (int i = LOGO_REFLECTION_FIRST_SPRITE;
        i <= LOGO_REFLECTION_LAST_SPRITE && i < static_cast<int>(sprites.size());
        i++) {
-    for (int color = 0; color < colors; color++) {
+    for (int color = 0; color < colors; ++color) {
       const uint16_t amiga = header.amigaPalette[color];
       setBmpPaletteEntry(sprites[i].data, color,
                          static_cast<uint8_t>(((amiga >> 8) & 0xF) * 17),

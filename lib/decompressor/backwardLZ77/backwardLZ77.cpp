@@ -1,4 +1,5 @@
 #include "backwardLZ77.h"
+
 #include "../../binary/binary.h"
 #include "consts.h"
 #include "detail/BitReader.h"
@@ -9,32 +10,31 @@
 #include <vector>
 
 namespace openfranko::lib::decompressor::backwardLZ77 {
-
 namespace {
 
-constexpr size_t TRAILER_CHECKSUM_OFFSET = 4;
-constexpr size_t TRAILER_UNPACKED_SIZE_OFFSET = 8;
+constexpr std::size_t TRAILER_CHECKSUM_OFFSET = 4;
+constexpr std::size_t TRAILER_UNPACKED_SIZE_OFFSET = 8;
 
-void applyMatch(std::vector<uint8_t> &out, size_t &writePos, size_t offset,
-                int count, size_t outputSize) {
-  for (int i = 0; i < count && writePos > 0; i++) {
-    writePos--;
-    size_t sourcePos = writePos + offset;
+void applyMatch(std::vector<uint8_t> &out, std::size_t &writePos,
+                std::size_t offset, int count, std::size_t outputSize) {
+  for (int i = 0; i < count && writePos > 0; ++i) {
+    --writePos;
+    std::size_t sourcePos = writePos + offset;
     out[writePos] = (sourcePos < outputSize) ? out[sourcePos] : 0;
   }
 }
 
-void applyLiteralRun(std::vector<uint8_t> &out, size_t &writePos,
+void applyLiteralRun(std::vector<uint8_t> &out, std::size_t &writePos,
                      detail::BitReader &reader, int count) {
-  for (int i = 0; i < count && writePos > 0; i++) {
-    writePos--;
+  for (int i = 0; i < count && writePos > 0; ++i) {
+    --writePos;
     out[writePos] = reader.readRawByte();
   }
 }
 
 void processDecompression(detail::BitReader &reader, std::vector<uint8_t> &out,
-                          size_t unpackedSize) {
-  size_t writePos = unpackedSize;
+                          std::size_t unpackedSize) {
+  std::size_t writePos = unpackedSize;
 
   while (writePos > 0) {
     bool isComplexCommand = reader.readBit();
@@ -82,7 +82,7 @@ std::vector<uint8_t> decompressStream(const std::vector<uint8_t> &stream) {
     throw std::runtime_error("Stream too small to contain its trailer");
   }
 
-  const size_t trailerStart = stream.size() - consts::TRAILER_SIZE;
+  const std::size_t trailerStart = stream.size() - consts::TRAILER_SIZE;
   binary::BigEndianReader trailerReader(stream);
 
   uint32_t unpackedSize =

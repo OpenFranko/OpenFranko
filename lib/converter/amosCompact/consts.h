@@ -12,8 +12,8 @@ namespace consts {
 
 inline constexpr uint32_t MINIMAL_SIZE = 4;
 
-inline constexpr size_t MAX_BITMAP_DIMENSION = 65535;
-inline constexpr size_t MAX_BITMAP_PIXELS = 64u * 1024u * 1024u;
+inline constexpr std::size_t MAX_BITMAP_DIMENSION = 65535;
+inline constexpr std::size_t MAX_BITMAP_PIXELS = 64u * 1024u * 1024u;
 
 } // namespace consts
 } // namespace amosCompact

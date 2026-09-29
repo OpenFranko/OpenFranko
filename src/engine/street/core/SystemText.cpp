@@ -7,8 +7,8 @@ namespace openfranko::src::engine::street::core {
 namespace {
 
 struct Glyph {
-  char character;
-  std::array<uint8_t, SYSTEM_FONT_HEIGHT> rows;
+  char character = '\0';
+  std::array<uint8_t, SYSTEM_FONT_HEIGHT> rows{};
 };
 
 constexpr std::array<Glyph, 11> GLYPHS = {{

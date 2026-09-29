@@ -22,7 +22,6 @@ constexpr int STRIP_WIDTH = 320;
 constexpr int STRIP_HEIGHT = 48;
 constexpr int STRIP_DISPLAY_LINE = 136;
 constexpr int STRIP_LEFT = 160;
-using effects::color::BLACK;
 
 std::vector<street::core::CreditPage> loadPages(const std::string &directory) {
   std::ifstream file(std::filesystem::path(directory) / INTRO_FILE);
@@ -59,7 +58,7 @@ void IntroStrip::show(const effects::sequences::BlyskSequence &sequence) {
       paste(*m_pasted);
     }
   }
-  m_frame.fill(BLACK);
+  m_frame.fill(effects::color::BLACK);
   m_frame.setPalette(sequence.palette());
   m_frame.draw(m_strip, STRIP_LEFT,
                STRIP_DISPLAY_LINE - FRAME_DISPLAY_LINE - m_rows.first);
@@ -69,7 +68,7 @@ void IntroStrip::show(const effects::sequences::BlyskSequence &sequence) {
 }
 
 void IntroStrip::showBlack() {
-  m_frame.fill(BLACK);
+  m_frame.fill(effects::color::BLACK);
   systems::graphics::Display display = m_frame.output();
   display.displayHeight = 2 * display.height;
   m_videoSystem.show(display);

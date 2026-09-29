@@ -1,4 +1,5 @@
 #include "../../../../../src/engine/street/core/HighScoreTable.h"
+
 #include "../../../../TemporaryPath.h"
 
 #include <catch2/catch_all.hpp>

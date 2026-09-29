@@ -1,4 +1,5 @@
 #include "bitmapExtractor.h"
+
 #include "../../binary/binary.h"
 #include "../../bmpWriter/bmpWriter.h"
 #include "../amosCompact/decodeAmosBitmap.h"
@@ -10,22 +11,21 @@
 #include <stdexcept>
 
 namespace openfranko::lib::converter::bitmapExtractor {
-
 namespace {
 
-constexpr size_t MAGIC_SIZE = 4;
-constexpr size_t LONG_ENTRY_SIZE = 4;
-constexpr size_t WORD_ENTRY_SIZE = 2;
-constexpr size_t TILE_HEADER_SIZE = 4;
-constexpr size_t TILE_COUNT_OFFSET = 3;
-constexpr size_t TILE_LENGTH_SIZE = 2;
+constexpr std::size_t MAGIC_SIZE = 4;
+constexpr std::size_t LONG_ENTRY_SIZE = 4;
+constexpr std::size_t WORD_ENTRY_SIZE = 2;
+constexpr std::size_t TILE_HEADER_SIZE = 4;
+constexpr std::size_t TILE_COUNT_OFFSET = 3;
+constexpr std::size_t TILE_LENGTH_SIZE = 2;
 constexpr uint16_t MIN_BITMAP_SIDE = 2;
 
-std::vector<size_t> findBmCodeOffsets(const std::vector<uint8_t> &data) {
-  std::vector<size_t> offsets;
+std::vector<std::size_t> findBmCodeOffsets(const std::vector<uint8_t> &data) {
+  std::vector<std::size_t> offsets;
   binary::BigEndianReader reader(data);
-  for (size_t off = 0; off + headers::PACKED_BITMAP_HEADER_SIZE <= data.size();
-       off += 2) {
+  for (std::size_t off = 0;
+       off + headers::PACKED_BITMAP_HEADER_SIZE <= data.size(); off += 2) {
     if (reader.readUint32(off) == headers::AMOS_BMCODE) {
       offsets.push_back(off);
     }
@@ -33,38 +33,38 @@ std::vector<size_t> findBmCodeOffsets(const std::vector<uint8_t> &data) {
   return offsets;
 }
 
-bool hasMagicAt(const std::vector<uint8_t> &data, size_t offset, uint32_t magic,
-                size_t headerSize) {
+bool hasMagicAt(const std::vector<uint8_t> &data, std::size_t offset,
+                uint32_t magic, std::size_t headerSize) {
   return offset + headerSize <= data.size() &&
          binary::BigEndianReader(data).readUint32(offset) == magic;
 }
 
-bool isBitmapAt(const std::vector<uint8_t> &data, size_t offset) {
+bool isBitmapAt(const std::vector<uint8_t> &data, std::size_t offset) {
   return hasMagicAt(data, offset, headers::AMOS_BMCODE,
                     headers::PACKED_BITMAP_HEADER_SIZE);
 }
 
-bool isScreenAt(const std::vector<uint8_t> &data, size_t offset) {
+bool isScreenAt(const std::vector<uint8_t> &data, std::size_t offset) {
   return hasMagicAt(data, offset, headers::SPACK_SCREEN_HEADER,
                     headers::SPACK_HEADER_SIZE);
 }
 
-std::vector<size_t> readBitmapTable(const std::vector<uint8_t> &data) {
+std::vector<std::size_t> readBitmapTable(const std::vector<uint8_t> &data) {
   binary::BigEndianReader reader(data);
-  for (size_t entrySize : {LONG_ENTRY_SIZE, WORD_ENTRY_SIZE}) {
+  for (std::size_t entrySize : {LONG_ENTRY_SIZE, WORD_ENTRY_SIZE}) {
     if (data.size() < entrySize) {
       continue;
     }
-    auto entry = [&](size_t pos) -> size_t {
+    auto entry = [&](std::size_t pos) -> std::size_t {
       return entrySize == LONG_ENTRY_SIZE ? reader.readUint32(pos)
                                           : reader.readUint16(pos);
     };
-    const size_t first = entry(0);
+    const std::size_t first = entry(0);
     if (first == 0 || first % entrySize != 0 || !isBitmapAt(data, first)) {
       continue;
     }
-    std::vector<size_t> offsets;
-    for (size_t pos = 0; pos < first; pos += entrySize) {
+    std::vector<std::size_t> offsets;
+    for (std::size_t pos = 0; pos < first; pos += entrySize) {
       offsets.push_back(entry(pos));
     }
     return offsets;
@@ -72,7 +72,7 @@ std::vector<size_t> readBitmapTable(const std::vector<uint8_t> &data) {
   return {};
 }
 
-std::vector<size_t> readTileChain(const std::vector<uint8_t> &data) {
+std::vector<std::size_t> readTileChain(const std::vector<uint8_t> &data) {
   if (data.size() < TILE_HEADER_SIZE + TILE_LENGTH_SIZE) {
     throw std::runtime_error("Tile file is too small for its header");
   }
@@ -82,9 +82,9 @@ std::vector<size_t> readTileChain(const std::vector<uint8_t> &data) {
   }
 
   binary::BigEndianReader reader(data);
-  std::vector<size_t> offsets;
-  size_t offset = TILE_HEADER_SIZE + TILE_LENGTH_SIZE;
-  for (int i = 0; i < count; i++) {
+  std::vector<std::size_t> offsets;
+  std::size_t offset = TILE_HEADER_SIZE + TILE_LENGTH_SIZE;
+  for (int i = 0; i < count; ++i) {
     if (!isBitmapAt(data, offset)) {
       throw std::runtime_error("Tile chain is broken at tile " +
                                std::to_string(i));
@@ -103,7 +103,7 @@ bool isTileFile(const std::string &fileId) {
 }
 
 std::vector<uint16_t> readSpackPalette(const std::vector<uint8_t> &data,
-                                       size_t offset) {
+                                       std::size_t offset) {
   if (offset > data.size()) {
     throw std::runtime_error("SPACK palette offset is past the end of data");
   }
@@ -121,7 +121,8 @@ std::string skipReason(const amosCompact::DecodedImage &image) {
          std::to_string(image.height) + " pixels";
 }
 
-ExtractedBitmap convertBitmap(const std::vector<uint8_t> &data, size_t offset,
+ExtractedBitmap convertBitmap(const std::vector<uint8_t> &data,
+                              std::size_t offset,
                               const std::vector<uint16_t> &palette,
                               const std::string &name, bool skipTiny) {
   try {
@@ -146,7 +147,7 @@ std::vector<ExtractedBitmap> extractScCode(const std::vector<uint8_t> &data,
   auto offsets = findBmCodeOffsets(data);
 
   std::vector<ExtractedBitmap> results;
-  for (size_t i = 0; i < offsets.size(); i++) {
+  for (std::size_t i = 0; i < offsets.size(); ++i) {
     std::string name = (i == 0) ? fileId : fileId + "_" + std::to_string(i);
     results.push_back(convertBitmap(data, offsets[i], palette, name, false));
   }
@@ -160,7 +161,7 @@ std::vector<ExtractedBitmap> extractTiles(const std::vector<uint8_t> &data,
   const std::vector<uint16_t> palette(gameData::palettes::LEVEL.begin(),
                                       gameData::palettes::LEVEL.end());
   std::vector<ExtractedBitmap> results;
-  for (size_t i = 0; i < offsets.size(); i++) {
+  for (std::size_t i = 0; i < offsets.size(); ++i) {
     char name[32];
     snprintf(name, sizeof(name), "%s_%03zu", fileId.c_str(), i);
     results.push_back(convertBitmap(data, offsets[i], palette, name, false));
@@ -178,7 +179,7 @@ extractMultiBmCode(const std::vector<uint8_t> &data,
   }
 
   std::vector<ExtractedBitmap> results;
-  for (size_t i = 0; i < offsets.size(); i++) {
+  for (std::size_t i = 0; i < offsets.size(); ++i) {
     std::string name = (i == 0) ? fileId : fileId + "_" + std::to_string(i);
     results.push_back(convertBitmap(data, offsets[i], palette, name, true));
   }
@@ -193,10 +194,10 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data,
   std::vector<ExtractedBitmap> results;
   binary::BigEndianReader reader(data);
 
-  size_t firstImage = data.size();
-  for (size_t pos = 0; pos + WORD_ENTRY_SIZE <= firstImage;
+  std::size_t firstImage = data.size();
+  for (std::size_t pos = 0; pos + WORD_ENTRY_SIZE <= firstImage;
        pos += WORD_ENTRY_SIZE) {
-    size_t offset = reader.readUint16(pos);
+    std::size_t offset = reader.readUint16(pos);
     const bool screen = isScreenAt(data, offset);
     if (offset <= pos || (!screen && !isBitmapAt(data, offset))) {
       break;
@@ -206,7 +207,7 @@ std::vector<ExtractedBitmap> extract0384(const std::vector<uint8_t> &data,
       palette = readSpackPalette(data, offset);
       offset += headers::SPACK_HEADER_SIZE;
     }
-    const size_t index = results.size();
+    const std::size_t index = results.size();
     std::string name =
         (index == 0) ? fileId : fileId + "_" + std::to_string(index);
     results.push_back(convertBitmap(data, offset, palette, name, true));

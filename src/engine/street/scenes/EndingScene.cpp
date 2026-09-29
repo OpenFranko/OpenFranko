@@ -1,6 +1,9 @@
 #include "EndingScene.h"
 
+#include "../../../systems/audio/Mixer.h"
 #include "../../AmigaDisplay.h"
+#include "../../effects/sequences/BlyskSequence.h"
+#include "../../effects/sequences/FotoSequence.h"
 #include "../actors/Actors.h"
 #include "../core/Font.h"
 #include "../ui/StageFrame.h"
@@ -13,21 +16,13 @@
 namespace openfranko::src::engine::street::scenes {
 namespace {
 
-constexpr int RO = 14;
-
 constexpr int DANCE_SET = 0x38;
 constexpr int STILL_SET = 0x37;
 constexpr int STILL_PICTURE = 0x3BD;
 constexpr int ENDING_TUNE = 0x25F;
-constexpr int FIRST_IMAGE = 1;
 
-constexpr int FULL_VOLUME = 63;
-using effects::color::BLACK;
 constexpr effects::color::AmigaColor DEFAULT_COLOR = 0x000;
-using effects::color::WHITE;
 constexpr effects::color::AmigaColor STILL_GREY = 0x444;
-constexpr effects::color::AmigaColor INK = 0xFFF;
-constexpr effects::color::AmigaColor SHADE = 0xAAA;
 
 constexpr int STAGE_WIDTH = 304;
 
@@ -38,7 +33,6 @@ constexpr int16_t KLIKER_FIRE = 16;
 constexpr int STILL_TOP = 50;
 constexpr int STILL_HEIGHT = 256;
 constexpr std::size_t STILL_COLORS = 32;
-constexpr int FOTO_OPEN_VBLS = 2;
 constexpr int FOTO_WHITE_WAIT = 5;
 constexpr int FOTO_SPEED = 4;
 constexpr int FOTO_WAIT = 60;
@@ -87,7 +81,7 @@ effects::color::AmigaPalette beat(effects::color::AmigaColor ink,
                                   effects::color::AmigaColor shade) {
   effects::color::AmigaPalette target(TEXT_COLORS,
                                       effects::color::PaletteFader::KEEP);
-  target[0] = BLACK;
+  target[0] = effects::color::BLACK;
   target[1] = ink;
   target[2] = shade;
   return target;
@@ -98,7 +92,7 @@ effects::color::AmigaPalette beat(effects::color::AmigaColor ink,
 EndingScene::EndingScene(StreetHost &host, session::GameSession &session,
                          bool ntsc)
     : m_host(host), m_session(session), m_machine(session.registers),
-      m_display(0, 0), m_border(ui::STAGE_BORDER), m_ntsc(ntsc),
+      m_display(0, 0), m_ntsc(ntsc),
       m_displayLine(pictureLine(DISPLAY_LINE, ntsc)) {}
 
 void EndingScene::advance(int16_t joystick) {
@@ -317,9 +311,10 @@ void EndingScene::runBasic(int16_t joystick) {
       flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::Foto);
       break;
     case Step::Foto:
-      m_host.setMusicVolume(FULL_VOLUME);
+      m_host.setMusicVolume(systems::audio::Mixer::FULL_VOLUME);
       m_host.playMusic();
-      flow = hold(FOTO_OPEN_VBLS, Step::FotoWhite);
+      flow = hold(effects::sequences::FotoSequence::FOTO_OPEN_VBLS,
+                  Step::FotoWhite);
       break;
     case Step::FotoWhite:
       fotoWhite();
@@ -373,8 +368,9 @@ void EndingScene::runBasic(int16_t joystick) {
         break;
       }
       m_screens[0].surface.fill(0);
-      m_fader.start(m_screens[0].palette, STILL_FADE_SPEED,
-                    effects::color::AmigaPalette(STILL_COLORS, BLACK));
+      m_fader.start(
+          m_screens[0].palette, STILL_FADE_SPEED,
+          effects::color::AmigaPalette(STILL_COLORS, effects::color::BLACK));
       flow = wait(STILL_FADE_WAIT, Step::CloseStill);
       break;
     case Step::CloseStill:
@@ -418,7 +414,8 @@ void EndingScene::runBasic(int16_t joystick) {
                   Step::PageFade);
       break;
     case Step::PageFade:
-      m_fader.start(m_screens[0].palette, BEAT_SPEED, beat(BLACK, BLACK));
+      m_fader.start(m_screens[0].palette, BEAT_SPEED,
+                    beat(effects::color::BLACK, effects::color::BLACK));
       flow = wait(BEAT_DARK, Step::PageClear);
       break;
     case Step::PageClear:
@@ -448,7 +445,7 @@ void EndingScene::runBasic(int16_t joystick) {
       break;
     case Step::DancerGone:
       closeScreen(1);
-      m_count = FULL_VOLUME;
+      m_count = systems::audio::Mixer::FULL_VOLUME;
       flow = hold(SCREEN_CLOSE_HIDDEN_VBLS, Step::MusicFade);
       break;
     case Step::MusicFade:
@@ -487,17 +484,19 @@ void EndingScene::era() {
   m_images.clear();
   m_parked.clear();
   m_loading.queue([this] {
-    m_images.load(FIRST_IMAGE, m_host.loadSpriteSet(DANCE_SET, 0));
+    m_images.load(core::ImageBank::FIRST_IMAGE,
+                  m_host.loadSpriteSet(DANCE_SET, 0));
     m_parked = std::move(m_images);
     m_images.clear();
   });
   m_loading.queue([this] {
-    m_images.load(FIRST_IMAGE, m_host.loadSpriteSet(STILL_SET, 0));
+    m_images.load(core::ImageBank::FIRST_IMAGE,
+                  m_host.loadSpriteSet(STILL_SET, 0));
   });
   m_loading.queue([this] {
     m_picture = m_host.loadPicture(STILL_PICTURE);
     m_picturePalette = m_host.loadPalette(STILL_PICTURE);
-    m_picturePalette.resize(STILL_COLORS, BLACK);
+    m_picturePalette.resize(STILL_COLORS, effects::color::BLACK);
   });
   m_loading.queue([this] { m_host.loadMusic(ENDING_TUNE); });
   m_step = Step::Loading;
@@ -505,11 +504,11 @@ void EndingScene::era() {
 
 void EndingScene::fotoWhite() {
   openScreen(0, STILL_TOP, STILL_HEIGHT,
-             effects::color::AmigaPalette(STILL_COLORS, WHITE));
+             effects::color::AmigaPalette(STILL_COLORS, effects::color::WHITE));
   m_screens[0].surface.unpack(m_picture, 0, 0);
   m_picture = core::Picture{};
   m_bobScreen = 0;
-  m_border = BLACK;
+  m_border = effects::color::BLACK;
 }
 
 void EndingScene::hideStill() {
@@ -558,7 +557,7 @@ void EndingScene::secondDance() {
 
 void EndingScene::textScreen() {
   effects::color::AmigaPalette palette(TEXT_COLORS, DEFAULT_COLOR);
-  std::fill_n(palette.begin(), 3, BLACK);
+  std::fill_n(palette.begin(), 3, effects::color::BLACK);
   openScreen(0, TEXT_TOP, TEXT_HEIGHT, std::move(palette));
   m_border = m_screens[0].palette[0];
 }
@@ -573,7 +572,9 @@ void EndingScene::pageUp() {
       core::BobLayer::paste(m_screens[0].surface, m_images, x, y, image);
     });
   }
-  m_fader.start(m_screens[0].palette, BEAT_SPEED, beat(INK, SHADE));
+  m_fader.start(m_screens[0].palette, BEAT_SPEED,
+                beat(effects::sequences::BlyskSequence::INK,
+                     effects::sequences::BlyskSequence::SHADE));
 }
 
 EndingScene::Flow EndingScene::musicFade() {
@@ -583,8 +584,8 @@ EndingScene::Flow EndingScene::musicFade() {
     return Flow::Yield;
   }
   m_host.stopMusic();
-  m_host.setMusicVolume(FULL_VOLUME);
-  m_session.stageReached = m_session.registers[RO];
+  m_host.setMusicVolume(systems::audio::Mixer::FULL_VOLUME);
+  m_session.stageReached = m_session.registers[amal::RO];
   m_session.border = m_border;
   m_step = Step::Finished;
   return Flow::Yield;

@@ -10,7 +10,6 @@
 namespace openfranko::src::engine::states::titleAndStory {
 namespace {
 
-constexpr int TITLE = 0x3BA;
 constexpr int STORY_FRAMES = 0x3BE;
 constexpr int STORY_PICTURES = 0x3BF;
 constexpr int STORY_TEXTS = 0x3C0;
@@ -18,7 +17,6 @@ constexpr int STORY_TEXTS = 0x3C0;
 constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
 constexpr std::size_t SCREEN_COLORS = 32;
-using effects::color::BLACK;
 
 constexpr int LOADING_FRAMES = 300;
 constexpr effects::sequences::FotoSequence ::Timings TITLE_TIMINGS{
@@ -38,8 +36,8 @@ constexpr int VERSION12_FRAMES_PER_ANIMATION_FRAME =
     VERSION12_FRAME_UNPACK + VERSION12_FRAME_WAIT;
 
 struct Position {
-  int x;
-  int y;
+  int x = 0;
+  int y = 0;
 };
 
 constexpr Position FRAME_POSITION{0, 72};
@@ -75,8 +73,8 @@ TitleAndStoryState::TitleAndStoryState(
     systems::input::ControllerSystem &controllerSystem, GameVersion version)
     : m_videoSystem(videoSystem), m_audioSystem(audioSystem),
       m_controllerSystem(controllerSystem), m_version(version),
-      m_titlePicture(systems::graphics::loadIndexedBitmap(
-          assets::picturePath(assets::resourceName(TITLE, version)))),
+      m_titlePicture(systems::graphics::loadIndexedBitmap(assets::picturePath(
+          assets::resourceName(assets::TITLE_SCREEN, version)))),
       m_frame(STORY_FRAMES, version), m_picture(STORY_PICTURES, version),
       m_text(STORY_TEXTS, version), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_title(screenPalette(m_titlePicture), version == GameVersion::V12
@@ -109,7 +107,7 @@ std::optional<EngineStateId> TitleAndStoryState::runTitle() {
         m_screen.setPalette(m_title.palette());
         m_screen.draw(m_titlePicture, 0, 0);
       } else {
-        m_screen.fill(BLACK);
+        m_screen.fill(effects::color::BLACK);
       }
       return std::nullopt;
     }
@@ -167,7 +165,8 @@ std::optional<EngineStateId> TitleAndStoryState::runStory() {
   if (m_phase == Phase::StoryOpening) {
     m_background = STORY_BACKGROUND_GREY;
     if (m_phaseFrames < STORY_SCREENS * SCREEN_OPEN_VBLS) {
-      m_screen.fill(m_phaseFrames == 0 ? BLACK : STORY_BACKGROUND_GREY);
+      m_screen.fill(m_phaseFrames == 0 ? effects::color::BLACK
+                                       : STORY_BACKGROUND_GREY);
       ++m_phaseFrames;
       return std::nullopt;
     }

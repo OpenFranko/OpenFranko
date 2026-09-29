@@ -11,8 +11,6 @@ namespace audio {
 
 class AudioSystem {
 public:
-  static constexpr int ALL_VOICES = 0xF;
-
   AudioSystem();
   ~AudioSystem();
 

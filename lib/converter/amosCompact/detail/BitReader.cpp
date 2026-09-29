@@ -2,8 +2,8 @@
 
 namespace openfranko::lib::converter::amosCompact::detail {
 
-BitReader::BitReader(const std::vector<uint8_t> &data, size_t offset)
-    : m_data(data), m_offset(offset), m_bit(7) {}
+BitReader::BitReader(const std::vector<uint8_t> &data, std::size_t offset)
+    : m_data(data), m_offset(offset) {}
 
 int BitReader::read() {
   if (m_offset >= m_data.size()) {
@@ -13,7 +13,7 @@ int BitReader::read() {
   int value = (m_data[m_offset] >> m_bit) & 1;
   if (--m_bit < 0) {
     m_bit = 7;
-    m_offset++;
+    ++m_offset;
   }
   return value;
 }

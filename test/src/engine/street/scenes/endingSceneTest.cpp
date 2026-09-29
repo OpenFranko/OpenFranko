@@ -1,6 +1,8 @@
 #include "../../../../../src/engine/street/scenes/EndingScene.h"
+
 #include "../../../../../src/engine/AmigaDisplay.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
+#include "../../../../../src/systems/input/ControllerSystem.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
 #include "SceneRunner.h"
@@ -19,13 +21,10 @@ using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
 using namespace openfranko::src::systems::graphics;
+using namespace openfranko::src::engine::amal;
+using namespace openfranko::src::systems::input;
 
 namespace {
-
-constexpr int RF = 5;
-constexpr int RG = 6;
-constexpr int RN = 13;
-constexpr int RO = 14;
 
 constexpr int DANCE_SET = 0x38;
 constexpr int STILL_SET = 0x37;
@@ -40,9 +39,6 @@ constexpr uint8_t BOB_COLOR = 9;
 constexpr uint8_t SCORE_COLOR = 4;
 constexpr int STAGE_TOP = 47;
 constexpr int PANEL_ROW = 270 - EndingScene::DISPLAY_LINE;
-
-constexpr int16_t JOY_RIGHT = 8;
-constexpr int16_t JOY_FIRE = 16;
 
 constexpr int LOADED = 3 + EndingScene::FILES * LoadingQueue::FILE_FRAMES + 1;
 constexpr int STILL_SHOWN = LOADED + SCREEN_CLOSE_VBLS + SCREEN_CLOSE_VBLS + 2;

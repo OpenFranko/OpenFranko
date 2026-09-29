@@ -1,7 +1,7 @@
 #include "StreetStage.h"
 
+#include "../../../systems/audio/Mixer.h"
 #include "../../AmigaDisplay.h"
-
 #include "../actors/Actors.h"
 
 #include <algorithm>
@@ -10,58 +10,28 @@
 namespace openfranko::src::engine::street::scenes {
 namespace {
 
-using actors::amosBool;
-
-constexpr int RA = 0;
-constexpr int RB = 1;
-constexpr int RC = 2;
-constexpr int RD = 3;
-constexpr int RE = 4;
-constexpr int RG = 6;
-constexpr int RI = 8;
-constexpr int RM = 12;
-constexpr int RN = 13;
-constexpr int RO = 14;
-constexpr int RQ = 16;
-constexpr int RV = 21;
-constexpr int RW = 22;
-constexpr int RY = 24;
-constexpr int RZ = 25;
-
-constexpr int PLAYER = 1;
 constexpr int PLAYER_BLOOD = 10;
 constexpr int ENEMY_BLOOD = 11;
-constexpr int INDICATOR = 12;
-constexpr int HIDDEN_IMAGE = 10;
-constexpr int SPLAT_IMAGE = 9;
-constexpr int IDLE_IMAGE = 17;
-
-constexpr int SCREEN_SHAKE_CHANNEL = 0;
-constexpr int INDICATOR_CHANNEL = 13;
-constexpr int ENEMY_BLOOD_CHANNEL = 14;
-constexpr int PLAYER_BLOOD_CHANNEL = 15;
 
 constexpr int COLUMNS_PER_CHUNK = 63;
 constexpr int SHORT_LEVEL_LENGTH = 32;
 constexpr int OPENING_SHOUT = 12;
-constexpr int ALL_VOICES = 15;
-constexpr int PRIORITY_VOICE = 1;
 constexpr int BACKGROUND_VOICE = 8;
 constexpr int THROWN = 30000;
-constexpr int STREET_Y = 172;
 constexpr int PLAYER_BLOCK_WIDTH = 48;
 constexpr int PLAYER_BLOCK_HEIGHT = 78;
 
 int sampleBank(int request) {
-  return -2 * amosBool(request < 12) -
-         4 * amosBool(request > 11 && request < 15) -
-         5 * amosBool(request > 14 && request < 18) -
-         6 * amosBool(request > 17 && request < 21);
+  return -2 * actors::amosBool(request < 12) -
+         4 * actors::amosBool(request > 11 && request < 15) -
+         5 * actors::amosBool(request > 14 && request < 18) -
+         6 * actors::amosBool(request > 17 && request < 21);
 }
 
 int rebasedSample(int request) {
-  return request + 11 * amosBool(request > 11) + 3 * amosBool(request > 14) +
-         3 * amosBool(request > 17);
+  return request + 11 * actors::amosBool(request > 11) +
+         3 * actors::amosBool(request > 14) +
+         3 * actors::amosBool(request > 17);
 }
 
 } // namespace
@@ -90,7 +60,7 @@ void StreetStage::playRouted(int request, int voices) {
 }
 
 void StreetStage::newGame() {
-  global(RQ) = m_options.character == Character::Alex ? 1 : 0;
+  global(amal::RQ) = m_options.character == Character::Alex ? 1 : 0;
   m_resident.fill(0);
   m_needed.fill(0);
   m_escape = false;
@@ -99,7 +69,7 @@ void StreetStage::newGame() {
 void StreetStage::gameInit() {
   openScreens(false);
   m_panelShown = false;
-  global(RN) = 0;
+  global(amal::RN) = 0;
 }
 
 void StreetStage::openScreens(bool shown) {
@@ -116,17 +86,17 @@ StreetStage::Flow StreetStage::stageInit() {
   m_session.keyLatch = session::SystemKey::None;
   m_host.stopMusic();
   m_images.clear();
-  global(RO) = word(global(RO) + 1);
-  m_energyShown = FULL_ENERGY;
+  global(amal::RO) = word(global(amal::RO) + 1);
+  m_energyShown = session::FULL_ENERGY;
   m_columnsWalked = 0;
   m_nextWave = 0;
   m_killsShown = 0;
   m_scrollPhase = 0;
-  m_playerX = 80 - 144 * amosBool(stage() == 2);
-  global(RA) = word(m_playerX);
-  global(RB) = word(STREET_Y);
-  m_facing = -32768 * amosBool(stage() == 2);
-  global(RC) = word(m_facing);
+  m_playerX = 80 - 144 * actors::amosBool(stage() == 2);
+  global(amal::RA) = word(m_playerX);
+  global(amal::RB) = word(STREET_Y);
+  m_facing = -32768 * actors::amosBool(stage() == 2);
+  global(amal::RC) = word(m_facing);
   m_columnInChunk = COLUMNS_PER_CHUNK;
   m_chunk = 1;
   m_screenOffsetX = stage() == 2 ? 16 : 0;
@@ -138,7 +108,7 @@ StreetStage::Flow StreetStage::stageMusic() {
   playMusic();
   m_loading.queue([this] { m_images.load(1, m_host.loadSpriteSet(0, 0)); });
   m_loading.queue([this] {
-    m_images.load(11, m_host.loadSpriteSet(255 - 5 * global(RQ), 2));
+    m_images.load(11, m_host.loadSpriteSet(255 - 5 * global(amal::RQ), 2));
   });
   m_loading.queue([this] { m_opening = m_host.loadPicture(stage() + 903); });
   m_loading.queue([this] {
@@ -185,7 +155,7 @@ StreetStage::Flow StreetStage::load(Step next) {
 
 bool StreetStage::grabPlayer() {
   const int left = m_playerX - 16;
-  const int top = global(RB) - 77;
+  const int top = global(amal::RB) - 77;
   m_block.emplace(m_buffer.logic(), left, top, PLAYER_BLOCK_WIDTH,
                   PLAYER_BLOCK_HEIGHT);
   return pasteStalled(left, top, IDLE_IMAGE + m_facing);
@@ -194,7 +164,7 @@ bool StreetStage::grabPlayer() {
 StreetStage::Flow StreetStage::stopForLoading(Step next) {
   m_machine.destroyAll();
   m_playerX = xBob(PLAYER);
-  global(RB) = word((global(RB) / 4) * 4);
+  global(amal::RB) = word((global(amal::RB) / 4) * 4);
   m_bobs.offAll();
   m_step = next;
   autoback([](core::IndexedSurface &) {});
@@ -204,7 +174,8 @@ StreetStage::Flow StreetStage::stopForLoading(Step next) {
 void StreetStage::streetSetup() {
   m_bobs.set(PLAYER_BLOOD, 1000, 100, HIDDEN_IMAGE);
   m_bobs.set(ENEMY_BLOOD, 1000, 100, HIDDEN_IMAGE);
-  m_bobs.set(INDICATOR, 242 + 164 * amosBool(stage() == 2), 32, HIDDEN_IMAGE);
+  m_bobs.set(INDICATOR, 242 + 164 * actors::amosBool(stage() == 2), 32,
+             HIDDEN_IMAGE);
   for (int channel = 1; channel <= 3; ++channel) {
     m_machine.bind(channel, &m_bobs.object(PLAYER));
   }
@@ -227,7 +198,7 @@ void StreetStage::streetSetup() {
   for (int i = 0; i <= 2; ++i) {
     reg(5 + i * 2, 7) = word(m_energy[static_cast<std::size_t>(i + 1)]);
   }
-  m_host.playSample(2, OPENING_SHOUT, ALL_VOICES);
+  m_host.playSample(2, OPENING_SHOUT, systems::audio::Mixer::ALL_VOICES);
 }
 
 StreetStage::Flow StreetStage::refereeTop() {
@@ -249,12 +220,12 @@ StreetStage::Flow StreetStage::refereeTop() {
   }
   if (reg(2, 4) == 9) {
     reg(2, 4) = 0;
-    global(RD) = 0;
+    global(amal::RD) = 0;
     m_machine.start(1);
   }
   if (reg(2, 1) == 9) {
     reg(2, 1) = 0;
-    global(RD) = 0;
+    global(amal::RD) = 0;
     m_machine.start(1);
   }
 
@@ -280,7 +251,7 @@ StreetStage::Flow StreetStage::refereeEnemies() {
     const int p = 2 * i + 1;
     if (reg(p, 9) > 1000) {
       const int image = std::abs(reg(p, 9) - 1000 - reg(p, 1));
-      int x = reg(p, 6) - 57 - 18 * amosBool(reg(p, 1) < 0);
+      int x = reg(p, 6) - 57 - 18 * actors::amosBool(reg(p, 1) < 0);
       if (stage() == 2) {
         x = x < -40 ? 400 : std::max(16, x);
       } else {
@@ -307,22 +278,24 @@ StreetStage::Flow StreetStage::refereeCorpseStamped() {
 
 StreetStage::Flow StreetStage::refereeMoves() {
   const auto inFront = [this](int i) {
-    return (xBob(i) < xBob(PLAYER) && global(RC) != 0) ||
-           (xBob(i) > xBob(PLAYER) && global(RC) == 0);
+    return (xBob(i) < xBob(PLAYER) && global(amal::RC) != 0) ||
+           (xBob(i) > xBob(PLAYER) && global(amal::RC) == 0);
   };
 
-  if (global(RD) == 2) {
+  if (global(amal::RD) == 2) {
     bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
       if (col(i) && reg(i * 2 + 1, 4) == 1 && yBob(PLAYER) < yBob(i) + 6 &&
           yBob(PLAYER) > yBob(i) - 6 && xBob(PLAYER) < 240 &&
-          xBob(PLAYER) > 42 && global(RC) != reg(i * 2, 2) &&
-          xBob(PLAYER) < xBob(i) - 25 * amosBool(global(RC) == 0) &&
-          xBob(PLAYER) > xBob(i) + 25 * amosBool(global(RC) != 0)) {
+          xBob(PLAYER) > 42 && global(amal::RC) != reg(i * 2, 2) &&
+          xBob(PLAYER) <
+              xBob(i) - 25 * actors::amosBool(global(amal::RC) == 0) &&
+          xBob(PLAYER) >
+              xBob(i) + 25 * actors::amosBool(global(amal::RC) != 0)) {
         const int p = i * 2 + 1;
-        m_bobs.setPosition(i,
-                           xBob(PLAYER) + 24 + 48 * amosBool(global(RC) == 0),
-                           yBob(PLAYER) - 4);
+        m_bobs.setPosition(
+            i, xBob(PLAYER) + 24 + 48 * actors::amosBool(global(amal::RC) == 0),
+            yBob(PLAYER) - 4);
         m_machine.freeze(i * 2);
         m_machine.freeze(1);
         reg(p, 1) = reg(i * 2, 2);
@@ -333,21 +306,21 @@ StreetStage::Flow StreetStage::refereeMoves() {
     }
   }
 
-  if (global(RD) == 1 || global(RD) == 2) {
+  if (global(amal::RD) == 1 || global(amal::RD) == 2) {
     bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
       if (col(i) && inFront(i) && yBob(i) == yBob(PLAYER)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
-        reg(p, 1) = word(0x8000 - global(RC));
+        reg(p, 1) = word(0x8000 - global(amal::RC));
         reg(p, 2) = 1;
-        reg(p, 0) = global(RD);
+        reg(p, 0) = global(amal::RD);
         break;
       }
     }
   }
 
-  if (global(RD) == 3) {
+  if (global(amal::RD) == 3) {
     bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
       if (col(i) && yBob(i) == yBob(PLAYER)) {
@@ -361,48 +334,49 @@ StreetStage::Flow StreetStage::refereeMoves() {
     }
   }
 
-  if (global(RD) == 4) {
+  if (global(amal::RD) == 4) {
     bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && global(RB) == yBob(i) && reg(i * 2 + 1, 2) != 1 &&
+      if (col(i) && global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1 &&
           reg(i * 2, 3) == 0 && inFront(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
-        reg(p, 1) = word(0x8000 - global(RC));
-        reg(p, 3) = word(16 + 32 * amosBool(reg(p, 1) == 0));
+        reg(p, 1) = word(0x8000 - global(amal::RC));
+        reg(p, 3) = word(16 + 32 * actors::amosBool(reg(p, 1) == 0));
         reg(p, 2) = 1;
         reg(p, 0) = 4;
       }
     }
   }
 
-  if (global(RD) == 5) {
+  if (global(amal::RD) == 5) {
     bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && global(RB) == yBob(i) && reg(i * 2 + 1, 2) != 1) {
+      if (col(i) && global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         reg(p, 1) = reg(i * 2, 2);
-        reg(p, 3) = word(16 + 32 * amosBool(reg(p, 1) == 0));
+        reg(p, 3) = word(16 + 32 * actors::amosBool(reg(p, 1) == 0));
         reg(p, 2) = 1;
         reg(p, 0) = 5;
       }
     }
   }
 
-  if (global(RD) == 6) {
+  if (global(amal::RD) == 6) {
     bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
-      if (reg(i * 2 + 1, 5) == 0 && global(RC) != reg(i * 2, 2) && col(i) &&
-          reg(2, 5) == 0 && yBob(PLAYER) == yBob(i) && inFront(i)) {
+      if (reg(i * 2 + 1, 5) == 0 && global(amal::RC) != reg(i * 2, 2) &&
+          col(i) && reg(2, 5) == 0 && yBob(PLAYER) == yBob(i) && inFront(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         m_machine.freeze(1);
-        reg(p, 1) = word(0x8000 - global(RC));
-        m_bobs.setX(i, xBob(PLAYER) + 40 + 80 * amosBool(global(RC) != 0));
-        reg(p, 6) = word(16 + 32 * amosBool(global(RC) == 0));
+        reg(p, 1) = word(0x8000 - global(amal::RC));
+        m_bobs.setX(i, xBob(PLAYER) + 40 +
+                           80 * actors::amosBool(global(amal::RC) != 0));
+        reg(p, 6) = word(16 + 32 * actors::amosBool(global(amal::RC) == 0));
         reg(p, 2) = 1;
-        reg(p, 3) = word(16 + 32 * amosBool(reg(p, 1) == 0));
+        reg(p, 3) = word(16 + 32 * actors::amosBool(reg(p, 1) == 0));
         reg(2, 5) = 1;
         reg(p, 0) = 6;
         break;
@@ -411,33 +385,33 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   for (int i = 2; i <= 4; ++i) {
-    if (bobCol(i) && col(PLAYER) && global(RD) == 0 &&
+    if (bobCol(i) && col(PLAYER) && global(amal::RD) == 0 &&
         yBob(PLAYER) == yBob(i) && reg(2, 1) == 0 && reg(i * 2, 9) > 0 &&
         reg(i * 2, 9) < 4 && reg(i * 2 + 1, 0) == 0) {
       if ((reg(i * 2, 2) == 0 && xBob(PLAYER) > xBob(i)) ||
           (reg(i * 2, 2) != 0 && xBob(PLAYER) < xBob(i))) {
         m_machine.freeze(1);
-        global(RV) = 0;
+        global(amal::RV) = 0;
         reg(2, 5) = 0;
         reg(2, 9) = 50;
         reg(5, 9) = 50;
         reg(7, 9) = 50;
         reg(9, 9) = 50;
-        m_bobs.setX(i, xBob(i) + 8 + 16 * amosBool(reg(2 * i, 2) == 0));
-        global(RC) = word(0x8000 - reg(2 * i, 2));
-        reg(2, 2) = word(32 + 64 * amosBool(global(RC) == 0));
+        m_bobs.setX(i, xBob(i) + 8 + 16 * actors::amosBool(reg(2 * i, 2) == 0));
+        global(amal::RC) = word(0x8000 - reg(2 * i, 2));
+        reg(2, 2) = word(32 + 64 * actors::amosBool(global(amal::RC) == 0));
         reg(2, 1) = reg(i * 2, 9);
       }
     }
   }
 
-  if (global(RW) != 0) {
-    const int request = global(RW);
-    global(RW) = 0;
+  if (global(amal::RW) != 0) {
+    const int request = global(amal::RW);
+    global(amal::RW) = 0;
     playRouted(request, PRIORITY_VOICE);
-  } else if (global(RE) != 0) {
-    const int request = global(RE);
-    global(RE) = 0;
+  } else if (global(amal::RE) != 0) {
+    const int request = global(amal::RE);
+    global(amal::RE) = 0;
     playRouted(request, BACKGROUND_VOICE);
   }
 
@@ -451,7 +425,7 @@ StreetStage::Flow StreetStage::refereeMoves() {
     const auto knockDown = [this, i](int channel) {
       m_machine.freeze(channel - 1);
       reg(channel, 1) = word(0x8000 - reg(i * 2 + 1, 1));
-      reg(channel, 3) = word(16 + 32 * amosBool(reg(channel, 1) == 0));
+      reg(channel, 3) = word(16 + 32 * actors::amosBool(reg(channel, 1) == 0));
       reg(channel, 2) = 1;
       reg(channel, 0) = 4;
       reg(i * 2 + 1, 3) = 0;
@@ -467,16 +441,16 @@ StreetStage::Flow StreetStage::refereeMoves() {
     }
   }
 
-  if (m_escape || global(RG) == -2) {
+  if (m_escape || global(amal::RG) == -2) {
     gameOver();
     return Flow::Continue;
   }
-  if (global(RI) < 0) {
+  if (global(amal::RI) < 0) {
     m_step = Step::AdvanceWait;
     return Flow::Continue;
   }
-  if (global(RI) == 0) {
-    global(RI) = -1;
+  if (global(amal::RI) == 0) {
+    global(amal::RI) = -1;
   }
 
   m_index = PLAYER_BLOOD;
@@ -522,7 +496,7 @@ StreetStage::Flow StreetStage::refereeTail() {
 }
 
 StreetStage::Flow StreetStage::advanceWait() {
-  if (global(RZ) != 0 || global(RY) != 0 || global(RM) != 0) {
+  if (global(amal::RZ) != 0 || global(amal::RY) != 0 || global(amal::RM) != 0) {
     return Flow::Yield;
   }
   advanceSetup();
@@ -550,13 +524,13 @@ StreetStage::Flow StreetStage::advanceTop(const StreetInput &input) {
   if (waveDue && m_scrollPhase == 1) {
     return stopForLoading(Step::SpawnFlushed);
   }
-  if (global(RE) != 0) {
-    m_host.playSample(2, global(RE), PRIORITY_VOICE);
-    global(RE) = 0;
+  if (global(amal::RE) != 0) {
+    m_host.playSample(2, global(amal::RE), PRIORITY_VOICE);
+    global(amal::RE) = 0;
   }
   if (m_columnInChunk == COLUMNS_PER_CHUNK) {
     m_machine.freezeAll();
-    m_bobs.setPosition(PLAYER, xBob(PLAYER), (global(RB) / 4) * 4);
+    m_bobs.setPosition(PLAYER, xBob(PLAYER), (global(amal::RB) / 4) * 4);
     m_bobs.setImage(PLAYER, IDLE_IMAGE + m_facing);
     m_loading.queue([this] {
       m_columns = m_host.loadScenery(300 + stage() * 10 + m_chunk);
@@ -580,12 +554,12 @@ StreetStage::Flow StreetStage::advanceWalk(const StreetInput &input) {
   int bias = 0;
   if (stage() == 2) {
     walking = xBob(PLAYER) < 164 && joystick < 16 && (joystick & 4) &&
-              iBob(PLAYER) < 17 && global(RD) == 0;
-    bias = 6 - 2 * amosBool(xBob(PLAYER) < 152);
+              iBob(PLAYER) < 17 && global(amal::RD) == 0;
+    bias = 6 - 2 * actors::amosBool(xBob(PLAYER) < 152);
   } else {
     walking = xBob(PLAYER) > 152 && joystick < 16 && (joystick & 8) &&
-              iBob(PLAYER) < 17 && global(RD) == 0;
-    bias = 6 - 2 * amosBool(xBob(PLAYER) > 164);
+              iBob(PLAYER) < 17 && global(amal::RD) == 0;
+    bias = 6 - 2 * actors::amosBool(xBob(PLAYER) > 164);
   }
   if (!walking) {
     return advanceTail();
@@ -654,14 +628,14 @@ StreetStage::Flow StreetStage::spawnPasted() {
   test();
   m_panel->showWaiting();
   const core::Wave &wave = m_script.waves[static_cast<std::size_t>(m_nextWave)];
-  global(RI) = 3;
+  global(amal::RI) = 3;
 
   for (int i = 1; i <= 3; ++i) {
     const int resident = m_resident[static_cast<std::size_t>(i)];
     m_needed[static_cast<std::size_t>(i)] =
-        amosBool(wave.slots[0].spriteSet == resident ||
-                 wave.slots[1].spriteSet == resident ||
-                 wave.slots[2].spriteSet == resident);
+        actors::amosBool(wave.slots[0].spriteSet == resident ||
+                         wave.slots[1].spriteSet == resident ||
+                         wave.slots[2].spriteSet == resident);
   }
   int slot = 0;
   for (const core::EnemySlot &enemy : wave.slots) {
@@ -711,14 +685,15 @@ void StreetStage::spawnLoaded() {
       m_bobs.set(j, 1000, 300, HIDDEN_IMAGE);
       m_machine.create(j * 2, actors::idle(m_session.version));
       m_machine.create(j * 2 + 1, actors::idle(m_session.version));
-      global(RI) = word(global(RI) - 1);
+      global(amal::RI) = word(global(amal::RI) - 1);
       continue;
     }
     m_energy[static_cast<std::size_t>(j - 1)] = enemy.energy;
     m_aggression[static_cast<std::size_t>(j - 1)] = enemy.aggression;
     m_bobs.set(j, enemy.x, enemy.y, HIDDEN_IMAGE);
-    const int base = 0 - 25 * amosBool(m_resident[2] == enemy.spriteSet) -
-                     50 * amosBool(m_resident[3] == enemy.spriteSet);
+    const int base = 0 -
+                     25 * actors::amosBool(m_resident[2] == enemy.spriteSet) -
+                     50 * actors::amosBool(m_resident[3] == enemy.spriteSet);
     const auto programs = actors::enemy(base, enemy.type, m_session.version);
     m_machine.create(j * 2, programs.walk);
     m_machine.create(j * 2 + 1, programs.damage);
@@ -726,7 +701,8 @@ void StreetStage::spawnLoaded() {
 
   ++m_nextWave;
   ++m_wavesSpawned;
-  m_bobs.set(PLAYER, m_playerX, (global(RB) / 4) * 4, IDLE_IMAGE + m_facing);
+  m_bobs.set(PLAYER, m_playerX, (global(amal::RB) / 4) * 4,
+             IDLE_IMAGE + m_facing);
   putBlock(*m_block);
   m_block.reset();
 }

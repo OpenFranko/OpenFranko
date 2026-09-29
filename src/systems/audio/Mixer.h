@@ -21,7 +21,9 @@ class Mixer {
 public:
   static constexpr int VOICES = 4;
   static constexpr int ALL_VOICES = 0xF;
+  static constexpr int STEREO = 2;
   static constexpr int MAX_VOLUME = 64;
+  static constexpr int FULL_VOLUME = 63;
   static constexpr int SAMPLE_VOLUME = 56;
 
   explicit Mixer(int outputRate);
@@ -52,6 +54,8 @@ public:
   void render(int16_t *stereo, int frames);
 
 private:
+  static constexpr int DEFAULT_MUSIC_VOLUME = 56;
+
   struct Voice {
     const Sound *sound = nullptr;
     int frequency = 0;
@@ -61,8 +65,8 @@ private:
   };
 
   struct Playing {
-    const Sound *sound;
-    int frequency;
+    const Sound *sound = nullptr;
+    int frequency = 0;
   };
 
   struct Module;
@@ -101,7 +105,7 @@ private:
   RowPosition m_lastPosition{-1, -1};
   ModuleTiming m_overrideTiming{0, 0};
   std::set<RowPosition> m_tempoRows;
-  int m_musicVolume;
+  int m_musicVolume = DEFAULT_MUSIC_VOLUME;
   std::vector<int16_t> m_musicBuffer;
   std::array<Voice, VOICES> m_voices;
   std::optional<Playing> m_silencing;

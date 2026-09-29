@@ -23,7 +23,7 @@ class SpiderLogoState : public EngineState {
 public:
   SpiderLogoState(systems::graphics::VideoSystem &videoSystem,
                   systems::audio::AudioSystem &audioSystem);
-  ~SpiderLogoState();
+  ~SpiderLogoState() override;
 
   std::optional<EngineStateId> update() override;
 

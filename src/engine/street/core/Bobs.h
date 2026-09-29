@@ -22,6 +22,7 @@ public:
   static constexpr uint16_t FLIP_X = 0x8000;
   static constexpr uint16_t FLIP_Y = 0x4000;
   static constexpr uint16_t NUMBER_MASK = 0x3FFF;
+  static constexpr int FIRST_IMAGE = 1;
 
   void clear();
   void load(int base, const std::vector<Picture> &frames);
@@ -50,7 +51,7 @@ struct SavedArea {
 
 class BobLayer {
 public:
-  static constexpr int COUNT = 64;
+  static constexpr int BOBS = 64;
 
   amal::Object &object(int number);
   void set(int number, int x, int y, int image);
@@ -66,7 +67,7 @@ public:
   int16_t image(int number) const;
 
   bool collide(int number, const ImageBank &images, int first = 0,
-               int last = COUNT - 1);
+               int last = BOBS - 1);
   bool collided(int number) const;
 
   void draw(IndexedSurface &surface, ImageBank &images) const;
@@ -94,8 +95,8 @@ private:
     amal::Object object;
   };
 
-  std::array<Bob, COUNT> m_bobs{};
-  std::array<bool, COUNT> m_collisions{};
+  std::array<Bob, BOBS> m_bobs{};
+  std::array<bool, BOBS> m_collisions{};
 };
 
 } // namespace core

@@ -4,6 +4,9 @@
 #include "../../AmigaDisplay.h"
 #include "../color/AmigaPalette.h"
 
+#include <array>
+#include <cstddef>
+
 namespace openfranko {
 namespace src {
 namespace engine {
@@ -15,6 +18,17 @@ public:
   enum class Kind { Title, Hiscores };
 
   static constexpr int HISCORE_ROWS = 10;
+
+  struct Relit {
+    std::size_t index = 0;
+    color::AmigaColor color = 0;
+  };
+
+  static constexpr std::array<Relit, 3> RELIT = {{
+      {29, 0x769},
+      {30, 0xB95},
+      {31, 0xFC0},
+  }};
 
   AttractSequence(Kind kind, color::AmigaPalette picturePalette);
 

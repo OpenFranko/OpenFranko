@@ -1,6 +1,8 @@
 #include "../../../../../src/engine/street/scenes/ContinueScene.h"
+
 #include "../../../../../src/engine/AmigaDisplay.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
+#include "../../../../../src/systems/input/ControllerSystem.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
 #include "SceneRunner.h"
@@ -14,16 +16,14 @@ using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::street::scenes;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::core;
+using namespace openfranko::src::engine::amal;
+using namespace openfranko::src::systems::input;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
 
 namespace {
 
-constexpr int RO = 14;
 constexpr int MACH_WAIT = 40;
-constexpr int16_t JOY_LEFT = 4;
-constexpr int16_t JOY_RIGHT = 8;
-constexpr int16_t JOY_FIRE = 16;
 constexpr uint8_t HAND_INK = 18;
 constexpr uint8_t QUESTION_INK = 31;
 constexpr uint32_t PURPLE = 0xFF770077u;

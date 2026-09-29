@@ -1,4 +1,5 @@
 #include "../../../lib/converter/audioExtractor/audioExtractor.h"
+
 #include "../../../lib/binary/binary.h"
 
 #include <catch2/catch_all.hpp>

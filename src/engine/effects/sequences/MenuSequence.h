@@ -23,6 +23,8 @@ namespace sequences {
 
 class MenuSequence {
 public:
+  static constexpr int VERSION12_MUSIC_WAIT = 2;
+
   struct Joystick {
     bool up = false;
     bool down = false;

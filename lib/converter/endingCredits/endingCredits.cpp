@@ -1,4 +1,5 @@
 #include "endingCredits.h"
+
 #include "../../binary/binary.h"
 #include "../../json/json.h"
 
@@ -9,7 +10,6 @@
 #include <stdexcept>
 
 namespace openfranko::lib::converter::endingCredits {
-
 namespace {
 
 constexpr uint32_t HUNK_TYPE_MASK = 0x3FFFFFFF;
@@ -37,7 +37,7 @@ constexpr int ADDQ_DATA_SHIFT = 9;
 constexpr int ADDQ_EIGHT = 8;
 
 constexpr int CREDITS_GLYPH_OFFSET = 6;
-constexpr size_t CALL_SIZE = 8;
+constexpr std::size_t CALL_SIZE = 8;
 
 constexpr char FIRST_PRINTABLE = 0x20;
 constexpr char LAST_PRINTABLE = 0x7E;
@@ -45,17 +45,18 @@ constexpr char LAST_PRINTABLE = 0x7E;
 struct Push {
   bool longImmediate = false;
   int32_t value = 0;
-  size_t start = 0;
+  std::size_t start = 0;
 };
 
 struct Call {
-  size_t at = 0;
+  std::size_t at = 0;
   uint32_t target = 0;
   std::optional<std::string> text;
   int32_t value = 0;
 };
 
-std::optional<Push> pushBefore(const std::vector<uint8_t> &code, size_t end) {
+std::optional<Push> pushBefore(const std::vector<uint8_t> &code,
+                               std::size_t end) {
   const binary::BigEndianReader reader(code);
   if (end >= 4 && reader.readUint16(end - 2) == PUSH_D3 &&
       code[end - 4] == MOVEQ_D3) {
@@ -74,11 +75,11 @@ std::optional<Push> pushBefore(const std::vector<uint8_t> &code, size_t end) {
 std::optional<std::string> stringAt(const std::vector<uint8_t> &code,
                                     int32_t offset) {
   if (offset < 0 || offset % 2 != 0 ||
-      static_cast<size_t>(offset) + 2 > code.size()) {
+      static_cast<std::size_t>(offset) + 2 > code.size()) {
     return std::nullopt;
   }
-  const size_t start = static_cast<size_t>(offset);
-  const size_t length = binary::BigEndianReader(code).readUint16(start);
+  const std::size_t start = static_cast<std::size_t>(offset);
+  const std::size_t length = binary::BigEndianReader(code).readUint16(start);
   if (length == 0 || start + 2 + length > code.size()) {
     return std::nullopt;
   }
@@ -94,7 +95,7 @@ std::optional<std::string> stringAt(const std::vector<uint8_t> &code,
 std::vector<Call> procedureCalls(const std::vector<uint8_t> &code) {
   const binary::BigEndianReader reader(code);
   std::vector<Call> calls;
-  for (size_t at = 0; at + CALL_SIZE <= code.size(); at += 2) {
+  for (std::size_t at = 0; at + CALL_SIZE <= code.size(); at += 2) {
     if (reader.readUint16(at) != CLEAR_D5 ||
         reader.readUint16(at + 2) != JSR_LONG) {
       continue;
@@ -122,7 +123,7 @@ uint32_t mostFrequent(const std::map<uint32_t, int> &counts) {
 
 int glyphOffset(const std::vector<uint8_t> &code, uint32_t font) {
   const binary::BigEndianReader reader(code);
-  for (size_t at = font;
+  for (std::size_t at = font;
        at + 8 <= code.size() && reader.readUint16(at) != JMP_A4; at += 2) {
     const uint16_t addq = reader.readUint16(at + 4);
     if (reader.readUint16(at) == JSR_A4 &&
@@ -146,7 +147,7 @@ std::optional<uint32_t> fontProcedure(const std::vector<Call> &calls) {
   std::map<uint32_t, int> textCalls;
   for (const Call &call : calls) {
     if (call.text) {
-      textCalls[call.target]++;
+      ++textCalls[call.target];
     }
   }
   if (textCalls.empty()) {
@@ -158,7 +159,7 @@ std::optional<uint32_t> fontProcedure(const std::vector<Call> &calls) {
 bool closesWithBareCall(const std::vector<uint8_t> &code, const Call &call,
                         uint32_t font) {
   const binary::BigEndianReader reader(code);
-  const size_t next = call.at + CALL_SIZE;
+  const std::size_t next = call.at + CALL_SIZE;
   return next + 6 <= code.size() && reader.readUint16(next) == JSR_LONG &&
          reader.readUint32(next + 2) != font;
 }
@@ -199,9 +200,9 @@ std::vector<Page> creditsIn(const std::vector<uint8_t> &code) {
   };
 
   std::map<uint32_t, int> callsAfterLines;
-  for (size_t i = 1; i < calls.size(); i++) {
+  for (std::size_t i = 1; i < calls.size(); ++i) {
     if (isLine(calls[i - 1]) && calls[i].target != font && !calls[i].text) {
-      callsAfterLines[calls[i].target]++;
+      ++callsAfterLines[calls[i].target];
     }
   }
   if (callsAfterLines.empty()) {
@@ -231,14 +232,14 @@ std::vector<Page> creditsIn(const std::vector<uint8_t> &code) {
 std::vector<std::vector<uint8_t>>
 readHunks(const std::vector<uint8_t> &executable) {
   const binary::BigEndianReader reader(executable);
-  size_t at = 0;
+  std::size_t at = 0;
   const auto next = [&reader, &at] {
     const uint32_t value = reader.readUint32(at);
     at += 4;
     return value;
   };
   const auto skipLongs = [&at](uint32_t count) {
-    at += 4 * static_cast<size_t>(count);
+    at += 4 * static_cast<std::size_t>(count);
   };
   if (executable.size() < 4 || next() != HUNK_HEADER) {
     throw std::runtime_error("Not an AmigaDOS executable");
@@ -255,7 +256,7 @@ readHunks(const std::vector<uint8_t> &executable) {
   while (at + 4 <= executable.size()) {
     const uint32_t type = next() & HUNK_TYPE_MASK;
     if (type == HUNK_CODE || type == HUNK_DATA) {
-      const size_t size = 4 * static_cast<size_t>(next());
+      const std::size_t size = 4 * static_cast<std::size_t>(next());
       if (at + size > executable.size()) {
         throw std::runtime_error("Truncated hunk");
       }
@@ -305,11 +306,11 @@ std::vector<Page> extractIntro(const std::vector<uint8_t> &executable) {
 
 std::vector<uint8_t> toJson(const std::vector<Page> &pages) {
   std::string out = "{\n  \"pages\": [\n";
-  for (size_t i = 0; i < pages.size(); i++) {
+  for (std::size_t i = 0; i < pages.size(); ++i) {
     const Page &page = pages[i];
     out += "    {\n      \"beat\": " + std::to_string(page.beat) +
            ",\n      \"lines\": [\n";
-    for (size_t j = 0; j < page.lines.size(); j++) {
+    for (std::size_t j = 0; j < page.lines.size(); ++j) {
       const Line &line = page.lines[j];
       out += "        {\"y\": " + std::to_string(line.y) + ", \"text\": \"" +
              json::escape(line.text) + "\"}";

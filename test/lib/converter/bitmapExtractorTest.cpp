@@ -1,4 +1,5 @@
 #include "../../../lib/converter/bitmapExtractor/bitmapExtractor.h"
+
 #include "../../../lib/binary/binary.h"
 #include "buildPackedBitmap.h"
 
@@ -18,9 +19,9 @@ std::vector<uint8_t> buildBitmap(uint16_t height, uint16_t planes = 1) {
 
 std::vector<uint8_t>
 buildOffsetTable(const std::vector<std::vector<uint8_t>> &images,
-                 size_t entrySize) {
+                 std::size_t entrySize) {
   std::vector<uint8_t> buf;
-  size_t offset = images.size() * entrySize;
+  std::size_t offset = images.size() * entrySize;
   for (const auto &image : images) {
     if (entrySize == 4) {
       pushBigEndian32(buf, static_cast<uint32_t>(offset));

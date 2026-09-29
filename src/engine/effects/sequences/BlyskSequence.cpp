@@ -3,12 +3,10 @@
 namespace openfranko::src::engine::effects::sequences {
 namespace {
 
-using color::BLACK;
-constexpr color::AmigaColor INK = 0xFFF;
-constexpr color::AmigaColor SHADE = 0xAAA;
-
-const color::AmigaPalette LIT = {BLACK, INK, SHADE, color::PaletteFader::KEEP};
-const color::AmigaPalette DARK = {BLACK, BLACK, BLACK,
+const color::AmigaPalette LIT = {color::BLACK, BlyskSequence::INK,
+                                 BlyskSequence::SHADE,
+                                 color::PaletteFader::KEEP};
+const color::AmigaPalette DARK = {color::BLACK, color::BLACK, color::BLACK,
                                   color::PaletteFader::KEEP};
 
 } // namespace

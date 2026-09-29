@@ -14,8 +14,8 @@ namespace animation {
 class AmalMotion {
 public:
   struct Move {
-    int16_t distance;
-    int16_t frames;
+    int16_t distance = 0;
+    int16_t frames = 0;
   };
 
   AmalMotion() = default;

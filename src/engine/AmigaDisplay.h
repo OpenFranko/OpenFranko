@@ -7,33 +7,33 @@ namespace openfranko {
 namespace src {
 namespace engine {
 
-constexpr int FIRST_VISIBLE_LINE = 26;
-constexpr int LAST_PAL_LINE = 309;
-constexpr int LAST_NTSC_LINE = 261;
+inline constexpr int FIRST_VISIBLE_LINE = 26;
+inline constexpr int LAST_PAL_LINE = 309;
+inline constexpr int LAST_NTSC_LINE = 261;
 
 constexpr int lastVisibleLine(bool ntsc) {
   return ntsc ? LAST_NTSC_LINE : LAST_PAL_LINE;
 }
 
-constexpr int SCREEN_OPEN_VBLS = 1;
-constexpr int SCREEN_CLOSE_VBLS = 4;
-constexpr int SCREEN_CLOSE_SHOWN_VBLS = 2;
-constexpr int SCREEN_CLOSE_HIDDEN_VBLS =
+inline constexpr int SCREEN_OPEN_VBLS = 1;
+inline constexpr int SCREEN_CLOSE_VBLS = 4;
+inline constexpr int SCREEN_CLOSE_SHOWN_VBLS = 2;
+inline constexpr int SCREEN_CLOSE_HIDDEN_VBLS =
     SCREEN_CLOSE_VBLS - SCREEN_CLOSE_SHOWN_VBLS;
-constexpr int SCREEN_REOPEN_VBLS = SCREEN_CLOSE_VBLS + SCREEN_OPEN_VBLS;
-constexpr int DOUBLE_BUFFER_VBLS = 3;
-constexpr int AUTOBACK_VBLS = 3;
-constexpr int UNPACK_VBLS = 1;
+inline constexpr int SCREEN_REOPEN_VBLS = SCREEN_CLOSE_VBLS + SCREEN_OPEN_VBLS;
+inline constexpr int DOUBLE_BUFFER_VBLS = 3;
+inline constexpr int AUTOBACK_VBLS = 3;
+inline constexpr int UNPACK_VBLS = 1;
 
-constexpr int NTSC_PICTURE_RAISE = 27;
+inline constexpr int NTSC_PICTURE_RAISE = 27;
 
 constexpr int pictureLine(int palLine, bool ntsc) {
   return palLine - (ntsc ? NTSC_PICTURE_RAISE : 0);
 }
 
 struct VisibleRows {
-  int first;
-  int count;
+  int first = 0;
+  int count = 0;
 };
 
 constexpr VisibleRows visibleRows(int displayY, int height, bool ntsc) {

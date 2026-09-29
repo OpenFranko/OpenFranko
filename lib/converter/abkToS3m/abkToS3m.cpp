@@ -1,4 +1,5 @@
 #include "abkToS3m.h"
+
 #include "../../binary/binary.h"
 #include "../gameData/gameData.h"
 
@@ -12,7 +13,6 @@
 #include <string>
 
 namespace openfranko::lib::converter::abkToS3m {
-
 namespace {
 
 constexpr uint8_t AMOS_COMMAND_FLAG = 0x80;
@@ -33,30 +33,30 @@ constexpr uint16_t AMOS_PERIOD_MASK = 0x0FFF;
 constexpr uint16_t AMOS_ORDER_END_FLAG = 0x8000;
 constexpr uint16_t MAX_AMOS_TEMPO = 255;
 
-constexpr size_t ABK_HEADER_SIZE = 20;
-constexpr size_t MUSIC_HEADER_SIZE = 12;
-constexpr size_t MUSIC_SAMPLES_POINTER_OFFSET = 0;
-constexpr size_t MUSIC_SONGS_POINTER_OFFSET = 4;
-constexpr size_t MUSIC_TRACKS_POINTER_OFFSET = 8;
-constexpr size_t AMOS_NAME_SIZE = 16;
+constexpr std::size_t ABK_HEADER_SIZE = 20;
+constexpr std::size_t MUSIC_HEADER_SIZE = 12;
+constexpr std::size_t MUSIC_SAMPLES_POINTER_OFFSET = 0;
+constexpr std::size_t MUSIC_SONGS_POINTER_OFFSET = 4;
+constexpr std::size_t MUSIC_TRACKS_POINTER_OFFSET = 8;
+constexpr std::size_t AMOS_NAME_SIZE = 16;
 
-constexpr size_t SAMPLES_TABLE_OFFSET = 2;
-constexpr size_t SAMPLE_DESCRIPTOR_SIZE = 32;
-constexpr size_t SAMPLE_LOOP_POINTER_OFFSET = 4;
-constexpr size_t SAMPLE_LOOP_LENGTH_OFFSET = 10;
-constexpr size_t SAMPLE_VOLUME_OFFSET = 12;
-constexpr size_t SAMPLE_LENGTH_OFFSET = 14;
-constexpr size_t SAMPLE_NAME_OFFSET = 16;
+constexpr std::size_t SAMPLES_TABLE_OFFSET = 2;
+constexpr std::size_t SAMPLE_DESCRIPTOR_SIZE = 32;
+constexpr std::size_t SAMPLE_LOOP_POINTER_OFFSET = 4;
+constexpr std::size_t SAMPLE_LOOP_LENGTH_OFFSET = 10;
+constexpr std::size_t SAMPLE_VOLUME_OFFSET = 12;
+constexpr std::size_t SAMPLE_LENGTH_OFFSET = 14;
+constexpr std::size_t SAMPLE_NAME_OFFSET = 16;
 constexpr uint16_t MAX_SAMPLE_COUNT = 64;
 
-constexpr size_t SONGS_TABLE_OFFSET = 2;
-constexpr size_t SONG_POINTER_SIZE = 4;
-constexpr size_t SONG_HEADER_SIZE = 28;
-constexpr size_t SONG_SPEED_OFFSET = 8;
-constexpr size_t SONG_NAME_OFFSET = 12;
+constexpr std::size_t SONGS_TABLE_OFFSET = 2;
+constexpr std::size_t SONG_POINTER_SIZE = 4;
+constexpr std::size_t SONG_HEADER_SIZE = 28;
+constexpr std::size_t SONG_SPEED_OFFSET = 8;
+constexpr std::size_t SONG_NAME_OFFSET = 12;
 constexpr uint16_t DEFAULT_SONG_SPEED = 17;
 
-constexpr size_t TRACKS_TABLE_OFFSET = 2;
+constexpr std::size_t TRACKS_TABLE_OFFSET = 2;
 
 constexpr uint8_t S3M_EFFECT_SPEED = 1;
 constexpr uint8_t S3M_EFFECT_POSITION_JUMP = 2;
@@ -77,7 +77,7 @@ constexpr uint8_t S3M_PACKED_NOTE = 0x20;
 constexpr uint8_t S3M_PACKED_VOLUME = 0x40;
 constexpr uint8_t S3M_PACKED_EFFECT = 0x80;
 constexpr uint8_t S3M_ORDER_END = 0xFF;
-constexpr size_t S3M_PARAGRAPH_SIZE = 16;
+constexpr std::size_t S3M_PARAGRAPH_SIZE = 16;
 
 constexpr uint8_t DEFAULT_S3M_SPEED = 6;
 constexpr uint8_t DEFAULT_S3M_TEMPO = 134;
@@ -86,53 +86,53 @@ constexpr int MAX_S3M_SPEED = 31;
 constexpr int MIN_S3M_TEMPO = 32;
 constexpr int MAX_S3M_TEMPO = 255;
 
-constexpr size_t S3M_HEADER_SIZE = 0x60;
-constexpr size_t S3M_SONG_NAME_SIZE = 28;
-constexpr size_t S3M_EOF_OFFSET = 0x1C;
+constexpr std::size_t S3M_HEADER_SIZE = 0x60;
+constexpr std::size_t S3M_SONG_NAME_SIZE = 28;
+constexpr std::size_t S3M_EOF_OFFSET = 0x1C;
 constexpr uint8_t S3M_EOF_MARKER = 0x1A;
-constexpr size_t S3M_TYPE_OFFSET = 0x1D;
+constexpr std::size_t S3M_TYPE_OFFSET = 0x1D;
 constexpr uint8_t S3M_MODULE_TYPE = 0x10;
-constexpr size_t S3M_ORDER_COUNT_OFFSET = 0x20;
-constexpr size_t S3M_INSTRUMENT_COUNT_OFFSET = 0x22;
-constexpr size_t S3M_PATTERN_COUNT_OFFSET = 0x24;
-constexpr size_t S3M_TRACKER_VERSION_OFFSET = 0x28;
+constexpr std::size_t S3M_ORDER_COUNT_OFFSET = 0x20;
+constexpr std::size_t S3M_INSTRUMENT_COUNT_OFFSET = 0x22;
+constexpr std::size_t S3M_PATTERN_COUNT_OFFSET = 0x24;
+constexpr std::size_t S3M_TRACKER_VERSION_OFFSET = 0x28;
 constexpr uint16_t S3M_TRACKER_VERSION = 0x1320;
-constexpr size_t S3M_SAMPLE_FORMAT_OFFSET = 0x2A;
+constexpr std::size_t S3M_SAMPLE_FORMAT_OFFSET = 0x2A;
 constexpr uint8_t S3M_UNSIGNED_SAMPLES = 2;
-constexpr size_t S3M_SIGNATURE_OFFSET = 0x2C;
-constexpr size_t S3M_GLOBAL_VOLUME_OFFSET = 0x30;
+constexpr std::size_t S3M_SIGNATURE_OFFSET = 0x2C;
+constexpr std::size_t S3M_GLOBAL_VOLUME_OFFSET = 0x30;
 constexpr uint8_t S3M_GLOBAL_VOLUME = 64;
-constexpr size_t S3M_SPEED_OFFSET = 0x31;
-constexpr size_t S3M_TEMPO_OFFSET = 0x32;
-constexpr size_t S3M_MASTER_VOLUME_OFFSET = 0x33;
+constexpr std::size_t S3M_SPEED_OFFSET = 0x31;
+constexpr std::size_t S3M_TEMPO_OFFSET = 0x32;
+constexpr std::size_t S3M_MASTER_VOLUME_OFFSET = 0x33;
 constexpr uint8_t S3M_STEREO_FLAG = 0x80;
 constexpr uint8_t S3M_MASTER_VOLUME = 48;
-constexpr size_t S3M_CLICK_REMOVAL_OFFSET = 0x34;
+constexpr std::size_t S3M_CLICK_REMOVAL_OFFSET = 0x34;
 constexpr uint8_t S3M_CLICK_REMOVAL = 16;
-constexpr size_t S3M_PANNING_FLAG_OFFSET = 0x35;
+constexpr std::size_t S3M_PANNING_FLAG_OFFSET = 0x35;
 constexpr uint8_t S3M_CHANNEL_PANNING = 0xFC;
-constexpr size_t S3M_CHANNEL_SETTINGS_OFFSET = 0x40;
-constexpr size_t S3M_CHANNEL_SETTING_COUNT = 32;
+constexpr std::size_t S3M_CHANNEL_SETTINGS_OFFSET = 0x40;
+constexpr std::size_t S3M_CHANNEL_SETTING_COUNT = 32;
 constexpr uint8_t S3M_UNUSED_CHANNEL = 0xFF;
-constexpr size_t S3M_PANNING_SIZE = 32;
+constexpr std::size_t S3M_PANNING_SIZE = 32;
 constexpr uint8_t S3M_PAN_SET = 0x20;
 constexpr uint8_t S3M_PAN_LEFT = 3;
 constexpr uint8_t S3M_PAN_RIGHT = 12;
 
-constexpr size_t INSTRUMENT_SIZE = 0x50;
+constexpr std::size_t INSTRUMENT_SIZE = 0x50;
 constexpr uint8_t INSTRUMENT_SAMPLE_TYPE = 1;
-constexpr size_t INSTRUMENT_DOS_NAME_OFFSET = 1;
-constexpr size_t INSTRUMENT_DOS_NAME_SIZE = 12;
-constexpr size_t INSTRUMENT_MEMSEG_OFFSET = 0x0D;
-constexpr size_t INSTRUMENT_LENGTH_OFFSET = 0x10;
-constexpr size_t INSTRUMENT_LOOP_START_OFFSET = 0x14;
-constexpr size_t INSTRUMENT_LOOP_END_OFFSET = 0x18;
-constexpr size_t INSTRUMENT_VOLUME_OFFSET = 0x1C;
-constexpr size_t INSTRUMENT_FLAGS_OFFSET = 0x1F;
+constexpr std::size_t INSTRUMENT_DOS_NAME_OFFSET = 1;
+constexpr std::size_t INSTRUMENT_DOS_NAME_SIZE = 12;
+constexpr std::size_t INSTRUMENT_MEMSEG_OFFSET = 0x0D;
+constexpr std::size_t INSTRUMENT_LENGTH_OFFSET = 0x10;
+constexpr std::size_t INSTRUMENT_LOOP_START_OFFSET = 0x14;
+constexpr std::size_t INSTRUMENT_LOOP_END_OFFSET = 0x18;
+constexpr std::size_t INSTRUMENT_VOLUME_OFFSET = 0x1C;
+constexpr std::size_t INSTRUMENT_FLAGS_OFFSET = 0x1F;
 constexpr uint8_t INSTRUMENT_LOOP_FLAG = 1;
-constexpr size_t INSTRUMENT_C2SPD_OFFSET = 0x20;
-constexpr size_t INSTRUMENT_NAME_OFFSET = 0x30;
-constexpr size_t INSTRUMENT_SIGNATURE_OFFSET = 0x4C;
+constexpr std::size_t INSTRUMENT_C2SPD_OFFSET = 0x20;
+constexpr std::size_t INSTRUMENT_NAME_OFFSET = 0x30;
+constexpr std::size_t INSTRUMENT_SIGNATURE_OFFSET = 0x4C;
 constexpr uint16_t MAX_NO_LOOP_WORDS = 2;
 constexpr uint32_t MAX_NO_LOOP_SIZE = 4;
 constexpr uint8_t SAMPLE_SIGN_BIT = 0x80;
@@ -140,7 +140,7 @@ constexpr uint8_t UNSIGNED_SILENCE = 0x80;
 
 constexpr int CHANNEL_COUNT = 4;
 constexpr int PATTERN_ROW_COUNT = 64;
-constexpr size_t MAX_S3M_PATTERNS = 254;
+constexpr std::size_t MAX_S3M_PATTERNS = 254;
 constexpr uint16_t FRANKO_MENU_TEMPO = 37;
 constexpr uint8_t AMIGA_CHANNEL_SETTINGS[CHANNEL_COUNT] = {0x00, 0x08, 0x09,
                                                            0x01};
@@ -162,7 +162,7 @@ uint8_t periodToS3mNote(uint16_t period) {
   }
   int best = 0;
   int bestDistance = std::numeric_limits<int>::max();
-  for (int i = 0; i < PERIOD_COUNT; i++) {
+  for (int i = 0; i < PERIOD_COUNT; ++i) {
     const int distance =
         std::abs(static_cast<int>(PERIOD_TABLE[i]) - static_cast<int>(period));
     if (distance < bestDistance) {
@@ -197,7 +197,7 @@ struct Pattern {
 };
 
 std::vector<AmosSample> parseSamples(const std::vector<uint8_t> &music,
-                                     size_t sampleInfoOffset) {
+                                     std::size_t sampleInfoOffset) {
   std::vector<AmosSample> samples;
   if (sampleInfoOffset + SAMPLES_TABLE_OFFSET > music.size()) {
     return samples;
@@ -207,9 +207,10 @@ std::vector<AmosSample> parseSamples(const std::vector<uint8_t> &music,
   if (count == 0 || count > MAX_SAMPLE_COUNT) {
     return samples;
   }
-  size_t tableOffset = sampleInfoOffset + SAMPLES_TABLE_OFFSET;
-  for (uint16_t i = 0; i < count; i++) {
-    size_t off = tableOffset + static_cast<size_t>(i) * SAMPLE_DESCRIPTOR_SIZE;
+  std::size_t tableOffset = sampleInfoOffset + SAMPLES_TABLE_OFFSET;
+  for (uint16_t i = 0; i < count; ++i) {
+    std::size_t off =
+        tableOffset + static_cast<std::size_t>(i) * SAMPLE_DESCRIPTOR_SIZE;
     if (off + SAMPLE_DESCRIPTOR_SIZE > music.size()) {
       break;
     }
@@ -236,7 +237,7 @@ struct SongInfo {
   char name[AMOS_NAME_SIZE + 1] = {};
 };
 
-SongInfo parseSong(const std::vector<uint8_t> &music, size_t songOffset) {
+SongInfo parseSong(const std::vector<uint8_t> &music, std::size_t songOffset) {
   SongInfo info;
   if (songOffset + SONGS_TABLE_OFFSET + SONG_POINTER_SIZE > music.size()) {
     return info;
@@ -245,21 +246,21 @@ SongInfo parseSong(const std::vector<uint8_t> &music, size_t songOffset) {
   binary::BigEndianReader reader(music);
   const uint32_t songDataOffset =
       reader.readUint32(songOffset + SONGS_TABLE_OFFSET);
-  size_t songBase = songOffset + songDataOffset;
+  std::size_t songBase = songOffset + songDataOffset;
   if (songBase + SONG_HEADER_SIZE > music.size()) {
     return info;
   }
 
   uint16_t channelOffsets[CHANNEL_COUNT];
-  for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
+  for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
     channelOffsets[channel] = reader.readUint16(songBase + channel * 2);
   }
   info.speed = reader.readUint16(songBase + SONG_SPEED_OFFSET);
   std::memcpy(info.name, music.data() + songBase + SONG_NAME_OFFSET,
               AMOS_NAME_SIZE);
 
-  for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
-    size_t pos = songBase + channelOffsets[channel];
+  for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
+    std::size_t pos = songBase + channelOffsets[channel];
     while (pos + 2 <= music.size()) {
       uint16_t val = reader.readUint16(pos);
       if (val & AMOS_ORDER_END_FLAG) {
@@ -275,11 +276,11 @@ SongInfo parseSong(const std::vector<uint8_t> &music, size_t songOffset) {
 struct TrackInfo {
   uint16_t numberOfSteps = 0;
   std::vector<uint16_t> offsets;
-  size_t trackDataBase = 0;
+  std::size_t trackDataBase = 0;
 };
 
 TrackInfo parseTrackData(const std::vector<uint8_t> &music,
-                         size_t trackOffset) {
+                         std::size_t trackOffset) {
   TrackInfo info;
   info.trackDataBase = trackOffset;
   if (trackOffset + TRACKS_TABLE_OFFSET > music.size()) {
@@ -287,10 +288,10 @@ TrackInfo parseTrackData(const std::vector<uint8_t> &music,
   }
   binary::BigEndianReader reader(music);
   info.numberOfSteps = reader.readUint16(trackOffset);
-  size_t numberOfOffsets =
-      static_cast<size_t>(info.numberOfSteps) * CHANNEL_COUNT;
-  for (size_t i = 0; i < numberOfOffsets; i++) {
-    size_t pos = trackOffset + TRACKS_TABLE_OFFSET + i * 2;
+  std::size_t numberOfOffsets =
+      static_cast<std::size_t>(info.numberOfSteps) * CHANNEL_COUNT;
+  for (std::size_t i = 0; i < numberOfOffsets; ++i) {
+    std::size_t pos = trackOffset + TRACKS_TABLE_OFFSET + i * 2;
     if (pos + 2 > music.size()) {
       break;
     }
@@ -307,7 +308,8 @@ struct DecodedPattern {
 void decodeChannel(Pattern &pattern, int channel,
                    const std::vector<uint8_t> &music, const TrackInfo &track,
                    uint16_t stepIndex, int &channelEndRow) {
-  size_t tableIndex = static_cast<size_t>(stepIndex) * CHANNEL_COUNT + channel;
+  std::size_t tableIndex =
+      static_cast<std::size_t>(stepIndex) * CHANNEL_COUNT + channel;
   if (tableIndex >= track.offsets.size()) {
     return;
   }
@@ -317,7 +319,7 @@ void decodeChannel(Pattern &pattern, int channel,
   }
 
   binary::BigEndianReader reader(music);
-  size_t pos = track.trackDataBase + track.offsets[tableIndex];
+  std::size_t pos = track.trackDataBase + track.offsets[tableIndex];
   int row = 0;
   uint8_t currentSample = 0;
   uint8_t currentVolume = S3M_VOLUME_NONE;
@@ -438,19 +440,19 @@ DecodedPattern decodePattern(const std::vector<uint8_t> &music,
   int channelEndRows[CHANNEL_COUNT];
   std::fill(std::begin(channelEndRows), std::end(channelEndRows),
             PATTERN_ROW_COUNT);
-  for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
+  for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
     decodeChannel(pattern, channel, music, track, stepIndices[channel],
                   channelEndRows[channel]);
   }
 
   int endRow = PATTERN_ROW_COUNT;
-  for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
+  for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
     if (channelEndRows[channel] < endRow) {
       endRow = channelEndRows[channel];
     }
   }
   if (endRow < PATTERN_ROW_COUNT) {
-    for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
+    for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
       if (pattern.channels[channel][endRow].effect == 0) {
         pattern.channels[channel][endRow].effect = S3M_EFFECT_PATTERN_BREAK;
         pattern.channels[channel][endRow].effectParam = 0;
@@ -466,8 +468,8 @@ std::vector<uint8_t> packPattern(const Pattern &pattern) {
   std::vector<uint8_t> packed;
   binary::pushLittleEndian16(packed, 0);
 
-  for (int row = 0; row < PATTERN_ROW_COUNT; row++) {
-    for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
+  for (int row = 0; row < PATTERN_ROW_COUNT; ++row) {
+    for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
       const auto &event = pattern.channels[channel][row];
       uint8_t what = 0;
       if (event.note != S3M_NOTE_NONE || event.instrument != 0) {
@@ -521,8 +523,8 @@ SpeedTempo amosTempoToS3m(uint8_t amosTempo) {
 }
 
 void fixSpeedEffects(Pattern &pattern) {
-  for (int row = 0; row < PATTERN_ROW_COUNT; row++) {
-    for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
+  for (int row = 0; row < PATTERN_ROW_COUNT; ++row) {
+    for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
       auto &event = pattern.channels[channel][row];
       if (event.effect != S3M_EFFECT_SPEED) {
         continue;
@@ -530,7 +532,7 @@ void fixSpeedEffects(Pattern &pattern) {
       auto speedTempo = amosTempoToS3m(event.effectParam);
       event.effectParam = speedTempo.speed;
       if (speedTempo.hasTempo) {
-        for (int other = 0; other < CHANNEL_COUNT; other++) {
+        for (int other = 0; other < CHANNEL_COUNT; ++other) {
           if (other != channel && pattern.channels[other][row].effect == 0) {
             pattern.channels[other][row].effect = S3M_EFFECT_TEMPO;
             pattern.channels[other][row].effectParam = speedTempo.tempo;
@@ -548,14 +550,14 @@ std::vector<Pattern> decodeAllPatterns(const std::vector<uint8_t> &music,
                                        std::vector<uint8_t> &orderList) {
   std::vector<Pattern> patterns;
 
-  size_t songLength = 0;
-  for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
+  std::size_t songLength = 0;
+  for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
     songLength = std::max(songLength, song.orders[channel].size());
   }
 
-  for (size_t pos = 0; pos < songLength; pos++) {
+  for (std::size_t pos = 0; pos < songLength; ++pos) {
     uint16_t steps[CHANNEL_COUNT];
-    for (int channel = 0; channel < CHANNEL_COUNT; channel++) {
+    for (int channel = 0; channel < CHANNEL_COUNT; ++channel) {
       steps[channel] =
           pos < song.orders[channel].size() ? song.orders[channel][pos] : 0;
     }
@@ -563,7 +565,7 @@ std::vector<Pattern> decodeAllPatterns(const std::vector<uint8_t> &music,
     auto decoded = decodePattern(music, track, steps);
     fixSpeedEffects(decoded.pattern);
     bool found = false;
-    for (size_t i = 0; i < patterns.size(); i++) {
+    for (std::size_t i = 0; i < patterns.size(); ++i) {
       if (std::memcmp(&patterns[i], &decoded.pattern, sizeof(Pattern)) == 0) {
         orderList.push_back(static_cast<uint8_t>(i));
         found = true;
@@ -589,7 +591,7 @@ void writeS3mHeader(std::vector<uint8_t> &s3m, const SongInfo &song,
                     uint8_t speed, uint8_t tempo) {
   s3m.resize(S3M_HEADER_SIZE, 0);
 
-  size_t nameLength = std::min(std::strlen(song.name), S3M_SONG_NAME_SIZE);
+  std::size_t nameLength = std::min(std::strlen(song.name), S3M_SONG_NAME_SIZE);
   std::memcpy(s3m.data(), song.name, nameLength);
   s3m[S3M_EOF_OFFSET] = S3M_EOF_MARKER;
   s3m[S3M_TYPE_OFFSET] = S3M_MODULE_TYPE;
@@ -610,14 +612,14 @@ void writeS3mHeader(std::vector<uint8_t> &s3m, const SongInfo &song,
   s3m[S3M_CLICK_REMOVAL_OFFSET] = S3M_CLICK_REMOVAL;
   s3m[S3M_PANNING_FLAG_OFFSET] = S3M_CHANNEL_PANNING;
 
-  for (size_t i = 0; i < S3M_CHANNEL_SETTING_COUNT; i++) {
+  for (std::size_t i = 0; i < S3M_CHANNEL_SETTING_COUNT; ++i) {
     s3m[S3M_CHANNEL_SETTINGS_OFFSET + i] =
-        i < static_cast<size_t>(CHANNEL_COUNT) ? AMIGA_CHANNEL_SETTINGS[i]
-                                               : S3M_UNUSED_CHANNEL;
+        i < static_cast<std::size_t>(CHANNEL_COUNT) ? AMIGA_CHANNEL_SETTINGS[i]
+                                                    : S3M_UNUSED_CHANNEL;
   }
 }
 
-void writeInstrument(std::vector<uint8_t> &s3m, size_t instrumentOffset,
+void writeInstrument(std::vector<uint8_t> &s3m, std::size_t instrumentOffset,
                      const AmosSample &sample, int index) {
   s3m.resize(instrumentOffset + INSTRUMENT_SIZE, 0);
   s3m[instrumentOffset] = INSTRUMENT_SAMPLE_TYPE;
@@ -656,7 +658,7 @@ void writeInstrument(std::vector<uint8_t> &s3m, size_t instrumentOffset,
   std::memcpy(s3m.data() + instrumentOffset + INSTRUMENT_NAME_OFFSET,
               sample.name, AMOS_NAME_SIZE);
 
-  const size_t signature = instrumentOffset + INSTRUMENT_SIGNATURE_OFFSET;
+  const std::size_t signature = instrumentOffset + INSTRUMENT_SIGNATURE_OFFSET;
   s3m[signature + 0] = 'S';
   s3m[signature + 1] = 'C';
   s3m[signature + 2] = 'R';
@@ -696,7 +698,7 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
   uint16_t ordNum = static_cast<uint16_t>(orderList.size());
   if (ordNum % 2 != 0) {
     orderList.push_back(S3M_ORDER_END);
-    ordNum++;
+    ++ordNum;
   }
   uint16_t insNum = static_cast<uint16_t>(samples.size());
   uint16_t patNum = static_cast<uint16_t>(patterns.size());
@@ -715,13 +717,13 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
                  initial.tempo);
   s3m.insert(s3m.end(), orderList.begin(), orderList.end());
 
-  size_t instrumentTableOffset = s3m.size();
-  for (uint16_t i = 0; i < insNum; i++) {
+  std::size_t instrumentTableOffset = s3m.size();
+  for (uint16_t i = 0; i < insNum; ++i) {
     binary::pushLittleEndian16(s3m, 0);
   }
 
-  size_t patternTableOffset = s3m.size();
-  for (uint16_t i = 0; i < patNum; i++) {
+  std::size_t patternTableOffset = s3m.size();
+  for (uint16_t i = 0; i < patNum; ++i) {
     binary::pushLittleEndian16(s3m, 0);
   }
 
@@ -732,8 +734,8 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
   panning[3] = S3M_PAN_SET | S3M_PAN_LEFT;
   s3m.insert(s3m.end(), panning, panning + S3M_PANNING_SIZE);
 
-  std::vector<size_t> instrumentOffsets(insNum);
-  for (uint16_t i = 0; i < insNum; i++) {
+  std::vector<std::size_t> instrumentOffsets(insNum);
+  for (uint16_t i = 0; i < insNum; ++i) {
     binary::padTo16(s3m);
     instrumentOffsets[i] = s3m.size();
     binary::writeLittleEndian16(
@@ -742,7 +744,7 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
     writeInstrument(s3m, s3m.size(), samples[i], i);
   }
 
-  for (uint16_t i = 0; i < patNum; i++) {
+  for (uint16_t i = 0; i < patNum; ++i) {
     binary::padTo16(s3m);
     binary::writeLittleEndian16(
         s3m, patternTableOffset + i * 2,
@@ -752,7 +754,7 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
     s3m.insert(s3m.end(), packed.begin(), packed.end());
   }
 
-  for (uint16_t i = 0; i < insNum; i++) {
+  for (uint16_t i = 0; i < insNum; ++i) {
     binary::padTo16(s3m);
     uint32_t parapointer =
         static_cast<uint32_t>(s3m.size() / S3M_PARAGRAPH_SIZE);
@@ -762,10 +764,11 @@ std::vector<uint8_t> convert(const std::vector<uint8_t> &abkData,
         s3m, instrumentOffsets[i] + INSTRUMENT_MEMSEG_OFFSET + 1,
         static_cast<uint16_t>(parapointer));
 
-    const size_t pcmOffset = samples[i].pcmOffset;
-    const size_t length = samples[i].length;
-    for (size_t j = 0; j < length; j++) {
-      const size_t pos = static_cast<size_t>(sampleInfoOffset) + pcmOffset + j;
+    const std::size_t pcmOffset = samples[i].pcmOffset;
+    const std::size_t length = samples[i].length;
+    for (std::size_t j = 0; j < length; ++j) {
+      const std::size_t pos =
+          static_cast<std::size_t>(sampleInfoOffset) + pcmOffset + j;
       if (pos < music.size()) {
         s3m.push_back(static_cast<uint8_t>(music[pos] ^ SAMPLE_SIGN_BIT));
       } else {

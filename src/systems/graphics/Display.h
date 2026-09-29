@@ -9,6 +9,10 @@ namespace src {
 namespace systems {
 namespace graphics {
 
+inline constexpr int CHANNEL_STEP = 17;
+inline constexpr int PAL_HERTZ = 50;
+inline constexpr int NTSC_HERTZ = 60;
+
 struct RowColor {
   int row = 0;
   uint8_t index = 0;

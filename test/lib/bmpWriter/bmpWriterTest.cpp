@@ -1,4 +1,5 @@
 #include "../../../lib/bmpWriter/bmpWriter.h"
+
 #include "../../../lib/binary/binary.h"
 
 #include <catch2/catch_all.hpp>
@@ -58,7 +59,7 @@ SCENARIO("pixelsToBmp converts Amiga 12-bit palette to 8-bit BGRA") {
 
     WHEN("pixelsToBmp is called") {
       auto bmp = pixelsToBmp(1, 1, pixels, palette, 1);
-      size_t palOff = 54;
+      std::size_t palOff = 54;
 
       THEN("The palette entry has R=0xFF, G=0x88, B=0x00 in BGRA order") {
         REQUIRE(bmp[palOff + 0] == 0x00);
@@ -109,7 +110,7 @@ SCENARIO("pixelsToBmp pads unused palette entries with zeros") {
       auto bmp = pixelsToBmp(1, 1, pixels, palette, 1);
 
       THEN("Palette entry 1 is all zeros") {
-        size_t entry1 = 54 + 4;
+        std::size_t entry1 = 54 + 4;
         REQUIRE(bmp[entry1 + 0] == 0);
         REQUIRE(bmp[entry1 + 1] == 0);
         REQUIRE(bmp[entry1 + 2] == 0);

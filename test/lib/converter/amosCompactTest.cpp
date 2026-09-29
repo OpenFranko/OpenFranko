@@ -1,4 +1,5 @@
 #include "../../../lib/converter/amosCompact/amosCompact.h"
+
 #include "../../../lib/binary/binary.h"
 #include "../../../lib/converter/amosCompact/consts.h"
 #include "../../../lib/converter/amosCompact/detail/BitReader.h"
@@ -38,7 +39,7 @@ struct BmpColor {
 };
 
 BmpColor bmpPalette(const std::vector<uint8_t> &bmp, int index) {
-  size_t off = 54 + index * 4;
+  std::size_t off = 54 + index * 4;
   return {bmp[off + 2], bmp[off + 1], bmp[off]};
 }
 
@@ -51,7 +52,7 @@ SCENARIO("BitReader reads bits MSB-first from a byte stream") {
 
     WHEN("Reading all 8 bits") {
       std::vector<int> bits;
-      for (int i = 0; i < 8; i++) {
+      for (int i = 0; i < 8; ++i) {
         bits.push_back(reader.read());
       }
 
@@ -67,7 +68,7 @@ SCENARIO("BitReader reads bits MSB-first from a byte stream") {
 
     WHEN("Reading 16 bits across the byte boundary") {
       std::vector<int> bits;
-      for (int i = 0; i < 16; i++) {
+      for (int i = 0; i < 16; ++i) {
         bits.push_back(reader.read());
       }
 
@@ -83,7 +84,7 @@ SCENARIO("BitReader reads bits MSB-first from a byte stream") {
     BitReader reader(data, 0);
 
     WHEN("Reading past the end") {
-      for (int i = 0; i < 8; i++)
+      for (int i = 0; i < 8; ++i)
         reader.read();
 
       THEN("Extra reads return 0") {
@@ -99,7 +100,7 @@ SCENARIO("BitReader reads bits MSB-first from a byte stream") {
 
     WHEN("Reading bits from the offset") {
       std::vector<int> bits;
-      for (int i = 0; i < 8; i++) {
+      for (int i = 0; i < 8; ++i) {
         bits.push_back(reader.read());
       }
 
@@ -167,7 +168,7 @@ SCENARIO("AMOS Compact decompression produces valid BMP output") {
 
       THEN("Pixels match plane byte 0x42 (01000010) read MSB-first") {
         std::vector<uint8_t> expected = {0, 1, 0, 0, 0, 0, 1, 0};
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 8; ++i) {
           REQUIRE(bmpPixel(bmp, i, 0) == expected[i]);
         }
       }
@@ -181,7 +182,7 @@ SCENARIO("AMOS Compact decompression produces valid BMP output") {
       auto bmp = decompress(data);
 
       THEN("All pixels are 1 (plane byte 0xFF)") {
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 8; ++i) {
           REQUIRE(bmpPixel(bmp, i, 0) == 1);
         }
       }
@@ -197,7 +198,7 @@ SCENARIO("AMOS Compact decompression produces valid BMP output") {
       THEN("All 24 pixels follow 0xAA (10101010) pattern repeated 3 times") {
         REQUIRE(bmpWidth(bmp) == 24);
         REQUIRE(bmpHeight(bmp) == 1);
-        for (int i = 0; i < 24; i++) {
+        for (int i = 0; i < 24; ++i) {
           uint8_t expected = (i % 2 == 0) ? 1 : 0;
           REQUIRE(bmpPixel(bmp, i, 0) == expected);
         }
@@ -247,7 +248,7 @@ SCENARIO("AMOS Compact decompression produces valid BMP output") {
 
       THEN("Pixels combine both planes into alternating 1 and 2") {
         std::vector<uint8_t> expected = {1, 2, 1, 2, 1, 2, 1, 2};
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 8; ++i) {
           REQUIRE(bmpPixel(bmp, i, 0) == expected[i]);
         }
       }
@@ -263,7 +264,7 @@ SCENARIO("AMOS Compact decompression produces valid BMP output") {
 
       THEN("Pixels match 0xBB (10111011)") {
         std::vector<uint8_t> expected = {1, 0, 1, 1, 1, 0, 1, 1};
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 8; ++i) {
           REQUIRE(bmpPixel(bmp, i, 0) == expected[i]);
         }
       }
@@ -354,7 +355,7 @@ SCENARIO("AMOS Compact decompression produces valid BMP output") {
         REQUIRE(last.g == 255);
         REQUIRE(last.b == 255);
 
-        for (int i = 1; i < 32; i++) {
+        for (int i = 1; i < 32; ++i) {
           auto prev = bmpPalette(bmp, i - 1);
           auto c = bmpPalette(bmp, i);
           REQUIRE(c.r == c.g);

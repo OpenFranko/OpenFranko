@@ -2,6 +2,7 @@
 #define ENGINE_STATES_ENGINESTATE_H_
 
 #include "EngineStateId.h"
+
 #include <optional>
 
 namespace openfranko {

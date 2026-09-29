@@ -1,4 +1,5 @@
 #include "../../../../src/engine/assets/Assets.h"
+
 #include "../../../TemporaryPath.h"
 
 #include <catch2/catch_all.hpp>

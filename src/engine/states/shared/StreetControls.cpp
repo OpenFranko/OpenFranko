@@ -1,7 +1,6 @@
 #include "StreetControls.h"
 
 namespace openfranko::src::engine::states::shared {
-
 namespace {
 
 street::session::SystemKey

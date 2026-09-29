@@ -34,7 +34,6 @@ constexpr int FAILURE_SCREEN_HEIGHT = 256;
 constexpr int FAILURE_DISPLAY_LINE = 50;
 
 constexpr int STAGE_CHECK_FILES = 2;
-using effects::color::BLACK;
 
 constexpr int CELL_PITCH = 15;
 constexpr int BOX_OFFSET = 11;
@@ -45,7 +44,8 @@ const effects::color::FlashSteps BOX_FLASH = {{0xFFF, 5}, {0x000, 5}};
 std::vector<uint8_t> loadCards() {
   std::ifstream file(CARDS_PATH, std::ios::binary);
   if (!file) {
-    throw std::runtime_error(std::string("Missing code cards: ") + CARDS_PATH);
+    throw std::runtime_error(std::string("Failed to open code cards: ") +
+                             CARDS_PATH);
   }
   return {std::istreambuf_iterator<char>(file),
           std::istreambuf_iterator<char>()};
@@ -100,9 +100,9 @@ ProtectionCheckState::ProtectionCheckState(
                           ? STAGE_CHECK_FILES *
                                 street::ui::LoadingQueue::FILE_FRAMES
                           : 0),
-      m_resumeFrame(SCREEN_OPEN_VBLS),
       m_screen(QUESTION_SCREEN_WIDTH, QUESTION_SCREEN_HEIGHT),
-      m_border(check == Check::Stage3 ? street::ui::STAGE_BORDER : BLACK) {}
+      m_border(check == Check::Stage3 ? street::ui::STAGE_BORDER
+                                      : effects::color::BLACK) {}
 
 std::optional<EngineStateId> ProtectionCheckState::update() {
   if (m_loadingFrames > 0) {

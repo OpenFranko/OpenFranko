@@ -1,7 +1,9 @@
 #include "ContinueScene.h"
 
+#include "../../../systems/audio/Mixer.h"
+#include "../../../systems/input/ControllerSystem.h"
 #include "../../AmigaDisplay.h"
-
+#include "../../assets/Assets.h"
 #include "../actors/Actors.h"
 #include "../ui/ScreenOutput.h"
 
@@ -10,11 +12,6 @@
 namespace openfranko::src::engine::street::scenes {
 namespace {
 
-constexpr int RO = 14;
-constexpr int RQ = 16;
-
-constexpr int LETTER_SET = 0x35;
-constexpr int FIRST_IMAGE = 1;
 constexpr int HAND_IMAGE = 1;
 constexpr int QUESTION_IMAGE = 41;
 constexpr int QUESTION_X = 96;
@@ -25,17 +22,11 @@ constexpr int HAND_Y = 124;
 constexpr int WAGGLE_REGISTER = 1;
 constexpr int MACH_WAIT = 40;
 constexpr int VOICE_BANK = 10;
-constexpr int ALL_VOICES = 0xF;
-
-constexpr int16_t JOY_LEFT = 4;
-constexpr int16_t JOY_RIGHT = 8;
-constexpr int16_t JOY_FIRE = 16;
 
 constexpr std::size_t COLORS = 32;
-using effects::color::BLACK;
 
 effects::color::AmigaPalette continuePalette() {
-  effects::color::AmigaPalette palette(COLORS, BLACK);
+  effects::color::AmigaPalette palette(COLORS, effects::color::BLACK);
   palette[0] = 0x707;
   palette[18] = 0xAAA;
   palette[24] = 0xDDD;
@@ -50,10 +41,12 @@ effects::color::AmigaPalette continuePalette() {
 ContinueScene::ContinueScene(StreetHost &host, session::GameSession &session)
     : m_host(host), m_session(session), m_machine(session.registers),
       m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_display(SCREEN_WIDTH, SCREEN_HEIGHT), m_palette(COLORS, BLACK) {
+      m_display(SCREEN_WIDTH, SCREEN_HEIGHT),
+      m_palette(COLORS, effects::color::BLACK) {
   const bool voices = session.version == GameVersion::V12;
-  m_images.load(FIRST_IMAGE,
-                host.loadSpriteSet(LETTER_SET, voices ? VOICE_BANK : 0));
+  m_images.load(
+      core::ImageBank::FIRST_IMAGE,
+      host.loadSpriteSet(assets::LETTER_SET, voices ? VOICE_BANK : 0));
 }
 
 void ContinueScene::advance(int16_t joystick) {
@@ -130,15 +123,15 @@ void ContinueScene::open() {
 }
 
 ContinueScene::Flow ContinueScene::choose(int16_t joystick) {
-  if (joystick & JOY_LEFT) {
+  if (joystick & systems::input::JOY_LEFT) {
     m_bobs.set(HAND, LEFT_X, HAND_Y, HAND_IMAGE);
     m_continue = true;
   }
-  if (joystick & JOY_RIGHT) {
+  if (joystick & systems::input::JOY_RIGHT) {
     m_bobs.set(HAND, RIGHT_X, HAND_Y, HAND_IMAGE | core::ImageBank::FLIP_X);
     m_continue = false;
   }
-  if (!(joystick & JOY_FIRE)) {
+  if (!(joystick & systems::input::JOY_FIRE)) {
     return Flow::Yield;
   }
   m_machine.channelRegister(HAND, WAGGLE_REGISTER) = 1;
@@ -149,7 +142,8 @@ ContinueScene::Flow ContinueScene::choose(int16_t joystick) {
 
 void ContinueScene::close() {
   if (m_session.version == GameVersion::V12) {
-    m_host.playSample(VOICE_BANK, m_session.registers[RQ] + 1, ALL_VOICES);
+    m_host.playSample(VOICE_BANK, m_session.registers[amal::RQ] + 1,
+                      systems::audio::Mixer::ALL_VOICES);
   }
   m_machine.destroyAll();
   m_resumeFrame = m_frame + SCREEN_CLOSE_SHOWN_VBLS;
@@ -162,7 +156,8 @@ void ContinueScene::leave() {
     if (m_session.version == GameVersion::V12) {
       m_session.stageReached = 0;
     }
-    m_session.registers[RO] = static_cast<int16_t>(m_session.stageReached);
+    m_session.registers[amal::RO] =
+        static_cast<int16_t>(m_session.stageReached);
     m_outcome = Outcome::Continue;
   } else {
     m_outcome = Outcome::NewGame;

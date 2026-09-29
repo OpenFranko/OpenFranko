@@ -29,7 +29,7 @@ AmigaColor stepToward(AmigaColor current, AmigaColor target) {
 void PaletteFader::start(const AmigaPalette &palette, int speed,
                          const AmigaPalette &target) {
   if (speed < 1) {
-    throw std::invalid_argument("Fade speed must be at least 1");
+    throw std::invalid_argument("Fade: speed must be at least 1");
   }
 
   m_speed = speed;

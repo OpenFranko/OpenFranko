@@ -1,5 +1,6 @@
 #include "KneeAnimationState.h"
 
+#include "../../../systems/audio/Mixer.h"
 #include "../../AmigaDisplay.h"
 #include "../../assets/Assets.h"
 #include "../../effects/color/AmigaPalette.h"
@@ -11,7 +12,6 @@ namespace openfranko::src::engine::states::kneeAnimation {
 namespace {
 
 constexpr int IMAGE_SET = 0x3B7;
-constexpr int MENU_TUNE = 0x261;
 
 constexpr auto SAMPLE = "knee";
 constexpr int SAMPLE_BANK = 0x263;
@@ -24,7 +24,6 @@ constexpr int VERSION12_TEMPO = 37;
 constexpr int SCREEN_WIDTH = 320;
 constexpr int SCREEN_HEIGHT = 256;
 constexpr effects::color::AmigaColor BACKGROUND_GREY = 0x555;
-using effects::color::BLACK;
 
 constexpr int FRAMES_PER_UNPACK = 20;
 constexpr int SAMPLE_UNPACK = 2;
@@ -32,9 +31,9 @@ constexpr int MUSIC_WAIT = 20;
 constexpr int TEMPO_WAIT = 2;
 constexpr int CLOSE_WAIT = 80;
 
-constexpr int IMAGE_COUNT = 4;
+constexpr int IMAGES = 4;
 constexpr int SAMPLE_FRAME = SAMPLE_UNPACK * FRAMES_PER_UNPACK;
-constexpr int MUSIC_FRAME = IMAGE_COUNT * FRAMES_PER_UNPACK + MUSIC_WAIT;
+constexpr int MUSIC_FRAME = IMAGES * FRAMES_PER_UNPACK + MUSIC_WAIT;
 constexpr int CLOSE_FRAME = MUSIC_FRAME + TEMPO_WAIT + CLOSE_WAIT;
 constexpr int SCREENS = 2;
 constexpr int OPEN_FRAMES = SCREENS * SCREEN_OPEN_VBLS;
@@ -54,7 +53,7 @@ KneeAnimationState::KneeAnimationState(
     controllerSystem.clearFireLatch();
   }
   const std::string images = assets::resourceName(IMAGE_SET, m_version);
-  for (int image = 0; image < IMAGE_COUNT; ++image) {
+  for (int image = 0; image < IMAGES; ++image) {
     m_images.push_back(
         systems::graphics::loadIndexedBitmap(assets::partPath(images, image)));
   }
@@ -65,7 +64,7 @@ KneeAnimationState::KneeAnimationState(
           : assets::samplePath(assets::resourceName(SAMPLE_BANK, m_version),
                                SAMPLE_NUMBER));
   m_audioSystem.loadMusic(
-      assets::musicPath(assets::resourceName(MENU_TUNE, m_version)));
+      assets::musicPath(assets::resourceName(assets::MENU_TUNE, m_version)));
 }
 
 KneeAnimationState::~KneeAnimationState() { m_audioSystem.clearSample(SAMPLE); }
@@ -78,9 +77,9 @@ std::optional<EngineStateId> KneeAnimationState::update() {
 
   const bool version12 = m_version == GameVersion::V12;
   if (time == SAMPLE_FRAME) {
-    m_audioSystem.playSample(
-        SAMPLE, version12 ? VERSION12_SAMPLE_VOICES
-                          : systems::audio::AudioSystem::ALL_VOICES);
+    m_audioSystem.playSample(SAMPLE, version12
+                                         ? VERSION12_SAMPLE_VOICES
+                                         : systems::audio::Mixer::ALL_VOICES);
   }
   if (time == MUSIC_FRAME) {
     m_audioSystem.playMusic();
@@ -89,9 +88,9 @@ std::optional<EngineStateId> KneeAnimationState::update() {
     m_audioSystem.setMusicTempo(VERSION12_TEMPO);
   }
 
-  const int copied = std::min(time / FRAMES_PER_UNPACK, IMAGE_COUNT);
+  const int copied = std::min(time / FRAMES_PER_UNPACK, IMAGES);
   if (time < 0 || time >= GONE_FRAME) {
-    m_screen.fill(BLACK);
+    m_screen.fill(effects::color::BLACK);
   } else if (copied == 0) {
     m_screen.fill(BACKGROUND_GREY);
   } else {

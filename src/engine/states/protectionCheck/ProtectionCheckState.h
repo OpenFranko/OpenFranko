@@ -47,7 +47,7 @@ private:
   int m_loadingFrames;
   Step m_step = Step::Unpack;
   int m_frame = 0;
-  int m_resumeFrame;
+  int m_resumeFrame = SCREEN_OPEN_VBLS;
   bool m_questionShown = false;
   bool m_failureShown = false;
   systems::graphics::Canvas m_screen;

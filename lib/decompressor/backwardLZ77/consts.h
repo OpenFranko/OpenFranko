@@ -10,9 +10,9 @@ namespace decompressor {
 namespace backwardLZ77 {
 namespace consts {
 
-inline constexpr size_t TRAILER_SIZE = 12;
-inline constexpr size_t FILE_FOOTER_SIZE = 8;
-inline constexpr size_t FOOTER_SIZE = TRAILER_SIZE + FILE_FOOTER_SIZE;
+inline constexpr std::size_t TRAILER_SIZE = 12;
+inline constexpr std::size_t FILE_FOOTER_SIZE = 8;
+inline constexpr std::size_t FOOTER_SIZE = TRAILER_SIZE + FILE_FOOTER_SIZE;
 inline constexpr uint32_t BIT_SENTINEL = 0x80000000u;
 
 } // namespace consts

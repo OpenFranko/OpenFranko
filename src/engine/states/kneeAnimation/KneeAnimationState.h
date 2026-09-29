@@ -23,7 +23,7 @@ public:
                      systems::audio::AudioSystem &audioSystem,
                      systems::input::ControllerSystem &controllerSystem,
                      GameVersion version = GameVersion::V10);
-  ~KneeAnimationState();
+  ~KneeAnimationState() override;
 
   std::optional<EngineStateId> update() override;
 

@@ -1,5 +1,7 @@
 #include "../../../../src/engine/amal/Machine.h"
+
 #include "../../../../src/engine/street/actors/Actors.h"
+#include "../../../../src/systems/input/ControllerSystem.h"
 #include "Run.h"
 
 #include <catch2/catch_all.hpp>
@@ -10,17 +12,8 @@
 
 using namespace openfranko::src::engine::amal;
 using namespace openfranko::src::engine::street;
+using namespace openfranko::src::systems::input;
 using namespace openfranko::test::src::engine::amal;
-
-namespace {
-
-constexpr int RA = 0;
-constexpr int RC = 2;
-constexpr int RZ = 25;
-
-constexpr int16_t JOY_FIRE = 16;
-
-} // namespace
 
 SCENARIO("Move is AMOS's 16.16 fixed point interpolation") {
   GIVEN("A bob at x 200 and M-64,0,16") {
