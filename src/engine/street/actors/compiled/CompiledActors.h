@@ -42,9 +42,8 @@ amal::Program playerBlood();
 amal::Program enemyBlood(GameVersion version = GameVersion::V10);
 amal::Program screenShake(GameVersion version = GameVersion::V10);
 PlayerPrograms streetPlayer(int stage, GameVersion version = GameVersion::V10);
-EnemyPrograms enemy(int imageBase, int type,
-                    GameVersion version = GameVersion::V10);
-amal::Program idle(GameVersion version = GameVersion::V10);
+EnemyPrograms enemy(int imageBase, int type);
+amal::Program idle();
 amal::Program indicatorArrow(int facing);
 PlayerPrograms bossPlayer(int stage);
 EnemyPrograms boss(int stage);

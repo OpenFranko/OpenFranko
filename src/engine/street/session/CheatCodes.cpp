@@ -31,7 +31,6 @@ constexpr std::array<RegisterCheat, 2> STAGES = {{
 }};
 
 constexpr const char *SHORT_LEVELS = "SKIP";
-constexpr const char *BRUTALITY = "MORAL";
 
 char shifted(char key) { return static_cast<char>(key - KEY_SHIFT); }
 
@@ -67,9 +66,6 @@ void applyCheatCodes(GameSession &session) {
     if (contains(text, cheat.word)) {
       session.registers[amal::RO] = cheat.value;
     }
-  }
-  if (!version12 && contains(text, BRUTALITY)) {
-    session.brutality = true;
   }
 }
 

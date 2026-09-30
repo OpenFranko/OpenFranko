@@ -9,6 +9,7 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -35,6 +36,9 @@ constexpr int WIDTH = 368;
 constexpr int HEIGHT = 290;
 constexpr uint8_t EYES = 22;
 constexpr uint16_t GREEN = 0x0F0;
+constexpr uint8_t MARK = 1;
+constexpr uint16_t BLUE = 0x00F;
+constexpr int MARKED_ROW = 2;
 
 constexpr int HOLD_START =
     2 * SCREEN_OPEN_VBLS + 5 + 15 * 5 + SCREEN_CLOSE_VBLS;
@@ -45,8 +49,10 @@ FakeFiles pictureFiles() {
   picture.width = WIDTH;
   picture.height = HEIGHT;
   picture.pixels.assign(static_cast<std::size_t>(WIDTH) * HEIGHT, EYES);
+  std::fill_n(picture.pixels.begin() + MARKED_ROW * WIDTH, WIDTH, MARK);
   picture.palette.assign(32, 0x000);
   picture.palette[EYES] = GREEN;
+  picture.palette[MARK] = BLUE;
   FakeFiles files;
   files.bitmaps[PICTURE] = picture;
   return files;
@@ -115,6 +121,27 @@ SCENARIO("The knee animation follows the logo") {
     THEN("It leaves once FOTO has closed the screen") {
       REQUIRE(exit.next == EngineStateId::KneeAnimation);
       REQUIRE(exit.frames == FRAMES);
+    }
+  }
+}
+
+SCENARIO("FOTO's AMAL shakes the logo a line up and back every frame, as the "
+         "released 1.0 does for bank 4") {
+  GIVEN("The logo held, with its third line marked") {
+    Logo logo;
+    run(*logo.state, HOLD_START + 1);
+    const uint32_t raisedTop = logo.monitor.pixel(0, 0);
+    const uint32_t raisedSecond = logo.monitor.pixel(0, 1);
+    run(*logo.state, 1);
+    const uint32_t loweredTop = logo.monitor.pixel(0, 0);
+    const uint32_t loweredSecond = logo.monitor.pixel(0, 1);
+
+    THEN("On odd frames the screen sits a line higher, so the marked line "
+         "is the top row, and on even frames it is back in place") {
+      REQUIRE(raisedTop == toArgb(BLUE));
+      REQUIRE(raisedSecond != toArgb(BLUE));
+      REQUIRE(loweredTop != toArgb(BLUE));
+      REQUIRE(loweredSecond == toArgb(BLUE));
     }
   }
 }

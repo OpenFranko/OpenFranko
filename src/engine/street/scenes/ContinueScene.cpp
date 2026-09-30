@@ -43,10 +43,8 @@ ContinueScene::ContinueScene(StreetHost &host, session::GameSession &session)
       m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_display(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_palette(COLORS, effects::color::BLACK) {
-  const bool voices = session.version == GameVersion::V12;
-  m_images.load(
-      core::ImageBank::FIRST_IMAGE,
-      host.loadSpriteSet(assets::LETTER_SET, voices ? VOICE_BANK : 0));
+  m_images.load(core::ImageBank::FIRST_IMAGE,
+                host.loadSpriteSet(assets::LETTER_SET, VOICE_BANK));
 }
 
 void ContinueScene::advance(int16_t joystick) {
@@ -141,10 +139,8 @@ ContinueScene::Flow ContinueScene::choose(int16_t joystick) {
 }
 
 void ContinueScene::close() {
-  if (m_session.version == GameVersion::V12) {
-    m_host.playSample(VOICE_BANK, m_session.registers[amal::RQ] + 1,
-                      systems::audio::Mixer::ALL_VOICES);
-  }
+  m_host.playSample(VOICE_BANK, m_session.registers[amal::RQ] + 1,
+                    systems::audio::Mixer::ALL_VOICES);
   m_machine.destroyAll();
   m_resumeFrame = m_frame + SCREEN_CLOSE_SHOWN_VBLS;
   m_step = Step::Gone;
@@ -152,12 +148,7 @@ void ContinueScene::close() {
 
 void ContinueScene::leave() {
   if (m_continue) {
-    --m_session.stageReached;
-    if (m_session.version == GameVersion::V12) {
-      m_session.stageReached = 0;
-    }
-    m_session.registers[amal::RO] =
-        static_cast<int16_t>(m_session.stageReached);
+    m_session.registers[amal::RO] = 0;
     m_outcome = Outcome::Continue;
   } else {
     m_outcome = Outcome::NewGame;

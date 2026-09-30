@@ -447,31 +447,26 @@ void writeTables(TableWriter &writer) {
   const auto &bases = actors::compiled::ENEMY_IMAGE_BASES;
   const auto &types = actors::compiled::ENEMY_TYPES;
   table = "constexpr std::array<EnemyPrograms, " +
-          std::to_string(bases.size() * types.size() * versions.size()) +
+          std::to_string(bases.size() * types.size()) +
           "> ENEMY_PROGRAMS = {{\n";
   for (const int base : bases) {
     for (const int type : types) {
-      for (const GameVersion version : versions) {
-        table += enemyRow(writer,
-                          "ENEMY_BASE" + std::to_string(base) + "_TYPE" +
-                              std::to_string(type) + "_" + versionName(version),
-                          actors::enemy(base, type, version));
-      }
+      table += enemyRow(writer,
+                        "ENEMY_BASE" + std::to_string(base) + "_TYPE" +
+                            std::to_string(type),
+                        actors::enemy(base, type));
     }
   }
   writer.table(table + "}};\n\n");
   writer.function(
-      "EnemyPrograms enemy(int imageBase, int type, GameVersion version) {\n"
+      "EnemyPrograms enemy(int imageBase, int type) {\n"
       "  const std::size_t base =\n"
       "      position(ENEMY_IMAGE_BASES, imageBase, \"enemy image base\");\n"
-      "  const std::size_t kind = position(ENEMY_TYPES, type, \"enemy "
-      "type\");\n"
-      "  return ENEMY_PROGRAMS[(base * ENEMY_TYPES.size() + kind) * "
-      "VERSIONS.size() +\n"
-      "                        position(VERSIONS, version, \"enemy "
-      "version\")];\n}\n\n");
+      "  return ENEMY_PROGRAMS[base * ENEMY_TYPES.size() +\n"
+      "                        position(ENEMY_TYPES, type, \"enemy type\")];\n"
+      "}\n\n");
 
-  byVersion(writer, "idle", "IDLE", actors::idle);
+  single(writer, "idle", "IDLE", actors::idle());
   byNumber(writer, "indicatorArrow", "INDICATOR_ARROW", "facing", "FACING",
            actors::compiled::ARROW_FACINGS, "ARROW_FACINGS",
            actors::indicatorArrow);

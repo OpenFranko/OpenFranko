@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::amal;
 using namespace openfranko::src::engine::street;
 using namespace openfranko::src::systems::input;
@@ -47,6 +48,10 @@ SCENARIO("WROG builds each enemy for its sprite slot and type") {
     const auto first = actors::enemy(0, 0);
     const auto second = actors::enemy(25, 0);
     const auto third = actors::enemy(50, 0);
+
+    THEN("Every round of the walk starts with the released game's pause") {
+      REQUIRE(first.walk.rfind("A:P;IR3=1JU;IX<RAJK;IX>RAJL;M:P;", 0) == 0);
+    }
 
     THEN("The taunt sample adds 3 or 6 because AMOS booleans are -1") {
       REQUIRE(contains(first.walk, "H:LRW=$E;P;JA;"));
@@ -121,10 +126,21 @@ SCENARIO("FRAN clamps the player to the stage's arena") {
   }
 }
 
+SCENARIO("FRAN keeps the knocked down player on the ground as the released "
+         "game does") {
+  GIVEN("FRAN of both versions") {
+    THEN("The player stays down 80 frames after the fall") {
+      REQUIRE(contains(actors::streetPlayer(1).damage, "LRE=4;M0,0,80;"));
+      REQUIRE(contains(actors::streetPlayer(1, GameVersion::V12).damage,
+                       "LRE=4;M0,0,80;"));
+    }
+  }
+}
+
 SCENARIO("The small actors") {
   GIVEN("MARTWY and the indicator arrow") {
     THEN("MARTWY only pauses, and the arrow blinks the indicator") {
-      REQUIRE(actors::idle() == "A:P;JA;");
+      REQUIRE(actors::idle() == "A:P;P;JA;");
       REQUIRE(actors::indicatorArrow(0) == "A0,(1+$0,10)(10,10);");
       REQUIRE_NOTHROW(parse(actors::playerBlood()));
       REQUIRE_NOTHROW(parse(actors::enemyBlood()));
