@@ -2,8 +2,8 @@
 
 #include "graphics/Display.h"
 
-#include <algorithm>
 #include <cstddef>
+#include <cstring>
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
@@ -114,9 +114,9 @@ IndexedBitmap readIndexedBitmap(const std::vector<uint8_t> &file) {
     const int fileRow = height < 0 ? row : bitmap.height - 1 - row;
     const uint8_t *source =
         file.data() + pixelStart + stride * static_cast<std::size_t>(fileRow);
-    std::copy(source, source + bitmap.width,
-              bitmap.pixels.begin() +
-                  static_cast<std::ptrdiff_t>(row) * bitmap.width);
+    std::memcpy(bitmap.pixels.data() +
+                    static_cast<std::ptrdiff_t>(row) * bitmap.width,
+                source, static_cast<std::size_t>(bitmap.width));
   }
   return bitmap;
 }

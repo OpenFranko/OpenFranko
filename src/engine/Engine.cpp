@@ -311,7 +311,7 @@ void Engine::switchState(states::EngineStateId nextState) {
 
 states::shared::EngineStreetHost &Engine::makeStreetHost() {
   m_streetHost = std::make_unique<states::shared::EngineStreetHost>(
-      m_audioSystem, *m_files, m_session.version,
+      m_audioSystem, *m_files, m_session.version, m_random,
       [this] { m_audioSystem.update(); });
   return *m_streetHost;
 }

@@ -78,8 +78,7 @@ void StreetStage::openScreens(bool shown) {
   m_panelPalette = ui::panelPalette();
   m_screenShown = shown;
   m_copper.reset(registers());
-  m_screen.fill(0);
-  m_buffer = core::DoubleBuffer(m_screen);
+  openBlankScreens();
   openPanel();
 }
 

@@ -15,6 +15,10 @@ constexpr int LAST_VBL = 3;
 DoubleBuffer::DoubleBuffer(const IndexedSurface &screen)
     : m_buffers{Buffer{screen, {}}, Buffer{screen, {}}} {}
 
+DoubleBuffer::DoubleBuffer(int width, int height)
+    : m_buffers{Buffer{IndexedSurface(width, height), {}},
+                Buffer{IndexedSurface(width, height), {}}} {}
+
 const IndexedSurface &DoubleBuffer::shown() const {
   return m_buffers[static_cast<std::size_t>(m_shown)].pixels;
 }

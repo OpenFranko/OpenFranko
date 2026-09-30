@@ -102,6 +102,7 @@ std::string passwordFor(int stage) {
 CarStage::CarStage(StreetHost &host, session::GameSession &session,
                    GameOptions &options)
     : Stage(host, session, options), m_road(0, 0), m_strip(0, 0) {
+  openBlankScreens();
   m_holdsWhileClosing = true;
   openPanel();
   m_screenOffsetX = stage() == 2 ? 16 : 0;

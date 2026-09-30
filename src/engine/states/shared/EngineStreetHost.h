@@ -21,7 +21,8 @@ namespace shared {
 class EngineStreetHost : public street::scenes::StreetHost {
 public:
   EngineStreetHost(systems::audio::Speaker &speaker, assets::Files &files,
-                   GameVersion version, std::function<void()> yield,
+                   GameVersion version, std::mt19937 &random,
+                   std::function<void()> yield,
                    std::string directory = "assets");
   ~EngineStreetHost() override;
 
@@ -62,7 +63,7 @@ private:
   GameVersion m_version;
   std::function<void()> m_yield;
   std::string m_directory;
-  std::mt19937 m_random;
+  std::mt19937 &m_random;
   std::map<int, std::vector<int>> m_samples;
 };
 

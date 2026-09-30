@@ -57,11 +57,12 @@ std::string readText(assets::Files &files, const std::string &what,
 
 EngineStreetHost::EngineStreetHost(systems::audio::Speaker &speaker,
                                    assets::Files &files, GameVersion version,
+                                   std::mt19937 &random,
                                    std::function<void()> yield,
                                    std::string directory)
     : m_speaker(speaker), m_files(files), m_version(version),
       m_yield(std::move(yield)), m_directory(std::move(directory)),
-      m_random(std::random_device{}()) {}
+      m_random(random) {}
 
 EngineStreetHost::~EngineStreetHost() {
   m_speaker.setSampleLooping(false);
