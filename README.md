@@ -47,6 +47,11 @@ ctest --output-on-failure
 
 Executables can be located in the build directory
 
+In the game, Alt+Enter switches between a window and fullscreen. In
+fullscreen the game switches the screen to 50 Hz (60 Hz in NTSC mode) when the
+screen offers that rate, like many TVs and external monitors do, so it runs
+perfectly smoothly; otherwise it keeps the desktop's rate.
+
 With tests enabled, three launchers are also built in `test/manual`, so late
 scenes can be tried without playing up to them. `startAtLevel1Car` starts the
 game at the stage-1 bonus drive, as if the first boss had just been beaten.

@@ -1,11 +1,15 @@
 #include "graphics/VideoSystem.h"
 
+#include "graphics/ScreenMode.h"
+
 #include <SDL2/SDL.h>
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace openfranko::src::systems::graphics {
 namespace {
@@ -19,11 +23,20 @@ using Clock = std::chrono::steady_clock;
 constexpr auto WINDOW_NAME = "OpenFranko";
 constexpr auto WINDOW_WIDTH = 800;
 constexpr auto WINDOW_HEIGHT = 600;
+constexpr SDL_Keycode FULLSCREEN_KEY = SDLK_RETURN;
+constexpr int FULLSCREEN_MODIFIERS = KMOD_ALT;
+constexpr int VSYNC_FRAME_PERCENT = 75;
+constexpr int PERCENT = 100;
+
+ScreenMode screenMode(const SDL_DisplayMode &mode) {
+  return {mode.w, mode.h, mode.refresh_rate};
+}
 
 } // namespace
 
 struct VideoSystem::Window {
   ~Window() {
+    SDL_DelEventWatch(watchKeys, this);
     if (texture) {
       SDL_DestroyTexture(texture);
     }
@@ -35,13 +48,72 @@ struct VideoSystem::Window {
     }
   }
 
+  static int SDLCALL watchKeys(void *window, SDL_Event *event);
+  void toggleFullscreen(int hertz);
+  void enterFullscreen(int hertz);
+  ScreenMode displayMode() const;
+
   SDL_Window *window = nullptr;
   SDL_Renderer *renderer = nullptr;
   SDL_Texture *texture = nullptr;
   int textureWidth = 0;
   int textureHeight = 0;
   Clock::time_point nextFrame = Clock::now();
+  Clock::time_point frameEnd = Clock::now();
+  std::atomic<bool> toggleWanted{false};
+  bool fullscreen = false;
+  int fullscreenHertz = 0;
 };
+
+int SDLCALL VideoSystem::Window::watchKeys(void *window, SDL_Event *event) {
+  const SDL_KeyboardEvent &key = event->key;
+  if (event->type == SDL_KEYDOWN && key.repeat == 0 &&
+      key.keysym.sym == FULLSCREEN_KEY &&
+      (key.keysym.mod & FULLSCREEN_MODIFIERS) != 0) {
+    static_cast<Window *>(window)->toggleWanted = true;
+  }
+  return 1;
+}
+
+void VideoSystem::Window::toggleFullscreen(int hertz) {
+  if (fullscreen) {
+    SDL_SetWindowFullscreen(window, 0);
+    fullscreen = false;
+    return;
+  }
+  enterFullscreen(hertz);
+}
+
+void VideoSystem::Window::enterFullscreen(int hertz) {
+  const int display = SDL_GetWindowDisplayIndex(window);
+  SDL_DisplayMode desktop{};
+  SDL_GetDesktopDisplayMode(display, &desktop);
+  std::vector<SDL_DisplayMode> modes;
+  std::vector<ScreenMode> screenModes;
+  for (int index = 0; index < SDL_GetNumDisplayModes(display); ++index) {
+    SDL_DisplayMode mode{};
+    if (SDL_GetDisplayMode(display, index, &mode) == 0) {
+      modes.push_back(mode);
+      screenModes.push_back(screenMode(mode));
+    }
+  }
+  const auto chosen = fullscreenMode(screenModes, screenMode(desktop), hertz);
+  if (chosen) {
+    SDL_SetWindowFullscreen(window, 0);
+    SDL_SetWindowDisplayMode(window, &modes[*chosen]);
+    SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+  } else {
+    SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+  }
+  fullscreen = true;
+  fullscreenHertz = hertz;
+}
+
+ScreenMode VideoSystem::Window::displayMode() const {
+  SDL_DisplayMode mode{};
+  SDL_GetCurrentDisplayMode(SDL_GetWindowDisplayIndex(window), &mode);
+  return screenMode(mode);
+}
 
 VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
@@ -64,11 +136,18 @@ VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
   if (!m_window->renderer) {
     throwError("Renderer creation failed");
   }
+  SDL_AddEventWatch(Window::watchKeys, m_window.get());
 }
 
 VideoSystem::~VideoSystem() = default;
 
 void VideoSystem::present() {
+  if (m_window->toggleWanted.exchange(false)) {
+    m_window->toggleFullscreen(refreshRate());
+  } else if (m_window->fullscreen &&
+             m_window->fullscreenHertz != refreshRate()) {
+    m_window->enterFullscreen(refreshRate());
+  }
   SDL_Renderer *renderer = m_window->renderer;
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
   SDL_RenderClear(renderer);
@@ -130,11 +209,17 @@ void VideoSystem::waitVbl() {
       std::chrono::duration<double>(1.0 / refreshRate()));
   m_window->nextFrame += frameTime;
   const Clock::time_point now = Clock::now();
-  if (m_window->nextFrame > now) {
+  const bool vsynced =
+      isRefreshedAt(m_window->displayMode(), refreshRate()) &&
+      now - m_window->frameEnd >= frameTime * VSYNC_FRAME_PERCENT / PERCENT;
+  if (vsynced) {
+    m_window->nextFrame = now;
+  } else if (m_window->nextFrame > now) {
     std::this_thread::sleep_until(m_window->nextFrame);
   } else if (now - m_window->nextFrame > frameTime) {
     m_window->nextFrame = now;
   }
+  m_window->frameEnd = Clock::now();
 }
 
 } // namespace openfranko::src::systems::graphics

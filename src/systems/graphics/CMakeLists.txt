@@ -7,7 +7,9 @@ add_library(Graphics
     Display.h
     IndexedRasterizer.cpp
     IndexedRasterizer.h
-    Monitor.h)
+    Monitor.h
+    ScreenMode.cpp
+    ScreenMode.h)
 target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 if(DJGPP)
