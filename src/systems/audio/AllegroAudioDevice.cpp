@@ -7,6 +7,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <cstdio>
 #include <dpmi.h>
 #include <stdexcept>
 #include <string>
@@ -27,6 +28,8 @@ constexpr int RESCUE_PART = 2;
 constexpr std::size_t FPU_STATE_BYTES = 108;
 constexpr unsigned long SPARE_MEMORY = 6UL << 20;
 constexpr uint16_t UNSIGNED_SAMPLE_BIAS = 0x8000;
+constexpr auto NO_SOUND_CARD_MESSAGE =
+    "No sound card found, the game will be silent.\n";
 
 [[noreturn]] void throwError(const std::string &cause) {
   throw std::runtime_error("Audio device error: " + cause + ": " +
@@ -115,6 +118,9 @@ AudioDevice::AudioDevice(int rate, Render render)
   set_mixer_quality(PLAIN_16_BIT_MIXING);
   if (install_sound(DIGI_AUTODETECT, MIDI_NONE, nullptr) != 0) {
     throwError("Allegro sound");
+  }
+  if (digi_card == DIGI_NONE) {
+    std::fputs(NO_SOUND_CARD_MESSAGE, stderr);
   }
   SAMPLE *ring =
       create_sample(SAMPLE_BITS, TRUE, rate, RING_LEADS * LEAD_FRAMES);

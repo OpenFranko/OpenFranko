@@ -116,7 +116,8 @@ so the path has to be absolute). DOS has no long file names, so the game reads
 its assets from the archive; every build does that when `assets.tar` sits next
 to it instead of `assets`. On a real PC, copy the first three files into one
 directory and run `franko`. It needs a VGA card and, for sound, a Sound Blaster
-compatible card. Ctrl+C or Ctrl+Break quits it.
+compatible card; without one it says so while it loads and plays silently.
+Ctrl+C or Ctrl+Break quits it.
 
 The game shows the Amiga picture pixel for pixel in a 376x282 256-colour VGA
 mode (Mode X) that, like a PAL Amiga, refreshes about 50 times a second; high

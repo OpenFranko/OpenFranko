@@ -125,10 +125,10 @@ Engine::Engine()
 
 Engine::Engine(states::EngineStateId firstState,
                street::session::GameSession startingSession)
-    : m_files(std::make_unique<assets::YieldingFiles>(
-          openCheckedFiles(), [this] { m_audioSystem.update(); })),
-      m_audioSystem(
+    : m_audioSystem(
           [this](const std::string &path) { return m_files->read(path); }),
+      m_files(std::make_unique<assets::YieldingFiles>(
+          openCheckedFiles(), [this] { m_audioSystem.update(); })),
       m_session(std::move(startingSession)), m_running(true) {
   m_session.version = assets::detectVersion(*m_files);
   m_session.highScores =

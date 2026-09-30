@@ -37,9 +37,9 @@ private:
   states::shared::EngineStreetHost &makeStreetHost();
 
   systems::input::Platform m_platform;
+  systems::audio::AudioSystem m_audioSystem;
   std::unique_ptr<assets::Files> m_files;
   systems::graphics::VideoSystem m_videoSystem;
-  systems::audio::AudioSystem m_audioSystem;
   systems::input::ControllerSystem m_controllerSystem;
   GameOptions m_options;
   street::session::GameSession m_session;
