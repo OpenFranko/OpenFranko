@@ -19,10 +19,24 @@ inline constexpr int16_t REGISTER_A = 38;
 
 enum class TermKind : uint8_t { Number, Register, Joystick, Operator };
 
+enum class Operator : uint8_t {
+  Add,
+  Subtract,
+  Multiply,
+  Divide,
+  Equal,
+  Less,
+  Greater,
+  NotEqual,
+  And,
+  Or,
+  Xor
+};
+
 struct Term {
   TermKind kind = TermKind::Number;
   int16_t value = 0;
-  char op = 0;
+  Operator op = Operator::Add;
 };
 
 using Expression = std::vector<Term>;

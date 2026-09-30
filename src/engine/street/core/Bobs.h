@@ -17,6 +17,18 @@ namespace core {
 
 using Paste = std::function<void(int x, int y, int image)>;
 
+struct RowSpan {
+  int first = 0;
+  int last = -1;
+};
+
+struct MaskBox {
+  int left = 0;
+  int top = 0;
+  int right = 0;
+  int bottom = 0;
+};
+
 class ImageBank {
 public:
   static constexpr uint16_t FLIP_X = 0x8000;
@@ -24,9 +36,17 @@ public:
   static constexpr uint16_t NUMBER_MASK = 0x3FFF;
   static constexpr int FIRST_IMAGE = 1;
 
+  struct Mask {
+    const Picture *picture = nullptr;
+    const RowSpan *rows = nullptr;
+    MaskBox box;
+    uint16_t orientation = 0;
+  };
+
   void clear();
   void load(int base, const std::vector<Picture> &frames);
   const Picture *find(int number) const;
+  Mask mask(int number) const;
   uint16_t orientation(int number) const;
   void orient(int number, uint16_t flags);
   void noMask(int number);
@@ -40,7 +60,13 @@ private:
     bool masked = true;
   };
 
+  struct Outline {
+    std::vector<RowSpan> rows;
+    MaskBox box;
+  };
+
   std::vector<Entry> m_entries;
+  std::vector<Outline> m_outlines;
 };
 
 struct SavedArea {

@@ -1,5 +1,6 @@
 #include "Program.h"
 
+#include <optional>
 #include <stdexcept>
 #include <string_view>
 
@@ -31,21 +32,30 @@ std::string tokenize(const std::string &source) {
   return tokens;
 }
 
-bool isOperator(char c) {
+std::optional<Operator> toOperator(char c) {
   switch (c) {
   case '+':
+    return Operator::Add;
   case '-':
+    return Operator::Subtract;
   case '*':
+    return Operator::Multiply;
   case '/':
+    return Operator::Divide;
   case '=':
+    return Operator::Equal;
   case '<':
+    return Operator::Less;
   case '>':
+    return Operator::Greater;
   case '&':
+    return Operator::And;
   case '|':
+    return Operator::Or;
   case '!':
-    return true;
+    return Operator::Xor;
   default:
-    return false;
+    return std::nullopt;
   }
 }
 
@@ -256,15 +266,16 @@ private:
 
   Term binaryOperator() {
     const char c = next();
-    if (!isOperator(c)) {
+    const std::optional<Operator> op = toOperator(c);
+    if (!op) {
       throw std::invalid_argument(
           std::string("AMAL: expected an operator, got ") + c);
     }
     Term term;
     term.kind = TermKind::Operator;
-    term.op = c;
-    if (c == '<' && peek() == '>') {
-      term.op = '#';
+    term.op = *op;
+    if (*op == Operator::Less && peek() == '>') {
+      term.op = Operator::NotEqual;
       ++m_position;
     }
     return term;

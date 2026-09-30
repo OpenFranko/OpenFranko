@@ -207,6 +207,36 @@ SCENARIO("Bob Col sees an image as it was last drawn") {
       }
     }
   }
+
+  GIVEN("An image whose only solid pixel is its top left corner") {
+    ImageBank images;
+    Picture corner = box(16, 10, 0, 0, 0);
+    corner.pixels[0] = 7;
+    images.load(5, {corner, box(1, 1, 0, 0, 1)});
+    BobLayer bobs;
+    IndexedSurface screen(320, 222);
+    bobs.set(1, 100, 50, 5 + UPSIDE_DOWN);
+    bobs.draw(screen, images);
+
+    THEN("Drawn upside down, its pixel is on the box's bottom row") {
+      bobs.set(2, 100, 49, 6);
+      REQUIRE(bobs.collide(1, images));
+      bobs.set(2, 100, 40, 6);
+      REQUIRE_FALSE(bobs.collide(1, images));
+    }
+
+    WHEN("It is drawn mirrored as well") {
+      bobs.setImage(1, 5 + MIRROR + UPSIDE_DOWN);
+      bobs.draw(screen, images);
+
+      THEN("Its pixel is in the bottom right corner") {
+        bobs.set(2, 99, 49, 6);
+        REQUIRE(bobs.collide(1, images));
+        bobs.set(2, 84, 49, 6);
+        REQUIRE_FALSE(bobs.collide(1, images));
+      }
+    }
+  }
 }
 
 SCENARIO("No Mask makes an image opaque and blind to Bob Col") {

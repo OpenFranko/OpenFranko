@@ -5,9 +5,9 @@
 
 #include <array>
 #include <cstdint>
-#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace openfranko {
@@ -53,6 +53,7 @@ struct Object {
 class Machine {
 public:
   static constexpr int JUMP_BUDGET = 10;
+  static constexpr int CHANNELS = 64;
 
   explicit Machine(Registers &globals);
 
@@ -78,6 +79,8 @@ public:
 private:
   struct Channel {
     std::shared_ptr<const Program> program;
+    bool open = false;
+    int instructions = 0;
     int pc = 0;
     bool alive = true;
     bool frozen = true;
@@ -97,9 +100,16 @@ private:
     uint16_t animCounter = 0;
   };
 
+  struct SourceHash {
+    std::size_t operator()(const std::string &source) const;
+  };
+
   Channel &channel(int number);
+  Channel *opened(int number);
+  const Channel *opened(int number) const;
   int16_t read(const Channel &channel, int16_t reg) const;
   void write(Channel &channel, int16_t reg, int16_t value);
+  int16_t operand(const Channel &channel, const Term &term) const;
   int16_t evaluate(const Channel &channel, const Expression &expression) const;
   void run(Channel &channel);
   void startMove(Channel &channel, int16_t dx, int16_t dy, int16_t frames);
@@ -108,9 +118,10 @@ private:
   void stepAnim(Channel &channel);
 
   Registers &m_globals;
-  std::map<int, Object *> m_bindings;
-  std::map<int, Channel> m_channels;
-  std::map<std::string, std::shared_ptr<const Program>> m_programs;
+  std::array<Object *, CHANNELS> m_bindings{};
+  std::array<Channel, CHANNELS> m_channels{};
+  std::unordered_map<std::string, std::shared_ptr<const Program>, SourceHash>
+      m_programs;
   int16_t m_joystick = 0;
 };
 
