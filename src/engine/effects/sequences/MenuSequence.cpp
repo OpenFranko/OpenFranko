@@ -296,9 +296,6 @@ void MenuSequence::finishPass() {
   const std::optional<char> key = m_keyboard.inkey();
   if (key && *key >= FIRST_TYPED) {
     m_keysRead += *key;
-    if (m_version == GameVersion::V10) {
-      m_timer = 0;
-    }
   }
   if (m_mouseButton) {
     m_keyboard.permit();

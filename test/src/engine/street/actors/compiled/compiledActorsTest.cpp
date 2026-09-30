@@ -73,8 +73,6 @@ SCENARIO("The compiled actor programs are their AMAL sources compiled") {
                                actors::enemyBlood(version)));
         REQUIRE(isCompiledFrom(actors::compiled::screenShake(version),
                                actors::screenShake(version)));
-        REQUIRE(isCompiledFrom(actors::compiled::idle(version),
-                               actors::idle(version)));
         for (const int stage : actors::compiled::STAGES) {
           CAPTURE(stage);
           const auto compiled = actors::compiled::streetPlayer(stage, version);
@@ -86,18 +84,17 @@ SCENARIO("The compiled actor programs are their AMAL sources compiled") {
       }
     }
 
-    THEN("Every enemy image base and type matches in both versions") {
+    THEN("Every enemy image base and type matches, and so does MARTWY") {
       for (const int base : actors::compiled::ENEMY_IMAGE_BASES) {
         for (const int type : actors::compiled::ENEMY_TYPES) {
-          for (const GameVersion version : actors::compiled::VERSIONS) {
-            CAPTURE(base, type, static_cast<int>(version));
-            const auto compiled = actors::compiled::enemy(base, type, version);
-            const auto source = actors::enemy(base, type, version);
-            REQUIRE(isCompiledFrom(compiled.walk, source.walk));
-            REQUIRE(isCompiledFrom(compiled.damage, source.damage));
-          }
+          CAPTURE(base, type);
+          const auto compiled = actors::compiled::enemy(base, type);
+          const auto source = actors::enemy(base, type);
+          REQUIRE(isCompiledFrom(compiled.walk, source.walk));
+          REQUIRE(isCompiledFrom(compiled.damage, source.damage));
         }
       }
+      REQUIRE(isCompiledFrom(actors::compiled::idle(), actors::idle()));
     }
 
     THEN("The boss stages match on every stage") {

@@ -34,9 +34,8 @@ std::string playerBlood();
 std::string enemyBlood(GameVersion version = GameVersion::V10);
 std::string screenShake(GameVersion version = GameVersion::V10);
 PlayerPrograms streetPlayer(int stage, GameVersion version = GameVersion::V10);
-EnemyPrograms enemy(int imageBase, int type,
-                    GameVersion version = GameVersion::V10);
-std::string idle(GameVersion version = GameVersion::V10);
+EnemyPrograms enemy(int imageBase, int type);
+std::string idle();
 std::string indicatorArrow(int facing);
 PlayerPrograms bossPlayer(int stage);
 EnemyPrograms boss(int stage);

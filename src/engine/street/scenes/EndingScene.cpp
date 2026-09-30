@@ -587,7 +587,6 @@ EndingScene::Flow EndingScene::musicFade() {
   }
   m_host.stopMusic();
   m_host.setMusicVolume(systems::audio::Mixer::FULL_VOLUME);
-  m_session.stageReached = m_session.registers[amal::RO];
   m_session.border = m_border;
   m_step = Step::Finished;
   return Flow::Yield;

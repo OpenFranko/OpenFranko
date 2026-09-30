@@ -610,10 +610,7 @@ SCENARIO("The run ends as state 11 and SYS decide") {
         REQUIRE(stage.outcome() == StreetStage::Outcome::GameOver);
       }
 
-      THEN("ETAP keeps the stage for the continue screen before RO goes") {
-        REQUIRE(street.session.stageReached == 1);
-        REQUIRE(street.global(RO) == -1);
-      }
+      THEN("OVER sets RO back to -1") { REQUIRE(street.global(RO) == -1); }
     }
 
     WHEN("The kill count reaches KI") {

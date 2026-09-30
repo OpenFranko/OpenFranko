@@ -202,7 +202,6 @@ void Stage::openBlankScreens() {
 }
 
 void Stage::gameOver() {
-  m_session.stageReached = global(amal::RO);
   global(amal::RO) = -1;
   if (quitsToHighScores()) {
     global(amal::RN) = 0;

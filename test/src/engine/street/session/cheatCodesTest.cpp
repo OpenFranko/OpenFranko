@@ -41,7 +41,6 @@ SCENARIO("A fresh session is what boot and state 05 leave for the menu") {
     THEN("N$ still holds the hi-score file name and no cheat is on") {
       REQUIRE(session.textBuffer == HighScoreTable::FILE_NAME);
       REQUIRE_FALSE(session.shortLevels);
-      REQUIRE_FALSE(session.brutality);
     }
   }
 }
@@ -69,7 +68,6 @@ SCENARIO("applyCheatCodes decodes N$ as the end of state 07 does") {
       REQUIRE(session.registers[RG] == 3);
       REQUIRE(session.registers[RO] == -1);
       REQUIRE_FALSE(session.shortLevels);
-      REQUIRE_FALSE(session.brutality);
     }
   }
 
@@ -85,9 +83,8 @@ SCENARIO("applyCheatCodes decodes N$ as the end of state 07 does") {
       REQUIRE(afterTyping("DRZE").registers[RO] == 2);
     }
 
-    THEN("SKIP shortens the levels and MORAL turns the gore on") {
+    THEN("SKIP shortens the levels") {
       REQUIRE(afterTyping("SKIP").shortLevels);
-      REQUIRE(afterTyping("MORAL").brutality);
     }
 
     THEN("A code typed in lower case or among other keys still counts") {
@@ -109,18 +106,15 @@ SCENARIO("applyCheatCodes decodes N$ as the end of state 07 does") {
     }
   }
 
-  GIVEN("A session that had SKIP and MORAL") {
-    GameSession session = afterTyping("SKIPMORAL");
+  GIVEN("A session that had SKIP") {
+    GameSession session = afterTyping("SKIP");
     session.textBuffer = typed("CENT", session.textBuffer);
     session.textBuffer = typed("0123456789A", session.textBuffer);
 
     WHEN("The menu is left without them") {
       applyCheatCodes(session);
 
-      THEN("SKIP is decided again but MORAL stays on") {
-        REQUIRE_FALSE(session.shortLevels);
-        REQUIRE(session.brutality);
-      }
+      THEN("SKIP is decided again") { REQUIRE_FALSE(session.shortLevels); }
     }
   }
 

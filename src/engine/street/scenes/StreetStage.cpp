@@ -144,7 +144,7 @@ void StreetStage::stageShown() {
     m_bobs.set(bob, 460, STREET_Y, 44);
   }
   for (int channel = 4; channel <= 9; ++channel) {
-    m_machine.create(channel, actors::compiled::idle(m_session.version));
+    m_machine.create(channel, actors::compiled::idle());
   }
 }
 
@@ -687,8 +687,8 @@ void StreetStage::spawnLoaded() {
     m_machine.bind(j * 2 + 1, &m_bobs.object(j));
     if (enemy.spriteSet == core::EnemySlot::EMPTY) {
       m_bobs.set(j, 1000, 300, HIDDEN_IMAGE);
-      m_machine.create(j * 2, actors::compiled::idle(m_session.version));
-      m_machine.create(j * 2 + 1, actors::compiled::idle(m_session.version));
+      m_machine.create(j * 2, actors::compiled::idle());
+      m_machine.create(j * 2 + 1, actors::compiled::idle());
       global(amal::RI) = word(global(amal::RI) - 1);
       continue;
     }
@@ -698,8 +698,7 @@ void StreetStage::spawnLoaded() {
     const int base = 0 -
                      25 * actors::amosBool(m_resident[2] == enemy.spriteSet) -
                      50 * actors::amosBool(m_resident[3] == enemy.spriteSet);
-    const auto programs =
-        actors::compiled::enemy(base, enemy.type, m_session.version);
+    const auto programs = actors::compiled::enemy(base, enemy.type);
     m_machine.create(j * 2, programs.walk);
     m_machine.create(j * 2 + 1, programs.damage);
   }

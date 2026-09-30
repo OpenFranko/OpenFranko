@@ -79,8 +79,7 @@ PlayerPrograms streetPlayer(int stage, GameVersion version) {
        "0,7;JP;";
   a += version12 ? "N:LRD=9;LRZ=60;LRW=9;" : "N:LRD=9;LRW=8;LRZ=60;";
   a += "A1,(39+RC,10)(40+RC,10);MR2,-32,12;MR2,32,12;M0,0,4;LRF=RF-4;";
-  a += "LRM=1;LRW=11;LA=42+RC;LRA=RA+R2+R2;M0,0,20;LRE=4;";
-  a += version12 ? "M0,0,80;" : "M0,0,20;";
+  a += "LRM=1;LRW=11;LA=42+RC;LRA=RA+R2+R2;M0,0,20;LRE=4;M0,0,80;";
   a += "LA=41+RC;M0,0,10;LA=17+RC;M0,0,7;JP;O:LRD=9;LA=38+RC;M0,0,10;LRW=10;"
        "LRZ=40;LA=40+RC;M0,0,9;LA=38+RC;M0,0,10;LRW=7;LRZ=40;LA=40+RC;M0,0,9;"
        "LA=38+RC;M0,0,10;LRW=10;LRZ=40;LA=40+RC;";
@@ -96,13 +95,12 @@ PlayerPrograms streetPlayer(int stage, GameVersion version) {
   return programs;
 }
 
-EnemyPrograms enemy(int imageBase, int type, GameVersion version) {
+EnemyPrograms enemy(int imageBase, int type) {
   const int d = imageBase;
   const int r = type;
   EnemyPrograms programs;
 
-  std::string a = version == GameVersion::V12 ? "A:P;" : "A:";
-  a += "IR3=1JU;IX<RAJK;IX>RAJL;M:P;IR8=5JH;P;P;";
+  std::string a = "A:P;IR3=1JU;IX<RAJK;IX>RAJL;M:P;IR8=5JH;P;P;";
   if (r == 2) {
     a += "IRD=4JI;";
   }
@@ -220,9 +218,7 @@ EnemyPrograms enemy(int imageBase, int type, GameVersion version) {
   return programs;
 }
 
-std::string idle(GameVersion version) {
-  return version == GameVersion::V12 ? "A:P;P;JA;" : "A:P;JA;";
-}
+std::string idle() { return "A:P;P;JA;"; }
 
 std::string indicatorArrow(int facing) {
   return "A0,(1+" + hex(facing) + ",10)(10,10);";

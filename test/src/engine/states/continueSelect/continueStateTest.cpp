@@ -24,7 +24,6 @@ namespace {
 struct Choice {
   explicit Choice(bool ntsc = false) {
     options.ntsc = ntsc;
-    session.stageReached = 1;
     session.registers[RO] = -1;
     state.emplace(monitor, host, controller, options, session);
   }
@@ -69,7 +68,7 @@ SCENARIO("The continue screen is shown in the options' standard") {
 }
 
 SCENARIO("The joystick answers the continue question") {
-  GIVEN("A player who died on stage 1") {
+  GIVEN("A player whose game is over") {
     Choice choice;
     run(*choice.state, 3);
 
@@ -77,9 +76,9 @@ SCENARIO("The joystick answers the continue question") {
       choice.press(&ControllerSystem::ControllerStates::button);
       const Exit exit = runToExit(*choice.state, 1000);
 
-      THEN("The character selection follows, one stage back") {
+      THEN("The character selection follows, for the first stage again") {
         REQUIRE(exit.next == EngineStateId::CharacterSelectionSequence);
-        REQUIRE(choice.session.stageReached == 0);
+        REQUIRE(choice.session.registers[RO] == 0);
       }
     }
 
@@ -90,7 +89,7 @@ SCENARIO("The joystick answers the continue question") {
 
       THEN("The menu follows with the stage left alone") {
         REQUIRE(exit.next == EngineStateId::Menu);
-        REQUIRE(choice.session.stageReached == 1);
+        REQUIRE(choice.session.registers[RO] == -1);
       }
     }
   }

@@ -31,6 +31,7 @@ WorldSoftwareState::WorldSoftwareState(systems::graphics::Monitor &monitor,
     : m_speaker(speaker),
       m_foto(monitor, files, PICTURE_PATH, DISPLAY_LINE, TIMINGS) {
   m_speaker.loadSample(SAMPLE, SAMPLE_PATH);
+  m_foto.shake();
 }
 
 WorldSoftwareState::~WorldSoftwareState() { m_speaker.clearSample(SAMPLE); }

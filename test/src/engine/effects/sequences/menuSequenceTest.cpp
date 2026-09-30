@@ -468,22 +468,30 @@ SCENARIO("MenuSequence reads typed keys only when the keyboard gets through") {
   }
 }
 
-SCENARIO("A key read by the menu restarts the attract timer as Timer=0 does") {
+SCENARIO("A key read by the menu leaves the attract timer running, as both "
+         "released versions do") {
   GIVEN("An open menu with the keyboard let through") {
     GameOptions options;
     InkeyBuffer keyboard;
     MenuSequence menu(options, BACKDROP_PALETTE, keyboard);
-    run(menu, OPENING_FRAMES + 1);
+    run(menu, OPENING_FRAMES);
     clickMouse(menu);
 
-    WHEN("A key is typed every 200 frames") {
-      for (int i = 0; i < 5; ++i) {
-        run(menu, 200);
-        type(menu, keyboard, "A");
+    WHEN("A key is typed every third frame for 300 frames") {
+      std::string read;
+      for (int i = 0; i < 100; ++i) {
+        read += type(menu, keyboard, "A");
+        run(menu, 2);
       }
+      const bool dueTooEarly = menu.isAttractDue();
+      menu.advance(NOTHING);
+      menu.advance(NOTHING);
 
-      THEN("The attract screens never come") {
-        REQUIRE_FALSE(menu.isAttractDue());
+      THEN("Every key is read, and the attract screens come on the frame they "
+           "come without typing") {
+        REQUIRE(read == std::string(100, 'A'));
+        REQUIRE_FALSE(dueTooEarly);
+        REQUIRE(menu.isAttractDue());
       }
     }
   }

@@ -574,8 +574,7 @@ BossStage::Flow BossStage::finishStart() {
   m_machine.destroy(BOSS_WALK_CHANNEL);
   m_machine.destroy(PLAYER_CLAMP_CHANNEL);
   global(amal::RT) = word(yBob(BOSS) - yBob(PLAYER));
-  if (stage() == 1 &&
-      (m_session.brutality || m_session.version == GameVersion::V12)) {
+  if (stage() == 1) {
     global(amal::RU) = word(xBob(BOSS) - xBob(PLAYER) - 48 -
                             96 * actors::amosBool(global(amal::RR) != 0));
     global(amal::RS) =

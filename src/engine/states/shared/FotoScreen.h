@@ -23,14 +23,18 @@ public:
              const effects::sequences::FotoSequence::Timings &timings);
 
   effects::sequences::FotoSequence &sequence();
+  void shake();
   void advance();
 
 private:
+  int raisedLines() const;
+
   systems::graphics::Monitor &m_monitor;
   VisibleRows m_rows;
   systems::graphics::IndexedBitmap m_picture;
   systems::graphics::Canvas m_screen;
   effects::sequences::FotoSequence m_sequence;
+  bool m_shaking = false;
 };
 
 } // namespace shared

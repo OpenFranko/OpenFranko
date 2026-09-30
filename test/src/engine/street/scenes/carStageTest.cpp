@@ -605,7 +605,6 @@ SCENARIO("Esc and the last life end the drive as state 19 does") {
         REQUIRE_FALSE(drive.session.fromBonusDrive);
         REQUIRE(drive.global(RN) == 0);
         REQUIRE(drive.global(RO) == -1);
-        REQUIRE(drive.session.stageReached == 1);
       }
     }
 

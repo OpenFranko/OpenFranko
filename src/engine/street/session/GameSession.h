@@ -67,10 +67,8 @@ struct GameSession {
   GameVersion version = GameVersion::V10;
   amal::Registers registers = freshRegisters();
   int extraLifeKills = FIRST_EXTRA_LIFE;
-  bool brutality = false;
   bool shortLevels = false;
   std::string textBuffer = core::HighScoreTable::FILE_NAME;
-  int stageReached = 0;
   bool fromBonusDrive = false;
   bool nameScreenOpen = false;
   effects::color::AmigaColor border = 0x000;

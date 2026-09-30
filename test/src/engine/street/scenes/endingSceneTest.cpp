@@ -674,7 +674,7 @@ SCENARIO("Each credit page is pasted in glyphs and flashed by BLYSK2") {
   }
 }
 
-SCENARIO("After the last page the music fades out and ETAP goes to HI") {
+SCENARIO("After the last page the music fades out and HI follows") {
   GIVEN("The credits running") {
     Ending ending;
     EndingScene &scene = ending.scene;
@@ -700,7 +700,7 @@ SCENARIO("After the last page the music fades out and ETAP goes to HI") {
           ending.runUntil([&] { return scene.isFinished(); }, 200);
 
       THEN("_CLOSE shuts both screens, each gone two frames into its four, "
-           "SCICH steps the volume down 64 frames, then HI gets ETAP") {
+           "then SCICH steps the volume down 64 frames before HI") {
         REQUIRE(bothUp);
         REQUIRE(textClosed);
         REQUIRE(allClosed);
@@ -712,7 +712,6 @@ SCENARIO("After the last page the music fades out and ETAP goes to HI") {
         expected.push_back(63);
         REQUIRE(ending.host.volumes == expected);
         REQUIRE(ending.host.musicStops == 2);
-        REQUIRE(ending.session.stageReached == 3);
         REQUIRE_FALSE(scene.bobs().isActive(1));
         REQUIRE_FALSE(scene.machine().exists(1));
       }

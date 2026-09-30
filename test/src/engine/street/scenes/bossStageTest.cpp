@@ -456,77 +456,14 @@ SCENARIO("The boss referee resolves hits and sounds as state 16 does") {
         REQUIRE_FALSE(stage.isPanelShown());
         REQUIRE(duel.global(RO) == -1);
       }
-
-      THEN("ETAP remembers the boss's stage") {
-        REQUIRE(duel.session.stageReached == 1);
-      }
     }
   }
 }
 
-SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
-  GIVEN("The fight without the brutality cheat") {
+SCENARIO("Beating the first boss plays KONBOSS's finisher, then the walk-off "
+         "clears the screen") {
+  GIVEN("The first boss's fight") {
     Duel duel;
-    BossStage &stage = duel.start();
-    duel.run(READY_FRAMES + 1);
-    duel.reachFight();
-    const int x = stage.bobs().x(1);
-
-    WHEN("The boss's death leaves no enemy alive") {
-      duel.global(RI) = 0;
-      duel.run(1);
-
-      THEN("Only the walk-off is left: sample 4 and 340 px to the right") {
-        REQUIRE(stage.isFinishing());
-        REQUIRE_FALSE(stage.machine().exists(3));
-        REQUIRE_FALSE(stage.machine().exists(4));
-        REQUIRE(stage.machine().exists(1));
-        REQUIRE(duel.global(RT) == 340);
-        REQUIRE(duel.global(RU) == 340);
-        REQUIRE(duel.host.played(2, 4, 1));
-        REQUIRE(duel.host.loops.empty());
-      }
-
-      AND_WHEN("F4 is pressed during KONBOSS") {
-        duel.run(10, 0, SystemKey::Ntsc);
-        duel.run(340 + 3 - 10);
-
-        THEN("No SYS reads it here, so it waits in the register for the "
-             "bonus drive") {
-          REQUIRE(stage.outcome() == BossStage::Outcome::Cleared);
-          REQUIRE_FALSE(duel.options.ntsc);
-          REQUIRE(duel.session.keyLatch == SystemKey::Ntsc);
-        }
-      }
-
-      AND_WHEN("BASIC's Wait of 340 frames is over") {
-        duel.run(340);
-
-        THEN("The player walked 340 px and _OFF and Cls 0 blanked the screen") {
-          REQUIRE(stage.bobs().x(1) == x + 340);
-          const auto &pixels = stage.screen().pixels();
-          REQUIRE(std::all_of(pixels.begin(), pixels.end(),
-                              [](uint8_t pixel) { return pixel == 0; }));
-          REQUIRE_FALSE(stage.bobs().isActive(1));
-          REQUIRE_FALSE(stage.machine().exists(2));
-          REQUIRE(stage.outcome() == BossStage::Outcome::Playing);
-        }
-
-        AND_WHEN("The Cls stall has passed") {
-          duel.run(3);
-
-          THEN("The stage ends where the bonus drive begins") {
-            REQUIRE(stage.outcome() == BossStage::Outcome::Cleared);
-            REQUIRE_FALSE(duel.session.bossExit.has_value());
-          }
-        }
-      }
-    }
-  }
-
-  GIVEN("The fight with the brutality cheat") {
-    Duel duel;
-    duel.session.brutality = true;
     BossStage &stage = duel.start();
     duel.run(READY_FRAMES + 1);
     duel.reachFight();
@@ -534,26 +471,52 @@ SCENARIO("Beating the boss plays KONBOSS and clears the screen") {
     WHEN("The boss dies") {
       duel.global(RI) = 0;
       duel.run(1);
+      const auto finished = [&] {
+        return stage.outcome() != BossStage::Outcome::Playing;
+      };
 
       THEN("The player first walks to the body") {
         REQUIRE(stage.isFinishing());
+        REQUIRE_FALSE(stage.machine().exists(3));
+        REQUIRE_FALSE(stage.machine().exists(4));
         REQUIRE(duel.global(RS) ==
                 (std::abs(duel.global(RU)) + std::abs(duel.global(RT))) / 2);
         REQUIRE_FALSE(duel.host.played(2, 4, 1));
       }
 
+      AND_WHEN("F4 is pressed during KONBOSS") {
+        duel.run(10, 0, SystemKey::Ntsc);
+        const int ended = duel.runUntil(finished, 2000);
+
+        THEN("No SYS reads it here, so it waits in the register for the "
+             "bonus drive") {
+          REQUIRE(ended > 0);
+          REQUIRE(stage.outcome() == BossStage::Outcome::Cleared);
+          REQUIRE_FALSE(duel.options.ntsc);
+          REQUIRE(duel.session.keyLatch == SystemKey::Ntsc);
+        }
+      }
+
       AND_WHEN("The scene runs to its end") {
-        const int ended = duel.runUntil(
-            [&] { return stage.outcome() != BossStage::Outcome::Playing; },
-            2000);
+        const int ended = duel.runUntil(finished, 2000);
 
         THEN("The looping splash of sample 9 frames 100 stamps, then the "
-             "walk-off") {
+             "walk-off plays sample 4") {
           REQUIRE(ended > 0);
           REQUIRE(stage.outcome() == BossStage::Outcome::Cleared);
           REQUIRE(duel.host.loops == std::vector<bool>{true, false});
           REQUIRE(duel.host.played(4, 9, 1));
           REQUIRE(duel.host.played(2, 4, 1));
+        }
+
+        THEN("_OFF and Cls 0 blanked the screen, and the stage ends where the "
+             "bonus drive begins") {
+          const auto &pixels = stage.screen().pixels();
+          REQUIRE(std::all_of(pixels.begin(), pixels.end(),
+                              [](uint8_t pixel) { return pixel == 0; }));
+          REQUIRE_FALSE(stage.bobs().isActive(1));
+          REQUIRE_FALSE(stage.machine().exists(2));
+          REQUIRE_FALSE(duel.session.bossExit.has_value());
         }
       }
     }
