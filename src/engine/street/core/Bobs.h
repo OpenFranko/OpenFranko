@@ -44,7 +44,7 @@ public:
   };
 
   void clear();
-  void load(int base, const std::vector<Picture> &frames);
+  void load(int base, std::vector<Picture> frames);
   const Picture *find(int number) const;
   Mask mask(int number) const;
   uint16_t orientation(int number) const;

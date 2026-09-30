@@ -65,6 +65,29 @@ void writeArchive(const std::filesystem::path &path,
   file << std::string(2 * BLOCK_SIZE, '\0');
 }
 
+std::string bitmap(int width, int height, char pixel) {
+  constexpr std::size_t COLORS = 4;
+  constexpr std::size_t PIXEL_OFFSET = 14 + 40 + COLORS * 4;
+  const std::size_t stride = (static_cast<std::size_t>(width) + 3) / 4 * 4;
+  std::string file(PIXEL_OFFSET + stride * static_cast<std::size_t>(height),
+                   pixel);
+  std::fill(file.begin(), file.begin() + PIXEL_OFFSET, '\0');
+  const auto put = [&file](std::size_t offset, std::size_t value) {
+    for (std::size_t i = 0; i < 4; ++i) {
+      file[offset + i] = static_cast<char>(value >> (8 * i));
+    }
+  };
+  file[0] = 'B';
+  file[1] = 'M';
+  put(10, PIXEL_OFFSET);
+  put(14, 40);
+  put(18, static_cast<std::size_t>(width));
+  put(22, static_cast<std::size_t>(height));
+  file[28] = 8;
+  put(46, COLORS);
+  return file;
+}
+
 } // namespace
 
 SCENARIO("ArchiveFiles reads the extracted files from a tar archive") {
@@ -124,6 +147,26 @@ SCENARIO("ArchiveFiles reads the extracted files from a tar archive") {
     THEN("It is found under the joined path") {
       REQUIRE(files.read("assets/0137/0137_000.bmp") ==
               std::vector<uint8_t>{'B', 'M'});
+    }
+  }
+
+  GIVEN("A large bitmap, then a smaller one and one cut short") {
+    const TemporaryPath archive("openFrankoArchiveBitmaps.tar");
+    const std::string large = bitmap(16, 8, 1);
+    const std::string small = bitmap(4, 4, 3);
+    const std::string cut = small.substr(0, small.size() - 4);
+    writeArchive(archive.path(), {{"assets/0001.bmp", large},
+                                  {"assets/0002.bmp", small},
+                                  {"assets/0003.bmp", cut}});
+    ArchiveFiles files(archive.path().string());
+
+    THEN("Each is decoded from its own bytes only") {
+      REQUIRE(files.loadBitmap("assets/0001.bmp").width == 16);
+      const auto decoded = files.loadBitmap("assets/0002.bmp");
+      REQUIRE(decoded.width == 4);
+      REQUIRE(decoded.pixels == std::vector<uint8_t>(16, 3));
+      REQUIRE_THROWS_WITH(files.loadBitmap("assets/0003.bmp"),
+                          Catch::Matchers::ContainsSubstring("Truncated"));
     }
   }
 

@@ -10,19 +10,28 @@ namespace openfranko::src::engine::street::core {
 namespace {
 
 constexpr int DECIMAL = 10;
+constexpr int INTEGER_DIGITS = 9;
 constexpr std::size_t OBJECT_MEMBERS = 16;
 constexpr std::size_t ARRAY_ITEMS = 4;
 
 bool isSpace(char c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
 
+bool isDigit(char c) { return c >= '0' && c <= '9'; }
+
+bool continuesNumber(char c) {
+  return isDigit(c) || c == '.' || c == 'e' || c == 'E';
+}
+
 class JsonReader {
 public:
-  explicit JsonReader(const std::string &text) : m_text(text) {}
+  explicit JsonReader(const std::string &text)
+      : m_start(text.c_str()), m_cursor(m_start), m_end(m_start + text.size()) {
+  }
 
   JsonValue document() {
     JsonValue root = value();
     skipSpace();
-    if (m_position != m_text.size()) {
+    if (m_cursor != m_end) {
       fail("trailing characters");
     }
     return root;
@@ -30,34 +39,36 @@ public:
 
 private:
   [[noreturn]] void fail(const std::string &reason) const {
-    throw std::invalid_argument("JSON: " + reason + " at offset " +
-                                std::to_string(m_position));
+    throw std::invalid_argument(
+        "JSON: " + reason + " at offset " +
+        std::to_string(static_cast<std::size_t>(m_cursor - m_start)));
   }
 
   void skipSpace() {
-    while (m_position < m_text.size() && isSpace(m_text[m_position])) {
-      ++m_position;
+    while (m_cursor != m_end && isSpace(*m_cursor)) {
+      ++m_cursor;
     }
   }
 
   char peek() {
     skipSpace();
-    if (m_position >= m_text.size()) {
+    if (m_cursor == m_end) {
       fail("unexpected end");
     }
-    return m_text[m_position];
+    return *m_cursor;
   }
 
   void expect(char c) {
     if (peek() != c) {
       fail(std::string("expected '") + c + "'");
     }
-    ++m_position;
+    ++m_cursor;
   }
 
   bool consume(std::string_view word) {
-    if (m_text.compare(m_position, word.size(), word) == 0) {
-      m_position += word.size();
+    if (static_cast<std::size_t>(m_end - m_cursor) >= word.size() &&
+        std::string_view(m_cursor, word.size()) == word) {
+      m_cursor += word.size();
       return true;
     }
     return false;
@@ -69,9 +80,9 @@ private:
     if (c == '{') {
       result.kind = JsonValue::Kind::Object;
       result.members.reserve(OBJECT_MEMBERS);
-      ++m_position;
+      ++m_cursor;
       if (peek() == '}') {
-        ++m_position;
+        ++m_cursor;
         return result;
       }
       for (;;) {
@@ -79,7 +90,7 @@ private:
         expect(':');
         result.members.emplace_back(std::move(key), value());
         if (peek() == ',') {
-          ++m_position;
+          ++m_cursor;
           continue;
         }
         expect('}');
@@ -89,15 +100,15 @@ private:
     if (c == '[') {
       result.kind = JsonValue::Kind::Array;
       result.items.reserve(ARRAY_ITEMS);
-      ++m_position;
+      ++m_cursor;
       if (peek() == ']') {
-        ++m_position;
+        ++m_cursor;
         return result;
       }
       for (;;) {
         result.items.push_back(value());
         if (peek() == ',') {
-          ++m_position;
+          ++m_cursor;
           continue;
         }
         expect(']');
@@ -109,64 +120,83 @@ private:
       result.text = string();
       return result;
     }
-    if (consume("null")) {
+    if (c == 'n' && consume("null")) {
       return result;
     }
-    if (consume("true")) {
+    if (c == 't' && consume("true")) {
       result.kind = JsonValue::Kind::Boolean;
       result.boolean = true;
       return result;
     }
-    if (consume("false")) {
+    if (c == 'f' && consume("false")) {
       result.kind = JsonValue::Kind::Boolean;
       return result;
     }
-    const char *start = m_text.c_str() + m_position;
-    char *end = nullptr;
-    const long whole = std::strtol(start, &end, DECIMAL);
-    if (end == start || *end == '.' || *end == 'e' || *end == 'E' ||
-        whole == LONG_MAX || whole == LONG_MIN) {
-      result.number = std::strtod(start, &end);
-    } else {
-      result.number = static_cast<double>(whole);
+    result.number = number();
+    result.kind = JsonValue::Kind::Number;
+    return result;
+  }
+
+  double number() {
+    const bool negative = *m_cursor == '-';
+    const char *digits = negative ? m_cursor + 1 : m_cursor;
+    const char *next = digits;
+    long whole = 0;
+    while (next != m_end && next - digits < INTEGER_DIGITS && isDigit(*next)) {
+      whole = whole * DECIMAL + (*next - '0');
+      ++next;
     }
-    if (end == start) {
+    if (next != digits && (next == m_end || !continuesNumber(*next))) {
+      m_cursor = next;
+      return static_cast<double>(negative ? -whole : whole);
+    }
+    char *end = nullptr;
+    whole = std::strtol(m_cursor, &end, DECIMAL);
+    double parsed = static_cast<double>(whole);
+    if (end == m_cursor || *end == '.' || *end == 'e' || *end == 'E' ||
+        whole == LONG_MAX || whole == LONG_MIN) {
+      parsed = std::strtod(m_cursor, &end);
+    }
+    if (end == m_cursor) {
       fail("unexpected character");
     }
-    result.kind = JsonValue::Kind::Number;
-    m_position += static_cast<std::size_t>(end - start);
-    return result;
+    m_cursor = end;
+    return parsed;
   }
 
   std::string string() {
     expect('"');
-    const std::size_t end = m_text.find_first_of("\"\\", m_position);
-    if (end != std::string::npos && m_text[end] == '"') {
-      std::string text = m_text.substr(m_position, end - m_position);
-      m_position = end + 1;
+    const char *end = m_cursor;
+    while (end != m_end && *end != '"' && *end != '\\') {
+      ++end;
+    }
+    if (end != m_end && *end == '"') {
+      std::string text(m_cursor, end);
+      m_cursor = end + 1;
       return text;
     }
     std::string text;
-    while (m_position < m_text.size() && m_text[m_position] != '"') {
-      if (m_text[m_position] == '\\') {
-        ++m_position;
-        if (m_position >= m_text.size()) {
+    while (m_cursor != m_end && *m_cursor != '"') {
+      if (*m_cursor == '\\') {
+        ++m_cursor;
+        if (m_cursor == m_end) {
           break;
         }
       }
-      text += m_text[m_position++];
+      text += *m_cursor++;
     }
     expect('"');
     return text;
   }
 
-  const std::string &m_text;
-  std::size_t m_position = 0;
+  const char *m_start;
+  const char *m_cursor;
+  const char *m_end;
 };
 
 } // namespace
 
-const JsonValue &JsonValue::member(const std::string &key) const {
+const JsonValue &JsonValue::member(std::string_view key) const {
   if (kind == Kind::Object) {
     for (const auto &entry : members) {
       if (entry.first == key) {
@@ -174,7 +204,7 @@ const JsonValue &JsonValue::member(const std::string &key) const {
       }
     }
   }
-  throw std::invalid_argument("JSON: missing \"" + key + "\"");
+  throw std::invalid_argument("JSON: missing \"" + std::string(key) + "\"");
 }
 
 int JsonValue::integer() const {

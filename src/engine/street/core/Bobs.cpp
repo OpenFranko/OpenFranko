@@ -1,7 +1,9 @@
 #include "Bobs.h"
 
 #include <algorithm>
+#include <iterator>
 #include <stdexcept>
+#include <utility>
 
 namespace openfranko::src::engine::street::core {
 namespace {
@@ -48,23 +50,22 @@ int hotY(const Picture &picture, uint16_t flags) {
                                      : picture.hotY;
 }
 
+bool isOpaque(uint8_t pixel) { return pixel != 0; }
+
 std::vector<RowSpan> rowSpans(const Picture &picture) {
   std::vector<RowSpan> rows(static_cast<std::size_t>(picture.height));
   const uint8_t *row = picture.pixels.data();
   for (RowSpan &span : rows) {
-    int first = 0;
-    while (first < picture.width && row[first] == 0) {
-      ++first;
+    const uint8_t *end = row + picture.width;
+    const uint8_t *first = std::find_if(row, end, isOpaque);
+    if (first != end) {
+      const auto last =
+          std::find_if(std::make_reverse_iterator(end),
+                       std::make_reverse_iterator(first), isOpaque);
+      span.first = static_cast<int>(first - row);
+      span.last = static_cast<int>(last.base() - row) - 1;
     }
-    if (first < picture.width) {
-      int last = picture.width - 1;
-      while (row[last] == 0) {
-        --last;
-      }
-      span.first = first;
-      span.last = last;
-    }
-    row += picture.width;
+    row = end;
   }
   return rows;
 }
@@ -189,7 +190,7 @@ void ImageBank::clear() {
   m_outlines.clear();
 }
 
-void ImageBank::load(int base, const std::vector<Picture> &frames) {
+void ImageBank::load(int base, std::vector<Picture> frames) {
   const std::size_t end = static_cast<std::size_t>(base) + frames.size();
   if (m_entries.size() < end) {
     m_entries.resize(end);
@@ -198,11 +199,11 @@ void ImageBank::load(int base, const std::vector<Picture> &frames) {
   for (std::size_t i = 0; i < frames.size(); ++i) {
     Entry &entry = m_entries[static_cast<std::size_t>(base) + i];
     Outline &outline = m_outlines[static_cast<std::size_t>(base) + i];
-    entry.picture = frames[i];
     outline.rows = rowSpans(frames[i]);
     outline.box = maskBox(outline.rows);
-    entry.orientation = 0;
     entry.loaded = frames[i].width > 0 && frames[i].height > 0;
+    entry.picture = std::move(frames[i]);
+    entry.orientation = 0;
     entry.masked = true;
   }
 }

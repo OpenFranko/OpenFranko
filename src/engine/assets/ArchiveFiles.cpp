@@ -21,6 +21,7 @@ constexpr std::size_t PREFIX_SIZE = 155;
 constexpr auto MAGIC = "ustar";
 constexpr char REGULAR_FILE = '0';
 constexpr char OLD_REGULAR_FILE = '\0';
+constexpr char PAST_SEPARATOR = '/' + 1;
 
 using Block = std::array<char, BLOCK_SIZE>;
 
@@ -104,15 +105,18 @@ bool ArchiveFiles::exists(const std::string &path) const {
 std::vector<std::string>
 ArchiveFiles::list(const std::string &directory) const {
   const std::string prefix = normalized(directory) + "/";
+  std::string afterPrefix = prefix;
+  afterPrefix.back() = PAST_SEPARATOR;
+  const auto last = m_entries.lower_bound(afterPrefix);
   std::vector<std::string> paths;
-  for (auto entry = m_entries.lower_bound(prefix);
-       entry != m_entries.end() &&
-       entry->first.compare(0, prefix.size(), prefix) == 0;
-       ++entry) {
-    const std::string child =
-        entry->first.substr(0, entry->first.find('/', prefix.size()));
-    if (paths.empty() || paths.back() != child) {
-      paths.push_back(child);
+  for (auto entry = m_entries.lower_bound(prefix); entry != last; ++entry) {
+    const std::string &path = entry->first;
+    const std::size_t slash = path.find('/', prefix.size());
+    if (slash == std::string::npos) {
+      paths.push_back(path);
+    } else if (paths.empty() || paths.back().size() != slash ||
+               path.compare(0, slash, paths.back()) != 0) {
+      paths.push_back(path.substr(0, slash));
     }
   }
   return paths;
@@ -120,29 +124,50 @@ ArchiveFiles::list(const std::string &directory) const {
 
 systems::graphics::IndexedBitmap
 ArchiveFiles::loadBitmap(const std::string &path) {
-  if (m_entries.count(normalized(path)) == 0) {
+  const Entry *entry = find(path);
+  if (!entry) {
     throw std::runtime_error("Failed to load bitmap: " + path);
   }
+  if (m_bitmapFile.size() < entry->size) {
+    m_bitmapFile.resize(entry->size);
+  }
+  readInto(*entry, m_bitmapFile.data(), path);
   try {
-    return systems::graphics::readIndexedBitmap(read(path));
+    return systems::graphics::readIndexedBitmap(m_bitmapFile.data(),
+                                                entry->size);
   } catch (const std::runtime_error &error) {
     throw std::runtime_error(std::string(error.what()) + ": " + path);
   }
 }
 
 std::vector<uint8_t> ArchiveFiles::read(const std::string &path) {
-  const auto entry = m_entries.find(normalized(path));
-  if (entry == m_entries.end()) {
+  const Entry *entry = find(path);
+  if (!entry) {
     throw std::runtime_error("Failed to open " + path);
   }
-  std::vector<uint8_t> data(entry->second.size);
-  m_archive.seekg(static_cast<std::streamoff>(entry->second.offset));
-  if (!m_archive.read(reinterpret_cast<char *>(data.data()),
-                      static_cast<std::streamsize>(data.size()))) {
+  return contents(*entry, path);
+}
+
+const ArchiveFiles::Entry *ArchiveFiles::find(const std::string &path) const {
+  const auto found = m_entries.find(normalized(path));
+  return found != m_entries.end() ? &found->second : nullptr;
+}
+
+std::vector<uint8_t> ArchiveFiles::contents(const Entry &entry,
+                                            const std::string &path) {
+  std::vector<uint8_t> data(entry.size);
+  readInto(entry, data.data(), path);
+  return data;
+}
+
+void ArchiveFiles::readInto(const Entry &entry, uint8_t *target,
+                            const std::string &path) {
+  m_archive.seekg(static_cast<std::streamoff>(entry.offset));
+  if (!m_archive.read(reinterpret_cast<char *>(target),
+                      static_cast<std::streamsize>(entry.size))) {
     m_archive.clear();
     throw std::runtime_error("Truncated asset archive entry: " + path);
   }
-  return data;
 }
 
 } // namespace openfranko::src::engine::assets

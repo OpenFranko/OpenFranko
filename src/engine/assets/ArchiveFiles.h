@@ -28,8 +28,13 @@ private:
     std::size_t size = 0;
   };
 
+  const Entry *find(const std::string &path) const;
+  std::vector<uint8_t> contents(const Entry &entry, const std::string &path);
+  void readInto(const Entry &entry, uint8_t *target, const std::string &path);
+
   std::ifstream m_archive;
   std::map<std::string, Entry> m_entries;
+  std::vector<uint8_t> m_bitmapFile;
 };
 
 } // namespace assets

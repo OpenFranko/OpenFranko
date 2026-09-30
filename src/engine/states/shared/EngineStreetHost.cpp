@@ -5,7 +5,6 @@
 #include "../../assets/Assets.h"
 
 #include <cctype>
-#include <filesystem>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -44,13 +43,26 @@ std::optional<int> numberAfter(const std::string &text,
   return std::stoi(text.substr(prefix.size(), end - prefix.size()));
 }
 
+std::string fileName(const std::string &path) {
+  std::size_t start = path.size();
+  while (start > 0 && path[start - 1] != '/' && path[start - 1] != '\\') {
+    --start;
+  }
+  return path.substr(start);
+}
+
+bool endsWith(const std::string &text, const std::string &suffix) {
+  return text.size() >= suffix.size() &&
+         text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
 std::string readText(assets::Files &files, const std::string &what,
                      const std::string &path) {
   if (!files.exists(path)) {
     throw std::runtime_error("Failed to open " + what + ": " + path);
   }
   const std::vector<uint8_t> text = files.read(path);
-  return std::string(text.begin(), text.end());
+  return std::string(reinterpret_cast<const char *>(text.data()), text.size());
 }
 
 } // namespace
@@ -176,10 +188,10 @@ std::vector<street::core::Picture>
 EngineStreetHost::loadFrames(int resource) const {
   const std::string name = resourceName(resource);
   const std::string directory = m_directory + "/" + name;
+  const std::string prefix = name + "_";
   std::vector<street::core::Picture> frames;
   for (const std::string &path : m_files.list(directory)) {
-    const auto index = numberAfter(
-        std::filesystem::path(path).filename().string(), name + "_", ".bmp");
+    const auto index = numberAfter(fileName(path), prefix, ".bmp");
     if (!index) {
       continue;
     }
@@ -198,11 +210,11 @@ EngineStreetHost::loadFrames(int resource) const {
 void EngineStreetHost::loadSamples(int resource, int bank) {
   clearSamples(bank);
   const std::string name = resourceName(resource);
+  const std::string prefix = name + "_sam";
   for (const std::string &path : m_files.list(m_directory + "/" + name)) {
-    const std::filesystem::path file(path);
-    const auto sample =
-        numberAfter(file.filename().string(), name + "_sam", "_");
-    if (!sample || file.extension() != ".wav") {
+    const std::string file = fileName(path);
+    const auto sample = numberAfter(file, prefix, "_");
+    if (!sample || !endsWith(file, ".wav")) {
       continue;
     }
     m_speaker.loadSample(sampleName(bank, *sample), path);

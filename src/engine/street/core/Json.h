@@ -2,6 +2,7 @@
 #define ENGINE_STREET_CORE_JSON_H_
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -21,7 +22,7 @@ struct JsonValue {
   std::vector<JsonValue> items;
   std::vector<std::pair<std::string, JsonValue>> members;
 
-  const JsonValue &member(const std::string &key) const;
+  const JsonValue &member(std::string_view key) const;
   int integer() const;
   const std::string &string() const;
   const std::vector<JsonValue> &array() const;
