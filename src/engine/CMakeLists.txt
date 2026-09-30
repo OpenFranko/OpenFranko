@@ -10,7 +10,9 @@ add_library(Common
     GameVersion.h
     InkeyBuffer.cpp
     InkeyBuffer.h
-    MenuTempo.h)
+    MenuTempo.h
+    MersenneTwister.cpp
+    MersenneTwister.h)
 
 add_library(Engine
     Engine.cpp

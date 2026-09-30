@@ -17,3 +17,11 @@ add_executable(${INKEY_BUFFER_TEST_TARGET}
 target_link_libraries(${INKEY_BUFFER_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain Common)
 add_test(NAME ${INKEY_BUFFER_TEST_TARGET} COMMAND ${INKEY_BUFFER_TEST_TARGET})
+
+set(MERSENNE_TWISTER_TEST_TARGET mersenneTwisterTest)
+add_executable(${MERSENNE_TWISTER_TEST_TARGET}
+    mersenneTwisterTest.cpp)
+target_link_libraries(${MERSENNE_TWISTER_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Common)
+add_test(NAME ${MERSENNE_TWISTER_TEST_TARGET}
+    COMMAND ${MERSENNE_TWISTER_TEST_TARGET})

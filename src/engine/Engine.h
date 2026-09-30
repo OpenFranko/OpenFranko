@@ -6,6 +6,7 @@
 #include "../systems/input/ControllerSystem.h"
 #include "../systems/input/Platform.h"
 #include "GameOptions.h"
+#include "MersenneTwister.h"
 #include "assets/Files.h"
 #include "states/EngineState.h"
 #include "states/shared/EngineStreetHost.h"
@@ -44,7 +45,7 @@ private:
   systems::input::ControllerSystem m_controllerSystem;
   GameOptions m_options;
   street::session::GameSession m_session;
-  std::mt19937 m_random{std::random_device{}()};
+  MersenneTwister m_random{std::random_device{}()};
 
   std::unique_ptr<states::shared::EngineStreetHost> m_streetHost;
   std::unique_ptr<states::EngineState> m_currentState;

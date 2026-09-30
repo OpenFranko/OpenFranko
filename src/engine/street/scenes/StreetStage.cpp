@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <utility>
 
 namespace openfranko::src::engine::street::scenes {
 namespace {
@@ -122,7 +123,7 @@ StreetStage::Flow StreetStage::stageMusic() {
 
 StreetStage::Flow StreetStage::stageScreen() {
   m_step = Step::StageShown;
-  autoback([opening = m_opening](core::IndexedSurface &surface) {
+  autoback([opening = std::move(m_opening)](core::IndexedSurface &surface) {
     surface.unpack(opening, 0, 0);
   });
   return Flow::Yield;

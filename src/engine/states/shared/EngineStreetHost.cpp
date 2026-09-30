@@ -6,6 +6,7 @@
 
 #include <cctype>
 #include <optional>
+#include <random>
 #include <stdexcept>
 #include <utility>
 
@@ -69,7 +70,7 @@ std::string readText(assets::Files &files, const std::string &what,
 
 EngineStreetHost::EngineStreetHost(systems::audio::Speaker &speaker,
                                    assets::Files &files, GameVersion version,
-                                   std::mt19937 &random,
+                                   MersenneTwister &random,
                                    std::function<void()> yield,
                                    std::string directory)
     : m_speaker(speaker), m_files(files), m_version(version),

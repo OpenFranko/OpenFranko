@@ -14,23 +14,12 @@ struct Shape {
   int top = 0;
 };
 
-struct MaskRows {
-  const uint8_t *pixels = nullptr;
-  const RowSpan *spans = nullptr;
-  int row = 0;
-  int rowStep = 1;
-  int offset = 0;
-  int offsetStep = 0;
-  int left = 0;
-  int right = 0;
-  bool flipX = false;
-};
-
-struct SolidRun {
-  int from = 0;
-  int to = -1;
-  int pixel = 0;
-  int step = 1;
+struct RowCursor {
+  const RowSpan *span = nullptr;
+  int spanStep = 1;
+  const uint8_t *row = nullptr;
+  int rowStep = 0;
+  int origin = 0;
 };
 
 int hotX(const Picture &picture, uint16_t flags) {
@@ -112,41 +101,69 @@ MaskBox screenBox(const Shape &shape) {
   return screen;
 }
 
-MaskRows maskRows(const Shape &shape, int top) {
+RowCursor rowCursor(const Shape &shape, int top) {
   const Picture &picture = *shape.mask.picture;
   const bool flipY = (shape.mask.orientation & ImageBank::FLIP_Y) != 0;
-  MaskRows rows;
-  rows.pixels = picture.pixels.data();
-  rows.spans = shape.mask.rows;
-  rows.row = flipY ? picture.height - 1 - (top - shape.top) : top - shape.top;
-  rows.rowStep = flipY ? -1 : 1;
-  rows.offset = rows.row * picture.width;
-  rows.offsetStep = flipY ? -picture.width : picture.width;
-  rows.left = shape.left;
-  rows.right = shape.left + picture.width - 1;
-  rows.flipX = (shape.mask.orientation & ImageBank::FLIP_X) != 0;
-  return rows;
+  const int row =
+      flipY ? picture.height - 1 - (top - shape.top) : top - shape.top;
+  RowCursor cursor;
+  cursor.span = shape.mask.rows + row;
+  cursor.spanStep = flipY ? -1 : 1;
+  cursor.row = picture.pixels.data() + row * picture.width;
+  cursor.rowStep = flipY ? -picture.width : picture.width;
+  cursor.origin = (shape.mask.orientation & ImageBank::FLIP_X)
+                      ? shape.left + picture.width - 1
+                      : shape.left;
+  return cursor;
 }
 
-SolidRun solidRun(const MaskRows &rows) {
-  const RowSpan &span = rows.spans[rows.row];
-  SolidRun run;
-  if (rows.flipX) {
-    run.from = rows.right - span.last;
-    run.to = rows.right - span.first;
-    run.pixel = rows.offset + rows.right;
-    run.step = -1;
-  } else {
-    run.from = rows.left + span.first;
-    run.to = rows.left + span.last;
-    run.pixel = rows.offset - rows.left;
+template <bool FLIP_X> int solidFrom(const RowCursor &cursor) {
+  return FLIP_X ? cursor.origin - cursor.span->last
+                : cursor.origin + cursor.span->first;
+}
+
+template <bool FLIP_X> int solidTo(const RowCursor &cursor) {
+  return FLIP_X ? cursor.origin - cursor.span->first
+                : cursor.origin + cursor.span->last;
+}
+
+template <bool FLIP_X> const uint8_t *pixelAt(const RowCursor &cursor, int x) {
+  return FLIP_X ? cursor.row + (cursor.origin - x)
+                : cursor.row + (x - cursor.origin);
+}
+
+void nextRow(RowCursor &cursor) {
+  cursor.span += cursor.spanStep;
+  cursor.row += cursor.rowStep;
+}
+
+template <bool FIRST_FLIP_X, bool SECOND_FLIP_X>
+bool solidRowsMeet(RowCursor first, RowCursor second, int left, int right,
+                   int rows) {
+  constexpr int FIRST_STEP = FIRST_FLIP_X ? -1 : 1;
+  constexpr int SECOND_STEP = SECOND_FLIP_X ? -1 : 1;
+  for (;;) {
+    const int from = std::max(left, std::max(solidFrom<FIRST_FLIP_X>(first),
+                                             solidFrom<SECOND_FLIP_X>(second)));
+    const int to = std::min(right, std::min(solidTo<FIRST_FLIP_X>(first),
+                                            solidTo<SECOND_FLIP_X>(second)));
+    if (from <= to) {
+      const uint8_t *firstPixel = pixelAt<FIRST_FLIP_X>(first, from);
+      const uint8_t *secondPixel = pixelAt<SECOND_FLIP_X>(second, from);
+      for (int x = from; x <= to; ++x) {
+        if (*firstPixel != 0 && *secondPixel != 0) {
+          return true;
+        }
+        firstPixel += FIRST_STEP;
+        secondPixel += SECOND_STEP;
+      }
+    }
+    if (--rows == 0) {
+      return false;
+    }
+    nextRow(first);
+    nextRow(second);
   }
-  return run;
-}
-
-void nextRow(MaskRows &rows) {
-  rows.row += rows.rowStep;
-  rows.offset += rows.offsetStep;
 }
 
 bool overlaps(const Shape &a, const Shape &b) {
@@ -159,28 +176,21 @@ bool overlaps(const Shape &a, const Shape &b) {
   if (left >= right || top >= bottom) {
     return false;
   }
-  MaskRows first = maskRows(a, top);
-  MaskRows second = maskRows(b, top);
-  for (int y = top; y < bottom; ++y) {
-    const SolidRun firstRun = solidRun(first);
-    const SolidRun secondRun = solidRun(second);
-    const int from = std::max(left, std::max(firstRun.from, secondRun.from));
-    const int to = std::min(right - 1, std::min(firstRun.to, secondRun.to));
-    int firstPixel =
-        firstRun.step < 0 ? firstRun.pixel - from : firstRun.pixel + from;
-    int secondPixel =
-        secondRun.step < 0 ? secondRun.pixel - from : secondRun.pixel + from;
-    for (int x = from; x <= to; ++x) {
-      if (first.pixels[firstPixel] != 0 && second.pixels[secondPixel] != 0) {
-        return true;
-      }
-      firstPixel += firstRun.step;
-      secondPixel += secondRun.step;
-    }
-    nextRow(first);
-    nextRow(second);
+  const RowCursor first = rowCursor(a, top);
+  const RowCursor second = rowCursor(b, top);
+  const bool firstFlipX = (a.mask.orientation & ImageBank::FLIP_X) != 0;
+  const bool secondFlipX = (b.mask.orientation & ImageBank::FLIP_X) != 0;
+  const int rows = bottom - top;
+  if (firstFlipX) {
+    return secondFlipX
+               ? solidRowsMeet<true, true>(first, second, left, right - 1, rows)
+               : solidRowsMeet<true, false>(first, second, left, right - 1,
+                                            rows);
   }
-  return false;
+  return secondFlipX
+             ? solidRowsMeet<false, true>(first, second, left, right - 1, rows)
+             : solidRowsMeet<false, false>(first, second, left, right - 1,
+                                           rows);
 }
 
 } // namespace

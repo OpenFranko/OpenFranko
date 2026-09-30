@@ -3,12 +3,12 @@
 
 #include "../../../systems/audio/Speaker.h"
 #include "../../GameVersion.h"
+#include "../../MersenneTwister.h"
 #include "../../assets/Files.h"
 #include "../../street/scenes/StreetHost.h"
 
 #include <functional>
 #include <map>
-#include <random>
 #include <string>
 #include <vector>
 
@@ -21,7 +21,7 @@ namespace shared {
 class EngineStreetHost : public street::scenes::StreetHost {
 public:
   EngineStreetHost(systems::audio::Speaker &speaker, assets::Files &files,
-                   GameVersion version, std::mt19937 &random,
+                   GameVersion version, MersenneTwister &random,
                    std::function<void()> yield,
                    std::string directory = "assets");
   ~EngineStreetHost() override;
@@ -63,7 +63,7 @@ private:
   GameVersion m_version;
   std::function<void()> m_yield;
   std::string m_directory;
-  std::mt19937 &m_random;
+  MersenneTwister &m_random;
   std::map<int, std::vector<int>> m_samples;
 };
 

@@ -4,6 +4,10 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <cstddef>
+#include <cstdint>
+#include <random>
+
 using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::core;
 
@@ -16,6 +20,72 @@ Picture leftEdge(int width, int hotX) {
   Picture picture = box(width, 1, hotX, 0, 0);
   picture.pixels[0] = 7;
   return picture;
+}
+
+constexpr int RANDOM_TRIALS = 4000;
+constexpr int MAX_SIDE = 24;
+constexpr uint16_t ORIENTATIONS[] = {0, MIRROR, UPSIDE_DOWN,
+                                     MIRROR | UPSIDE_DOWN};
+
+int uniform(std::mt19937 &random, int low, int high) {
+  return std::uniform_int_distribution<int>(low, high)(random);
+}
+
+Picture randomMask(std::mt19937 &random) {
+  Picture picture =
+      box(uniform(random, 1, MAX_SIDE), uniform(random, 1, MAX_SIDE), 0, 0, 0);
+  picture.hotX = uniform(random, 0, picture.width);
+  picture.hotY = uniform(random, 0, picture.height);
+  const int solidOneIn = uniform(random, 1, 8);
+  for (uint8_t &pixel : picture.pixels) {
+    pixel = uniform(random, 1, solidOneIn) == 1 ? 9 : 0;
+  }
+  return picture;
+}
+
+struct Placed {
+  const Picture *picture = nullptr;
+  uint16_t orientation = 0;
+  int left = 0;
+  int top = 0;
+};
+
+Placed place(const Picture &picture, uint16_t orientation, int x, int y) {
+  const int hotX =
+      orientation & MIRROR ? picture.width - picture.hotX : picture.hotX;
+  const int hotY =
+      orientation & UPSIDE_DOWN ? picture.height - picture.hotY : picture.hotY;
+  return Placed{&picture, orientation, x - hotX, y - hotY};
+}
+
+bool solidAt(const Placed &bob, int x, int y) {
+  const Picture &picture = *bob.picture;
+  int column = x - bob.left;
+  int row = y - bob.top;
+  if (column < 0 || row < 0 || column >= picture.width ||
+      row >= picture.height) {
+    return false;
+  }
+  if (bob.orientation & MIRROR) {
+    column = picture.width - 1 - column;
+  }
+  if (bob.orientation & UPSIDE_DOWN) {
+    row = picture.height - 1 - row;
+  }
+  return picture
+             .pixels[static_cast<std::size_t>(row * picture.width + column)] !=
+         0;
+}
+
+bool solidPixelsMeet(const Placed &first, const Placed &second) {
+  for (int y = first.top; y < first.top + first.picture->height; ++y) {
+    for (int x = first.left; x < first.left + first.picture->width; ++x) {
+      if (solidAt(first, x, y) && solidAt(second, x, y)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 } // namespace
@@ -280,6 +350,40 @@ SCENARIO("No Mask makes an image opaque and blind to Bob Col") {
       REQUIRE(images.isMasked(2));
       images.load(1, {holed});
       REQUIRE(images.isMasked(1));
+    }
+  }
+}
+
+SCENARIO("Bob Col agrees with a pixel by pixel test in every orientation") {
+  GIVEN("Random masks, hot spots, orientations and positions") {
+    std::mt19937 random(2026);
+
+    THEN("Two bobs collide exactly when solid pixels share a screen pixel") {
+      int collisions = 0;
+      for (int trial = 0; trial < RANDOM_TRIALS; ++trial) {
+        const Picture first = randomMask(random);
+        const Picture second = randomMask(random);
+        const uint16_t firstOrientation = ORIENTATIONS[uniform(random, 0, 3)];
+        const uint16_t secondOrientation = ORIENTATIONS[uniform(random, 0, 3)];
+        const int x = uniform(random, -MAX_SIDE, MAX_SIDE);
+        const int y = uniform(random, -MAX_SIDE, MAX_SIDE);
+        ImageBank images;
+        images.load(1, {first, second});
+        images.orient(1, firstOrientation);
+        images.orient(2, secondOrientation);
+        BobLayer bobs;
+        bobs.set(1, 0, 0, 1);
+        bobs.set(2, x, y, 2);
+        const bool expected =
+            solidPixelsMeet(place(first, firstOrientation, 0, 0),
+                            place(second, secondOrientation, x, y));
+        CAPTURE(trial);
+        REQUIRE(bobs.collide(1, images) == expected);
+        REQUIRE(bobs.collide(2, images) == expected);
+        collisions += expected ? 1 : 0;
+      }
+      REQUIRE(collisions > RANDOM_TRIALS / 10);
+      REQUIRE(collisions < RANDOM_TRIALS * 9 / 10);
     }
   }
 }
