@@ -4,9 +4,11 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <random>
+#include <vector>
 
 using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::core;
@@ -23,7 +25,9 @@ Picture leftEdge(int width, int hotX) {
 }
 
 constexpr int RANDOM_TRIALS = 4000;
-constexpr int MAX_SIDE = 24;
+constexpr int MAX_WORDS = 3;
+constexpr int MAX_HEIGHT = 24;
+constexpr int WORD_BITS = 16;
 constexpr uint16_t ORIENTATIONS[] = {0, MIRROR, UPSIDE_DOWN,
                                      MIRROR | UPSIDE_DOWN};
 
@@ -31,9 +35,9 @@ int uniform(std::mt19937 &random, int low, int high) {
   return std::uniform_int_distribution<int>(low, high)(random);
 }
 
-Picture randomMask(std::mt19937 &random) {
+Picture randomMask(std::mt19937 &random, int words) {
   Picture picture =
-      box(uniform(random, 1, MAX_SIDE), uniform(random, 1, MAX_SIDE), 0, 0, 0);
+      box(WORD_BITS * words, uniform(random, 1, MAX_HEIGHT), 0, 0, 0);
   picture.hotX = uniform(random, 0, picture.width);
   picture.hotY = uniform(random, 0, picture.height);
   const int solidOneIn = uniform(random, 1, 8);
@@ -43,44 +47,105 @@ Picture randomMask(std::mt19937 &random) {
   return picture;
 }
 
-struct Placed {
-  const Picture *picture = nullptr;
-  uint16_t orientation = 0;
+struct BlitMask {
   int left = 0;
   int top = 0;
+  int words = 0;
+  int height = 0;
+  std::vector<uint16_t> data;
 };
 
-Placed place(const Picture &picture, uint16_t orientation, int x, int y) {
-  const int hotX =
-      orientation & MIRROR ? picture.width - picture.hotX : picture.hotX;
-  const int hotY =
-      orientation & UPSIDE_DOWN ? picture.height - picture.hotY : picture.hotY;
-  return Placed{&picture, orientation, x - hotX, y - hotY};
+int hotSpotX(const Picture &picture, uint16_t orientation) {
+  return orientation & MIRROR ? picture.width - picture.hotX : picture.hotX;
 }
 
-bool solidAt(const Placed &bob, int x, int y) {
-  const Picture &picture = *bob.picture;
-  int column = x - bob.left;
-  int row = y - bob.top;
-  if (column < 0 || row < 0 || column >= picture.width ||
-      row >= picture.height) {
+int hotSpotY(const Picture &picture, uint16_t orientation) {
+  return orientation & UPSIDE_DOWN ? picture.height - picture.hotY
+                                   : picture.hotY;
+}
+
+BlitMask blitMask(const Picture &picture, uint16_t orientation, int x, int y) {
+  BlitMask mask;
+  mask.left = x - hotSpotX(picture, orientation);
+  mask.top = y - hotSpotY(picture, orientation);
+  mask.words = picture.width / WORD_BITS;
+  mask.height = picture.height;
+  for (int row = 0; row < picture.height; ++row) {
+    const int sourceRow =
+        orientation & UPSIDE_DOWN ? picture.height - 1 - row : row;
+    for (int word = 0; word < mask.words; ++word) {
+      uint16_t bits = 0;
+      for (int bit = 0; bit < WORD_BITS; ++bit) {
+        const int column = word * WORD_BITS + bit;
+        const int sourceColumn =
+            orientation & MIRROR ? picture.width - 1 - column : column;
+        const bool solid = picture.pixels[static_cast<std::size_t>(
+                               sourceRow * picture.width + sourceColumn)] != 0;
+        bits = static_cast<uint16_t>(bits << 1 | (solid ? 1 : 0));
+      }
+      mask.data.push_back(bits);
+    }
+  }
+  return mask;
+}
+
+uint16_t maskWord(const BlitMask &mask, int index) {
+  return static_cast<std::size_t>(index) < mask.data.size()
+             ? mask.data[static_cast<std::size_t>(index)]
+             : 0;
+}
+
+bool colRout(const BlitMask &tested, const BlitMask &other) {
+  const bool testedOnRight = tested.left >= other.left;
+  const BlitMask &a = testedOnRight ? other : tested;
+  const BlitMask &b = testedOnRight ? tested : other;
+  const int aRight = a.left + a.words * WORD_BITS;
+  const int bRight = b.left + b.words * WORD_BITS;
+  const int top = std::max(a.top, b.top);
+  const int bottom = std::min(a.top + a.height, b.top + b.height);
+  if (b.left >= aRight || top >= bottom) {
     return false;
   }
-  if (bob.orientation & MIRROR) {
-    column = picture.width - 1 - column;
+  const int dx = b.left - a.left;
+  const int shift = dx % WORD_BITS;
+  const int width =
+      (std::min(aRight, bRight) - b.left) / WORD_BITS + (shift != 0 ? 1 : 0);
+  uint16_t previous = 0;
+  for (int y = top; y < bottom; ++y) {
+    for (int word = 0; word < width; ++word) {
+      uint16_t aWord =
+          maskWord(a, (y - a.top) * a.words + dx / WORD_BITS + word);
+      if (word == 0) {
+        aWord &= static_cast<uint16_t>(0xFFFF >> shift);
+      }
+      const uint16_t bWord = maskWord(b, (y - b.top) * b.words + word);
+      const uint16_t shifted = static_cast<uint16_t>(
+          (static_cast<uint32_t>(previous) << WORD_BITS | bWord) >> shift);
+      previous = bWord;
+      if ((aWord & shifted) != 0) {
+        return true;
+      }
+    }
   }
-  if (bob.orientation & UPSIDE_DOWN) {
-    row = picture.height - 1 - row;
-  }
-  return picture
-             .pixels[static_cast<std::size_t>(row * picture.width + column)] !=
-         0;
+  return false;
 }
 
-bool solidPixelsMeet(const Placed &first, const Placed &second) {
-  for (int y = first.top; y < first.top + first.picture->height; ++y) {
-    for (int x = first.left; x < first.left + first.picture->width; ++x) {
-      if (solidAt(first, x, y) && solidAt(second, x, y)) {
+bool bitAt(const BlitMask &mask, int x, int y) {
+  const int column = x - mask.left;
+  const int row = y - mask.top;
+  if (column < 0 || row < 0 || column >= mask.words * WORD_BITS ||
+      row >= mask.height) {
+    return false;
+  }
+  const uint16_t word = mask.data[static_cast<std::size_t>(row * mask.words +
+                                                           column / WORD_BITS)];
+  return (word >> (WORD_BITS - 1 - column % WORD_BITS) & 1) != 0;
+}
+
+bool bitsMeet(const BlitMask &first, const BlitMask &second) {
+  for (int y = first.top; y < first.top + first.height; ++y) {
+    for (int x = first.left; x < first.left + first.words * WORD_BITS; ++x) {
+      if (bitAt(first, x, y) && bitAt(second, x, y)) {
         return true;
       }
     }
@@ -354,36 +419,100 @@ SCENARIO("No Mask makes an image opaque and blind to Bob Col") {
   }
 }
 
-SCENARIO("Bob Col agrees with a pixel by pixel test in every orientation") {
-  GIVEN("Random masks, hot spots, orientations and positions") {
-    std::mt19937 random(2026);
+SCENARIO("Bob Col reads one word past a narrow bob, like the AMOS blitter") {
+  GIVEN("A 48 x 2 bob solid only at (21, 0) and a 16 x 2 bob with a solid "
+        "second row") {
+    ImageBank images;
+    Picture wide = box(48, 2, 0, 0, 0);
+    wide.pixels[21] = 5;
+    Picture narrow = box(16, 2, 0, 0, 0);
+    std::fill(narrow.pixels.begin() + 16, narrow.pixels.end(), 5);
+    images.load(1, {wide, narrow});
+    BobLayer bobs;
+    bobs.set(1, 0, 0, 1);
 
-    THEN("Two bobs collide exactly when solid pixels share a screen pixel") {
+    THEN("5 pixels off the word grid, its second row is read at x 21 and "
+         "collides") {
+      bobs.set(2, 5, 0, 2);
+      REQUIRE(bobs.collide(1, images));
+      REQUIRE(bobs.collide(2, images));
+    }
+
+    THEN("On the word grid no extra word is read") {
+      bobs.set(2, 0, 0, 2);
+      REQUIRE_FALSE(bobs.collide(1, images));
+      REQUIRE_FALSE(bobs.collide(2, images));
+    }
+
+    THEN("Past the narrow bob's last row the extra word finds nothing") {
+      bobs.set(1, 0, 1, 1);
+      bobs.set(2, 5, 0, 2);
+      REQUIRE_FALSE(bobs.collide(1, images));
+      REQUIRE_FALSE(bobs.collide(2, images));
+    }
+  }
+}
+
+SCENARIO("Bob Col agrees with the AMOS blitter test in every orientation") {
+  GIVEN("Random masks, hot spots and orientations") {
+    std::mt19937 random(2026);
+    const auto check = [&random](const Picture &first, const Picture &second,
+                                 int left, int top, int &spills) {
+      const uint16_t firstOrientation = ORIENTATIONS[uniform(random, 0, 3)];
+      const uint16_t secondOrientation = ORIENTATIONS[uniform(random, 0, 3)];
+      const int firstX = hotSpotX(first, firstOrientation);
+      const int firstY = hotSpotY(first, firstOrientation);
+      const int secondX = left + hotSpotX(second, secondOrientation);
+      const int secondY = top + hotSpotY(second, secondOrientation);
+      ImageBank images;
+      images.load(1, {first, second});
+      images.orient(1, firstOrientation);
+      images.orient(2, secondOrientation);
+      BobLayer bobs;
+      bobs.set(1, firstX, firstY, 1);
+      bobs.set(2, secondX, secondY, 2);
+      const BlitMask firstMask =
+          blitMask(first, firstOrientation, firstX, firstY);
+      const BlitMask secondMask =
+          blitMask(second, secondOrientation, secondX, secondY);
+      const bool expected = colRout(firstMask, secondMask);
+      REQUIRE(bobs.collide(1, images) == expected);
+      REQUIRE(bobs.collide(2, images) == colRout(secondMask, firstMask));
+      spills += expected && !bitsMeet(firstMask, secondMask) ? 1 : 0;
+      return expected;
+    };
+
+    THEN("Two bobs anywhere collide exactly when the blitter finds a common "
+         "bit") {
       int collisions = 0;
+      int spills = 0;
       for (int trial = 0; trial < RANDOM_TRIALS; ++trial) {
-        const Picture first = randomMask(random);
-        const Picture second = randomMask(random);
-        const uint16_t firstOrientation = ORIENTATIONS[uniform(random, 0, 3)];
-        const uint16_t secondOrientation = ORIENTATIONS[uniform(random, 0, 3)];
-        const int x = uniform(random, -MAX_SIDE, MAX_SIDE);
-        const int y = uniform(random, -MAX_SIDE, MAX_SIDE);
-        ImageBank images;
-        images.load(1, {first, second});
-        images.orient(1, firstOrientation);
-        images.orient(2, secondOrientation);
-        BobLayer bobs;
-        bobs.set(1, 0, 0, 1);
-        bobs.set(2, x, y, 2);
-        const bool expected =
-            solidPixelsMeet(place(first, firstOrientation, 0, 0),
-                            place(second, secondOrientation, x, y));
         CAPTURE(trial);
-        REQUIRE(bobs.collide(1, images) == expected);
-        REQUIRE(bobs.collide(2, images) == expected);
-        collisions += expected ? 1 : 0;
+        const Picture first = randomMask(random, uniform(random, 1, MAX_WORDS));
+        const Picture second =
+            randomMask(random, uniform(random, 1, MAX_WORDS));
+        const bool collided = check(
+            first, second, uniform(random, -MAX_WORDS * WORD_BITS, first.width),
+            uniform(random, -MAX_HEIGHT, first.height), spills);
+        collisions += collided ? 1 : 0;
       }
       REQUIRE(collisions > RANDOM_TRIALS / 10);
       REQUIRE(collisions < RANDOM_TRIALS * 9 / 10);
+    }
+
+    THEN("A narrow bob inside a wide one off the word grid also collides "
+         "where the blitter reads its next row") {
+      int spills = 0;
+      for (int trial = 0; trial < RANDOM_TRIALS; ++trial) {
+        CAPTURE(trial);
+        const Picture wide = randomMask(random, MAX_WORDS);
+        const Picture narrow = randomMask(random, 1);
+        const int left =
+            WORD_BITS * uniform(random, 0, 1) + uniform(random, 1, 15);
+        const int top = uniform(random, 1 - narrow.height, wide.height - 1);
+        check(wide, narrow, left, top, spills);
+      }
+      REQUIRE(spills > RANDOM_TRIALS / 100);
     }
   }
 }

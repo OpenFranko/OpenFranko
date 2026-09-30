@@ -166,13 +166,15 @@ bool solidRowsMeet(RowCursor first, RowCursor second, int left, int right,
   }
 }
 
-bool overlaps(const Shape &a, const Shape &b) {
+bool solidPixelsMeet(const Shape &a, const Shape &b, const MaskBox &area) {
   const MaskBox firstBox = screenBox(a);
   const MaskBox secondBox = screenBox(b);
-  const int left = std::max(firstBox.left, secondBox.left);
-  const int right = std::min(firstBox.right, secondBox.right);
-  const int top = std::max(firstBox.top, secondBox.top);
-  const int bottom = std::min(firstBox.bottom, secondBox.bottom);
+  const int left = std::max(area.left, std::max(firstBox.left, secondBox.left));
+  const int right =
+      std::min(area.right, std::min(firstBox.right, secondBox.right));
+  const int top = std::max(area.top, std::max(firstBox.top, secondBox.top));
+  const int bottom =
+      std::min(area.bottom, std::min(firstBox.bottom, secondBox.bottom));
   if (left >= right || top >= bottom) {
     return false;
   }
@@ -191,6 +193,43 @@ bool overlaps(const Shape &a, const Shape &b) {
              ? solidRowsMeet<false, true>(first, second, left, right - 1, rows)
              : solidRowsMeet<false, false>(first, second, left, right - 1,
                                            rows);
+}
+
+MaskBox blitBox(const Shape &shape) {
+  const Picture &picture = *shape.mask.picture;
+  const int words = (picture.width + WORD_PIXELS - 1) / WORD_PIXELS;
+  return MaskBox{shape.left, shape.top, shape.left + words * WORD_PIXELS,
+                 shape.top + picture.height};
+}
+
+bool overlaps(const Shape &tested, const Shape &other) {
+  const MaskBox testedBox = blitBox(tested);
+  const MaskBox otherBox = blitBox(other);
+  const MaskBox shared{std::max(testedBox.left, otherBox.left),
+                       std::max(testedBox.top, otherBox.top),
+                       std::min(testedBox.right, otherBox.right),
+                       std::min(testedBox.bottom, otherBox.bottom)};
+  if (shared.left >= shared.right || shared.top >= shared.bottom) {
+    return false;
+  }
+  if (solidPixelsMeet(tested, other, shared)) {
+    return true;
+  }
+  const bool testedOnRight = tested.left >= other.left;
+  const Shape &left = testedOnRight ? other : tested;
+  const Shape &right = testedOnRight ? tested : other;
+  const MaskBox &leftBox = testedOnRight ? otherBox : testedBox;
+  const MaskBox &rightBox = testedOnRight ? testedBox : otherBox;
+  const int shift = (right.left - left.left) & (WORD_PIXELS - 1);
+  if (shift == 0 || rightBox.right >= leftBox.right) {
+    return false;
+  }
+  Shape spilled = right;
+  spilled.left = rightBox.right;
+  spilled.top = right.top - 1;
+  const MaskBox strip{rightBox.right, shared.top,
+                      rightBox.right + WORD_PIXELS - shift, shared.bottom};
+  return solidPixelsMeet(left, spilled, strip);
 }
 
 } // namespace
