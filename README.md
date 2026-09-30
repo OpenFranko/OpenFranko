@@ -163,7 +163,8 @@ own names, and the game runs on either extraction: when `assets` holds the 1.2
 files (it has `p0/p0.bmp`), OpenFranko plays version 1.2, with its spider logo,
 advert slideshow, intro texts, cheats and other changes. The 1.2 intro texts
 come from the game executable, like the ending credits; without `intro.json`
-the intro skips them.
+the intro skips them. Before it starts, the game checks that the extracted
+files it needs are all there; if some are missing, it names them and quits.
 
 Usage:
 
@@ -174,7 +175,8 @@ Usage:
 The ending credits are read from the compiled game program, the `game` file
 the original installer puts next to the data files. It is picked up
 automatically when it sits in the game data directory; otherwise pass it with
-`-e`. Without it the ending credits are not extracted.
+`-e`. Without it the ending credits are not extracted, and the game does not
+start, as its ending needs `credits.json`.
 
 Version 1.0 game data directory must contain files:
 

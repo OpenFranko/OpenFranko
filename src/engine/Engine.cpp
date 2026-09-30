@@ -3,6 +3,7 @@
 #include "assets/ArchiveFiles.h"
 #include "assets/Assets.h"
 #include "assets/DiskFiles.h"
+#include "assets/RequiredFiles.h"
 #include "assets/YieldingFiles.h"
 #include "states/adverts/AdvertsState.h"
 #include "states/characterSelection/CharacterSelectionState.h"
@@ -27,11 +28,17 @@
 #include "states/titleAndStory/TitleAndStoryState.h"
 #include "states/worldSoftware/WorldSoftwareState.h"
 
+#include <cstddef>
 #include <filesystem>
+#include <stdexcept>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace openfranko::src::engine {
 namespace {
+
+constexpr std::size_t LISTED_MISSING_FILES = 8;
 
 systems::input::KeyMode keyMode(states::EngineStateId state) {
   switch (state) {
@@ -70,11 +77,45 @@ void saveHighScores(const street::core::HighScoreTable &table) {
                                    street::core::HighScoreTable::FILE_NAME);
 }
 
+std::string versionName(GameVersion version) {
+  return version == GameVersion::V12 ? "1.2" : "1.0";
+}
+
+void requireGameData(const assets::Files &files) {
+  if (!files.exists(assets::DIRECTORY)) {
+    throw std::runtime_error(
+        "No game data found. Run the game from the directory that holds\n"
+        "assets.tar or the assets directory made by frankoExtract.");
+  }
+  const GameVersion version = assets::detectVersion(files);
+  const std::vector<std::string> missing = assets::missingFiles(files, version);
+  if (missing.empty()) {
+    return;
+  }
+  std::string message = "The Franko " + versionName(version) +
+                        " game data is incomplete, these files are missing:";
+  for (std::size_t i = 0; i < missing.size() && i < LISTED_MISSING_FILES; ++i) {
+    message += "\n  " + missing[i];
+  }
+  if (missing.size() > LISTED_MISSING_FILES) {
+    message += "\n  and " +
+               std::to_string(missing.size() - LISTED_MISSING_FILES) + " more";
+  }
+  throw std::runtime_error(message +
+                           "\nExtract the game data again with frankoExtract.");
+}
+
 std::unique_ptr<assets::Files> openFiles() {
   if (std::filesystem::exists(assets::ARCHIVE)) {
     return std::make_unique<assets::ArchiveFiles>(assets::ARCHIVE);
   }
   return std::make_unique<assets::DiskFiles>();
+}
+
+std::unique_ptr<assets::Files> openCheckedFiles() {
+  std::unique_ptr<assets::Files> files = openFiles();
+  requireGameData(*files);
+  return files;
 }
 
 } // namespace
@@ -85,7 +126,7 @@ Engine::Engine()
 Engine::Engine(states::EngineStateId firstState,
                street::session::GameSession startingSession)
     : m_files(std::make_unique<assets::YieldingFiles>(
-          openFiles(), [this] { m_audioSystem.update(); })),
+          openCheckedFiles(), [this] { m_audioSystem.update(); })),
       m_audioSystem(
           [this](const std::string &path) { return m_files->read(path); }),
       m_session(std::move(startingSession)), m_running(true) {
