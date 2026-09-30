@@ -36,8 +36,8 @@ private:
   void switchState(states::EngineStateId nextState);
   states::shared::EngineStreetHost &makeStreetHost();
 
-  std::unique_ptr<assets::Files> m_files;
   systems::input::Platform m_platform;
+  std::unique_ptr<assets::Files> m_files;
   systems::graphics::VideoSystem m_videoSystem;
   systems::audio::AudioSystem m_audioSystem;
   systems::input::ControllerSystem m_controllerSystem;

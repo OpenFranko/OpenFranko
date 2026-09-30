@@ -39,6 +39,7 @@ constexpr int CHUNK_LOOPS = 1000;
 constexpr long NEEDED_LOOPS = 1100000;
 constexpr long DX33_LOOPS = 550000;
 constexpr int ESCAPE = 27;
+constexpr auto LOADING_MESSAGE = "Loading OpenFranko, please wait...\n";
 
 std::array<bool, KEY_MAX> heldKeys{};
 
@@ -196,6 +197,7 @@ Platform::Platform() {
   if (!isMachineAccepted()) {
     std::exit(EXIT_SUCCESS);
   }
+  std::fputs(LOADING_MESSAGE, stderr);
   setenv("TZ", TIME_ZONE, 0);
   if (allegro_init() != 0 || install_timer() != 0 || install_keyboard() != 0) {
     throwError(allegro_error);
