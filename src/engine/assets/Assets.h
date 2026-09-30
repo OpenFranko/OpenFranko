@@ -12,12 +12,14 @@ namespace engine {
 namespace assets {
 
 inline constexpr const char *DIRECTORY = "assets";
+inline constexpr const char *ARCHIVE = "assets.tar";
 inline constexpr int LETTER_SET = 0x35;
 inline constexpr int MENU_TUNE = 0x261;
 inline constexpr int HISCORE_LETTERS = 0x3B9;
 inline constexpr int TITLE_SCREEN = 0x3BA;
 
-GameVersion detectVersion(const std::string &directory = DIRECTORY);
+GameVersion detectVersion(const Files &files,
+                          const std::string &directory = DIRECTORY);
 
 std::string resourceName(int resource, GameVersion version);
 

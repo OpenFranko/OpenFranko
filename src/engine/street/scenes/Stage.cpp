@@ -18,8 +18,7 @@ constexpr int16_t CHEAT_LIVES = 12;
 Stage::Stage(StreetHost &host, session::GameSession &session,
              GameOptions &options)
     : m_host(host), m_session(session), m_options(options),
-      m_machine(session.registers), m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
-      m_buffer(m_screen),
+      m_machine(session.registers), m_screen(0, 0), m_buffer(0, 0),
       m_screenDisplay{
           ui::DISPLAY_X,
           static_cast<int16_t>(ui::playDisplayY(ui::stageLayout(options))), 0},
@@ -195,6 +194,11 @@ ui::StageCopper Stage::registers() const {
 void Stage::hideScreen() {
   m_screenShown = false;
   m_copper.hide();
+}
+
+void Stage::openBlankScreens() {
+  m_screen = core::IndexedSurface(SCREEN_WIDTH, SCREEN_HEIGHT);
+  m_buffer = core::DoubleBuffer(SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
 void Stage::gameOver() {

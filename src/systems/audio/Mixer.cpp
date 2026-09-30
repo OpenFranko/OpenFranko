@@ -16,7 +16,7 @@ constexpr int FRACTION_BITS = 32;
 constexpr int BYTE_SCALE = 256;
 constexpr double LED_FILTER_HERTZ = 3275.0;
 constexpr double BUTTERWORTH_Q = 0.7071067811865476;
-constexpr double PI = 3.14159265358979323846;
+constexpr double TWO_PI = 6.28318530717958647692;
 
 constexpr double AMOS_TEMPO_PER_BPM = 4.0 / 5.0;
 constexpr std::size_t TRACKED_SAMPLES = 256 * Mixer::STEREO;
@@ -113,7 +113,7 @@ Mixer::Mixer(int outputRate)
   if (!m_module->player) {
     throw std::runtime_error("Mixer error: no module player");
   }
-  const double w0 = 2.0 * PI * LED_FILTER_HERTZ / m_rate;
+  const double w0 = TWO_PI * LED_FILTER_HERTZ / m_rate;
   const double alpha = std::sin(w0) / (2.0 * BUTTERWORTH_Q);
   const double cosine = std::cos(w0);
   const double a0 = 1.0 + alpha;
@@ -130,7 +130,6 @@ Mixer::~Mixer() {
 }
 
 bool Mixer::loadModule(const std::vector<char> &data) {
-  std::lock_guard<std::mutex> lock(m_mutex);
   stopPlayer();
   if (m_moduleLoaded) {
     xmp_release_module(m_module->player);
@@ -143,7 +142,6 @@ bool Mixer::loadModule(const std::vector<char> &data) {
 }
 
 void Mixer::releaseModule() {
-  std::lock_guard<std::mutex> lock(m_mutex);
   stopPlayer();
   if (m_moduleLoaded) {
     xmp_release_module(m_module->player);
@@ -153,32 +151,24 @@ void Mixer::releaseModule() {
 }
 
 void Mixer::startModule(bool looping) {
-  std::lock_guard<std::mutex> lock(m_mutex);
   stopPlayer();
   m_moduleLoops = looping ? 0 : 1;
   if (m_moduleLoaded && xmp_start_player(m_module->player, m_rate, 0) == 0) {
     m_modulePlaying = true;
+    m_playerStarted = true;
   }
 }
 
-void Mixer::stopModule() {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  stopPlayer();
-}
+void Mixer::stopModule() { stopPlayer(); }
 
-bool Mixer::isModulePlaying() const {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  return m_modulePlaying;
-}
+bool Mixer::isModulePlaying() const { return m_modulePlaying; }
 
 void Mixer::setModuleTempo(double factor) {
-  std::lock_guard<std::mutex> lock(m_mutex);
   m_moduleTempoFactor = factor;
   applyModuleTempo();
 }
 
 void Mixer::overrideModuleTempo(int tempo) {
-  std::lock_guard<std::mutex> lock(m_mutex);
   if (!m_modulePlaying || tempo <= 0) {
     return;
   }
@@ -188,23 +178,13 @@ void Mixer::overrideModuleTempo(int tempo) {
   applyModuleTempo();
 }
 
-bool Mixer::isModuleTempoOverridden() const {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  return m_tempoOverride > 0;
-}
+bool Mixer::isModuleTempoOverridden() const { return m_tempoOverride > 0; }
 
-void Mixer::setMusicVolume(int volume) {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  m_musicVolume = volume;
-}
+void Mixer::setMusicVolume(int volume) { m_musicVolume = volume; }
 
-void Mixer::setFilter(bool on) {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  m_filterOn = on;
-}
+void Mixer::setFilter(bool on) { m_filterOn = on; }
 
 void Mixer::play(const Sound &sound, int voiceMask, int frequency, bool loop) {
-  std::lock_guard<std::mutex> lock(m_mutex);
   const int playRate = frequency > 0 ? frequency : sound.rate;
   for (int voice = 0; voice < VOICES; ++voice) {
     if ((voiceMask & (1 << voice)) == 0) {
@@ -226,14 +206,12 @@ void Mixer::play(const Sound &sound, int voiceMask, int frequency, bool loop) {
 }
 
 void Mixer::endLoops() {
-  std::lock_guard<std::mutex> lock(m_mutex);
   for (Voice &voice : m_voices) {
     voice.loop = false;
   }
 }
 
 void Mixer::stop(const Sound &sound) {
-  std::lock_guard<std::mutex> lock(m_mutex);
   for (Voice &voice : m_voices) {
     if (voice.sound == &sound) {
       voice = Voice{};
@@ -244,67 +222,69 @@ void Mixer::stop(const Sound &sound) {
   }
 }
 
-void Mixer::stopAll() {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  m_voices.fill(Voice{});
-}
+void Mixer::stopAll() { m_voices.fill(Voice{}); }
 
 void Mixer::update() {
-  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_playerStarted && !m_modulePlaying) {
+    stopPlayer();
+  }
   if (m_silencing && !isSounding(*m_silencing)) {
     m_silencing.reset();
   }
 }
 
 bool Mixer::isPlaying(int voice) const {
-  std::lock_guard<std::mutex> lock(m_mutex);
   return m_voices.at(static_cast<std::size_t>(voice)).sound != nullptr;
 }
 
-bool Mixer::isMusicSilenced() const {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  return m_silencing.has_value();
-}
+bool Mixer::isMusicSilenced() const { return m_silencing.has_value(); }
 
 void Mixer::render(int16_t *stereo, int frames) {
-  std::lock_guard<std::mutex> lock(m_mutex);
   const std::size_t samples = static_cast<std::size_t>(frames) * Mixer::STEREO;
   m_musicBuffer.assign(samples, 0);
   if (m_modulePlaying && !playModule(samples) && m_moduleLoops > 0) {
-    stopPlayer();
+    finishModule();
   }
 
   const int musicLevel = m_silencing ? 0 : m_musicVolume;
-  for (std::size_t frame = 0; frame < static_cast<std::size_t>(frames);
-       ++frame) {
-    int16_t *out = stereo + frame * Mixer::STEREO;
-    for (std::size_t channel = 0; channel < Mixer::STEREO; ++channel) {
-      out[channel] =
-          clampSample(m_musicBuffer[frame * Mixer::STEREO + channel] *
-                      musicLevel / MAX_VOLUME);
+  if (musicLevel >= 0 && musicLevel <= MAX_VOLUME) {
+    for (std::size_t sample = 0; sample < samples; ++sample) {
+      stereo[sample] =
+          static_cast<int16_t>(m_musicBuffer[sample] * musicLevel / MAX_VOLUME);
     }
-    for (int voice = 0; voice < VOICES; ++voice) {
-      Voice &playing = m_voices[static_cast<std::size_t>(voice)];
-      if (!playing.sound) {
-        continue;
-      }
+  } else {
+    for (std::size_t sample = 0; sample < samples; ++sample) {
+      stereo[sample] =
+          clampSample(m_musicBuffer[sample] * musicLevel / MAX_VOLUME);
+    }
+  }
+  for (int voice = 0; voice < VOICES; ++voice) {
+    Voice &playing = m_voices[static_cast<std::size_t>(voice)];
+    int16_t *side = stereo + (isLeftVoice(voice) ? 0 : 1);
+    for (std::size_t frame = 0;
+         playing.sound && frame < static_cast<std::size_t>(frames); ++frame) {
       const int sample =
           nextSample(playing) * SAMPLE_VOLUME / MAX_VOLUME / VOICES_PER_SIDE;
-      int16_t &side = out[isLeftVoice(voice) ? 0 : 1];
-      side = clampSample(side + sample);
+      int16_t &out = side[frame * Mixer::STEREO];
+      out = clampSample(out + sample);
     }
   }
   filter(stereo, frames);
 }
 
 void Mixer::stopPlayer() {
+  finishModule();
+  if (m_playerStarted) {
+    xmp_end_player(m_module->player);
+    m_playerStarted = false;
+  }
+}
+
+void Mixer::finishModule() {
   m_tempoOverride = 0;
   m_overridePosition = {-1, -1};
   m_lastPosition = {-1, -1};
-  if (m_modulePlaying) {
-    xmp_end_player(m_module->player);
-    m_modulePlaying = false;
-  }
+  m_modulePlaying = false;
 }
 
 void Mixer::applyModuleTempo() {
@@ -410,6 +390,15 @@ int Mixer::nextSample(Voice &voice) {
 
 void Mixer::filter(int16_t *stereo, int frames) {
   const std::size_t samples = static_cast<std::size_t>(frames) * Mixer::STEREO;
+  if (!m_filterOn) {
+    for (std::size_t i = samples - std::min<std::size_t>(samples, 2 * STEREO);
+         i < samples; ++i) {
+      std::array<double, 4> &history = m_filterHistory[i % Mixer::STEREO];
+      history = {static_cast<double>(stereo[i]), history[0],
+                 static_cast<double>(stereo[i]), history[2]};
+    }
+    return;
+  }
   for (std::size_t i = 0; i < samples; ++i) {
     std::array<double, 4> &history = m_filterHistory[i % Mixer::STEREO];
     const double input = stereo[i];
@@ -417,9 +406,7 @@ void Mixer::filter(int16_t *stereo, int frames) {
                           m_lowPass.b2 * history[1] -
                           m_lowPass.a1 * history[2] - m_lowPass.a2 * history[3];
     history = {input, history[0], output, history[2]};
-    if (m_filterOn) {
-      stereo[i] = clampSample(std::lround(output));
-    }
+    stereo[i] = clampSample(::lround(output));
   }
 }
 

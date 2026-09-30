@@ -6,7 +6,19 @@
 namespace openfranko::src::engine::amal {
 namespace {
 
+constexpr std::size_t SOURCE_HASH_SEED = 5381;
+constexpr int SOURCE_HASH_SHIFT = 5;
+
 int16_t toWord(int32_t value) { return static_cast<int16_t>(value); }
+
+bool isChannel(int number) { return number >= 0 && number < Machine::CHANNELS; }
+
+std::size_t slot(int number) {
+  if (!isChannel(number)) {
+    throw std::out_of_range("AMAL: no such channel");
+  }
+  return static_cast<std::size_t>(number);
+}
 
 int32_t moveStep(int16_t distance, int16_t frames) {
   const int32_t quotient = (std::abs(static_cast<int32_t>(distance)) << 8) /
@@ -18,69 +30,118 @@ int32_t moveStep(int16_t distance, int16_t frames) {
   return static_cast<int32_t>(word) * 256;
 }
 
+int16_t apply(Operator op, int16_t accumulator, int16_t value) {
+  switch (op) {
+  case Operator::Add:
+    return toWord(accumulator + value);
+  case Operator::Subtract:
+    return toWord(accumulator - value);
+  case Operator::Multiply:
+    return toWord(accumulator * value);
+  case Operator::Divide:
+    return value != 0 ? toWord(accumulator / value) : accumulator;
+  case Operator::Equal:
+    return accumulator == value ? -1 : 0;
+  case Operator::Less:
+    return accumulator < value ? -1 : 0;
+  case Operator::Greater:
+    return accumulator > value ? -1 : 0;
+  case Operator::NotEqual:
+    return accumulator != value ? -1 : 0;
+  case Operator::And:
+    return toWord(accumulator & value);
+  case Operator::Or:
+    return toWord(accumulator | value);
+  case Operator::Xor:
+    return toWord(accumulator ^ value);
+  }
+  return accumulator;
+}
+
 } // namespace
+
+std::size_t Machine::SourceHash::operator()(const std::string &source) const {
+  std::size_t hash = SOURCE_HASH_SEED;
+  for (const char letter : source) {
+    hash =
+        (hash << SOURCE_HASH_SHIFT) + hash + static_cast<unsigned char>(letter);
+  }
+  return hash;
+}
 
 Machine::Machine(Registers &globals) : m_globals(globals) {}
 
 void Machine::bind(int channel, Object *object) {
-  m_bindings[channel] = object;
-  auto it = m_channels.find(channel);
-  if (it != m_channels.end()) {
-    it->second.object = object;
+  const std::size_t index = slot(channel);
+  m_bindings[index] = object;
+  if (m_channels[index].open) {
+    m_channels[index].object = object;
   }
 }
 
+void Machine::create(int channel, const Program &program) {
+  const std::size_t index = slot(channel);
+  Channel &created = m_channels[index];
+  std::vector<int16_t> loopLimits = std::move(created.loopLimits);
+  loopLimits.assign(static_cast<std::size_t>(program.length), 0);
+  created = Channel{};
+  created.program = program;
+  created.open = true;
+  created.loopLimits = std::move(loopLimits);
+  created.object = m_bindings[index];
+}
+
 void Machine::create(int channel, const std::string &source) {
-  Channel created;
-  created.program = parse(source);
-  created.loopLimits.assign(created.program.code.size(), 0);
-  auto binding = m_bindings.find(channel);
-  created.object = binding != m_bindings.end() ? binding->second : nullptr;
-  m_channels[channel] = std::move(created);
+  slot(channel);
+  auto found = m_programs.find(source);
+  if (found == m_programs.end()) {
+    found = m_programs.emplace(source, parse(source)).first;
+  }
+  create(channel, found->second.program());
 }
 
 void Machine::start(int channel) {
-  auto it = m_channels.find(channel);
-  if (it != m_channels.end()) {
-    it->second.frozen = false;
+  if (Channel *started = opened(channel)) {
+    started->frozen = false;
   }
 }
 
 void Machine::startAll() {
-  for (auto &entry : m_channels) {
-    entry.second.frozen = false;
+  for (Channel &each : m_channels) {
+    each.frozen = !each.open;
   }
 }
 
 void Machine::freeze(int channel) {
-  auto it = m_channels.find(channel);
-  if (it != m_channels.end()) {
-    it->second.frozen = true;
+  if (Channel *frozen = opened(channel)) {
+    frozen->frozen = true;
   }
 }
 
 void Machine::freezeAll() {
-  for (auto &entry : m_channels) {
-    entry.second.frozen = true;
+  for (Channel &each : m_channels) {
+    each.frozen = true;
   }
 }
 
-void Machine::destroy(int channel) { m_channels.erase(channel); }
-
-void Machine::destroyAll() { m_channels.clear(); }
-
-bool Machine::exists(int channel) const {
-  return m_channels.find(channel) != m_channels.end();
+void Machine::destroy(int channel) {
+  if (isChannel(channel)) {
+    m_channels[static_cast<std::size_t>(channel)] = Channel{};
+  }
 }
 
+void Machine::destroyAll() { m_channels.fill(Channel{}); }
+
+bool Machine::exists(int channel) const { return opened(channel) != nullptr; }
+
 bool Machine::isFrozen(int channel) const {
-  auto it = m_channels.find(channel);
-  return it != m_channels.end() && it->second.frozen;
+  const Channel *found = opened(channel);
+  return found && found->frozen;
 }
 
 bool Machine::isRunning(int channel) const {
-  auto it = m_channels.find(channel);
-  return it != m_channels.end() && !it->second.frozen && it->second.alive;
+  const Channel *found = opened(channel);
+  return found && !found->frozen && found->alive;
 }
 
 int16_t &Machine::channelRegister(int number, int index) {
@@ -97,8 +158,7 @@ int16_t &Machine::globalRegister(int index) {
 void Machine::setJoystick(int16_t joystick) { m_joystick = joystick; }
 
 void Machine::tick() {
-  for (auto &entry : m_channels) {
-    Channel &current = entry.second;
+  for (Channel &current : m_channels) {
     if (current.frozen) {
       continue;
     }
@@ -108,27 +168,43 @@ void Machine::tick() {
 }
 
 Machine::Channel &Machine::channel(int number) {
-  auto it = m_channels.find(number);
-  if (it == m_channels.end()) {
+  Channel *found = opened(number);
+  if (!found) {
     throw std::out_of_range("AMAL: channel not opened");
   }
-  return it->second;
+  return *found;
+}
+
+Machine::Channel *Machine::opened(int number) {
+  if (!isChannel(number) ||
+      !m_channels[static_cast<std::size_t>(number)].open) {
+    return nullptr;
+  }
+  return &m_channels[static_cast<std::size_t>(number)];
+}
+
+const Machine::Channel *Machine::opened(int number) const {
+  if (!isChannel(number) ||
+      !m_channels[static_cast<std::size_t>(number)].open) {
+    return nullptr;
+  }
+  return &m_channels[static_cast<std::size_t>(number)];
 }
 
 int16_t Machine::read(const Channel &channel, int16_t reg) const {
-  switch (reg) {
-  case REGISTER_X:
-    return channel.object ? channel.object->x : 0;
-  case REGISTER_Y:
-    return channel.object ? channel.object->y : 0;
-  case REGISTER_A:
-    return channel.object ? channel.object->image : 0;
-  default:
-    if (reg < REGISTER_GLOBAL_BASE) {
-      return channel.registers[static_cast<std::size_t>(reg)];
-    }
+  if (reg < REGISTER_GLOBAL_BASE) {
+    return channel.registers[static_cast<std::size_t>(reg)];
+  }
+  if (reg < REGISTER_X) {
     return m_globals[static_cast<std::size_t>(reg - REGISTER_GLOBAL_BASE)];
   }
+  if (!channel.object) {
+    return 0;
+  }
+  if (reg == REGISTER_X) {
+    return channel.object->x;
+  }
+  return reg == REGISTER_Y ? channel.object->y : channel.object->image;
 }
 
 void Machine::write(Channel &channel, int16_t reg, int16_t value) {
@@ -158,62 +234,33 @@ void Machine::write(Channel &channel, int16_t reg, int16_t value) {
   }
 }
 
+int16_t Machine::operand(const Channel &channel, const Term &term) const {
+  switch (term.kind) {
+  case TermKind::Register:
+    return read(channel, term.value);
+  case TermKind::Joystick:
+    return m_joystick;
+  case TermKind::Number:
+  case TermKind::Operator:
+    break;
+  }
+  return term.value;
+}
+
 int16_t Machine::evaluate(const Channel &channel,
                           const Expression &expression) const {
-  int16_t accumulator = 0;
-  char pending = 0;
-  for (const Term &term : expression) {
-    if (term.kind == TermKind::Operator) {
-      pending = term.op;
-      continue;
-    }
-    int16_t value = term.value;
-    if (term.kind == TermKind::Joystick) {
-      value = m_joystick;
-    } else if (term.kind == TermKind::Register) {
-      value = read(channel, term.value);
-    }
-    switch (pending) {
-    case '+':
-      accumulator = toWord(accumulator + value);
-      break;
-    case '-':
-      accumulator = toWord(accumulator - value);
-      break;
-    case '*':
-      accumulator = toWord(accumulator * value);
-      break;
-    case '/':
-      if (value != 0) {
-        accumulator = toWord(accumulator / value);
-      }
-      break;
-    case '=':
-      accumulator = accumulator == value ? -1 : 0;
-      break;
-    case '<':
-      accumulator = accumulator < value ? -1 : 0;
-      break;
-    case '>':
-      accumulator = accumulator > value ? -1 : 0;
-      break;
-    case '#':
-      accumulator = accumulator != value ? -1 : 0;
-      break;
-    case '&':
-      accumulator = toWord(accumulator & value);
-      break;
-    case '|':
-      accumulator = toWord(accumulator | value);
-      break;
-    case '!':
-      accumulator = toWord(accumulator ^ value);
-      break;
-    default:
-      accumulator = value;
+  if (expression.terms == 0) {
+    return 0;
+  }
+  const Term *term = channel.program.terms + expression.first;
+  const Term *const end = term + expression.terms;
+  int16_t accumulator = operand(channel, *term);
+  while (++term != end) {
+    const Operator op = term->op;
+    if (++term == end) {
       break;
     }
-    pending = 0;
+    accumulator = apply(op, accumulator, operand(channel, *term));
   }
   return accumulator;
 }
@@ -223,17 +270,18 @@ void Machine::run(Channel &channel) {
     return;
   }
   int jumps = 0;
-  const auto &code = channel.program.code;
+  const Program &program = channel.program;
   for (;;) {
     if (channel.moveFrames > 0) {
       stepMove(channel);
       return;
     }
-    if (channel.pc < 0 || channel.pc >= static_cast<int>(code.size())) {
+    if (channel.pc < 0 || channel.pc >= program.length) {
       channel.alive = false;
       return;
     }
-    const Instruction &instruction = code[static_cast<std::size_t>(channel.pc)];
+    const Instruction &instruction =
+        program.instructions[program.code[channel.pc]];
     switch (instruction.opcode) {
     case Opcode::Pause:
       ++channel.pc;
@@ -286,7 +334,7 @@ void Machine::run(Channel &channel) {
     }
     case Opcode::Next: {
       const Instruction &loop =
-          code[static_cast<std::size_t>(instruction.jump)];
+          program.instructions[program.code[instruction.jump]];
       const int16_t value = toWord(read(channel, loop.reg) + 1);
       write(channel, loop.reg, value);
       if (value <=
@@ -333,8 +381,9 @@ void Machine::stepMove(Channel &channel) {
 }
 
 void Machine::startAnim(Channel &channel) {
+  const Program &program = channel.program;
   const Instruction &instruction =
-      channel.program.code[static_cast<std::size_t>(channel.pc)];
+      program.instructions[program.code[channel.pc]];
   channel.animInstruction = channel.pc;
   channel.animLoops = evaluate(channel, instruction.first);
   channel.animNext = 0;
@@ -345,13 +394,13 @@ void Machine::stepAnim(Channel &channel) {
   if (channel.animInstruction < 0) {
     return;
   }
-  const auto &frames =
-      channel.program.code[static_cast<std::size_t>(channel.animInstruction)]
-          .frames;
-  if (frames.empty() || --channel.animCounter != 0) {
+  const Program &program = channel.program;
+  const Instruction &instruction =
+      program.instructions[program.code[channel.animInstruction]];
+  if (instruction.frames == 0 || --channel.animCounter != 0) {
     return;
   }
-  if (channel.animNext >= frames.size()) {
+  if (channel.animNext >= instruction.frames) {
     if (channel.animLoops != 0) {
       channel.animLoops = toWord(channel.animLoops - 1);
       if (channel.animLoops == 0) {
@@ -361,7 +410,8 @@ void Machine::stepAnim(Channel &channel) {
     }
     channel.animNext = 0;
   }
-  const AnimFrame &frame = frames[channel.animNext++];
+  const AnimFrame &frame =
+      program.frames[instruction.firstFrame + channel.animNext++];
   write(channel, REGISTER_A, evaluate(channel, frame.image));
   channel.animCounter = static_cast<uint16_t>(evaluate(channel, frame.delay));
 }

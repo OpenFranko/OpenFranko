@@ -259,3 +259,31 @@ SCENARIO("Two Screen Swaps in one frame leave the display alone") {
     }
   }
 }
+
+SCENARIO("A double buffer opened by size starts blank") {
+  GIVEN("A 64 x 32 double buffer made without a screen") {
+    ImageBank images;
+    images.load(1, {box(16, 8, INK)});
+    BobLayer bobs;
+    DoubleBuffer buffer(64, 32);
+
+    THEN("Both buffers are blank screens of that size") {
+      REQUIRE(buffer.shown().width() == 64);
+      REQUIRE(buffer.shown().height() == 32);
+      REQUIRE(buffer.shown().pixel(63, 31) == 0);
+      REQUIRE(buffer.logic().pixel(0, 0) == 0);
+    }
+
+    WHEN("A bob is drawn and the buffers swap") {
+      buffer.vbl();
+      bobs.set(1, 16, 8, 1);
+      buffer.test(bobs, images);
+      buffer.vbl();
+
+      THEN("It shows on blank paper like on a copied blank screen") {
+        REQUIRE(buffer.shown().pixel(16, 8) == INK);
+        REQUIRE(buffer.shown().pixel(40, 20) == 0);
+      }
+    }
+  }
+}

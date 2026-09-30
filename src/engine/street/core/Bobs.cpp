@@ -1,16 +1,25 @@
 #include "Bobs.h"
 
 #include <algorithm>
+#include <iterator>
 #include <stdexcept>
+#include <utility>
 
 namespace openfranko::src::engine::street::core {
 namespace {
 
 struct Shape {
-  const Picture *picture = nullptr;
-  uint16_t orientation = 0;
+  ImageBank::Mask mask;
   int left = 0;
   int top = 0;
+};
+
+struct RowCursor {
+  const RowSpan *span = nullptr;
+  int spanStep = 1;
+  const uint8_t *row = nullptr;
+  int rowStep = 0;
+  int origin = 0;
 };
 
 int hotX(const Picture &picture, uint16_t flags) {
@@ -30,54 +39,220 @@ int hotY(const Picture &picture, uint16_t flags) {
                                      : picture.hotY;
 }
 
-bool solid(const Shape &shape, int x, int y) {
-  const Picture &picture = *shape.picture;
-  const int column = (shape.orientation & ImageBank::FLIP_X)
-                         ? picture.width - 1 - (x - shape.left)
-                         : x - shape.left;
-  const int row = (shape.orientation & ImageBank::FLIP_Y)
-                      ? picture.height - 1 - (y - shape.top)
-                      : y - shape.top;
-  return picture.at(column, row) != 0;
+bool isOpaque(uint8_t pixel) { return pixel != 0; }
+
+std::vector<RowSpan> rowSpans(const Picture &picture) {
+  std::vector<RowSpan> rows(static_cast<std::size_t>(picture.height));
+  const uint8_t *row = picture.pixels.data();
+  for (RowSpan &span : rows) {
+    const uint8_t *end = row + picture.width;
+    const uint8_t *first = std::find_if(row, end, isOpaque);
+    if (first != end) {
+      const auto last =
+          std::find_if(std::make_reverse_iterator(end),
+                       std::make_reverse_iterator(first), isOpaque);
+      span.first = static_cast<int>(first - row);
+      span.last = static_cast<int>(last.base() - row) - 1;
+    }
+    row = end;
+  }
+  return rows;
 }
 
-bool overlaps(const Shape &a, const Shape &b) {
-  const int aRight = a.left + a.picture->width;
-  const int aBottom = a.top + a.picture->height;
-  const int bRight = b.left + b.picture->width;
-  const int bBottom = b.top + b.picture->height;
-  if (bRight <= a.left || b.left >= aRight || bBottom <= a.top ||
-      b.top >= aBottom) {
-    return false;
+MaskBox maskBox(const std::vector<RowSpan> &rows) {
+  MaskBox box;
+  bool found = false;
+  for (std::size_t row = 0; row < rows.size(); ++row) {
+    const RowSpan &span = rows[row];
+    if (span.first > span.last) {
+      continue;
+    }
+    const int y = static_cast<int>(row);
+    if (!found) {
+      box = MaskBox{span.first, y, span.last + 1, y + 1};
+      found = true;
+      continue;
+    }
+    box.left = std::min(box.left, span.first);
+    box.right = std::max(box.right, span.last + 1);
+    box.bottom = y + 1;
   }
-  const int left = std::max(a.left, b.left);
-  const int right = std::min(aRight, bRight);
-  const int top = std::max(a.top, b.top);
-  const int bottom = std::min(aBottom, bBottom);
-  for (int y = top; y < bottom; ++y) {
-    for (int x = left; x < right; ++x) {
-      if (solid(a, x, y) && solid(b, x, y)) {
-        return true;
+  return box;
+}
+
+MaskBox screenBox(const Shape &shape) {
+  const Picture &picture = *shape.mask.picture;
+  const MaskBox &box = shape.mask.box;
+  MaskBox screen;
+  if (shape.mask.orientation & ImageBank::FLIP_X) {
+    screen.left = shape.left + picture.width - box.right;
+    screen.right = shape.left + picture.width - box.left;
+  } else {
+    screen.left = shape.left + box.left;
+    screen.right = shape.left + box.right;
+  }
+  if (shape.mask.orientation & ImageBank::FLIP_Y) {
+    screen.top = shape.top + picture.height - box.bottom;
+    screen.bottom = shape.top + picture.height - box.top;
+  } else {
+    screen.top = shape.top + box.top;
+    screen.bottom = shape.top + box.bottom;
+  }
+  return screen;
+}
+
+RowCursor rowCursor(const Shape &shape, int top) {
+  const Picture &picture = *shape.mask.picture;
+  const bool flipY = (shape.mask.orientation & ImageBank::FLIP_Y) != 0;
+  const int row =
+      flipY ? picture.height - 1 - (top - shape.top) : top - shape.top;
+  RowCursor cursor;
+  cursor.span = shape.mask.rows + row;
+  cursor.spanStep = flipY ? -1 : 1;
+  cursor.row = picture.pixels.data() + row * picture.width;
+  cursor.rowStep = flipY ? -picture.width : picture.width;
+  cursor.origin = (shape.mask.orientation & ImageBank::FLIP_X)
+                      ? shape.left + picture.width - 1
+                      : shape.left;
+  return cursor;
+}
+
+template <bool FLIP_X> int solidFrom(const RowCursor &cursor) {
+  return FLIP_X ? cursor.origin - cursor.span->last
+                : cursor.origin + cursor.span->first;
+}
+
+template <bool FLIP_X> int solidTo(const RowCursor &cursor) {
+  return FLIP_X ? cursor.origin - cursor.span->first
+                : cursor.origin + cursor.span->last;
+}
+
+template <bool FLIP_X> const uint8_t *pixelAt(const RowCursor &cursor, int x) {
+  return FLIP_X ? cursor.row + (cursor.origin - x)
+                : cursor.row + (x - cursor.origin);
+}
+
+void nextRow(RowCursor &cursor) {
+  cursor.span += cursor.spanStep;
+  cursor.row += cursor.rowStep;
+}
+
+template <bool FIRST_FLIP_X, bool SECOND_FLIP_X>
+bool solidRowsMeet(RowCursor first, RowCursor second, int left, int right,
+                   int rows) {
+  constexpr int FIRST_STEP = FIRST_FLIP_X ? -1 : 1;
+  constexpr int SECOND_STEP = SECOND_FLIP_X ? -1 : 1;
+  for (;;) {
+    const int from = std::max(left, std::max(solidFrom<FIRST_FLIP_X>(first),
+                                             solidFrom<SECOND_FLIP_X>(second)));
+    const int to = std::min(right, std::min(solidTo<FIRST_FLIP_X>(first),
+                                            solidTo<SECOND_FLIP_X>(second)));
+    if (from <= to) {
+      const uint8_t *firstPixel = pixelAt<FIRST_FLIP_X>(first, from);
+      const uint8_t *secondPixel = pixelAt<SECOND_FLIP_X>(second, from);
+      for (int x = from; x <= to; ++x) {
+        if (*firstPixel != 0 && *secondPixel != 0) {
+          return true;
+        }
+        firstPixel += FIRST_STEP;
+        secondPixel += SECOND_STEP;
       }
     }
+    if (--rows == 0) {
+      return false;
+    }
+    nextRow(first);
+    nextRow(second);
   }
-  return false;
+}
+
+bool solidPixelsMeet(const Shape &a, const Shape &b, const MaskBox &area) {
+  const MaskBox firstBox = screenBox(a);
+  const MaskBox secondBox = screenBox(b);
+  const int left = std::max(area.left, std::max(firstBox.left, secondBox.left));
+  const int right =
+      std::min(area.right, std::min(firstBox.right, secondBox.right));
+  const int top = std::max(area.top, std::max(firstBox.top, secondBox.top));
+  const int bottom =
+      std::min(area.bottom, std::min(firstBox.bottom, secondBox.bottom));
+  if (left >= right || top >= bottom) {
+    return false;
+  }
+  const RowCursor first = rowCursor(a, top);
+  const RowCursor second = rowCursor(b, top);
+  const bool firstFlipX = (a.mask.orientation & ImageBank::FLIP_X) != 0;
+  const bool secondFlipX = (b.mask.orientation & ImageBank::FLIP_X) != 0;
+  const int rows = bottom - top;
+  if (firstFlipX) {
+    return secondFlipX
+               ? solidRowsMeet<true, true>(first, second, left, right - 1, rows)
+               : solidRowsMeet<true, false>(first, second, left, right - 1,
+                                            rows);
+  }
+  return secondFlipX
+             ? solidRowsMeet<false, true>(first, second, left, right - 1, rows)
+             : solidRowsMeet<false, false>(first, second, left, right - 1,
+                                           rows);
+}
+
+MaskBox blitBox(const Shape &shape) {
+  const Picture &picture = *shape.mask.picture;
+  const int words = (picture.width + WORD_PIXELS - 1) / WORD_PIXELS;
+  return MaskBox{shape.left, shape.top, shape.left + words * WORD_PIXELS,
+                 shape.top + picture.height};
+}
+
+bool overlaps(const Shape &tested, const Shape &other) {
+  const MaskBox testedBox = blitBox(tested);
+  const MaskBox otherBox = blitBox(other);
+  const MaskBox shared{std::max(testedBox.left, otherBox.left),
+                       std::max(testedBox.top, otherBox.top),
+                       std::min(testedBox.right, otherBox.right),
+                       std::min(testedBox.bottom, otherBox.bottom)};
+  if (shared.left >= shared.right || shared.top >= shared.bottom) {
+    return false;
+  }
+  if (solidPixelsMeet(tested, other, shared)) {
+    return true;
+  }
+  const bool testedOnRight = tested.left >= other.left;
+  const Shape &left = testedOnRight ? other : tested;
+  const Shape &right = testedOnRight ? tested : other;
+  const MaskBox &leftBox = testedOnRight ? otherBox : testedBox;
+  const MaskBox &rightBox = testedOnRight ? testedBox : otherBox;
+  const int shift = (right.left - left.left) & (WORD_PIXELS - 1);
+  if (shift == 0 || rightBox.right >= leftBox.right) {
+    return false;
+  }
+  Shape spilled = right;
+  spilled.left = rightBox.right;
+  spilled.top = right.top - 1;
+  const MaskBox strip{rightBox.right, shared.top,
+                      rightBox.right + WORD_PIXELS - shift, shared.bottom};
+  return solidPixelsMeet(left, spilled, strip);
 }
 
 } // namespace
 
-void ImageBank::clear() { m_entries.clear(); }
+void ImageBank::clear() {
+  m_entries.clear();
+  m_outlines.clear();
+}
 
-void ImageBank::load(int base, const std::vector<Picture> &frames) {
+void ImageBank::load(int base, std::vector<Picture> frames) {
   const std::size_t end = static_cast<std::size_t>(base) + frames.size();
   if (m_entries.size() < end) {
     m_entries.resize(end);
+    m_outlines.resize(end);
   }
   for (std::size_t i = 0; i < frames.size(); ++i) {
     Entry &entry = m_entries[static_cast<std::size_t>(base) + i];
-    entry.picture = frames[i];
-    entry.orientation = 0;
+    Outline &outline = m_outlines[static_cast<std::size_t>(base) + i];
+    outline.rows = rowSpans(frames[i]);
+    outline.box = maskBox(outline.rows);
     entry.loaded = frames[i].width > 0 && frames[i].height > 0;
+    entry.picture = std::move(frames[i]);
+    entry.orientation = 0;
     entry.masked = true;
   }
 }
@@ -88,6 +263,19 @@ const Picture *ImageBank::find(int number) const {
     return nullptr;
   }
   return &m_entries[static_cast<std::size_t>(number)].picture;
+}
+
+ImageBank::Mask ImageBank::mask(int number) const {
+  if (!find(number)) {
+    return {};
+  }
+  const Entry &entry = m_entries[static_cast<std::size_t>(number)];
+  if (!entry.masked) {
+    return {};
+  }
+  const Outline &outline = m_outlines[static_cast<std::size_t>(number)];
+  return Mask{&entry.picture, outline.rows.data(), outline.box,
+              entry.orientation};
 }
 
 uint16_t ImageBank::orientation(int number) const {
@@ -178,13 +366,14 @@ bool BobLayer::collide(int number, const ImageBank &images, int first,
     }
     const int image =
         static_cast<uint16_t>(bob.object.image) & ImageBank::NUMBER_MASK;
-    shape.picture = images.find(image);
-    if (!shape.picture || !images.isMasked(image)) {
+    shape.mask = images.mask(image);
+    if (!shape.mask.picture) {
       return false;
     }
-    shape.orientation = images.orientation(image);
-    shape.left = bob.object.x - hotX(*shape.picture, shape.orientation);
-    shape.top = bob.object.y - hotY(*shape.picture, shape.orientation);
+    shape.left =
+        bob.object.x - hotX(*shape.mask.picture, shape.mask.orientation);
+    shape.top =
+        bob.object.y - hotY(*shape.mask.picture, shape.mask.orientation);
     return true;
   };
 
@@ -193,13 +382,14 @@ bool BobLayer::collide(int number, const ImageBank &images, int first,
     return false;
   }
   bool any = false;
-  for (int other = std::max(first, 0); other <= last && other < BOBS; ++other) {
-    Shape shape;
-    if (other == number ||
-        !shapeOf(m_bobs[static_cast<std::size_t>(other)], shape)) {
+  const int end = std::min(last, BOBS - 1);
+  for (int other = std::max(first, 0); other <= end; ++other) {
+    const Bob &bob = m_bobs[static_cast<std::size_t>(other)];
+    if (!bob.active || other == number) {
       continue;
     }
-    if (overlaps(tested, shape)) {
+    Shape shape;
+    if (shapeOf(bob, shape) && overlaps(tested, shape)) {
       m_collisions[static_cast<std::size_t>(other)] = true;
       any = true;
     }

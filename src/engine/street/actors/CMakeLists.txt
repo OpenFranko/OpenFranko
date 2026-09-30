@@ -1,3 +1,5 @@
+add_subdirectory(compiled)
+
 add_library(StreetActors
     Actors.cpp
     Actors.h)

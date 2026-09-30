@@ -20,6 +20,7 @@ public:
   using Op = std::function<void(IndexedSurface &)>;
 
   explicit DoubleBuffer(const IndexedSurface &screen);
+  DoubleBuffer(int width, int height);
 
   const IndexedSurface &shown() const;
   IndexedSurface &logic();

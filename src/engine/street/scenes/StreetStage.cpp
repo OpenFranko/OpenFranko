@@ -3,9 +3,11 @@
 #include "../../../systems/audio/Mixer.h"
 #include "../../AmigaDisplay.h"
 #include "../actors/Actors.h"
+#include "../actors/compiled/CompiledActors.h"
 
 #include <algorithm>
 #include <cstdlib>
+#include <utility>
 
 namespace openfranko::src::engine::street::scenes {
 namespace {
@@ -77,8 +79,7 @@ void StreetStage::openScreens(bool shown) {
   m_panelPalette = ui::panelPalette();
   m_screenShown = shown;
   m_copper.reset(registers());
-  m_screen.fill(0);
-  m_buffer = core::DoubleBuffer(m_screen);
+  openBlankScreens();
   openPanel();
 }
 
@@ -122,7 +123,7 @@ StreetStage::Flow StreetStage::stageMusic() {
 
 StreetStage::Flow StreetStage::stageScreen() {
   m_step = Step::StageShown;
-  autoback([opening = m_opening](core::IndexedSurface &surface) {
+  autoback([opening = std::move(m_opening)](core::IndexedSurface &surface) {
     surface.unpack(opening, 0, 0);
   });
   return Flow::Yield;
@@ -143,7 +144,7 @@ void StreetStage::stageShown() {
     m_bobs.set(bob, 460, STREET_Y, 44);
   }
   for (int channel = 4; channel <= 9; ++channel) {
-    m_machine.create(channel, actors::idle(m_session.version));
+    m_machine.create(channel, actors::compiled::idle(m_session.version));
   }
 }
 
@@ -185,13 +186,15 @@ void StreetStage::streetSetup() {
 
   m_machine.bind(SCREEN_SHAKE_CHANNEL, &m_screenDisplay);
   m_machine.create(SCREEN_SHAKE_CHANNEL,
-                   actors::screenShake(m_session.version));
-  const auto player = actors::streetPlayer(stage(), m_session.version);
+                   actors::compiled::screenShake(m_session.version));
+  const auto player =
+      actors::compiled::streetPlayer(stage(), m_session.version);
   m_machine.create(1, player.locomotion);
   m_machine.create(2, player.damage);
   m_machine.create(3, player.clamp);
-  m_machine.create(PLAYER_BLOOD_CHANNEL, actors::playerBlood());
-  m_machine.create(ENEMY_BLOOD_CHANNEL, actors::enemyBlood(m_session.version));
+  m_machine.create(PLAYER_BLOOD_CHANNEL, actors::compiled::playerBlood());
+  m_machine.create(ENEMY_BLOOD_CHANNEL,
+                   actors::compiled::enemyBlood(m_session.version));
   m_machine.startAll();
 
   m_panel->score(stats());
@@ -508,7 +511,8 @@ void StreetStage::advanceSetup() {
   for (int channel = 4; channel <= 9; ++channel) {
     m_machine.destroy(channel);
   }
-  m_machine.create(INDICATOR_CHANNEL, actors::indicatorArrow(m_facing));
+  m_machine.create(INDICATOR_CHANNEL,
+                   actors::compiled::indicatorArrow(m_facing));
   m_machine.start(INDICATOR_CHANNEL);
   m_scrollPhase = 1;
   m_bobs.set(PLAYER_BLOOD, 120, 24, HIDDEN_IMAGE);
@@ -683,8 +687,8 @@ void StreetStage::spawnLoaded() {
     m_machine.bind(j * 2 + 1, &m_bobs.object(j));
     if (enemy.spriteSet == core::EnemySlot::EMPTY) {
       m_bobs.set(j, 1000, 300, HIDDEN_IMAGE);
-      m_machine.create(j * 2, actors::idle(m_session.version));
-      m_machine.create(j * 2 + 1, actors::idle(m_session.version));
+      m_machine.create(j * 2, actors::compiled::idle(m_session.version));
+      m_machine.create(j * 2 + 1, actors::compiled::idle(m_session.version));
       global(amal::RI) = word(global(amal::RI) - 1);
       continue;
     }
@@ -694,10 +698,12 @@ void StreetStage::spawnLoaded() {
     const int base = 0 -
                      25 * actors::amosBool(m_resident[2] == enemy.spriteSet) -
                      50 * actors::amosBool(m_resident[3] == enemy.spriteSet);
-    const auto programs = actors::enemy(base, enemy.type, m_session.version);
+    const auto programs =
+        actors::compiled::enemy(base, enemy.type, m_session.version);
     m_machine.create(j * 2, programs.walk);
     m_machine.create(j * 2 + 1, programs.damage);
   }
+  m_host.yield();
 
   ++m_nextWave;
   ++m_wavesSpawned;

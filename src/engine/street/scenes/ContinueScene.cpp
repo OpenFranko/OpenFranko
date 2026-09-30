@@ -4,7 +4,7 @@
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../AmigaDisplay.h"
 #include "../../assets/Assets.h"
-#include "../actors/Actors.h"
+#include "../actors/compiled/CompiledActors.h"
 #include "../ui/ScreenOutput.h"
 
 #include <cstddef>
@@ -114,7 +114,7 @@ void ContinueScene::open() {
                         QUESTION_IMAGE);
   m_bobs.set(HAND, LEFT_X, HAND_Y, HAND_IMAGE);
   m_machine.bind(HAND, &m_bobs.object(HAND));
-  m_machine.create(HAND, actors::pointingHand());
+  m_machine.create(HAND, actors::compiled::pointingHand());
   m_machine.startAll();
   m_palette = continuePalette();
   m_session.border = m_palette[0];

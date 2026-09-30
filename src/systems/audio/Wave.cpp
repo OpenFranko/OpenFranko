@@ -3,10 +3,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
-#include <fstream>
-#include <iterator>
 #include <optional>
 #include <stdexcept>
+#include <string>
 
 namespace openfranko::src::systems::audio {
 namespace {
@@ -105,20 +104,6 @@ Sound readWave(const std::vector<uint8_t> &file) {
         static_cast<int8_t>((sum / format->channels) >> BYTE_SHIFT));
   }
   return sound;
-}
-
-Sound loadWave(const std::string &path) {
-  std::ifstream stream(path, std::ios::binary);
-  if (!stream) {
-    throw std::runtime_error("Failed to load sound: " + path);
-  }
-  const std::vector<uint8_t> file{std::istreambuf_iterator<char>(stream),
-                                  std::istreambuf_iterator<char>()};
-  try {
-    return readWave(file);
-  } catch (const std::runtime_error &error) {
-    throw std::runtime_error(std::string(error.what()) + ": " + path);
-  }
 }
 
 } // namespace openfranko::src::systems::audio

@@ -6,7 +6,6 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <set>
 #include <utility>
@@ -83,6 +82,7 @@ private:
   };
 
   void stopPlayer();
+  void finishModule();
   void applyModuleTempo();
   RowPosition modulePosition() const;
   ModuleTiming moduleTiming() const;
@@ -93,11 +93,11 @@ private:
   int nextSample(Voice &voice);
   void filter(int16_t *stereo, int frames);
 
-  mutable std::mutex m_mutex;
   int m_rate;
   std::unique_ptr<Module> m_module;
   bool m_moduleLoaded = false;
   bool m_modulePlaying = false;
+  bool m_playerStarted = false;
   int m_moduleLoops = 0;
   double m_moduleTempoFactor = 1.0;
   int m_tempoOverride = 0;

@@ -6,12 +6,14 @@
 #include "../systems/input/ControllerSystem.h"
 #include "../systems/input/Platform.h"
 #include "GameOptions.h"
-#include "assets/DiskFiles.h"
+#include "MersenneTwister.h"
+#include "assets/Files.h"
 #include "states/EngineState.h"
 #include "states/shared/EngineStreetHost.h"
 #include "street/session/GameSession.h"
 
 #include <memory>
+#include <random>
 
 namespace openfranko {
 namespace src {
@@ -29,8 +31,6 @@ public:
   void update();
   void run();
 
-  int refreshRate() const;
-
 private:
   void updateState();
 
@@ -39,12 +39,13 @@ private:
   states::shared::EngineStreetHost &makeStreetHost();
 
   systems::input::Platform m_platform;
-  systems::graphics::VideoSystem m_videoSystem;
   systems::audio::AudioSystem m_audioSystem;
+  std::unique_ptr<assets::Files> m_files;
+  systems::graphics::VideoSystem m_videoSystem;
   systems::input::ControllerSystem m_controllerSystem;
-  assets::DiskFiles m_files;
   GameOptions m_options;
   street::session::GameSession m_session;
+  MersenneTwister m_random{std::random_device{}()};
 
   std::unique_ptr<states::shared::EngineStreetHost> m_streetHost;
   std::unique_ptr<states::EngineState> m_currentState;

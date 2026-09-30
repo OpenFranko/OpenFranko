@@ -4,7 +4,7 @@
 #include "../../AmigaDisplay.h"
 #include "../../effects/sequences/BlyskSequence.h"
 #include "../../effects/sequences/FotoSequence.h"
-#include "../actors/Actors.h"
+#include "../actors/compiled/CompiledActors.h"
 #include "../core/Font.h"
 #include "../ui/StageFrame.h"
 
@@ -528,7 +528,7 @@ void EndingScene::farewell() {
   core::BobLayer::paste(still.surface, m_images, FAREWELL_X, FAREWELL_Y,
                         FAREWELL_IMAGE);
   m_bobs.set(WALKER, WALKER_X, WALKER_Y, WALKER_IMAGE);
-  m_machine.create(WALKER, actors::walkAway());
+  m_machine.create(WALKER, actors::compiled::walkAway());
   m_machine.startAll();
 }
 
@@ -540,17 +540,19 @@ void EndingScene::dance() {
   for (int portrait = 1; portrait <= PORTRAITS; ++portrait) {
     m_bobs.set(DANCER + portrait, PORTRAIT_X, PORTRAIT_Y, portrait);
   }
-  m_machine.create(DANCER, actors::breakDance());
+  m_machine.create(DANCER, actors::compiled::breakDance());
   for (int portrait = 1; portrait <= PORTRAITS; ++portrait) {
-    m_machine.create(DANCER + portrait, actors::portraitEntrance(portrait));
+    m_machine.create(DANCER + portrait,
+                     actors::compiled::portraitEntrance(portrait));
   }
   m_machine.startAll();
 }
 
 void EndingScene::secondDance() {
-  m_machine.create(DANCER, actors::danceFinale());
+  m_machine.create(DANCER, actors::compiled::danceFinale());
   for (int portrait = 1; portrait <= PORTRAITS; ++portrait) {
-    m_machine.create(DANCER + portrait, actors::portraitShuttle(portrait));
+    m_machine.create(DANCER + portrait,
+                     actors::compiled::portraitShuttle(portrait));
   }
   m_machine.startAll();
 }

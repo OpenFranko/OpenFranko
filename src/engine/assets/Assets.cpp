@@ -57,9 +57,9 @@ std::string version12Name(int resource) {
 
 } // namespace
 
-GameVersion detectVersion(const std::string &directory) {
-  return std::filesystem::exists(std::filesystem::path(directory) /
-                                 VERSION12_MARKER)
+GameVersion detectVersion(const Files &files, const std::string &directory) {
+  return files.exists(
+             (std::filesystem::path(directory) / VERSION12_MARKER).string())
              ? GameVersion::V12
              : GameVersion::V10;
 }

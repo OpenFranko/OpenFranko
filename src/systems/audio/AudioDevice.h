@@ -14,11 +14,15 @@ class AudioDevice {
 public:
   using Render = std::function<void(int16_t *stereo, int frames)>;
 
-  AudioDevice(int rate, int frames, Render render);
+  AudioDevice(int rate, Render render);
   ~AudioDevice();
 
   AudioDevice(const AudioDevice &) = delete;
   AudioDevice &operator=(const AudioDevice &) = delete;
+
+  void lock();
+  void unlock();
+  void update();
 
 private:
   struct Stream;

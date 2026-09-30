@@ -1,10 +1,25 @@
 #include "IndexedSurface.h"
 
 #include <algorithm>
+#include <cstring>
 #include <stdexcept>
 
 namespace openfranko::src::engine::street::core {
 namespace {
+
+constexpr int WORD_BYTES = 4;
+constexpr int BYTE_BITS = 8;
+constexpr uint32_t LOW_BITS = 0x01010101u;
+constexpr uint32_t HIGH_BITS = 0x80808080u;
+
+bool hasZeroByte(uint32_t word) {
+  return ((word - LOW_BITS) & ~word & HIGH_BITS) != 0;
+}
+
+uint32_t swapBytes(uint32_t word) {
+  return word >> 24 | (word >> 8 & 0xFF00u) | (word << 8 & 0xFF0000u) |
+         word << 24;
+}
 
 int clampToSize(int value, int size) {
   if (value < 0) {
@@ -77,15 +92,14 @@ void IndexedSurface::copy(const IndexedSurface &source, int x1, int y1, int x2,
   width = std::min(width, m_width - x);
   height = std::min(height, m_height - y);
 
-  std::vector<uint8_t> block(static_cast<std::size_t>(width * height));
-  for (int row = 0; row < height; ++row) {
-    const auto from =
-        source.m_pixels.begin() + (y1 + row) * source.m_width + x1;
-    std::copy(from, from + width, block.begin() + row * width);
-  }
-  for (int row = 0; row < height; ++row) {
-    const auto from = block.begin() + row * width;
-    std::copy(from, from + width, m_pixels.begin() + (y + row) * m_width + x);
+  const bool upward = &source == this && y > y1;
+  for (int step = 0; step < height; ++step) {
+    const int row = upward ? height - 1 - step : step;
+    std::memmove(
+        m_pixels.data() + static_cast<std::ptrdiff_t>(y + row) * m_width + x,
+        source.m_pixels.data() +
+            static_cast<std::ptrdiff_t>(y1 + row) * source.m_width + x1,
+        static_cast<std::size_t>(width));
   }
 }
 
@@ -112,21 +126,51 @@ bool IndexedSurface::intersects(int left, int top, int width,
 
 void IndexedSurface::draw(const Picture &picture, int left, int top, bool flipX,
                           bool flipY, bool opaque) {
-  for (int row = 0; row < picture.height; ++row) {
-    const int y = top + row;
-    if (y < 0 || y >= m_height) {
+  const int firstColumn = std::max(0, -left);
+  const int lastColumn = std::min(picture.width, m_width - left);
+  const int firstRow = std::max(0, -top);
+  const int lastRow = std::min(picture.height, m_height - top);
+  if (firstColumn >= lastColumn || firstRow >= lastRow) {
+    return;
+  }
+  for (int row = firstRow; row < lastRow; ++row) {
+    const int sourceRow = flipY ? picture.height - 1 - row : row;
+    const uint8_t *source =
+        picture.pixels.data() +
+        static_cast<std::ptrdiff_t>(sourceRow) * picture.width;
+    uint8_t *target =
+        m_pixels.data() + static_cast<std::ptrdiff_t>(top + row) * m_width;
+    if (opaque && !flipX) {
+      std::copy(source + firstColumn, source + lastColumn,
+                target + left + firstColumn);
       continue;
     }
-    const int sourceRow = flipY ? picture.height - 1 - row : row;
-    for (int column = 0; column < picture.width; ++column) {
-      const int x = left + column;
-      if (x < 0 || x >= m_width) {
+    int column = firstColumn;
+    for (; column + WORD_BYTES <= lastColumn; column += WORD_BYTES) {
+      uint32_t word = 0;
+      if (flipX) {
+        std::memcpy(&word, source + picture.width - WORD_BYTES - column,
+                    WORD_BYTES);
+        word = swapBytes(word);
+      } else {
+        std::memcpy(&word, source + column, WORD_BYTES);
+      }
+      if (opaque || !hasZeroByte(word)) {
+        std::memcpy(target + left + column, &word, WORD_BYTES);
         continue;
       }
-      const int sourceColumn = flipX ? picture.width - 1 - column : column;
-      const uint8_t value = picture.at(sourceColumn, sourceRow);
+      for (int byte = 0; byte < WORD_BYTES && word != 0; ++byte) {
+        const uint8_t value = static_cast<uint8_t>(word);
+        if (value != 0) {
+          target[left + column + byte] = value;
+        }
+        word >>= BYTE_BITS;
+      }
+    }
+    for (; column < lastColumn; ++column) {
+      const uint8_t value = source[flipX ? picture.width - 1 - column : column];
       if (value != 0 || opaque) {
-        m_pixels[static_cast<std::size_t>(y * m_width + x)] = value;
+        target[left + column] = value;
       }
     }
   }

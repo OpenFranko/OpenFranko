@@ -3,8 +3,11 @@
 
 #include "audio/Speaker.h"
 
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace openfranko {
 namespace src {
@@ -13,7 +16,9 @@ namespace audio {
 
 class AudioSystem : public Speaker {
 public:
-  AudioSystem();
+  using Read = std::function<std::vector<uint8_t>(const std::string &path)>;
+
+  explicit AudioSystem(Read read);
   ~AudioSystem() override;
 
   AudioSystem(const AudioSystem &) = delete;

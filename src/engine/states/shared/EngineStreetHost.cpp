@@ -5,10 +5,8 @@
 #include "../../assets/Assets.h"
 
 #include <cctype>
-#include <filesystem>
-#include <fstream>
 #include <optional>
-#include <sstream>
+#include <random>
 #include <stdexcept>
 #include <utility>
 
@@ -46,12 +44,38 @@ std::optional<int> numberAfter(const std::string &text,
   return std::stoi(text.substr(prefix.size(), end - prefix.size()));
 }
 
+std::string fileName(const std::string &path) {
+  std::size_t start = path.size();
+  while (start > 0 && path[start - 1] != '/' && path[start - 1] != '\\') {
+    --start;
+  }
+  return path.substr(start);
+}
+
+bool endsWith(const std::string &text, const std::string &suffix) {
+  return text.size() >= suffix.size() &&
+         text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+std::string readText(assets::Files &files, const std::string &what,
+                     const std::string &path) {
+  if (!files.exists(path)) {
+    throw std::runtime_error("Failed to open " + what + ": " + path);
+  }
+  const std::vector<uint8_t> text = files.read(path);
+  return std::string(reinterpret_cast<const char *>(text.data()), text.size());
+}
+
 } // namespace
 
 EngineStreetHost::EngineStreetHost(systems::audio::Speaker &speaker,
-                                   GameVersion version, std::string directory)
-    : m_speaker(speaker), m_version(version), m_directory(std::move(directory)),
-      m_random(std::random_device{}()) {}
+                                   assets::Files &files, GameVersion version,
+                                   MersenneTwister &random,
+                                   std::function<void()> yield,
+                                   std::string directory)
+    : m_speaker(speaker), m_files(files), m_version(version),
+      m_yield(std::move(yield)), m_directory(std::move(directory)),
+      m_random(random) {}
 
 EngineStreetHost::~EngineStreetHost() {
   m_speaker.setSampleLooping(false);
@@ -72,13 +96,11 @@ EngineStreetHost::loadSpriteSet(int resource, int sampleBank) {
 }
 
 street::core::Picture EngineStreetHost::loadPicture(int resource) {
-  return toPicture(
-      systems::graphics::loadIndexedBitmap(resourcePath(resource) + ".bmp"));
+  return toPicture(m_files.loadBitmap(resourcePath(resource) + ".bmp"));
 }
 
 effects::color::AmigaPalette EngineStreetHost::loadPalette(int resource) {
-  return systems::graphics::loadIndexedBitmap(resourcePath(resource) + ".bmp")
-      .palette;
+  return m_files.loadBitmap(resourcePath(resource) + ".bmp").palette;
 }
 
 std::vector<street::core::Picture> EngineStreetHost::loadScenery(int resource) {
@@ -86,29 +108,19 @@ std::vector<street::core::Picture> EngineStreetHost::loadScenery(int resource) {
 }
 
 street::core::LevelScript EngineStreetHost::loadLevelScript(int resource) {
-  const std::string path = resourcePath(resource) + ".json";
-  std::ifstream file(path);
-  if (!file) {
-    throw std::runtime_error("Failed to open level script: " + path);
-  }
-  std::stringstream text;
-  text << file.rdbuf();
-  return street::core::LevelScript::fromJson(text.str());
+  street::core::LevelScript script = street::core::LevelScript::fromJson(
+      readText(m_files, "level script", resourcePath(resource) + ".json"));
+  m_yield();
+  return script;
 }
 
 street::core::EndingCredits EngineStreetHost::loadEndingCredits() {
-  const std::string path = m_directory + "/" + CREDITS_FILE;
-  std::ifstream file(path);
-  if (!file) {
-    throw std::runtime_error("Failed to open ending credits: " + path);
-  }
-  std::stringstream text;
-  text << file.rdbuf();
-  return street::core::EndingCredits::fromJson(text.str());
+  return street::core::EndingCredits::fromJson(
+      readText(m_files, "ending credits", m_directory + "/" + CREDITS_FILE));
 }
 
 street::core::Picture EngineStreetHost::loadPanelPicture(int part) {
-  return toPicture(systems::graphics::loadIndexedBitmap(
+  return toPicture(m_files.loadBitmap(
       assets::partPath(resourceName(PANEL_RESOURCE), part, m_directory)));
 }
 
@@ -152,6 +164,8 @@ int EngineStreetHost::random(int limit) {
   return std::uniform_int_distribution<int>(0, limit)(m_random);
 }
 
+void EngineStreetHost::yield() { m_yield(); }
+
 std::string EngineStreetHost::sampleName(int bank, int sample) {
   return "streetBank" + std::to_string(bank) + "Sample" +
          std::to_string(sample);
@@ -174,13 +188,11 @@ std::string EngineStreetHost::musicPath(int resource) const {
 std::vector<street::core::Picture>
 EngineStreetHost::loadFrames(int resource) const {
   const std::string name = resourceName(resource);
-  const std::filesystem::path directory = m_directory + "/" + name;
+  const std::string directory = m_directory + "/" + name;
+  const std::string prefix = name + "_";
   std::vector<street::core::Picture> frames;
-  std::error_code error;
-  for (const auto &entry :
-       std::filesystem::directory_iterator(directory, error)) {
-    const auto index =
-        numberAfter(entry.path().filename().string(), name + "_", ".bmp");
+  for (const std::string &path : m_files.list(directory)) {
+    const auto index = numberAfter(fileName(path), prefix, ".bmp");
     if (!index) {
       continue;
     }
@@ -188,10 +200,10 @@ EngineStreetHost::loadFrames(int resource) const {
       frames.resize(static_cast<std::size_t>(*index) + 1);
     }
     frames[static_cast<std::size_t>(*index)] =
-        toPicture(systems::graphics::loadIndexedBitmap(entry.path().string()));
+        toPicture(m_files.loadBitmap(path));
   }
   if (frames.empty()) {
-    throw std::runtime_error("No frames found in " + directory.string());
+    throw std::runtime_error("No frames found in " + directory);
   }
   return frames;
 }
@@ -199,16 +211,14 @@ EngineStreetHost::loadFrames(int resource) const {
 void EngineStreetHost::loadSamples(int resource, int bank) {
   clearSamples(bank);
   const std::string name = resourceName(resource);
-  const std::filesystem::path directory = m_directory + "/" + name;
-  std::error_code error;
-  for (const auto &entry :
-       std::filesystem::directory_iterator(directory, error)) {
-    const std::string file = entry.path().filename().string();
-    const auto sample = numberAfter(file, name + "_sam", "_");
-    if (!sample || entry.path().extension() != ".wav") {
+  const std::string prefix = name + "_sam";
+  for (const std::string &path : m_files.list(m_directory + "/" + name)) {
+    const std::string file = fileName(path);
+    const auto sample = numberAfter(file, prefix, "_");
+    if (!sample || !endsWith(file, ".wav")) {
       continue;
     }
-    m_speaker.loadSample(sampleName(bank, *sample), entry.path().string());
+    m_speaker.loadSample(sampleName(bank, *sample), path);
     m_samples[bank].push_back(*sample);
   }
 }

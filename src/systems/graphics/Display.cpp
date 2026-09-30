@@ -56,6 +56,9 @@ void rasterize(const Display &display, std::vector<uint32_t> &argb) {
     const int lastRow = std::min(display.height, layer.top + layer.rows);
     const int firstColumn = std::max(0, layer.left);
     const int lastColumn = std::min(display.width, layer.left + layer.columns);
+    if (firstColumn >= lastColumn) {
+      continue;
+    }
     mapPalette(layer, -1, colors);
     for (int row = firstRow; row < lastRow; ++row) {
       if (!layer.rowColors.empty()) {

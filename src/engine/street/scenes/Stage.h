@@ -88,6 +88,7 @@ protected:
   void test();
   ui::StageCopper registers() const;
   void hideScreen();
+  void openBlankScreens();
   void gameOver();
   Flow advanceGameOver();
   bool quitsToHighScores() const;

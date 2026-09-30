@@ -3,10 +3,12 @@
 
 #include "../../../systems/audio/Speaker.h"
 #include "../../GameVersion.h"
+#include "../../MersenneTwister.h"
+#include "../../assets/Files.h"
 #include "../../street/scenes/StreetHost.h"
 
+#include <functional>
 #include <map>
-#include <random>
 #include <string>
 #include <vector>
 
@@ -18,7 +20,9 @@ namespace shared {
 
 class EngineStreetHost : public street::scenes::StreetHost {
 public:
-  EngineStreetHost(systems::audio::Speaker &speaker, GameVersion version,
+  EngineStreetHost(systems::audio::Speaker &speaker, assets::Files &files,
+                   GameVersion version, MersenneTwister &random,
+                   std::function<void()> yield,
                    std::string directory = "assets");
   ~EngineStreetHost() override;
 
@@ -40,6 +44,7 @@ public:
   void playSampleAt(int bank, int sample, int voices, int frequency) override;
   void setSampleLooping(bool loop) override;
   int random(int limit) override;
+  void yield() override;
 
   GameVersion version() const;
 
@@ -54,9 +59,11 @@ private:
   void clearSamples(int bank);
 
   systems::audio::Speaker &m_speaker;
+  assets::Files &m_files;
   GameVersion m_version;
+  std::function<void()> m_yield;
   std::string m_directory;
-  std::mt19937 m_random;
+  MersenneTwister &m_random;
   std::map<int, std::vector<int>> m_samples;
 };
 

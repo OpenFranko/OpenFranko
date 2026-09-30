@@ -47,6 +47,11 @@ ctest --output-on-failure
 
 Executables can be located in the build directory
 
+In the game, Alt+Enter switches between a window and fullscreen. In
+fullscreen the game switches the screen to 50 Hz (60 Hz in NTSC mode) when the
+screen offers that rate, like many TVs and external monitors do, so it runs
+perfectly smoothly; otherwise it keeps the desktop's rate.
+
 With tests enabled, three launchers are also built in `test/manual`, so late
 scenes can be tried without playing up to them. `startAtLevel1Car` starts the
 game at the stage-1 bonus drive, as if the first boss had just been beaten.
@@ -54,6 +59,18 @@ game at the stage-1 bonus drive, as if the first boss had just been beaten.
 beaten. `startAtGameOver` starts it at the game over graveyard, as if the last
 life had just been lost on stage 1. Like the game, run them from the directory
 that holds `assets`.
+
+The AMAL animation programs of the street scenes, in
+`src/engine/street/actors/Actors.cpp`, are compiled ahead of time into
+`src/engine/street/actors/compiled/CompiledActors.cpp`, so the game never parses
+AMAL while it plays. After changing a program, regenerate that file with the
+`compileActorPrograms` tool, built with the tools, from the build directory:
+
+```
+./tools/compiler/compileActorPrograms -o ../src/engine/street/actors/compiled/CompiledActors.cpp
+```
+
+`compiledActorsTest` fails while the file is out of date.
 
 ## Windows (MSYS2)
 
@@ -84,6 +101,72 @@ any extra DLLs. Like on Linux, the game has to be started from the directory
 that holds `assets`, e.g. copy `build/src/OpenFranko.exe` next to `assets` and
 double-click it.
 
+## DOS (DJGPP)
+
+The DOS version is cross-compiled with DJGPP and uses Allegro 4 instead of
+SDL2. The tools and tests are not built for DOS; extract the game data with a
+Linux or Windows build of FrankoExtract.
+
+`build-dos.sh` needs no DJGPP installed: it downloads DJGPP (GCC 12 for
+`i586-pc-msdosdjgpp`, from [build-djgpp](https://github.com/andrewwutw/build-djgpp))
+and DJGPP's Allegro 4.2.2 into `build-dos/djgpp`, builds libxmp for them, builds
+the game in `build-dos` and puts a runnable copy in `build-dos/game`:
+
+```
+./build-dos.sh --assets <assets_dir>
+dosbox -conf build-dos/game/dosbox.conf
+```
+
+Options starting with `-D` are passed to CMake, e.g.
+`./build-dos.sh -DSKIP_COPY_PROTECTION=ON`.
+
+`build-dos/game` holds `franko.exe`, `CWSDPMI.EXE` (the DPMI host), the assets
+packed into `assets.tar` and a `dosbox.conf` for DOSBox, DOSBox Staging and
+DOSBox-X (`flatpak run com.dosbox_x.DOSBox-X -conf
+"$PWD/build-dos/game/dosbox.conf"`; the flatpak starts in the home directory,
+so the path has to be absolute). DOS has no long file names, so the game reads
+its assets from the archive; every build does that when `assets.tar` sits next
+to it instead of `assets`. On a real PC, copy the first three files into one
+directory and run `franko`. It needs a VGA card and, for sound, a Sound Blaster
+compatible card; without one it says so while it loads and plays silently.
+Ctrl+C or Ctrl+Break quits it.
+
+The game shows the Amiga picture pixel for pixel in a 376x282 256-colour VGA
+mode (Mode X) that, like a PAL Amiga, refreshes about 50 times a second; high
+resolution screens are shown at half their width. It needs a 486 with a
+floating point unit and 8 MB of memory, and its logic is tied to the frame
+rate, so a slower PC plays it in slow motion. In DOSBox-X with its CPU speed
+presets, Level 1 keeps its 50 frames a second on a 486DX2-66 or faster, apart
+from short pauses while it loads scenery. The music keeps playing through
+them, and nearly every frame is drawn during the vertical blank, so the picture
+rarely tears. A 486DX-33 runs it at about 35 frames a second; there the music
+only stays smooth with 16 MB of memory. Before it starts, the game measures
+the PC's speed and memory, and on a slower PC or with less memory it says so
+and asks whether to start anyway.
+
+To build with an installed DJGPP instead, like the AUR packages `djgpp-gcc`,
+`djgpp-allegro4` and `djgpp-cmake`, build libxmp with its CMake wrapper and
+install it into the DJGPP directory, then build the game the same way:
+
+```
+curl -LO https://github.com/libxmp/libxmp/releases/download/libxmp-4.7.3/libxmp-4.7.3.tar.gz
+tar xzf libxmp-4.7.3.tar.gz
+cd libxmp-4.7.3
+i686-pc-msdosdjgpp-cmake -B build -DBUILD_SHARED=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-march=i586
+cmake --build build -j $(nproc)
+sudo cmake --install build
+cd ../OpenFranko
+mkdir build-djgpp && cd build-djgpp
+i686-pc-msdosdjgpp-cmake ..
+cmake --build . -j $(nproc)
+```
+
+The AUR packages build the C++ library and Allegro for the Pentium Pro, so that
+`src/franko.exe` needs a Pentium Pro or newer and does not run in DOSBox or
+DOSBox Staging (in DOSBox-X, set `cputype=pentium_ii`). The game's own code and
+libxmp avoid Pentium Pro instructions (`-march=i586`), as DOSBox-X's fast CPU
+core mis-emulates the Pentium Pro floating point comparisons.
+
 # FrankoExtract
 
 it's a tool to extract graphics/sounds/music/levels from original franko game data.
@@ -93,7 +176,8 @@ own names, and the game runs on either extraction: when `assets` holds the 1.2
 files (it has `p0/p0.bmp`), OpenFranko plays version 1.2, with its spider logo,
 advert slideshow, intro texts, cheats and other changes. The 1.2 intro texts
 come from the game executable, like the ending credits; without `intro.json`
-the intro skips them.
+the intro skips them. Before it starts, the game checks that the extracted
+files it needs are all there; if some are missing, it names them and quits.
 
 Usage:
 
@@ -104,7 +188,8 @@ Usage:
 The ending credits are read from the compiled game program, the `game` file
 the original installer puts next to the data files. It is picked up
 automatically when it sits in the game data directory; otherwise pass it with
-`-e`. Without it the ending credits are not extracted.
+`-e`. The game needs the credits for its ending, so without the `game` file
+frankoExtract stops, as it does when a data file is missing.
 
 Version 1.0 game data directory must contain files:
 

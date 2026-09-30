@@ -67,6 +67,10 @@ char typedCharacter(SDL_Keycode keycode) {
   return 0;
 }
 
+bool isFullscreenToggle(const SDL_KeyboardEvent &key) {
+  return key.keysym.sym == SDLK_RETURN && (key.keysym.mod & KMOD_ALT) != 0;
+}
+
 KeyEvent toKeyEvent(const SDL_KeyboardEvent &key) {
   KeyEvent event;
   event.key = toKey(key.keysym.scancode);
@@ -97,7 +101,9 @@ bool Platform::pollEvents(ControllerSystem &controller) {
       break;
     case SDL_KEYDOWN:
     case SDL_KEYUP:
-      controller.receiveKey(toKeyEvent(event.key));
+      if (!isFullscreenToggle(event.key)) {
+        controller.receiveKey(toKeyEvent(event.key));
+      }
       break;
     case SDL_MOUSEBUTTONDOWN:
     case SDL_MOUSEBUTTONUP:

@@ -1,6 +1,7 @@
 #ifndef SYSTEMS_GRAPHICS_BITMAP_H_
 #define SYSTEMS_GRAPHICS_BITMAP_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -19,6 +20,7 @@ struct IndexedBitmap {
   std::vector<uint16_t> palette;
 };
 
+IndexedBitmap readIndexedBitmap(const uint8_t *data, std::size_t size);
 IndexedBitmap readIndexedBitmap(const std::vector<uint8_t> &file);
 IndexedBitmap loadIndexedBitmap(const std::string &path);
 

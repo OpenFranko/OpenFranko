@@ -28,6 +28,13 @@ target_link_libraries(${INDEXED_SURFACE_TEST_TARGET}
 add_test(NAME ${INDEXED_SURFACE_TEST_TARGET}
     COMMAND ${INDEXED_SURFACE_TEST_TARGET})
 
+set(STREET_JSON_TEST_TARGET streetJsonTest)
+add_executable(${STREET_JSON_TEST_TARGET}
+    streetJsonTest.cpp)
+target_link_libraries(${STREET_JSON_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain StreetCore)
+add_test(NAME ${STREET_JSON_TEST_TARGET} COMMAND ${STREET_JSON_TEST_TARGET})
+
 set(STREET_LEVEL_SCRIPT_TEST_TARGET streetLevelScriptTest)
 add_executable(${STREET_LEVEL_SCRIPT_TEST_TARGET}
     streetLevelScriptTest.cpp)

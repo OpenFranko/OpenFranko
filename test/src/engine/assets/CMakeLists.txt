@@ -1,3 +1,10 @@
+set(ARCHIVE_FILES_TEST_TARGET archiveFilesTest)
+add_executable(${ARCHIVE_FILES_TEST_TARGET}
+    archiveFilesTest.cpp)
+target_link_libraries(${ARCHIVE_FILES_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets)
+add_test(NAME ${ARCHIVE_FILES_TEST_TARGET} COMMAND ${ARCHIVE_FILES_TEST_TARGET})
+
 set(ASSETS_TEST_TARGET assetsTest)
 add_executable(${ASSETS_TEST_TARGET}
     assetsTest.cpp)
@@ -11,3 +18,19 @@ add_executable(${DISK_FILES_TEST_TARGET}
 target_link_libraries(${DISK_FILES_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain Assets)
 add_test(NAME ${DISK_FILES_TEST_TARGET} COMMAND ${DISK_FILES_TEST_TARGET})
+
+set(REQUIRED_FILES_TEST_TARGET requiredFilesTest)
+add_executable(${REQUIRED_FILES_TEST_TARGET}
+    requiredFilesTest.cpp)
+target_link_libraries(${REQUIRED_FILES_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets)
+add_test(NAME ${REQUIRED_FILES_TEST_TARGET}
+    COMMAND ${REQUIRED_FILES_TEST_TARGET})
+
+set(YIELDING_FILES_TEST_TARGET yieldingFilesTest)
+add_executable(${YIELDING_FILES_TEST_TARGET}
+    yieldingFilesTest.cpp)
+target_link_libraries(${YIELDING_FILES_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets)
+add_test(NAME ${YIELDING_FILES_TEST_TARGET}
+    COMMAND ${YIELDING_FILES_TEST_TARGET})

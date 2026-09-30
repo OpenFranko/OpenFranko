@@ -2,8 +2,9 @@
 
 #include "graphics/Display.h"
 
-#include <algorithm>
+#include <array>
 #include <cstddef>
+#include <cstring>
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
@@ -32,15 +33,20 @@ constexpr std::size_t ROW_ALIGNMENT = 4;
   throw std::runtime_error(cause);
 }
 
-const uint8_t *bytes(const std::vector<uint8_t> &file, std::size_t offset,
+struct FileBytes {
+  const uint8_t *data = nullptr;
+  std::size_t size = 0;
+};
+
+const uint8_t *bytes(const FileBytes &file, std::size_t offset,
                      std::size_t size) {
-  if (offset > file.size() || size > file.size() - offset) {
+  if (offset > file.size || size > file.size - offset) {
     fail("Truncated bitmap");
   }
-  return file.data() + offset;
+  return file.data + offset;
 }
 
-uint32_t readLittleEndian(const std::vector<uint8_t> &file, std::size_t offset,
+uint32_t readLittleEndian(const FileBytes &file, std::size_t offset,
                           std::size_t size) {
   const uint8_t *field = bytes(file, offset, size);
   uint32_t value = 0;
@@ -50,9 +56,16 @@ uint32_t readLittleEndian(const std::vector<uint8_t> &file, std::size_t offset,
   return value;
 }
 
-int toNibble(uint8_t channel) {
-  return (channel + CHANNEL_STEP / 2) / CHANNEL_STEP;
-}
+constexpr std::array<uint8_t, 256> NIBBLES = [] {
+  std::array<uint8_t, 256> nibbles{};
+  for (std::size_t channel = 0; channel < nibbles.size(); ++channel) {
+    nibbles[channel] =
+        static_cast<uint8_t>((channel + CHANNEL_STEP / 2) / CHANNEL_STEP);
+  }
+  return nibbles;
+}();
+
+int toNibble(uint8_t channel) { return NIBBLES[channel]; }
 
 uint16_t toAmigaColor(const uint8_t *blueGreenRed) {
   return static_cast<uint16_t>(toNibble(blueGreenRed[2]) << 8 |
@@ -62,8 +75,9 @@ uint16_t toAmigaColor(const uint8_t *blueGreenRed) {
 
 } // namespace
 
-IndexedBitmap readIndexedBitmap(const std::vector<uint8_t> &file) {
-  if (file.size() < 2 || file[0] != 'B' || file[1] != 'M') {
+IndexedBitmap readIndexedBitmap(const uint8_t *data, std::size_t size) {
+  const FileBytes file{data, size};
+  if (file.size < 2 || file.data[0] != 'B' || file.data[1] != 'M') {
     fail("Not a bitmap");
   }
   const uint32_t headerSize = readLittleEndian(file, FILE_HEADER_SIZE, 4);
@@ -103,22 +117,30 @@ IndexedBitmap readIndexedBitmap(const std::vector<uint8_t> &file) {
   bitmap.hotspotY =
       static_cast<int>(readLittleEndian(file, HOTSPOT_Y_OFFSET, 2));
 
-  const std::size_t paletteStart = FILE_HEADER_SIZE + headerSize;
-  for (uint32_t color = 0; color < colors; ++color) {
-    bitmap.palette.push_back(toAmigaColor(bytes(
-        file, paletteStart + color * PALETTE_ENTRY_SIZE, PALETTE_ENTRY_SIZE)));
+  const uint8_t *entry =
+      bytes(file, FILE_HEADER_SIZE + headerSize, colors * PALETTE_ENTRY_SIZE);
+  bitmap.palette.resize(colors);
+  for (uint16_t &color : bitmap.palette) {
+    color = toAmigaColor(entry);
+    entry += PALETTE_ENTRY_SIZE;
   }
 
   bitmap.pixels.resize(static_cast<std::size_t>(width * rows));
+  const std::size_t rowBytes = static_cast<std::size_t>(width);
+  std::size_t source =
+      pixelStart +
+      (height < 0 ? 0 : stride * static_cast<std::size_t>(rows - 1));
+  uint8_t *target = bitmap.pixels.data();
   for (int row = 0; row < bitmap.height; ++row) {
-    const int fileRow = height < 0 ? row : bitmap.height - 1 - row;
-    const uint8_t *source =
-        file.data() + pixelStart + stride * static_cast<std::size_t>(fileRow);
-    std::copy(source, source + bitmap.width,
-              bitmap.pixels.begin() +
-                  static_cast<std::ptrdiff_t>(row) * bitmap.width);
+    std::memcpy(target, file.data + source, rowBytes);
+    target += rowBytes;
+    source = height < 0 ? source + stride : source - stride;
   }
   return bitmap;
+}
+
+IndexedBitmap readIndexedBitmap(const std::vector<uint8_t> &file) {
+  return readIndexedBitmap(file.data(), file.size());
 }
 
 IndexedBitmap loadIndexedBitmap(const std::string &path) {
