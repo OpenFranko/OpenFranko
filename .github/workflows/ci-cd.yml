@@ -1,0 +1,170 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  LINUX_PACKAGE: OpenFranko-linux-x86_64.tar.gz
+  WINDOWS_PACKAGE: OpenFranko-windows-x86_64.zip
+  DOS_PACKAGE: OpenFranko-dos.zip
+
+jobs:
+  linux:
+    name: Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            catch2 libsdl2-dev libxmp-dev
+      - name: Configure
+        run: >-
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTS=ON -DBUILD_TOOLS=ON
+      - name: Build
+        run: cmake --build build -j "$(nproc)"
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -j "$(nproc)"
+      - name: Package
+        run: |
+          mkdir -p package/OpenFranko
+          cp build/src/OpenFranko build/tools/converter/frankoExtract \
+            README.md LICENSE package/OpenFranko/
+          strip package/OpenFranko/OpenFranko package/OpenFranko/frankoExtract
+          tar -czf "$LINUX_PACKAGE" -C package OpenFranko
+      - uses: actions/upload-artifact@v7
+        with:
+          path: ${{ env.LINUX_PACKAGE }}
+          archive: false
+          if-no-files-found: error
+          overwrite: true
+
+  windows:
+    name: Windows
+    runs-on: windows-2025
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-catch
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-libxmp
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-SDL2
+            zip
+      - name: Configure
+        run: >-
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTS=ON -DBUILD_TOOLS=ON
+      - name: Build
+        run: cmake --build build
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -j "$(nproc)"
+      - name: Package
+        run: |
+          mkdir -p package/OpenFranko
+          cp build/src/OpenFranko.exe build/tools/converter/frankoExtract.exe \
+            README.md LICENSE package/OpenFranko/
+          strip package/OpenFranko/*.exe
+          dlls=$(objdump -p package/OpenFranko/*.exe | grep 'DLL Name')
+          echo "$dlls"
+          if grep -iE 'DLL Name: (lib|SDL)' <<< "$dlls"; then
+            echo "The executables need MSYS2 DLLs" >&2
+            exit 1
+          fi
+          cd package
+          zip -r "../$WINDOWS_PACKAGE" OpenFranko
+      - uses: actions/upload-artifact@v7
+        with:
+          path: ${{ env.WINDOWS_PACKAGE }}
+          archive: false
+          if-no-files-found: error
+          overwrite: true
+
+  dos:
+    name: DOS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libfl2
+      - uses: actions/cache@v6
+        with:
+          path: |
+            build-dos/djgpp
+            build-dos/deps/csdpmi7b.zip
+          key: djgpp-${{ hashFiles('build-dos.sh') }}
+      - name: Build
+        run: ./build-dos.sh
+      - name: Package
+        run: |
+          mkdir -p package/OpenFranko
+          cp build-dos/game/franko.exe build-dos/game/CWSDPMI.EXE \
+            README.md LICENSE package/OpenFranko/
+          unzip -p build-dos/deps/csdpmi7b.zip bin/cwsdpmi.doc \
+            > package/OpenFranko/cwsdpmi.doc
+          cd package
+          zip -r "../$DOS_PACKAGE" OpenFranko
+      - uses: actions/upload-artifact@v7
+        with:
+          path: ${{ env.DOS_PACKAGE }}
+          archive: false
+          if-no-files-found: error
+          overwrite: true
+
+  release:
+    name: Release
+    if: github.ref_type == 'tag'
+    needs: [linux, windows, dos]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+          skip-decompress: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          packages=("dist/$LINUX_PACKAGE" "dist/$WINDOWS_PACKAGE"
+            "dist/$DOS_PACKAGE")
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "${packages[@]}" --clobber
+          else
+            options=(--title "OpenFranko $TAG" --generate-notes)
+            if [[ $TAG == *-* ]]; then
+              options+=(--prerelease)
+            fi
+            gh release create "$TAG" "${packages[@]}" "${options[@]}"
+          fi
