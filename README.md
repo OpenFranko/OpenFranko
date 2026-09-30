@@ -60,6 +60,18 @@ beaten. `startAtGameOver` starts it at the game over graveyard, as if the last
 life had just been lost on stage 1. Like the game, run them from the directory
 that holds `assets`.
 
+The AMAL animation programs of the street scenes, in
+`src/engine/street/actors/Actors.cpp`, are compiled ahead of time into
+`src/engine/street/actors/compiled/CompiledActors.cpp`, so the game never parses
+AMAL while it plays. After changing a program, regenerate that file with the
+`compileActorPrograms` tool, built with the tools, from the build directory:
+
+```
+./tools/compiler/compileActorPrograms -o ../src/engine/street/actors/compiled/CompiledActors.cpp
+```
+
+`compiledActorsTest` fails while the file is out of date.
+
 ## Windows (MSYS2)
 
 Install [MSYS2](https://www.msys2.org/) and open the `MSYS2 UCRT64` terminal.

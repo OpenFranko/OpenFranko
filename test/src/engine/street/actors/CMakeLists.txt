@@ -1,3 +1,5 @@
+add_subdirectory(compiled)
+
 set(ACTORS_TEST_TARGET actorsTest)
 add_executable(${ACTORS_TEST_TARGET}
     actorsTest.cpp)

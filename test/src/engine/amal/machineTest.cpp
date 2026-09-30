@@ -299,10 +299,11 @@ SCENARIO("The parser refuses what AMAL would not compile") {
     }
 
     THEN("Lower-case letters are ignored, so words read as instructions") {
-      const Program program = parse("Move 5,0,1; Pause; Jump B; B: Let R0=1");
-      REQUIRE(program.code.size() == 4);
-      REQUIRE(program.code[0].opcode == Opcode::Move);
-      REQUIRE(program.code[2].jump == 3);
+      const ParsedProgram program =
+          parse("Move 5,0,1; Pause; Jump B; B: Let R0=1");
+      REQUIRE(program.instructions.size() == 4);
+      REQUIRE(program.instructions[0].opcode == Opcode::Move);
+      REQUIRE(program.instructions[2].jump == 3);
     }
   }
 }

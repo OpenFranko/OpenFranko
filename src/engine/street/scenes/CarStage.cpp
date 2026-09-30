@@ -3,6 +3,7 @@
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../AmigaDisplay.h"
 #include "../actors/Actors.h"
+#include "../actors/compiled/CompiledActors.h"
 #include "../core/SystemText.h"
 
 #include <cstdlib>
@@ -373,7 +374,7 @@ void CarStage::spawnPedestrians() {
     const int x = m_host.random(200) + SPAWN_X;
     const int y = SPAWN_TOP + m_host.random(20) * SPAWN_STEP;
     m_bobs.set(FIRST_PEDESTRIAN + channel - 1, x, y, kind);
-    m_machine.create(channel, actors::pedestrian(kind));
+    m_machine.create(channel, actors::compiled::pedestrian(kind));
     m_machine.startAll();
   }
 }
@@ -436,7 +437,7 @@ CarStage::Flow CarStage::driveBottom() {
   if (m_distance < 0) {
     m_x = DRIVE_OFF_X;
     m_distance = 0;
-    m_machine.create(CAR_CHANNEL, actors::carDriveOff());
+    m_machine.create(CAR_CHANNEL, actors::compiled::carDriveOff());
     m_machine.start(CAR_CHANNEL);
   }
   if ((m_distance == 0 && !m_machine.isRunning(CAR_CHANNEL)) ||

@@ -19,4 +19,5 @@ add_library(StreetScenes
 target_link_libraries(StreetScenes
     PUBLIC Amal Common EffectsAnimation EffectsColor Graphics StreetCore
            StreetSession StreetUi
-    PRIVATE Assets Audio EffectsSequences Input StreetActors)
+    PRIVATE Assets Audio EffectsSequences Input StreetActors
+            StreetActorsCompiled)

@@ -1,6 +1,7 @@
 #include "BossStage.h"
 
 #include "../actors/Actors.h"
+#include "../actors/compiled/CompiledActors.h"
 
 #include <cstdlib>
 #include <stdexcept>
@@ -227,21 +228,22 @@ void BossStage::setUp() {
 
   m_machine.bind(SCREEN_SHAKE_CHANNEL, &m_screenDisplay);
   m_machine.create(SCREEN_SHAKE_CHANNEL,
-                   actors::screenShake(m_session.version));
-  m_machine.create(PLAYER_BLOOD_CHANNEL, actors::playerBlood());
-  m_machine.create(ENEMY_BLOOD_CHANNEL, actors::enemyBlood(m_session.version));
-  const auto player = actors::bossPlayer(stage());
+                   actors::compiled::screenShake(m_session.version));
+  m_machine.create(PLAYER_BLOOD_CHANNEL, actors::compiled::playerBlood());
+  m_machine.create(ENEMY_BLOOD_CHANNEL,
+                   actors::compiled::enemyBlood(m_session.version));
+  const auto player = actors::compiled::bossPlayer(stage());
   m_machine.create(PLAYER_WALK_CHANNEL, player.locomotion);
   m_machine.create(PLAYER_DAMAGE_CHANNEL, player.damage);
   m_machine.create(PLAYER_CLAMP_CHANNEL, player.clamp);
-  const auto boss = actors::boss(stage());
+  const auto boss = actors::compiled::boss(stage());
   m_machine.create(BOSS_WALK_CHANNEL, boss.walk);
   m_machine.create(BOSS_DAMAGE_CHANNEL, boss.damage);
-  const std::string spectator = actors::spectator(stage());
-  if (!spectator.empty()) {
+  const amal::Program spectator = actors::compiled::spectator(stage());
+  if (spectator.length > 0) {
     m_machine.create(SPECTATOR_CHANNEL, spectator);
   }
-  const auto dialogue = actors::dialogue(stage());
+  const auto dialogue = actors::compiled::dialogue(stage());
   m_machine.create(PLAYER_TALK_CHANNEL, dialogue.player);
   m_machine.create(BOSS_TALK_CHANNEL, dialogue.boss);
   m_machine.startAll();
@@ -249,7 +251,8 @@ void BossStage::setUp() {
   reg(PLAYER_WALK_CHANNEL, 2) = APPROACH_TOP;
   reg(PLAYER_CLAMP_CHANNEL, 0) = word(clampBound(stage()));
   global(amal::RI) = 1;
-  m_machine.create(INDICATOR_CHANNEL, actors::indicatorArrow(m_facing));
+  m_machine.create(INDICATOR_CHANNEL,
+                   actors::compiled::indicatorArrow(m_facing));
   m_machine.start(INDICATOR_CHANNEL);
   m_panel->score(stats());
   m_bobs.set(BOSS_BLOOD, 120, 24, HIDDEN_IMAGE);
@@ -577,7 +580,7 @@ BossStage::Flow BossStage::finishStart() {
                             96 * actors::amosBool(global(amal::RR) != 0));
     global(amal::RS) =
         word((std::abs(global(amal::RU)) + std::abs(global(amal::RT))) / 2);
-    m_machine.create(PLAYER_WALK_CHANNEL, actors::walkToBoss());
+    m_machine.create(PLAYER_WALK_CHANNEL, actors::compiled::walkToBoss());
     m_machine.startAll();
     return waitFrames(global(amal::RS), Step::FinishWalkedToBoss);
   }
@@ -600,7 +603,7 @@ BossStage::Flow BossStage::railingStart() {
       word((std::abs(global(amal::RU)) + std::abs(global(amal::RS))) / 2);
   global(amal::RR) = word(0x8000 * actors::amosBool(global(amal::RB) < 0));
   m_bobs.setImage(PLAYER, word(IDLE_IMAGE + global(amal::RR)));
-  m_machine.create(BOSS_WALK_CHANNEL, actors::bossRests());
+  m_machine.create(BOSS_WALK_CHANNEL, actors::compiled::bossRests());
   m_machine.startAll();
   return waitFrames(REST_WAIT, Step::RailingSpeech);
 }
@@ -609,7 +612,7 @@ BossStage::Flow BossStage::railingSpeech() {
   m_bobs.set(BOSS_BUBBLE,
              xBob(BOSS) - 32 - 64 * actors::amosBool(global(amal::RR) != 0),
              yBob(BOSS) - 72, REST_BUBBLE);
-  m_machine.create(BOSS_TALK_CHANNEL, actors::bubbleUntilFire());
+  m_machine.create(BOSS_TALK_CHANNEL, actors::compiled::bubbleUntilFire());
   m_machine.startAll();
   m_step = Step::RailingWaitFire;
   return Flow::Continue;
@@ -633,7 +636,7 @@ BossStage::Flow BossStage::liftStart() {
   global(amal::RU) = word(xBob(BOSS) - xBob(PLAYER));
   global(amal::RS) =
       word((std::abs(global(amal::RU)) + std::abs(global(amal::RT))) / 2);
-  m_machine.create(PLAYER_WALK_CHANNEL, actors::walkToBoss());
+  m_machine.create(PLAYER_WALK_CHANNEL, actors::compiled::walkToBoss());
   m_machine.startAll();
   return waitFrames(global(amal::RS), Step::LiftWalkedToBoss);
 }
@@ -643,8 +646,8 @@ BossStage::Flow BossStage::liftBoss() {
   global(amal::RT) = word(global(amal::RQ) * 2);
   m_bobs.set(PLAYER, xBob(BOSS), yBob(BOSS),
              word(IDLE_IMAGE + global(amal::RR)));
-  m_machine.create(BOSS_WALK_CHANNEL, actors::bossThrown());
-  m_machine.create(PLAYER_WALK_CHANNEL, actors::victoryLift());
+  m_machine.create(BOSS_WALK_CHANNEL, actors::compiled::bossThrown());
+  m_machine.create(PLAYER_WALK_CHANNEL, actors::compiled::victoryLift());
   m_machine.startAll();
   return waitFrames(LIFT_WAIT, Step::LiftRaised);
 }
@@ -654,10 +657,10 @@ BossStage::Flow BossStage::finishPose() {
   m_machine.destroy(PLAYER_WALK_CHANNEL);
   m_bobs.set(PLAYER, xBob(BOSS) - 64 - 128 * facedLeft, yBob(BOSS),
              word(38 + global(amal::RR)));
-  m_machine.create(PLAYER_WALK_CHANNEL, actors::finishingPose());
+  m_machine.create(PLAYER_WALK_CHANNEL, actors::compiled::finishingPose());
   m_bobs.set(PLAYER_BUBBLE, xBob(PLAYER) + 8 + 16 * facedLeft,
              yBob(PLAYER) - 32, HIDDEN_IMAGE);
-  m_machine.create(PLAYER_TALK_CHANNEL, actors::finishingBlood());
+  m_machine.create(PLAYER_TALK_CHANNEL, actors::compiled::finishingBlood());
   m_machine.start(PLAYER_WALK_CHANNEL);
   return waitFrames(POSE_WAIT, Step::FinishPosed);
 }
@@ -686,7 +689,7 @@ BossStage::Flow BossStage::finishStamp() {
     }
   }
   m_host.setSampleLooping(false);
-  m_machine.create(PLAYER_WALK_CHANNEL, actors::finishingPoseBack());
+  m_machine.create(PLAYER_WALK_CHANNEL, actors::compiled::finishingPoseBack());
   m_machine.start(PLAYER_WALK_CHANNEL);
   m_machine.destroy(PLAYER_TALK_CHANNEL);
   m_bobs.setImage(PLAYER_BUBBLE, HIDDEN_IMAGE);
@@ -699,7 +702,7 @@ BossStage::Flow BossStage::finishWalkOff() {
       word(WALK_OFF_DISTANCE * actors::amosBool(global(amal::RC) != 0) -
            WALK_OFF_DISTANCE * actors::amosBool(global(amal::RC) == 0));
   global(amal::RU) = word(std::abs(global(amal::RT)));
-  m_machine.create(PLAYER_WALK_CHANNEL, actors::walkOff());
+  m_machine.create(PLAYER_WALK_CHANNEL, actors::compiled::walkOff());
   m_machine.startAll();
   return waitFrames(global(amal::RU), Step::FinishWalkedOff);
 }

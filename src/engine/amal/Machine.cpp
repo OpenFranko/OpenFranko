@@ -79,19 +79,25 @@ void Machine::bind(int channel, Object *object) {
   }
 }
 
-void Machine::create(int channel, const std::string &source) {
+void Machine::create(int channel, const Program &program) {
   const std::size_t index = slot(channel);
-  std::shared_ptr<const Program> &program = m_programs[source];
-  if (!program) {
-    program = std::make_shared<const Program>(parse(source));
-  }
-  Channel created;
+  Channel &created = m_channels[index];
+  std::vector<int16_t> loopLimits = std::move(created.loopLimits);
+  loopLimits.assign(static_cast<std::size_t>(program.length), 0);
+  created = Channel{};
   created.program = program;
   created.open = true;
-  created.instructions = static_cast<int>(program->code.size());
-  created.loopLimits.assign(program->code.size(), 0);
+  created.loopLimits = std::move(loopLimits);
   created.object = m_bindings[index];
-  m_channels[index] = std::move(created);
+}
+
+void Machine::create(int channel, const std::string &source) {
+  slot(channel);
+  auto found = m_programs.find(source);
+  if (found == m_programs.end()) {
+    found = m_programs.emplace(source, parse(source)).first;
+  }
+  create(channel, found->second.program());
 }
 
 void Machine::start(int channel) {
@@ -243,11 +249,11 @@ int16_t Machine::operand(const Channel &channel, const Term &term) const {
 
 int16_t Machine::evaluate(const Channel &channel,
                           const Expression &expression) const {
-  auto term = expression.begin();
-  const auto end = expression.end();
-  if (term == end) {
+  if (expression.terms == 0) {
     return 0;
   }
+  const Term *term = channel.program.terms + expression.first;
+  const Term *const end = term + expression.terms;
   int16_t accumulator = operand(channel, *term);
   while (++term != end) {
     const Operator op = term->op;
@@ -264,17 +270,18 @@ void Machine::run(Channel &channel) {
     return;
   }
   int jumps = 0;
-  const auto &code = channel.program->code;
+  const Program &program = channel.program;
   for (;;) {
     if (channel.moveFrames > 0) {
       stepMove(channel);
       return;
     }
-    if (channel.pc < 0 || channel.pc >= channel.instructions) {
+    if (channel.pc < 0 || channel.pc >= program.length) {
       channel.alive = false;
       return;
     }
-    const Instruction &instruction = code[static_cast<std::size_t>(channel.pc)];
+    const Instruction &instruction =
+        program.instructions[program.code[channel.pc]];
     switch (instruction.opcode) {
     case Opcode::Pause:
       ++channel.pc;
@@ -327,7 +334,7 @@ void Machine::run(Channel &channel) {
     }
     case Opcode::Next: {
       const Instruction &loop =
-          code[static_cast<std::size_t>(instruction.jump)];
+          program.instructions[program.code[instruction.jump]];
       const int16_t value = toWord(read(channel, loop.reg) + 1);
       write(channel, loop.reg, value);
       if (value <=
@@ -374,8 +381,9 @@ void Machine::stepMove(Channel &channel) {
 }
 
 void Machine::startAnim(Channel &channel) {
+  const Program &program = channel.program;
   const Instruction &instruction =
-      channel.program->code[static_cast<std::size_t>(channel.pc)];
+      program.instructions[program.code[channel.pc]];
   channel.animInstruction = channel.pc;
   channel.animLoops = evaluate(channel, instruction.first);
   channel.animNext = 0;
@@ -386,13 +394,13 @@ void Machine::stepAnim(Channel &channel) {
   if (channel.animInstruction < 0) {
     return;
   }
-  const auto &frames =
-      channel.program->code[static_cast<std::size_t>(channel.animInstruction)]
-          .frames;
-  if (frames.empty() || --channel.animCounter != 0) {
+  const Program &program = channel.program;
+  const Instruction &instruction =
+      program.instructions[program.code[channel.animInstruction]];
+  if (instruction.frames == 0 || --channel.animCounter != 0) {
     return;
   }
-  if (channel.animNext >= frames.size()) {
+  if (channel.animNext >= instruction.frames) {
     if (channel.animLoops != 0) {
       channel.animLoops = toWord(channel.animLoops - 1);
       if (channel.animLoops == 0) {
@@ -402,7 +410,8 @@ void Machine::stepAnim(Channel &channel) {
     }
     channel.animNext = 0;
   }
-  const AnimFrame &frame = frames[channel.animNext++];
+  const AnimFrame &frame =
+      program.frames[instruction.firstFrame + channel.animNext++];
   write(channel, REGISTER_A, evaluate(channel, frame.image));
   channel.animCounter = static_cast<uint16_t>(evaluate(channel, frame.delay));
 }

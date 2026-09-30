@@ -1,13 +1,16 @@
 #include "Program.h"
 
+#include <array>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace openfranko::src::engine::amal {
 namespace {
 
-constexpr std::size_t EXPRESSION_TERMS = 3;
+constexpr std::size_t LETTERS = 26;
 
 bool isDigit(char c) { return c >= '0' && c <= '9'; }
 
@@ -63,9 +66,10 @@ class Parser {
 public:
   explicit Parser(std::string tokens) : m_tokens(std::move(tokens)) {}
 
-  Program parse() {
-    Program program;
-    program.labels.fill(-1);
+  ParsedProgram parse() {
+    ParsedProgram &program = m_program;
+    std::array<int, LETTERS> labels;
+    labels.fill(-1);
     std::vector<std::pair<std::size_t, char>> jumps;
     std::vector<std::size_t> openLoops;
 
@@ -76,7 +80,7 @@ public:
         continue;
       }
       if (isUpper(c) && peek(1) == ':') {
-        program.labels[labelIndex(c)] = static_cast<int>(program.code.size());
+        labels[labelIndex(c)] = static_cast<int>(program.instructions.size());
         m_position += 2;
         continue;
       }
@@ -103,6 +107,7 @@ public:
         if (peek() == ',') {
           ++m_position;
         }
+        instruction.firstFrame = static_cast<uint16_t>(program.frames.size());
         while (peek() == '(') {
           ++m_position;
           AnimFrame frame;
@@ -110,18 +115,19 @@ public:
           expect(',');
           frame.delay = expression(")");
           expect(')');
-          instruction.frames.push_back(std::move(frame));
+          program.frames.push_back(frame);
+          ++instruction.frames;
         }
         break;
       case 'I':
         instruction.opcode = Opcode::IfJump;
         instruction.first = expression("J");
         expect('J');
-        jumps.emplace_back(program.code.size(), next());
+        jumps.emplace_back(program.instructions.size(), next());
         break;
       case 'J':
         instruction.opcode = Opcode::Jump;
-        jumps.emplace_back(program.code.size(), next());
+        jumps.emplace_back(program.instructions.size(), next());
         break;
       case 'F':
         instruction.opcode = Opcode::For;
@@ -130,16 +136,16 @@ public:
         instruction.first = expression("T");
         expect('T');
         instruction.second = expression(";");
-        openLoops.push_back(program.code.size());
+        openLoops.push_back(program.instructions.size());
         break;
       case 'N':
         instruction.opcode = Opcode::Next;
         instruction.reg = reg();
         if (openLoops.empty() ||
-            program.code[openLoops.back()].reg != instruction.reg) {
+            program.instructions[openLoops.back()].reg != instruction.reg) {
           throw std::invalid_argument("AMAL: Next without For");
         }
-        instruction.jump = static_cast<int>(openLoops.back());
+        instruction.jump = static_cast<int16_t>(openLoops.back());
         openLoops.pop_back();
         break;
       case 'P':
@@ -155,18 +161,22 @@ public:
         throw std::invalid_argument(std::string("AMAL: unknown instruction ") +
                                     c);
       }
-      program.code.push_back(std::move(instruction));
+      program.instructions.push_back(instruction);
     }
 
     for (const auto &[index, label] : jumps) {
-      const int target = program.labels[labelIndex(label)];
+      const int target = labels[labelIndex(label)];
       if (target < 0) {
         throw std::invalid_argument(std::string("AMAL: undefined label ") +
                                     label);
       }
-      program.code[index].jump = target;
+      program.instructions[index].jump = static_cast<int16_t>(target);
     }
-    return program;
+    program.code.resize(program.instructions.size());
+    for (std::size_t i = 0; i < program.code.size(); ++i) {
+      program.code[i] = static_cast<uint16_t>(i);
+    }
+    return std::move(program);
   }
 
 private:
@@ -282,23 +292,30 @@ private:
   }
 
   Expression expression(std::string_view stops) {
-    Expression expression;
-    expression.reserve(EXPRESSION_TERMS);
-    expression.push_back(operand());
+    std::vector<Term> &terms = m_program.terms;
+    const std::size_t first = terms.size();
+    terms.push_back(operand());
     while (!atEnd() && stops.find(peek()) == std::string_view::npos) {
-      expression.push_back(binaryOperator());
-      expression.push_back(operand());
+      terms.push_back(binaryOperator());
+      terms.push_back(operand());
     }
-    return expression;
+    return Expression{static_cast<uint16_t>(first),
+                      static_cast<uint16_t>(terms.size() - first)};
   }
 
   std::string m_tokens;
   std::size_t m_position = 0;
+  ParsedProgram m_program;
 };
 
 } // namespace
 
-Program parse(const std::string &source) {
+Program ParsedProgram::program() const {
+  return Program{code.data(), instructions.data(), terms.data(), frames.data(),
+                 static_cast<int16_t>(instructions.size())};
+}
+
+ParsedProgram parse(const std::string &source) {
   return Parser(tokenize(source)).parse();
 }
 

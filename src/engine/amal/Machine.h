@@ -4,8 +4,8 @@
 #include "Program.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -58,6 +58,7 @@ public:
   explicit Machine(Registers &globals);
 
   void bind(int channel, Object *object);
+  void create(int channel, const Program &program);
   void create(int channel, const std::string &source);
   void start(int channel);
   void startAll();
@@ -78,9 +79,8 @@ public:
 
 private:
   struct Channel {
-    std::shared_ptr<const Program> program;
+    Program program;
     bool open = false;
-    int instructions = 0;
     int pc = 0;
     bool alive = true;
     bool frozen = true;
@@ -120,8 +120,7 @@ private:
   Registers &m_globals;
   std::array<Object *, CHANNELS> m_bindings{};
   std::array<Channel, CHANNELS> m_channels{};
-  std::unordered_map<std::string, std::shared_ptr<const Program>, SourceHash>
-      m_programs;
+  std::unordered_map<std::string, ParsedProgram, SourceHash> m_programs;
   int16_t m_joystick = 0;
 };
 
