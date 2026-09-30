@@ -117,6 +117,9 @@ the game in `build-dos` and puts a runnable copy in `build-dos/game`:
 dosbox -conf build-dos/game/dosbox.conf
 ```
 
+The downloaded DJGPP's `ar` needs flex's library `libfl.so.2`; on Debian and
+Ubuntu, install it with `sudo apt install libfl2`.
+
 Options starting with `-D` are passed to CMake, e.g.
 `./build-dos.sh -DSKIP_COPY_PROTECTION=ON`.
 
@@ -166,6 +169,40 @@ The AUR packages build the C++ library and Allegro for the Pentium Pro, so that
 DOSBox Staging (in DOSBox-X, set `cputype=pentium_ii`). The game's own code and
 libxmp avoid Pentium Pro instructions (`-march=i586`), as DOSBox-X's fast CPU
 core mis-emulates the Pentium Pro floating point comparisons.
+
+# Releases
+
+GitHub Actions (`.github/workflows/ci-cd.yml`) builds OpenFranko for Linux,
+Windows and DOS and runs the tests on Linux and Windows for every pull request
+and every push to `main`, and keeps the packages it makes on the run's summary
+page. Pushing a tag that starts with `v` builds them the same way and
+publishes them as a GitHub release:
+
+```
+git tag v1.0
+git push origin v1.0
+```
+
+A tag with a `-` in it, like `v1.0-rc1`, makes a pre-release. If the release
+already exists, e.g. because it was written on GitHub first, the packages are
+added to it.
+
+The packages hold no game data. Extract it with their `frankoExtract` as
+described below, and run the game from the directory that holds `assets` or
+`assets.tar`:
+
+- `OpenFranko-linux-x86_64.tar.gz` holds `OpenFranko` and `frankoExtract`.
+  They are built on Ubuntu 24.04, so they need it or a newer distribution, and
+  the SDL2 and libxmp libraries (`libsdl2-2.0-0` and `libxmp4` on Debian and
+  Ubuntu).
+- `OpenFranko-windows-x86_64.zip` holds `OpenFranko.exe` and
+  `frankoExtract.exe`, which need no DLLs.
+- `OpenFranko-dos.zip` holds `franko.exe` and `CWSDPMI.EXE`. Extract the game
+  data with the Linux or Windows package, pack the `assets` directory with
+  `tar --format=ustar -cf assets.tar assets` (Windows 10 and newer have `tar`
+  too) and put `assets.tar` next to `franko.exe`. CWSDPMI is by Charles W
+  Sandmann, see `cwsdpmi.doc`; its source code is at
+  <https://www.delorie.com/pub/djgpp/current/v2misc/csdpmi7s.zip>.
 
 # FrankoExtract
 

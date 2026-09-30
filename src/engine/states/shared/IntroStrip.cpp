@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <filesystem>
 
 namespace openfranko::src::engine::states::shared {
 namespace {
@@ -23,8 +22,7 @@ constexpr int STRIP_LEFT = 160;
 
 std::vector<street::core::CreditPage> loadPages(assets::Files &files,
                                                 const std::string &directory) {
-  const std::string path =
-      (std::filesystem::path(directory) / INTRO_FILE).string();
+  const std::string path = directory + "/" + INTRO_FILE;
   if (!files.exists(path)) {
     return {};
   }
