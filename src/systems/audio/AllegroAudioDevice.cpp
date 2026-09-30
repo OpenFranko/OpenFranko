@@ -4,7 +4,10 @@
 
 #include <algorithm>
 #include <allegro.h>
+#include <array>
+#include <atomic>
 #include <cstddef>
+#include <dpmi.h>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -18,6 +21,10 @@ constexpr int VOICE_PAN = 128;
 constexpr int UNSCALED_VOICE_VOLUME = 0;
 constexpr int PLAIN_16_BIT_MIXING = 1;
 constexpr int RING_LEADS = 2;
+constexpr int RESCUE_HERTZ = 100;
+constexpr int RESCUE_PART = 2;
+constexpr std::size_t FPU_STATE_BYTES = 108;
+constexpr unsigned long SPARE_MEMORY = 6UL << 20;
 constexpr uint16_t UNSIGNED_SAMPLE_BIAS = 0x8000;
 
 [[noreturn]] void throwError(const std::string &cause) {
@@ -25,10 +32,17 @@ constexpr uint16_t UNSIGNED_SAMPLE_BIAS = 0x8000;
                            allegro_error);
 }
 
+bool hasSpareMemory() {
+  const unsigned long physical = _go32_dpmi_remaining_physical_memory();
+  return physical >= SPARE_MEMORY &&
+         physical < _go32_dpmi_remaining_virtual_memory();
+}
+
 } // namespace
 
 struct AudioDevice::Stream {
   ~Stream() {
+    remove_param_int(rescue, this);
     if (voice >= 0) {
       voice_stop(voice);
       deallocate_voice(voice);
@@ -38,6 +52,9 @@ struct AudioDevice::Stream {
     }
   }
 
+  static void rescue(void *stream);
+  void refill(int least);
+
   Render render;
   int lead = 0;
   SAMPLE *ring = nullptr;
@@ -45,7 +62,49 @@ struct AudioDevice::Stream {
   int written = 0;
   int played = 0;
   int queued = 0;
+  std::atomic<int> locks{0};
 };
+
+void AudioDevice::Stream::rescue(void *stream) {
+  Stream &playing = *static_cast<Stream *>(stream);
+  if (playing.locks != 0) {
+    return;
+  }
+  std::array<uint8_t, FPU_STATE_BYTES> fpu;
+  asm volatile("fnsave %0" : "=m"(fpu) : : "memory");
+  playing.refill(playing.lead / RESCUE_PART);
+  asm volatile("frstor %0" : : "m"(fpu) : "memory");
+}
+
+void AudioDevice::Stream::refill(int least) {
+  const int position = voice_get_position(voice);
+  if (position < 0) {
+    return;
+  }
+  const int length = ring->len;
+  const int consumed = (position - played + length) % length;
+  played = position;
+  if (consumed >= queued) {
+    written = position;
+    queued = 0;
+  } else {
+    queued -= consumed;
+  }
+  if (queued >= least) {
+    return;
+  }
+  int16_t *data = static_cast<int16_t *>(ring->data);
+  while (queued < lead) {
+    const int frames = std::min(lead - queued, length - written);
+    int16_t *out = data + static_cast<std::ptrdiff_t>(written) * Mixer::STEREO;
+    render(out, frames);
+    uint16_t *samples = reinterpret_cast<uint16_t *>(out);
+    std::for_each(samples, samples + frames * Mixer::STEREO,
+                  [](uint16_t &sample) { sample ^= UNSIGNED_SAMPLE_BIAS; });
+    written = (written + frames) % length;
+    queued += frames;
+  }
+}
 
 AudioDevice::AudioDevice(int rate, int frames, Render render)
     : m_stream(std::make_unique<Stream>()) {
@@ -71,6 +130,11 @@ AudioDevice::AudioDevice(int rate, int frames, Render render)
   voice_set_volume(m_stream->voice, VOICE_VOLUME);
   voice_set_pan(m_stream->voice, VOICE_PAN);
   voice_start(m_stream->voice);
+  update();
+  if (hasSpareMemory()) {
+    install_param_int_ex(Stream::rescue, m_stream.get(),
+                         BPS_TO_TIMER(RESCUE_HERTZ));
+  }
 }
 
 AudioDevice::~AudioDevice() {
@@ -78,41 +142,18 @@ AudioDevice::~AudioDevice() {
   remove_sound();
 }
 
-void AudioDevice::lock() {}
+void AudioDevice::lock() { ++m_stream->locks; }
 
-void AudioDevice::unlock() {}
+void AudioDevice::unlock() { --m_stream->locks; }
 
 void AudioDevice::update() {
   Stream &stream = *m_stream;
   if (stream.voice < 0) {
     return;
   }
-  const int position = voice_get_position(stream.voice);
-  if (position < 0) {
-    return;
-  }
-  const int length = stream.ring->len;
-  const int consumed = (position - stream.played + length) % length;
-  stream.played = position;
-  if (consumed >= stream.queued) {
-    stream.written = position;
-    stream.queued = 0;
-  } else {
-    stream.queued -= consumed;
-  }
-  int16_t *data = static_cast<int16_t *>(stream.ring->data);
-  while (stream.queued < stream.lead) {
-    const int frames =
-        std::min(stream.lead - stream.queued, length - stream.written);
-    int16_t *out =
-        data + static_cast<std::ptrdiff_t>(stream.written) * Mixer::STEREO;
-    stream.render(out, frames);
-    uint16_t *samples = reinterpret_cast<uint16_t *>(out);
-    std::for_each(samples, samples + frames * Mixer::STEREO,
-                  [](uint16_t &sample) { sample ^= UNSIGNED_SAMPLE_BIAS; });
-    stream.written = (stream.written + frames) % length;
-    stream.queued += frames;
-  }
+  ++stream.locks;
+  stream.refill(stream.lead);
+  --stream.locks;
 }
 
 } // namespace openfranko::src::systems::audio

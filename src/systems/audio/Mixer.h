@@ -82,6 +82,7 @@ private:
   };
 
   void stopPlayer();
+  void finishModule();
   void applyModuleTempo();
   RowPosition modulePosition() const;
   ModuleTiming moduleTiming() const;
@@ -96,6 +97,7 @@ private:
   std::unique_ptr<Module> m_module;
   bool m_moduleLoaded = false;
   bool m_modulePlaying = false;
+  bool m_playerStarted = false;
   int m_moduleLoops = 0;
   double m_moduleTempoFactor = 1.0;
   int m_tempoOverride = 0;

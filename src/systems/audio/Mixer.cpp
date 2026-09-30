@@ -155,6 +155,7 @@ void Mixer::startModule(bool looping) {
   m_moduleLoops = looping ? 0 : 1;
   if (m_moduleLoaded && xmp_start_player(m_module->player, m_rate, 0) == 0) {
     m_modulePlaying = true;
+    m_playerStarted = true;
   }
 }
 
@@ -224,6 +225,9 @@ void Mixer::stop(const Sound &sound) {
 void Mixer::stopAll() { m_voices.fill(Voice{}); }
 
 void Mixer::update() {
+  if (m_playerStarted && !m_modulePlaying) {
+    stopPlayer();
+  }
   if (m_silencing && !isSounding(*m_silencing)) {
     m_silencing.reset();
   }
@@ -239,7 +243,7 @@ void Mixer::render(int16_t *stereo, int frames) {
   const std::size_t samples = static_cast<std::size_t>(frames) * Mixer::STEREO;
   m_musicBuffer.assign(samples, 0);
   if (m_modulePlaying && !playModule(samples) && m_moduleLoops > 0) {
-    stopPlayer();
+    finishModule();
   }
 
   const int musicLevel = m_silencing ? 0 : m_musicVolume;
@@ -269,13 +273,18 @@ void Mixer::render(int16_t *stereo, int frames) {
 }
 
 void Mixer::stopPlayer() {
+  finishModule();
+  if (m_playerStarted) {
+    xmp_end_player(m_module->player);
+    m_playerStarted = false;
+  }
+}
+
+void Mixer::finishModule() {
   m_tempoOverride = 0;
   m_overridePosition = {-1, -1};
   m_lastPosition = {-1, -1};
-  if (m_modulePlaying) {
-    xmp_end_player(m_module->player);
-    m_modulePlaying = false;
-  }
+  m_modulePlaying = false;
 }
 
 void Mixer::applyModuleTempo() {
