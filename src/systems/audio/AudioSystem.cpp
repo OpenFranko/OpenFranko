@@ -11,7 +11,6 @@ namespace openfranko::src::systems::audio {
 namespace {
 
 constexpr int OUTPUT_RATE = 22050;
-constexpr int OUTPUT_FRAMES = 1024;
 constexpr int PAL_VBL_RATE = 50;
 
 } // namespace
@@ -21,8 +20,7 @@ AudioSystem::AudioSystem(Read read)
   m_output->read = std::move(read);
   m_output->vblRate = PAL_VBL_RATE;
   m_output->device = std::make_unique<AudioDevice>(
-      OUTPUT_RATE, OUTPUT_FRAMES,
-      [mixer = &m_output->mixer](int16_t *stereo, int frames) {
+      OUTPUT_RATE, [mixer = &m_output->mixer](int16_t *stereo, int frames) {
         mixer->render(stereo, frames);
       });
 }

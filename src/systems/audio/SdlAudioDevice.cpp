@@ -11,6 +11,7 @@ namespace openfranko::src::systems::audio {
 namespace {
 
 constexpr int FRAME_BYTES = Mixer::STEREO * static_cast<int>(sizeof(int16_t));
+constexpr Uint16 BUFFER_FRAMES = 512;
 
 [[noreturn]] void throwError(const std::string &cause) {
   throw std::runtime_error("Audio device error: " + cause + ": " +
@@ -29,7 +30,7 @@ struct AudioDevice::Stream {
   SDL_AudioDeviceID device = 0;
 };
 
-AudioDevice::AudioDevice(int rate, int frames, Render render)
+AudioDevice::AudioDevice(int rate, Render render)
     : m_stream(std::make_unique<Stream>()) {
   m_stream->render = std::move(render);
   if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
@@ -40,7 +41,7 @@ AudioDevice::AudioDevice(int rate, int frames, Render render)
   wanted.freq = rate;
   wanted.format = AUDIO_S16SYS;
   wanted.channels = Mixer::STEREO;
-  wanted.samples = static_cast<Uint16>(frames);
+  wanted.samples = BUFFER_FRAMES;
   wanted.callback = &Stream::fill;
   wanted.userdata = m_stream.get();
   m_stream->device = SDL_OpenAudioDevice(nullptr, 0, &wanted, nullptr, 0);

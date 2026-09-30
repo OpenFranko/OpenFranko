@@ -20,6 +20,7 @@ constexpr int VOICE_VOLUME = 255;
 constexpr int VOICE_PAN = 128;
 constexpr int UNSCALED_VOICE_VOLUME = 0;
 constexpr int PLAIN_16_BIT_MIXING = 1;
+constexpr int LEAD_FRAMES = 1024;
 constexpr int RING_LEADS = 2;
 constexpr int RESCUE_HERTZ = 100;
 constexpr int RESCUE_PART = 2;
@@ -106,16 +107,17 @@ void AudioDevice::Stream::refill(int least) {
   }
 }
 
-AudioDevice::AudioDevice(int rate, int frames, Render render)
+AudioDevice::AudioDevice(int rate, Render render)
     : m_stream(std::make_unique<Stream>()) {
   m_stream->render = std::move(render);
-  m_stream->lead = frames;
+  m_stream->lead = LEAD_FRAMES;
   set_volume_per_voice(UNSCALED_VOICE_VOLUME);
   set_mixer_quality(PLAIN_16_BIT_MIXING);
   if (install_sound(DIGI_AUTODETECT, MIDI_NONE, nullptr) != 0) {
     throwError("Allegro sound");
   }
-  SAMPLE *ring = create_sample(SAMPLE_BITS, TRUE, rate, RING_LEADS * frames);
+  SAMPLE *ring =
+      create_sample(SAMPLE_BITS, TRUE, rate, RING_LEADS * LEAD_FRAMES);
   if (!ring) {
     return;
   }
