@@ -154,7 +154,11 @@ assemble_game() {
   fi
   cat > "$GAME_DIR/dosbox.conf" << EOF
 [cpu]
-cycles=max
+cputype=486dx2
+cycles=66000
+
+[memory]
+memsize=8
 
 [autoexec]
 mount c "$GAME_DIR"
