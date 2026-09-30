@@ -122,7 +122,9 @@ presets, Level 1 keeps its 50 frames a second on a 486DX2-66 or faster, apart
 from short pauses while it loads scenery. The music keeps playing through
 them, and nearly every frame is drawn during the vertical blank, so the picture
 rarely tears. A 486DX-33 runs it at about 35 frames a second; there the music
-only stays smooth with 16 MB of memory.
+only stays smooth with 16 MB of memory. Before it starts, the game measures
+the PC's speed and memory, and on a slower PC or with less memory it says so
+and asks whether to start anyway.
 
 To build with an installed DJGPP instead, like the AUR packages `djgpp-gcc`,
 `djgpp-allegro4` and `djgpp-cmake`, build libxmp with its CMake wrapper and

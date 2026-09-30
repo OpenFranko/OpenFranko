@@ -1,11 +1,18 @@
 #include "input/Platform.h"
 
+#include <algorithm>
 #include <allegro.h>
 #include <array>
+#include <conio.h>
 #include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <go32.h>
+#include <pc.h>
 #include <stdexcept>
 #include <stdlib.h>
 #include <string>
+#include <sys/farptr.h>
 
 namespace openfranko::src::systems::input {
 namespace {
@@ -17,11 +24,101 @@ constexpr int LEFT_BUTTON = 1;
 constexpr int FIRST_TYPED = ' ';
 constexpr int LAST_TYPED = '~';
 constexpr auto TIME_ZONE = "UTC0";
+constexpr int CMOS_INDEX_PORT = 0x70;
+constexpr int CMOS_DATA_PORT = 0x71;
+constexpr int CMOS_EXTENDED_LOW = 0x30;
+constexpr int CMOS_EXTENDED_HIGH = 0x31;
+constexpr int BYTE_BITS = 8;
+constexpr int KILOBYTES_PER_MEGABYTE = 1024;
+constexpr int RESERVED_KILOBYTES = 512;
+constexpr int NEEDED_MEGABYTES = 8;
+constexpr unsigned long BIOS_TICKS_ADDRESS = 0x46C;
+constexpr unsigned long WINDOW_TICKS = 2;
+constexpr int SPEED_WINDOWS = 24;
+constexpr int CHUNK_LOOPS = 1000;
+constexpr long NEEDED_LOOPS = 1100000;
+constexpr long DX33_LOOPS = 550000;
+constexpr int ESCAPE = 27;
 
 std::array<bool, KEY_MAX> heldKeys{};
 
 [[noreturn]] void throwError(const std::string &cause) {
   throw std::runtime_error("Platform error: " + cause);
+}
+
+int memoryMegabytes() {
+  outportb(CMOS_INDEX_PORT, CMOS_EXTENDED_LOW);
+  const int low = inportb(CMOS_DATA_PORT);
+  outportb(CMOS_INDEX_PORT, CMOS_EXTENDED_HIGH);
+  const int high = inportb(CMOS_DATA_PORT);
+  const int kilobytes = KILOBYTES_PER_MEGABYTE + (high << BYTE_BITS | low);
+  return (kilobytes + RESERVED_KILOBYTES) / KILOBYTES_PER_MEGABYTE;
+}
+
+unsigned long biosTicks() { return _farpeekl(_dos_ds, BIOS_TICKS_ADDRESS); }
+
+void spin(int loops) {
+  asm volatile("1:\n\tdecl %0\n\tjnz 1b" : "+r"(loops) : : "cc");
+}
+
+long loopsPerWindow() {
+  const unsigned long previous = biosTicks();
+  unsigned long start = previous;
+  while (start == previous) {
+    start = biosTicks();
+  }
+  long loops = 0;
+  while (biosTicks() - start < WINDOW_TICKS) {
+    spin(CHUNK_LOOPS);
+    loops += CHUNK_LOOPS;
+  }
+  return loops;
+}
+
+long cpuSpeed() {
+  long best = 0;
+  for (int window = 0; window < SPEED_WINDOWS && best < NEEDED_LOOPS;
+       ++window) {
+    best = std::max(best, loopsPerWindow());
+  }
+  return best;
+}
+
+const char *speedName(long loops) {
+  if (loops >= NEEDED_LOOPS) {
+    return "fast enough";
+  }
+  return loops >= DX33_LOOPS ? "about as fast as a 486DX-33"
+                             : "about as fast as a 386";
+}
+
+bool startsAnyway() {
+  while (true) {
+    const int key = getch();
+    if (key == 'y' || key == 'Y' || key == 'n' || key == 'N' || key == ESCAPE) {
+      std::fputc('\n', stderr);
+      return key == 'y' || key == 'Y';
+    }
+  }
+}
+
+bool isMachineAccepted() {
+  const int memory = memoryMegabytes();
+  const long speed = cpuSpeed();
+  const bool fast = speed >= NEEDED_LOOPS;
+  if (fast && memory >= NEEDED_MEGABYTES) {
+    return true;
+  }
+  std::fprintf(stderr,
+               "OpenFranko needs a 486DX2-66 or faster and %d MB of memory.\n"
+               "This PC: %s, %d MB of memory.\n"
+               "%s\n"
+               "Start anyway? (Y/N)",
+               NEEDED_MEGABYTES, speedName(speed), memory,
+               fast ? "The music may stutter while the game loads."
+                    : "The game will run in slow motion and the music may "
+                      "stutter.");
+  return startsAnyway();
 }
 
 Key toKey(int scancode) {
@@ -96,6 +193,9 @@ void receiveKey(ControllerSystem &controller, int scancode, bool pressed) {
 } // namespace
 
 Platform::Platform() {
+  if (!isMachineAccepted()) {
+    std::exit(EXIT_SUCCESS);
+  }
   setenv("TZ", TIME_ZONE, 0);
   if (allegro_init() != 0 || install_timer() != 0 || install_keyboard() != 0) {
     throwError(allegro_error);
