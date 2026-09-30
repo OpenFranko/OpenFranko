@@ -49,12 +49,26 @@ int main(int argc, char **argv) {
     const std::string outputDir = outputOption.value_or("extracted");
     std::filesystem::create_directories(outputDir);
 
+    std::string executable = executableOption.value_or("");
+    const auto bundled = std::filesystem::path(inputPath) / "game";
+    if (executable.empty() && std::filesystem::is_directory(inputPath) &&
+        std::filesystem::is_regular_file(bundled)) {
+      executable = bundled.string();
+    }
+
     int errors = 0;
 
     if (std::filesystem::is_directory(inputPath)) {
       const std::vector<std::string> files = dataFiles(inputPath);
 
-      const int missing = validateDirectory(inputPath);
+      int missing = validateDirectory(inputPath);
+      if (executable.empty()) {
+        std::cerr << "Missing file: " << bundled.string()
+                  << " (the game executable, for the ending credits; or pass "
+                     "it with -e)"
+                  << std::endl;
+        ++missing;
+      }
       if (missing > 0) {
         std::cerr << missing << " expected game data file(s) missing."
                   << std::endl;
@@ -73,12 +87,6 @@ int main(int argc, char **argv) {
       errors = processFile(inputPath, outputDir);
     }
 
-    std::string executable = executableOption.value_or("");
-    const auto bundled = std::filesystem::path(inputPath) / "game";
-    if (executable.empty() && std::filesystem::is_directory(inputPath) &&
-        std::filesystem::is_regular_file(bundled)) {
-      executable = bundled.string();
-    }
     if (executable.empty()) {
       std::cerr << "No game executable given (-e): the ending credits were "
                    "not extracted."

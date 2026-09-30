@@ -175,8 +175,8 @@ Usage:
 The ending credits are read from the compiled game program, the `game` file
 the original installer puts next to the data files. It is picked up
 automatically when it sits in the game data directory; otherwise pass it with
-`-e`. Without it the ending credits are not extracted, and the game does not
-start, as its ending needs `credits.json`.
+`-e`. The game needs the credits for its ending, so without the `game` file
+frankoExtract stops, as it does when a data file is missing.
 
 Version 1.0 game data directory must contain files:
 
