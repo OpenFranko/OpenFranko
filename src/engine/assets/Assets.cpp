@@ -58,10 +58,8 @@ std::string version12Name(int resource) {
 } // namespace
 
 GameVersion detectVersion(const Files &files, const std::string &directory) {
-  return files.exists(
-             (std::filesystem::path(directory) / VERSION12_MARKER).string())
-             ? GameVersion::V12
-             : GameVersion::V10;
+  return files.exists(directory + "/" + VERSION12_MARKER) ? GameVersion::V12
+                                                          : GameVersion::V10;
 }
 
 std::string resourceName(int resource, GameVersion version) {
@@ -94,8 +92,7 @@ std::string musicPath(const std::string &name, const std::string &directory) {
 std::string samplePath(const Files &files, const std::string &name, int sample,
                        const std::string &directory) {
   const std::string prefix = name + "_sam" + std::to_string(sample) + "_";
-  for (const std::string &path :
-       files.list((std::filesystem::path(directory) / name).string())) {
+  for (const std::string &path : files.list(directory + "/" + name)) {
     const std::filesystem::path file(path);
     if (file.filename().string().compare(0, prefix.size(), prefix) == 0 &&
         file.extension() == ".wav") {

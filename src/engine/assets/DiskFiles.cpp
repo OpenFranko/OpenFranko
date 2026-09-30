@@ -16,7 +16,7 @@ std::vector<std::string> DiskFiles::list(const std::string &directory) const {
   std::error_code error;
   for (const auto &entry :
        std::filesystem::directory_iterator(directory, error)) {
-    paths.push_back(entry.path().string());
+    paths.push_back(directory + "/" + entry.path().filename().string());
   }
   return paths;
 }
