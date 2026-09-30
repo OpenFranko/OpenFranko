@@ -105,20 +105,24 @@ Options starting with `-D` are passed to CMake, e.g.
 
 `build-dos/game` holds `franko.exe`, `CWSDPMI.EXE` (the DPMI host), the assets
 packed into `assets.tar` and a `dosbox.conf` for DOSBox, DOSBox Staging and
-DOSBox-X (`flatpak run com.dosbox_x.DOSBox-X -conf build-dos/game/dosbox.conf`).
-DOS has no long file names, so the game reads its assets from the archive;
-every build does that when `assets.tar` sits next to it instead of `assets`.
-On a real PC, copy the first three files into one directory and run `franko`.
-It needs a VGA card and, for sound, a Sound Blaster compatible card. With 8 MB
-of memory or more the music keeps playing while the game loads. Ctrl+C or
-Ctrl+Break quits it.
+DOSBox-X (`flatpak run com.dosbox_x.DOSBox-X -conf
+"$PWD/build-dos/game/dosbox.conf"`; the flatpak starts in the home directory,
+so the path has to be absolute). DOS has no long file names, so the game reads
+its assets from the archive; every build does that when `assets.tar` sits next
+to it instead of `assets`. On a real PC, copy the first three files into one
+directory and run `franko`. It needs a VGA card and, for sound, a Sound Blaster
+compatible card. Ctrl+C or Ctrl+Break quits it.
 
 The game shows the Amiga picture pixel for pixel in a 376x282 256-colour VGA
-mode (Mode X); high resolution screens are shown at half their width. It needs
-a 486 with a floating point unit, and its logic is tied to the frame rate, so a
-slower PC plays it in slow motion. In DOSBox-X with its CPU speed presets,
-Level 1 keeps its 50 frames a second on a 486DX2-66 or faster, apart from short
-pauses while it loads scenery, and runs at about 35 on a 486DX-33.
+mode (Mode X) that, like a PAL Amiga, refreshes about 50 times a second; high
+resolution screens are shown at half their width. It needs a 486 with a
+floating point unit and 8 MB of memory, and its logic is tied to the frame
+rate, so a slower PC plays it in slow motion. In DOSBox-X with its CPU speed
+presets, Level 1 keeps its 50 frames a second on a 486DX2-66 or faster, apart
+from short pauses while it loads scenery. The music keeps playing through
+them, and nearly every frame is drawn during the vertical blank, so the picture
+rarely tears. A 486DX-33 runs it at about 35 frames a second; there the music
+only stays smooth with 16 MB of memory.
 
 To build with an installed DJGPP instead, like the AUR packages `djgpp-gcc`,
 `djgpp-allegro4` and `djgpp-cmake`, build libxmp with its CMake wrapper and
