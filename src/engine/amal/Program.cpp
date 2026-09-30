@@ -1,22 +1,30 @@
 #include "Program.h"
 
-#include <cctype>
 #include <stdexcept>
+#include <string_view>
 
 namespace openfranko::src::engine::amal {
 namespace {
 
-bool isDigit(char c) { return std::isdigit(static_cast<unsigned char>(c)); }
+constexpr std::size_t EXPRESSION_TERMS = 3;
 
-bool isHexDigit(char c) { return std::isxdigit(static_cast<unsigned char>(c)); }
+bool isDigit(char c) { return c >= '0' && c <= '9'; }
 
-bool isUpper(char c) { return std::isupper(static_cast<unsigned char>(c)); }
+bool isUpper(char c) { return c >= 'A' && c <= 'Z'; }
+
+bool isLower(char c) { return c >= 'a' && c <= 'z'; }
+
+bool isHexDigit(char c) {
+  return isDigit(c) || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
+}
+
+bool isSpace(char c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
 
 std::string tokenize(const std::string &source) {
   std::string tokens;
+  tokens.reserve(source.size());
   for (char c : source) {
-    if (!std::islower(static_cast<unsigned char>(c)) &&
-        !std::isspace(static_cast<unsigned char>(c))) {
+    if (!isLower(c) && !isSpace(c)) {
       tokens += c;
     }
   }
@@ -262,9 +270,11 @@ private:
     return term;
   }
 
-  Expression expression(const std::string &stops) {
-    Expression expression{operand()};
-    while (!atEnd() && stops.find(peek()) == std::string::npos) {
+  Expression expression(std::string_view stops) {
+    Expression expression;
+    expression.reserve(EXPRESSION_TERMS);
+    expression.push_back(operand());
+    while (!atEnd() && stops.find(peek()) == std::string_view::npos) {
       expression.push_back(binaryOperator());
       expression.push_back(operand());
     }

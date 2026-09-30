@@ -6,6 +6,7 @@
 #include "../../assets/Files.h"
 #include "../../street/scenes/StreetHost.h"
 
+#include <functional>
 #include <map>
 #include <random>
 #include <string>
@@ -20,7 +21,8 @@ namespace shared {
 class EngineStreetHost : public street::scenes::StreetHost {
 public:
   EngineStreetHost(systems::audio::Speaker &speaker, assets::Files &files,
-                   GameVersion version, std::string directory = "assets");
+                   GameVersion version, std::function<void()> yield,
+                   std::string directory = "assets");
   ~EngineStreetHost() override;
 
   std::vector<street::core::Picture> loadSpriteSet(int resource,
@@ -41,6 +43,7 @@ public:
   void playSampleAt(int bank, int sample, int voices, int frequency) override;
   void setSampleLooping(bool loop) override;
   int random(int limit) override;
+  void yield() override;
 
   GameVersion version() const;
 
@@ -57,6 +60,7 @@ private:
   systems::audio::Speaker &m_speaker;
   assets::Files &m_files;
   GameVersion m_version;
+  std::function<void()> m_yield;
   std::string m_directory;
   std::mt19937 m_random;
   std::map<int, std::vector<int>> m_samples;

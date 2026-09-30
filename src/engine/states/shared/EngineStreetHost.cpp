@@ -57,9 +57,11 @@ std::string readText(assets::Files &files, const std::string &what,
 
 EngineStreetHost::EngineStreetHost(systems::audio::Speaker &speaker,
                                    assets::Files &files, GameVersion version,
+                                   std::function<void()> yield,
                                    std::string directory)
     : m_speaker(speaker), m_files(files), m_version(version),
-      m_directory(std::move(directory)), m_random(std::random_device{}()) {}
+      m_yield(std::move(yield)), m_directory(std::move(directory)),
+      m_random(std::random_device{}()) {}
 
 EngineStreetHost::~EngineStreetHost() {
   m_speaker.setSampleLooping(false);
@@ -92,8 +94,10 @@ std::vector<street::core::Picture> EngineStreetHost::loadScenery(int resource) {
 }
 
 street::core::LevelScript EngineStreetHost::loadLevelScript(int resource) {
-  return street::core::LevelScript::fromJson(
+  street::core::LevelScript script = street::core::LevelScript::fromJson(
       readText(m_files, "level script", resourcePath(resource) + ".json"));
+  m_yield();
+  return script;
 }
 
 street::core::EndingCredits EngineStreetHost::loadEndingCredits() {
@@ -145,6 +149,8 @@ int EngineStreetHost::random(int limit) {
   }
   return std::uniform_int_distribution<int>(0, limit)(m_random);
 }
+
+void EngineStreetHost::yield() { m_yield(); }
 
 std::string EngineStreetHost::sampleName(int bank, int sample) {
   return "streetBank" + std::to_string(bank) + "Sample" +

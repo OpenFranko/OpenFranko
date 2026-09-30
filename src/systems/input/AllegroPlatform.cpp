@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <stdexcept>
+#include <stdlib.h>
 #include <string>
 
 namespace openfranko::src::systems::input {
@@ -15,6 +16,7 @@ constexpr int CONTROL_C = 3;
 constexpr int LEFT_BUTTON = 1;
 constexpr int FIRST_TYPED = ' ';
 constexpr int LAST_TYPED = '~';
+constexpr auto TIME_ZONE = "UTC0";
 
 std::array<bool, KEY_MAX> heldKeys{};
 
@@ -94,6 +96,7 @@ void receiveKey(ControllerSystem &controller, int scancode, bool pressed) {
 } // namespace
 
 Platform::Platform() {
+  setenv("TZ", TIME_ZONE, 0);
   if (allegro_init() != 0 || install_timer() != 0 || install_keyboard() != 0) {
     throwError(allegro_error);
   }

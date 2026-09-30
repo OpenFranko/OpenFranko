@@ -3,6 +3,7 @@
 #include "assets/ArchiveFiles.h"
 #include "assets/Assets.h"
 #include "assets/DiskFiles.h"
+#include "assets/YieldingFiles.h"
 #include "states/adverts/AdvertsState.h"
 #include "states/characterSelection/CharacterSelectionState.h"
 #include "states/continueSelect/ContinueState.h"
@@ -83,9 +84,10 @@ Engine::Engine()
 
 Engine::Engine(states::EngineStateId firstState,
                street::session::GameSession startingSession)
-    : m_files(openFiles()), m_audioSystem([this](const std::string &path) {
-        return m_files->read(path);
-      }),
+    : m_files(std::make_unique<assets::YieldingFiles>(
+          openFiles(), [this] { m_audioSystem.update(); })),
+      m_audioSystem(
+          [this](const std::string &path) { return m_files->read(path); }),
       m_session(std::move(startingSession)), m_running(true) {
   m_session.version = assets::detectVersion(*m_files);
   m_session.highScores =
@@ -268,7 +270,8 @@ void Engine::switchState(states::EngineStateId nextState) {
 
 states::shared::EngineStreetHost &Engine::makeStreetHost() {
   m_streetHost = std::make_unique<states::shared::EngineStreetHost>(
-      m_audioSystem, *m_files, m_session.version);
+      m_audioSystem, *m_files, m_session.version,
+      [this] { m_audioSystem.update(); });
   return *m_streetHost;
 }
 

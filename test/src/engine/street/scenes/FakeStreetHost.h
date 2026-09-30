@@ -113,6 +113,8 @@ public:
 
   int random(int) override { return 0; }
 
+  void yield() override {}
+
   bool played(int bank, int sample, int voices) const {
     return std::find(samples.begin(), samples.end(),
                      Sample{bank, sample, voices}) != samples.end();

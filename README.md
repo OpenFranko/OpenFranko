@@ -109,9 +109,9 @@ DOSBox-X (`flatpak run com.dosbox_x.DOSBox-X -conf build-dos/game/dosbox.conf`).
 DOS has no long file names, so the game reads its assets from the archive;
 every build does that when `assets.tar` sits next to it instead of `assets`.
 On a real PC, copy the first three files into one directory and run `franko`.
-It needs a VGA card and, for sound, a Sound Blaster compatible card. With 16 MB
-of memory, as in DOSBox, the music keeps playing while the game loads; with
-much less free memory it can stutter then. Ctrl+C or Ctrl+Break quits it.
+It needs a VGA card and, for sound, a Sound Blaster compatible card. With 8 MB
+of memory or more the music keeps playing while the game loads. Ctrl+C or
+Ctrl+Break quits it.
 
 The game shows the Amiga picture pixel for pixel in a 376x282 256-colour VGA
 mode (Mode X); high resolution screens are shown at half their width. It needs

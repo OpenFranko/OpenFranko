@@ -31,9 +31,13 @@ void Machine::bind(int channel, Object *object) {
 }
 
 void Machine::create(int channel, const std::string &source) {
+  std::shared_ptr<const Program> &program = m_programs[source];
+  if (!program) {
+    program = std::make_shared<const Program>(parse(source));
+  }
   Channel created;
-  created.program = parse(source);
-  created.loopLimits.assign(created.program.code.size(), 0);
+  created.program = program;
+  created.loopLimits.assign(program->code.size(), 0);
   auto binding = m_bindings.find(channel);
   created.object = binding != m_bindings.end() ? binding->second : nullptr;
   m_channels[channel] = std::move(created);
@@ -223,7 +227,7 @@ void Machine::run(Channel &channel) {
     return;
   }
   int jumps = 0;
-  const auto &code = channel.program.code;
+  const auto &code = channel.program->code;
   for (;;) {
     if (channel.moveFrames > 0) {
       stepMove(channel);
@@ -334,7 +338,7 @@ void Machine::stepMove(Channel &channel) {
 
 void Machine::startAnim(Channel &channel) {
   const Instruction &instruction =
-      channel.program.code[static_cast<std::size_t>(channel.pc)];
+      channel.program->code[static_cast<std::size_t>(channel.pc)];
   channel.animInstruction = channel.pc;
   channel.animLoops = evaluate(channel, instruction.first);
   channel.animNext = 0;
@@ -346,7 +350,7 @@ void Machine::stepAnim(Channel &channel) {
     return;
   }
   const auto &frames =
-      channel.program.code[static_cast<std::size_t>(channel.animInstruction)]
+      channel.program->code[static_cast<std::size_t>(channel.animInstruction)]
           .frames;
   if (frames.empty() || --channel.animCounter != 0) {
     return;

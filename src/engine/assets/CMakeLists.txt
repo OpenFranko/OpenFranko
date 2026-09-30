@@ -5,5 +5,7 @@ add_library(Assets
     Assets.h
     DiskFiles.cpp
     DiskFiles.h
-    Files.h)
+    Files.h
+    YieldingFiles.cpp
+    YieldingFiles.h)
 target_link_libraries(Assets PUBLIC Common Graphics)

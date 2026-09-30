@@ -18,3 +18,10 @@ add_executable(${DISK_FILES_TEST_TARGET}
 target_link_libraries(${DISK_FILES_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain Assets)
 add_test(NAME ${DISK_FILES_TEST_TARGET} COMMAND ${DISK_FILES_TEST_TARGET})
+
+set(YIELDING_FILES_TEST_TARGET yieldingFilesTest)
+add_executable(${YIELDING_FILES_TEST_TARGET}
+    yieldingFilesTest.cpp)
+target_link_libraries(${YIELDING_FILES_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets)
+add_test(NAME ${YIELDING_FILES_TEST_TARGET} COMMAND ${YIELDING_FILES_TEST_TARGET})

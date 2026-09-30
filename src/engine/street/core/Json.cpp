@@ -1,12 +1,19 @@
 #include "Json.h"
 
-#include <cctype>
+#include <climits>
 #include <cmath>
 #include <cstdlib>
 #include <stdexcept>
+#include <string_view>
 
 namespace openfranko::src::engine::street::core {
 namespace {
+
+constexpr int DECIMAL = 10;
+constexpr std::size_t OBJECT_MEMBERS = 16;
+constexpr std::size_t ARRAY_ITEMS = 4;
+
+bool isSpace(char c) { return c == ' ' || (c >= '\t' && c <= '\r'); }
 
 class JsonReader {
 public:
@@ -28,8 +35,7 @@ private:
   }
 
   void skipSpace() {
-    while (m_position < m_text.size() &&
-           std::isspace(static_cast<unsigned char>(m_text[m_position]))) {
+    while (m_position < m_text.size() && isSpace(m_text[m_position])) {
       ++m_position;
     }
   }
@@ -49,10 +55,9 @@ private:
     ++m_position;
   }
 
-  bool consume(const char *word) {
-    const std::string expected(word);
-    if (m_text.compare(m_position, expected.size(), expected) == 0) {
-      m_position += expected.size();
+  bool consume(std::string_view word) {
+    if (m_text.compare(m_position, word.size(), word) == 0) {
+      m_position += word.size();
       return true;
     }
     return false;
@@ -63,6 +68,7 @@ private:
     JsonValue result;
     if (c == '{') {
       result.kind = JsonValue::Kind::Object;
+      result.members.reserve(OBJECT_MEMBERS);
       ++m_position;
       if (peek() == '}') {
         ++m_position;
@@ -82,6 +88,7 @@ private:
     }
     if (c == '[') {
       result.kind = JsonValue::Kind::Array;
+      result.items.reserve(ARRAY_ITEMS);
       ++m_position;
       if (peek() == ']') {
         ++m_position;
@@ -116,7 +123,13 @@ private:
     }
     const char *start = m_text.c_str() + m_position;
     char *end = nullptr;
-    result.number = std::strtod(start, &end);
+    const long whole = std::strtol(start, &end, DECIMAL);
+    if (end == start || *end == '.' || *end == 'e' || *end == 'E' ||
+        whole == LONG_MAX || whole == LONG_MIN) {
+      result.number = std::strtod(start, &end);
+    } else {
+      result.number = static_cast<double>(whole);
+    }
     if (end == start) {
       fail("unexpected character");
     }
@@ -127,6 +140,12 @@ private:
 
   std::string string() {
     expect('"');
+    const std::size_t end = m_text.find_first_of("\"\\", m_position);
+    if (end != std::string::npos && m_text[end] == '"') {
+      std::string text = m_text.substr(m_position, end - m_position);
+      m_position = end + 1;
+      return text;
+    }
     std::string text;
     while (m_position < m_text.size() && m_text[m_position] != '"') {
       if (m_text[m_position] == '\\') {

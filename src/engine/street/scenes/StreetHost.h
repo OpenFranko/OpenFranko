@@ -42,6 +42,7 @@ public:
                             int frequency) = 0;
   virtual void setSampleLooping(bool loop) = 0;
   virtual int random(int limit) = 0;
+  virtual void yield() = 0;
 };
 
 struct StreetInput {

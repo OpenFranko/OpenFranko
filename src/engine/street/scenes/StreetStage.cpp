@@ -698,6 +698,7 @@ void StreetStage::spawnLoaded() {
     m_machine.create(j * 2, programs.walk);
     m_machine.create(j * 2 + 1, programs.damage);
   }
+  m_host.yield();
 
   ++m_nextWave;
   ++m_wavesSpawned;

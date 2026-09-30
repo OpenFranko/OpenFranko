@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -76,7 +77,7 @@ public:
 
 private:
   struct Channel {
-    Program program;
+    std::shared_ptr<const Program> program;
     int pc = 0;
     bool alive = true;
     bool frozen = true;
@@ -109,6 +110,7 @@ private:
   Registers &m_globals;
   std::map<int, Object *> m_bindings;
   std::map<int, Channel> m_channels;
+  std::map<std::string, std::shared_ptr<const Program>> m_programs;
   int16_t m_joystick = 0;
 };
 
