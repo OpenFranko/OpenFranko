@@ -126,6 +126,22 @@ SCENARIO("ArchiveFiles reads the extracted files from a tar archive") {
               std::vector<uint8_t>{'B', 'M'});
     }
   }
+
+  GIVEN("An archive out of name order that holds a file twice") {
+    const TemporaryPath archive("openFrankoArchiveOrder.tar");
+    writeArchive(archive.path(), {{"assets/03B7.bmp", "OLD"},
+                                  {"assets/03B6.bmp", "XX"},
+                                  {"assets/03B7.bmp", "NEW"}});
+    ArchiveFiles files(archive.path().string());
+
+    THEN("Every file is found and the later copy is read") {
+      REQUIRE(files.read("assets/03B6.bmp") == std::vector<uint8_t>{'X', 'X'});
+      REQUIRE(files.read("assets/03B7.bmp") ==
+              std::vector<uint8_t>{'N', 'E', 'W'});
+      REQUIRE(files.list("assets") ==
+              std::vector<std::string>{"assets/03B6.bmp", "assets/03B7.bmp"});
+    }
+  }
 }
 
 SCENARIO("ArchiveFiles refuses what is not a tar archive") {

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <stdexcept>
+#include <string_view>
 
 namespace openfranko::src::engine::assets {
 namespace {
@@ -23,12 +24,14 @@ constexpr char OLD_REGULAR_FILE = '\0';
 
 using Block = std::array<char, BLOCK_SIZE>;
 
-std::string field(const Block &block, std::size_t offset, std::size_t size) {
+std::string_view field(const Block &block, std::size_t offset,
+                       std::size_t size) {
   const char *start = block.data() + offset;
-  return std::string(start, std::find(start, start + size, '\0'));
+  const char *end = std::find(start, start + size, '\0');
+  return std::string_view(start, static_cast<std::size_t>(end - start));
 }
 
-std::size_t octal(const std::string &digits) {
+std::size_t octal(std::string_view digits) {
   std::size_t value = 0;
   for (const char digit : digits) {
     if (digit >= '0' && digit <= '7') {
@@ -36,6 +39,15 @@ std::size_t octal(const std::string &digits) {
     }
   }
   return value;
+}
+
+std::string entryPath(const Block &block) {
+  std::string path(field(block, PREFIX_OFFSET, PREFIX_SIZE));
+  if (!path.empty()) {
+    path += '/';
+  }
+  path += field(block, NAME_OFFSET, NAME_SIZE);
+  return path;
 }
 
 std::string normalized(std::string path) {
@@ -50,8 +62,9 @@ std::string normalized(std::string path) {
 
 } // namespace
 
-ArchiveFiles::ArchiveFiles(const std::string &path)
-    : m_archive(path, std::ios::binary) {
+ArchiveFiles::ArchiveFiles(const std::string &path) {
+  m_archive.rdbuf()->pubsetbuf(nullptr, 0);
+  m_archive.open(path, std::ios::binary);
   if (!m_archive) {
     throw std::runtime_error("Failed to open asset archive: " + path);
   }
@@ -59,8 +72,7 @@ ArchiveFiles::ArchiveFiles(const std::string &path)
   std::size_t offset = 0;
   while (m_archive.read(block.data(), BLOCK_SIZE)) {
     offset += BLOCK_SIZE;
-    const std::string name = field(block, NAME_OFFSET, NAME_SIZE);
-    if (name.empty()) {
+    if (field(block, NAME_OFFSET, NAME_SIZE).empty()) {
       break;
     }
     if (field(block, MAGIC_OFFSET, MAGIC_SIZE) != MAGIC) {
@@ -69,9 +81,8 @@ ArchiveFiles::ArchiveFiles(const std::string &path)
     const std::size_t length = octal(field(block, LENGTH_OFFSET, LENGTH_SIZE));
     const char type = block[TYPE_OFFSET];
     if (type == REGULAR_FILE || type == OLD_REGULAR_FILE) {
-      const std::string prefix = field(block, PREFIX_OFFSET, PREFIX_SIZE);
-      m_entries[normalized(prefix.empty() ? name : prefix + "/" + name)] =
-          Entry{offset, length};
+      m_entries.insert_or_assign(m_entries.end(), normalized(entryPath(block)),
+                                 Entry{offset, length});
     }
     offset += (length + BLOCK_SIZE - 1) / BLOCK_SIZE * BLOCK_SIZE;
     m_archive.seekg(static_cast<std::streamoff>(offset));
