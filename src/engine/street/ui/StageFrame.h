@@ -43,6 +43,7 @@ public:
   void hide();
 
   const StageCopper &live() const;
+  StageDisplay upcoming(bool ntsc) const;
   StageLayout window(bool laced) const;
   int panelY(bool laced) const;
 

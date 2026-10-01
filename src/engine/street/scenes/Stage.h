@@ -36,6 +36,7 @@ public:
   void advance(const StreetInput &input);
   void compose(std::vector<uint32_t> &frame) const;
   systems::graphics::Display output() const;
+  systems::graphics::Display upcomingOutput() const;
 
   Outcome outcome() const;
   const core::BobLayer &bobs() const;
@@ -135,6 +136,9 @@ private:
 
   Flow closePlayScreen();
   Flow closeWait(int frames);
+  systems::graphics::Display
+  buildOutput(const ui::StageDisplay &copper,
+              const core::IndexedSurface &screen) const;
 
   Closing m_closing = Closing::Wait;
   core::UpdateHold m_hold;

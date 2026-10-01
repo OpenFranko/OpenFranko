@@ -23,6 +23,10 @@ const IndexedSurface &DoubleBuffer::shown() const {
   return m_buffers[static_cast<std::size_t>(m_shown)].pixels;
 }
 
+const IndexedSurface &DoubleBuffer::upcoming() const {
+  return m_buffers[static_cast<std::size_t>(1 - m_logic)].pixels;
+}
+
 IndexedSurface &DoubleBuffer::logic() {
   return m_buffers[static_cast<std::size_t>(m_logic)].pixels;
 }

@@ -30,6 +30,7 @@ public:
   StageOutcome outcome = StageOutcome::Playing;
   std::vector<StreetInput> inputs;
   Display frame;
+  Display upcomingFrame;
 };
 
 class ScriptedStage {
@@ -42,6 +43,8 @@ public:
   void advance(const StreetInput &input) { m_script.inputs.push_back(input); }
 
   const Display &output() const { return m_script.frame; }
+
+  const Display &upcomingOutput() const { return m_script.upcomingFrame; }
 
   Outcome outcome() const { return m_script.outcome; }
 
@@ -104,6 +107,31 @@ SCENARIO("A stage's outcome picks the next state") {
     THEN("Clearing it goes to the next stage") {
       stage.script.outcome = StageOutcome::Cleared;
       REQUIRE(stage.state->update() == EngineStateId::Level2Car);
+    }
+  }
+}
+
+SCENARIO("A monitor that reads the buffers live gets the upcoming frame") {
+  GIVEN("A stage whose upcoming frame has another border") {
+    Stage stage;
+    stage.script.upcomingFrame = stageFrame();
+    stage.script.upcomingFrame.border = 0xF00;
+
+    WHEN("The monitor copies each frame") {
+      run(*stage.state, 1);
+
+      THEN("It is shown the current frame") {
+        REQUIRE(stage.monitor.pixel(0, 0) == toArgb(0x0F0));
+      }
+    }
+
+    WHEN("The monitor reads the buffers while the next frame is drawn") {
+      stage.monitor.live = true;
+      run(*stage.state, 1);
+
+      THEN("It is shown the frame that the next update keeps on screen") {
+        REQUIRE(stage.monitor.pixel(0, 0) == toArgb(0xF00));
+      }
     }
   }
 }

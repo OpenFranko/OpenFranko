@@ -26,6 +26,7 @@ public:
   void sync();
   void setNtsc(bool enabled) override;
   bool isNtsc() const override;
+  bool readsBuffersLive() const override;
   int refreshRate() const;
 
 private:

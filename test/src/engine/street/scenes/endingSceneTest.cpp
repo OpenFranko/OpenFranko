@@ -9,6 +9,7 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -597,6 +598,32 @@ SCENARIO("The break-dance opens two screens and walks the dancer in") {
           }
         }
       }
+    }
+  }
+}
+
+SCENARIO("The upcoming frame already holds the dancer's screen") {
+  GIVEN("The farewell dismissed") {
+    Ending ending;
+    EndingScene &scene = ending.scene;
+    ending.reachLastWalkFrame();
+    ending.run(1, JOY_FIRE);
+
+    THEN("The frame before screen 1 is shown already holds it upcoming") {
+      bool unhidden = false;
+      for (int frame = 0; frame < 300 && !unhidden; ++frame) {
+        const bool wasShown = scene.isShown(1);
+        const Display upcoming = scene.upcomingOutput();
+        ending.run(1);
+        if (!wasShown && scene.isShown(1)) {
+          unhidden = true;
+          const int rows = scene.screen(1).height();
+          REQUIRE(std::any_of(
+              upcoming.layers.begin(), upcoming.layers.end(),
+              [rows](const Layer &layer) { return layer.rows == rows; }));
+        }
+      }
+      REQUIRE(unhidden);
     }
   }
 }

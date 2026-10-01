@@ -19,7 +19,10 @@ EndingState::EndingState(systems::graphics::Monitor &monitor,
 
 std::optional<EngineStateId> EndingState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  shared::showSceneFrame(m_monitor, m_scene.output(), m_rows);
+  shared::showSceneFrame(m_monitor,
+                         m_monitor.readsBuffersLive() ? m_scene.upcomingOutput()
+                                                      : m_scene.output(),
+                         m_rows);
   if (m_scene.isFinished()) {
     return EngineStateId::HighScore;
   }

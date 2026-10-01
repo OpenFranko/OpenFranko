@@ -21,6 +21,7 @@ public:
   int height = 0;
   int displayHeight = 0;
   bool ntsc = false;
+  bool live = false;
 
   void
   show(const openfranko::src::systems::graphics::Display &display) override {
@@ -35,6 +36,8 @@ public:
   void setNtsc(bool enabled) override { ntsc = enabled; }
 
   bool isNtsc() const override { return ntsc; }
+
+  bool readsBuffersLive() const override { return live; }
 
   uint32_t pixel(int x, int y) const {
     if (m_frame.empty()) {

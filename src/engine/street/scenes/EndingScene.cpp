@@ -134,13 +134,22 @@ void EndingScene::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display EndingScene::output() const {
+  return buildOutput(false);
+}
+
+systems::graphics::Display EndingScene::upcomingOutput() const {
+  return buildOutput(m_step != Step::Finished);
+}
+
+systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
   systems::graphics::Display display;
   display.width = SCREEN_WIDTH;
   display.height = SCREEN_HEIGHT;
   display.displayHeight = SCREEN_HEIGHT;
   display.border = m_border;
   if (m_stageShown && m_stage) {
-    const core::IndexedSurface &shown = m_stage->buffer.shown();
+    const core::IndexedSurface &shown =
+        upcoming ? m_stage->buffer.upcoming() : m_stage->buffer.shown();
     const int rowsPerLine = m_stage->laced ? 2 : 1;
     systems::graphics::Layer stage;
     stage.pixels = shown.pixels().data();
@@ -170,13 +179,18 @@ systems::graphics::Display EndingScene::output() const {
   }
   for (int number : {1, 0}) {
     const Screen &screen = m_screens[static_cast<std::size_t>(number)];
-    if (!screen.open || screen.hidden) {
+    const bool unhiding = upcoming && number == 1 && m_dancerCopper;
+    if (!screen.open || (screen.hidden && !unhiding)) {
       continue;
     }
+    const core::IndexedSurface *dancer = nullptr;
+    if (number == 1 && m_dancerBuffer) {
+      dancer =
+          upcoming ? &m_dancerBuffer->upcoming() : &m_dancerBuffer->shown();
+    }
     const core::IndexedSurface &surface =
-        number == 1 && m_dancerBuffer
-            ? m_dancerBuffer->shown()
-            : (number == m_bobScreen ? m_display.shown() : screen.surface);
+        dancer ? *dancer
+               : (number == m_bobScreen ? m_display.shown() : screen.surface);
     systems::graphics::Layer layer;
     layer.pixels = surface.pixels().data();
     layer.stride = surface.width();

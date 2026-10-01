@@ -199,6 +199,8 @@ void VideoSystem::setNtsc(bool enabled) { m_ntsc = enabled; }
 
 bool VideoSystem::isNtsc() const { return m_ntsc; }
 
+bool VideoSystem::readsBuffersLive() const { return true; }
+
 int VideoSystem::refreshRate() const { return m_window->geometry.hertz; }
 
 void VideoSystem::present() {

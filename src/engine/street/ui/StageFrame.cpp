@@ -89,6 +89,12 @@ void StageDisplay::hide() {
 
 const StageCopper &StageDisplay::live() const { return m_live; }
 
+StageDisplay StageDisplay::upcoming(bool ntsc) const {
+  StageDisplay next = *this;
+  next.vbl(ntsc);
+  return next;
+}
+
 StageLayout StageDisplay::window(bool laced) const {
   return {m_beamNtsc, laced};
 }

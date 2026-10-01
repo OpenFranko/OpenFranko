@@ -4,6 +4,8 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <vector>
+
 using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::core;
 
@@ -283,6 +285,42 @@ SCENARIO("A double buffer opened by size starts blank") {
       THEN("It shows on blank paper like on a copied blank screen") {
         REQUIRE(buffer.shown().pixel(16, 8) == INK);
         REQUIRE(buffer.shown().pixel(40, 20) == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("The upcoming buffer is the one the next VBL shows and leaves alone") {
+  GIVEN("A double-buffered screen with a bob that moves every frame") {
+    Screen screen;
+    screen.bobs.set(1, 8, 8, 1);
+
+    THEN("Each frame's upcoming buffer is shown next and not drawn into") {
+      for (int frame = 0; frame < 6; ++frame) {
+        const IndexedSurface &upcoming = screen.buffer.upcoming();
+        const std::vector<uint8_t> before = upcoming.pixels();
+        screen.bobs.set(1, 8 + 4 * frame, 8, 1);
+        screen.frame();
+        REQUIRE(&screen.buffer.shown() == &upcoming);
+        REQUIRE(upcoming.pixels() == before);
+      }
+    }
+
+    WHEN("An autoback op scrolls both buffers over two VBLs") {
+      screen.frame();
+      screen.frame();
+      screen.buffer.autoback([](IndexedSurface &surface) {
+        surface.copy(surface, 0, 0, 64, 32, 8, 0);
+      });
+
+      THEN("Neither step draws into the buffer that was upcoming") {
+        for (int step = 0; step < 3; ++step) {
+          const IndexedSurface &upcoming = screen.buffer.upcoming();
+          const std::vector<uint8_t> before = upcoming.pixels();
+          screen.frame();
+          REQUIRE(&screen.buffer.shown() == &upcoming);
+          REQUIRE(upcoming.pixels() == before);
+        }
       }
     }
   }

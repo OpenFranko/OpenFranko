@@ -43,6 +43,7 @@ public:
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
   systems::graphics::Display output() const;
+  systems::graphics::Display upcomingOutput() const;
 
   bool isLoading() const;
   bool isShowingStill() const;
@@ -109,6 +110,7 @@ private:
 
   Flow wait(int frames, Step next);
   Flow hold(int frames, Step next);
+  systems::graphics::Display buildOutput(bool upcoming) const;
   void stageFrame();
   bool kliker(int16_t joystick, int frames);
   void runBasic(int16_t joystick);

@@ -139,21 +139,36 @@ void GameOverScene::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display GameOverScene::output() const {
+  return buildOutput(m_shown, m_border, m_shownOffset,
+                     m_buffer ? &m_buffer->shown() : nullptr);
+}
+
+systems::graphics::Display GameOverScene::upcomingOutput() const {
+  if (m_step == Step::Finished) {
+    return output();
+  }
+  return buildOutput(m_copperShown, m_copperBorder, m_copperOffset,
+                     m_buffer ? &m_buffer->upcoming() : nullptr);
+}
+
+systems::graphics::Display
+GameOverScene::buildOutput(bool shown, effects::color::AmigaColor border,
+                           int offset,
+                           const core::IndexedSurface *screen) const {
   systems::graphics::Display display;
   display.width = SCREEN_WIDTH;
   display.height = SCREEN_HEIGHT;
   display.displayHeight = SCREEN_HEIGHT;
-  display.border = m_border;
-  if (!m_shown || !m_buffer) {
+  display.border = border;
+  if (!shown || !screen) {
     return display;
   }
-  const core::IndexedSurface &shown = m_buffer->shown();
   systems::graphics::Layer layer;
-  layer.pixels = shown.pixels().data();
-  layer.stride = shown.width();
+  layer.pixels = screen->pixels().data();
+  layer.stride = screen->width();
   layer.sourceColumns = PICTURE_WIDTH;
   layer.sourceRows = PICTURE_HEIGHT;
-  layer.sourceX = m_shownOffset;
+  layer.sourceX = offset;
   layer.wrap = true;
   layer.columns = SCREEN_WIDTH;
   layer.rows = SCREEN_HEIGHT;

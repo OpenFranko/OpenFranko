@@ -57,12 +57,25 @@ void Stage::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display Stage::output() const {
-  const ui::StageCopper &live = m_copper.live();
-  return ui::stageOutput(live.screenShown ? &m_buffer.shown() : nullptr,
-                         m_palette, live.screenDisplay, m_screenOffsetX,
+  return buildOutput(m_copper, m_buffer.shown());
+}
+
+systems::graphics::Display Stage::upcomingOutput() const {
+  if (m_outcome != Outcome::Playing) {
+    return output();
+  }
+  return buildOutput(m_copper.upcoming(m_options.ntsc), m_buffer.upcoming());
+}
+
+systems::graphics::Display
+Stage::buildOutput(const ui::StageDisplay &copper,
+                   const core::IndexedSurface &screen) const {
+  const ui::StageCopper &live = copper.live();
+  return ui::stageOutput(live.screenShown ? &screen : nullptr, m_palette,
+                         live.screenDisplay, m_screenOffsetX,
                          m_panelShown ? m_panel.get() : nullptr,
-                         m_copper.panelY(m_options.tallScreen), m_panelPalette,
-                         m_copper.window(m_options.tallScreen));
+                         copper.panelY(m_options.tallScreen), m_panelPalette,
+                         copper.window(m_options.tallScreen));
 }
 
 Stage::Outcome Stage::outcome() const { return m_outcome; }

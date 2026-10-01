@@ -37,6 +37,7 @@ public:
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
   systems::graphics::Display output() const;
+  systems::graphics::Display upcomingOutput() const;
 
   bool isShown() const;
   bool isPanning() const;
@@ -63,6 +64,9 @@ private:
   enum class Flow { Continue, Yield };
 
   Flow wait(int frames, Step next);
+  systems::graphics::Display
+  buildOutput(bool shown, effects::color::AmigaColor border, int offset,
+              const core::IndexedSurface *screen) const;
   void close();
   void unpack();
   void open();

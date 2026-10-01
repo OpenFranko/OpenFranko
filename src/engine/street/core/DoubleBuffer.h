@@ -23,6 +23,7 @@ public:
   DoubleBuffer(int width, int height);
 
   const IndexedSurface &shown() const;
+  const IndexedSurface &upcoming() const;
   IndexedSurface &logic();
   const IndexedSurface &logic() const;
   bool isAutobacking() const;

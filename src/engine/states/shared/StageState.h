@@ -49,7 +49,10 @@ StageState<Stage, NEXT>::StageState(
 template <typename Stage, EngineStateId NEXT>
 std::optional<EngineStateId> StageState<Stage, NEXT>::update() {
   m_stage.advance(readStreetInput(m_controllerSystem, m_version));
-  showStageFrame(m_monitor, m_stage.output(), m_options);
+  showStageFrame(m_monitor,
+                 m_monitor.readsBuffersLive() ? m_stage.upcomingOutput()
+                                              : m_stage.output(),
+                 m_options);
 
   switch (m_stage.outcome()) {
   case Stage::Outcome::GameOver:
