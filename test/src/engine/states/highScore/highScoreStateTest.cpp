@@ -91,6 +91,36 @@ SCENARIO("A run without kills goes back to the menu unsaved") {
   }
 }
 
+SCENARIO("Typed text is wanted only while a name is entered") {
+  GIVEN("A run without kills, whose table takes no name") {
+    Board board(0);
+    bool asked = false;
+    for (int frame = 0; frame < 1000; ++frame) {
+      board.state->update();
+      asked = asked || board.state->isEnteringText();
+    }
+
+    THEN("No text is asked for") { REQUIRE_FALSE(asked); }
+  }
+
+  GIVEN("12 kills in the top slot") {
+    Board board(12);
+    bool askedEarly = false;
+    for (int frame = 0; frame < 1000 && !board.state->scene().isEntering();
+         ++frame) {
+      askedEarly = askedEarly || board.state->isEnteringText();
+      board.state->update();
+    }
+
+    THEN("Text is asked for from the start of the entry to its end") {
+      REQUIRE_FALSE(askedEarly);
+      REQUIRE(board.state->isEnteringText());
+      board.type("NO\r");
+      REQUIRE_FALSE(board.state->isEnteringText());
+    }
+  }
+}
+
 SCENARIO("A name typed into the table is saved once") {
   GIVEN("12 kills in the top slot") {
     Board board(12);

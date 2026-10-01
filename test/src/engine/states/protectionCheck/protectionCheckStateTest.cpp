@@ -123,6 +123,7 @@ SCENARIO("The title check wants both cards right") {
         REQUIRE_FALSE(exit.next.has_value());
         REQUIRE(check.files.wasLoaded(FAILURE));
         REQUIRE(check.speaker.musicStops == 1);
+        REQUIRE_FALSE(check.state.isEnteringText());
       }
     }
 
@@ -133,6 +134,31 @@ SCENARIO("The title check wants both cards right") {
       THEN("The question is still asked") {
         REQUIRE(check.files.loaded ==
                 std::vector<std::string>{CARDS, QUESTION});
+      }
+    }
+  }
+}
+
+SCENARIO("Typed text is wanted only while a question is up") {
+  GIVEN("The title check") {
+    Check check;
+
+    THEN("Nothing is asked before the first question") {
+      REQUIRE_FALSE(check.state.isEnteringText());
+    }
+
+    WHEN("The first question is up") {
+      run(check.state, 2);
+
+      THEN("An answer is asked for") { REQUIRE(check.state.isEnteringText()); }
+
+      AND_WHEN("It is answered") {
+        check.keyboard.press('A');
+        run(check.state, 1);
+
+        THEN("Nothing is asked while the question closes") {
+          REQUIRE_FALSE(check.state.isEnteringText());
+        }
       }
     }
   }

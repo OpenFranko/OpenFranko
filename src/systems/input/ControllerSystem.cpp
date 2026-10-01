@@ -80,6 +80,12 @@ void ControllerSystem::setKeyMode(KeyMode mode) { m_keyMode = mode; }
 
 KeyMode ControllerSystem::keyMode() const { return m_keyMode; }
 
+void ControllerSystem::setEnteringText(bool entering) {
+  m_enteringText = entering;
+}
+
+bool ControllerSystem::isEnteringText() const { return m_enteringText; }
+
 void ControllerSystem::clearFireLatch() { m_fireLatched = false; }
 
 bool ControllerSystem::isFireLatched() const { return m_fireLatched; }

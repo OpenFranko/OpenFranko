@@ -42,6 +42,8 @@ constexpr uint32_t KEYBOARD_BUTTONS =
 constexpr int TYPED_CODE = 1000;
 constexpr char BACKSPACE = 8;
 constexpr char RETURN = 13;
+constexpr char FIRST_LETTER = 'A';
+constexpr char BLANK = ' ';
 constexpr int REPEAT_DELAY = 18;
 constexpr int REPEAT_RATE = 5;
 constexpr int ROW_STEP = 5;
@@ -52,6 +54,7 @@ bool overlayToggle = false;
 uint32_t previous = 0;
 int repeatFrames = 0;
 bool autoOpened = false;
+bool lastEntering = false;
 KeyMode lastMode = KeyMode::FrontEnd;
 
 void send(ControllerSystem &controller, Key key, int code, char character,
@@ -85,22 +88,41 @@ int steps(uint32_t buttons) {
   return 0;
 }
 
+void openKeyboard(bool answering) {
+  keyboard::setOpen(true);
+  keyboard::setCompact(answering);
+  keyboard::select(answering ? BLANK : FIRST_LETTER);
+}
+
 void updateKeyboard(ControllerSystem &controller, uint32_t buttons) {
   const KeyMode mode = controller.keyMode();
   if (mode != lastMode) {
-    if (mode == KeyMode::NameEntry || mode == KeyMode::CodeEntry) {
-      keyboard::setOpen(true);
-      autoOpened = true;
-    } else if (autoOpened || mode == KeyMode::Game) {
+    if (mode == KeyMode::Game) {
       keyboard::setOpen(false);
       autoOpened = false;
     }
     lastMode = mode;
   }
+  const bool entering = controller.isEnteringText();
+  const bool answering = entering && mode != KeyMode::NameEntry;
+  if (entering != lastEntering) {
+    if (entering) {
+      openKeyboard(answering);
+      autoOpened = true;
+    } else if (autoOpened) {
+      keyboard::setOpen(false);
+      autoOpened = false;
+    }
+    lastEntering = entering;
+  }
   const uint32_t pressed = buttons & ~previous;
   if ((pressed & jaguar::PAD_0) && !(buttons & jaguar::PAD_OPTION) &&
       mode != KeyMode::Game) {
-    keyboard::setOpen(!keyboard::isOpen());
+    if (keyboard::isOpen()) {
+      keyboard::setOpen(false);
+    } else {
+      openKeyboard(answering);
+    }
     autoOpened = false;
   }
   if (!keyboard::isOpen()) {
@@ -122,9 +144,6 @@ void updateKeyboard(ControllerSystem &controller, uint32_t buttons) {
   }
   if (pressed & jaguar::PAD_C) {
     type(controller, RETURN);
-    if (mode == KeyMode::NameEntry) {
-      keyboard::setOpen(false);
-    }
   }
 }
 

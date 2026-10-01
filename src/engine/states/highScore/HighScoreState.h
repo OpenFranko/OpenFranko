@@ -23,6 +23,7 @@ public:
                  street::scenes::HighScoreScene::Save save);
 
   std::optional<EngineStateId> update() override;
+  bool isEnteringText() const override;
 
   const street::scenes::HighScoreScene &scene() const;
 

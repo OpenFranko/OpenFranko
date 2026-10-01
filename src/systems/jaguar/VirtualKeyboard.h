@@ -10,12 +10,17 @@ namespace jaguar {
 namespace keyboard {
 
 inline constexpr int WIDTH = 216;
+inline constexpr int COMPACT_WIDTH = 120;
 inline constexpr int LINES = 2;
 inline constexpr int HEIGHT = LINES * 8;
 
 void setOpen(bool open);
 bool isOpen();
+void setCompact(bool compact);
+bool isCompact();
+int width();
 void move(int steps);
+void select(char letter);
 char selected();
 const uint16_t *pixels();
 

@@ -200,13 +200,16 @@ flash cartridge as well as in emulators like BigPEmu; without `jagcrypt` it
 only runs in emulators.
 
 The joypad plays like the Amiga joystick: the pad moves Franko and A, B and C
-are fire (Space). The keypad stands in for the keyboard: 1 to 4 are F1 to F4,
-9 is F9, `*` and Pause are Esc, `#` is Del, and Option is the mouse button.
-When the game asks for a name for the high score table or for a letter from
-the code card, a keyboard opens at the top of the screen: left and right move
-to the next letter, up and down jump five, A types the letter, B deletes one,
-and C is Return. Outside the game itself, 0 shows or hides that keyboard. Option and 0 together show how many frames the
-game keeps up with and how much memory it uses; building with
+are fire (Space). The keypad stands in for the keyboard: 1 to 4 are F1 to F4, 9
+is F9, `*` and Pause are Esc, `#` is Del, and Option is the mouse button. When
+the game asks for a name for the high score table or for a letter from the code
+card, a keyboard opens at the top of the screen: left and right move to the
+next letter, up and down jump five, A types the letter, B deletes one, and C is
+Return. For the code card a smaller keyboard opens over the "Podaj kod!"
+button, so the grid and the colours stay visible, and it starts on the blank,
+so pressing fire does not answer by accident. Outside the game itself, 0 shows
+or hides that keyboard. Option and 0 together show how many frames the game
+keeps up with and how much memory it uses; building with
 `-DJAGUAR_DEBUG_OVERLAY=ON` shows that from the start.
 
 The console sets the frame rate: 50 Hz on a PAL console, like a PAL Amiga, and

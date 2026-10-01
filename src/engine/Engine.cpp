@@ -51,9 +51,6 @@ systems::input::KeyMode keyMode(states::EngineStateId state) {
     return systems::input::KeyMode::Game;
   case states::EngineStateId::HighScore:
     return systems::input::KeyMode::NameEntry;
-  case states::EngineStateId::ProtectionCheck:
-  case states::EngineStateId::StageProtectionCheck:
-    return systems::input::KeyMode::CodeEntry;
   case states::EngineStateId::Mirage:
   case states::EngineStateId::SpiderLogo:
   case states::EngineStateId::Adverts:
@@ -61,8 +58,10 @@ systems::input::KeyMode keyMode(states::EngineStateId state) {
   case states::EngineStateId::WorldSoftware:
   case states::EngineStateId::KneeAnimation:
   case states::EngineStateId::TitleAndStory:
+  case states::EngineStateId::ProtectionCheck:
   case states::EngineStateId::Menu:
   case states::EngineStateId::CharacterSelectionSequence:
+  case states::EngineStateId::StageProtectionCheck:
   case states::EngineStateId::Ending:
   case states::EngineStateId::GameOver:
   case states::EngineStateId::Continue:
@@ -319,6 +318,8 @@ void Engine::update() {
   }
   m_audioSystem.update();
   updateState();
+  m_controllerSystem.setEnteringText(m_currentState &&
+                                     m_currentState->isEnteringText());
   m_audioSystem.setVblRate(m_videoSystem.refreshRate());
   m_videoSystem.sync();
 }

@@ -27,6 +27,9 @@ constexpr int COPPER_ENTRY = 1;
 constexpr int PANEL_MARGIN = 16;
 constexpr unsigned DEBUG_PANEL = 1;
 constexpr unsigned KEYBOARD_PANEL = 2;
+constexpr unsigned COMPACT_KEYBOARD = 4;
+constexpr int COMPACT_PANEL_LEFT = 26;
+constexpr int COMPACT_PANEL_BOTTOM = 12;
 
 alignas(jaguar::SCALED_ALIGNMENT) uint64_t liveList[LIVE_PHRASES];
 alignas(jaguar::PHRASE_BYTES) uint64_t solidPixels = 0;
@@ -200,8 +203,11 @@ int VideoSystem::refreshRate() const { return m_window->geometry.hertz; }
 
 void VideoSystem::present() {
   Window &window = *m_window;
+  const unsigned keyboardPanel = jaguar::keyboard::isCompact()
+                                     ? KEYBOARD_PANEL | COMPACT_KEYBOARD
+                                     : KEYBOARD_PANEL;
   const unsigned overlay = (jaguar::overlay::isEnabled() ? DEBUG_PANEL : 0) |
-                           (jaguar::keyboard::isOpen() ? KEYBOARD_PANEL : 0);
+                           (jaguar::keyboard::isOpen() ? keyboardPanel : 0);
   if (!m_frameChanged && overlay == window.overlayShown) {
     return;
   }
@@ -226,10 +232,18 @@ void VideoSystem::present() {
         window.geometry.rows - jaguar::overlay::HEIGHT - PANEL_MARGIN};
   }
   if (overlay & KEYBOARD_PANEL) {
+    const int width = jaguar::keyboard::width();
+    int column = (window.geometry.columns - width) / 2;
+    int row = PANEL_MARGIN;
+    if (overlay & COMPACT_KEYBOARD) {
+      const jaguar::Placement placement =
+          jaguar::placeDisplay(m_shown, window.geometry);
+      column = placement.left + COMPACT_PANEL_LEFT / placement.halfWidth;
+      row = placement.top + m_shown.height - jaguar::keyboard::HEIGHT -
+            COMPACT_PANEL_BOTTOM;
+    }
     panels[count++] = {reinterpret_cast<uint32_t>(jaguar::keyboard::pixels()),
-                       jaguar::keyboard::WIDTH, jaguar::keyboard::HEIGHT,
-                       (window.geometry.columns - jaguar::keyboard::WIDTH) / 2,
-                       PANEL_MARGIN};
+                       width, jaguar::keyboard::HEIGHT, column, row};
   }
   jaguar::buildFrame(m_shown, window.geometry,
                      reinterpret_cast<uint32_t>(liveList),
