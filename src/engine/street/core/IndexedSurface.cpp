@@ -1,24 +1,17 @@
 #include "IndexedSurface.h"
 
+#include "../../../systems/graphics/PixelOps.h"
+
 #include <algorithm>
-#include <cstring>
 #include <stdexcept>
 
 namespace openfranko::src::engine::street::core {
 namespace {
 
-constexpr int WORD_BYTES = 4;
-constexpr int BYTE_BITS = 8;
-constexpr uint32_t LOW_BITS = 0x01010101u;
-constexpr uint32_t HIGH_BITS = 0x80808080u;
+namespace pixels = systems::graphics::pixels;
 
-bool hasZeroByte(uint32_t word) {
-  return ((word - LOW_BITS) & ~word & HIGH_BITS) != 0;
-}
-
-uint32_t swapBytes(uint32_t word) {
-  return word >> 24 | (word >> 8 & 0xFF00u) | (word << 8 & 0xFF0000u) |
-         word << 24;
+std::ptrdiff_t rowOffset(int row, int width) {
+  return static_cast<int16_t>(row) * static_cast<int16_t>(width);
 }
 
 int clampToSize(int value, int size) {
@@ -44,8 +37,15 @@ uint8_t IndexedSurface::pixel(int x, int y) const {
 
 const std::vector<uint8_t> &IndexedSurface::pixels() const { return m_pixels; }
 
+void IndexedSurface::reshape(int width, int height) {
+  m_width = width;
+  m_height = height;
+  m_pixels.resize(static_cast<std::size_t>(width * height));
+}
+
 void IndexedSurface::fill(uint8_t color) {
-  std::fill(m_pixels.begin(), m_pixels.end(), color);
+  pixels::fill(pixels::Target{m_pixels.data(), m_width}, m_width, m_height,
+               color);
 }
 
 void IndexedSurface::clear(uint8_t color, int x1, int y1, int x2, int y2) {
@@ -56,10 +56,9 @@ void IndexedSurface::clear(uint8_t color, int x1, int y1, int x2, int y2) {
   if (x2 <= x1 || y2 <= y1) {
     return;
   }
-  for (int y = y1; y < y2; ++y) {
-    auto row = m_pixels.begin() + y * m_width;
-    std::fill(row + x1, row + x2, color);
-  }
+  pixels::fill(
+      pixels::Target{m_pixels.data() + rowOffset(y1, m_width) + x1, m_width},
+      x2 - x1, y2 - y1, color);
 }
 
 void IndexedSurface::copy(const IndexedSurface &source, int x1, int y1, int x2,
@@ -92,14 +91,14 @@ void IndexedSurface::copy(const IndexedSurface &source, int x1, int y1, int x2,
   width = std::min(width, m_width - x);
   height = std::min(height, m_height - y);
 
-  const bool upward = &source == this && y > y1;
-  for (int step = 0; step < height; ++step) {
-    const int row = upward ? height - 1 - step : step;
-    std::memmove(
-        m_pixels.data() + static_cast<std::ptrdiff_t>(y + row) * m_width + x,
-        source.m_pixels.data() +
-            static_cast<std::ptrdiff_t>(y1 + row) * source.m_width + x1,
-        static_cast<std::size_t>(width));
+  const pixels::Source from{source.m_pixels.data() +
+                                rowOffset(y1, source.m_width) + x1,
+                            source.m_width};
+  const pixels::Target to{m_pixels.data() + rowOffset(y, m_width) + x, m_width};
+  if (&source == this) {
+    pixels::move(from, to, width, height);
+  } else {
+    pixels::copy(from, to, width, height);
   }
 }
 
@@ -111,11 +110,10 @@ void IndexedSurface::unpack(const Picture &picture, int x, int y) {
   if (x + picture.width > m_width || y + picture.height > m_height) {
     throw std::out_of_range("Unpack: the picture does not fit the screen");
   }
-  for (int row = 0; row < picture.height; ++row) {
-    const auto from = picture.pixels.begin() + row * picture.width;
-    std::copy(from, from + picture.width,
-              m_pixels.begin() + (y + row) * m_width + x);
-  }
+  pixels::copy(
+      pixels::Source{picture.pixels.data(), picture.width},
+      pixels::Target{m_pixels.data() + rowOffset(y, m_width) + x, m_width},
+      picture.width, picture.height);
 }
 
 bool IndexedSurface::intersects(int left, int top, int width,
@@ -133,47 +131,17 @@ void IndexedSurface::draw(const Picture &picture, int left, int top, bool flipX,
   if (firstColumn >= lastColumn || firstRow >= lastRow) {
     return;
   }
-  for (int row = firstRow; row < lastRow; ++row) {
-    const int sourceRow = flipY ? picture.height - 1 - row : row;
-    const uint8_t *source =
-        picture.pixels.data() +
-        static_cast<std::ptrdiff_t>(sourceRow) * picture.width;
-    uint8_t *target =
-        m_pixels.data() + static_cast<std::ptrdiff_t>(top + row) * m_width;
-    if (opaque && !flipX) {
-      std::copy(source + firstColumn, source + lastColumn,
-                target + left + firstColumn);
-      continue;
-    }
-    int column = firstColumn;
-    for (; column + WORD_BYTES <= lastColumn; column += WORD_BYTES) {
-      uint32_t word = 0;
-      if (flipX) {
-        std::memcpy(&word, source + picture.width - WORD_BYTES - column,
-                    WORD_BYTES);
-        word = swapBytes(word);
-      } else {
-        std::memcpy(&word, source + column, WORD_BYTES);
-      }
-      if (opaque || !hasZeroByte(word)) {
-        std::memcpy(target + left + column, &word, WORD_BYTES);
-        continue;
-      }
-      for (int byte = 0; byte < WORD_BYTES && word != 0; ++byte) {
-        const uint8_t value = static_cast<uint8_t>(word);
-        if (value != 0) {
-          target[left + column + byte] = value;
-        }
-        word >>= BYTE_BITS;
-      }
-    }
-    for (; column < lastColumn; ++column) {
-      const uint8_t value = source[flipX ? picture.width - 1 - column : column];
-      if (value != 0 || opaque) {
-        target[left + column] = value;
-      }
-    }
-  }
+  const int sourceRow = flipY ? picture.height - 1 - firstRow : firstRow;
+  const int sourceColumn = flipX ? picture.width - lastColumn : firstColumn;
+  const pixels::Source from{picture.pixels.data() +
+                                rowOffset(sourceRow, picture.width) +
+                                sourceColumn,
+                            flipY ? -picture.width : picture.width};
+  const pixels::Target to{m_pixels.data() + rowOffset(top + firstRow, m_width) +
+                              left + firstColumn,
+                          m_width};
+  pixels::draw(from, to, lastColumn - firstColumn, lastRow - firstRow, !opaque,
+               flipX);
 }
 
 ScreenBlock::ScreenBlock(const IndexedSurface &source, int x, int y, int width,

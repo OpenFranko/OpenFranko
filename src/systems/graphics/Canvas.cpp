@@ -1,15 +1,12 @@
 #include "graphics/Canvas.h"
 
+#include "graphics/PixelOps.h"
+
 #include <algorithm>
 #include <cstddef>
 #include <utility>
 
 namespace openfranko::src::systems::graphics {
-namespace {
-
-constexpr uint8_t TRANSPARENT_INDEX = 0;
-
-} // namespace
 
 Canvas::Canvas(int width, int height)
     : m_width(std::max(width, 0)), m_height(std::max(height, 0)),
@@ -25,7 +22,8 @@ const std::vector<uint16_t> &Canvas::palette() const { return m_palette; }
 
 void Canvas::fill(uint16_t color) {
   m_palette[FILL_INDEX] = color;
-  std::fill(m_pixels.begin(), m_pixels.end(), FILL_INDEX);
+  pixels::fill(pixels::Target{m_pixels.data(), m_width}, m_width, m_height,
+               FILL_INDEX);
 }
 
 void Canvas::setPalette(const std::vector<uint16_t> &colors) {
@@ -69,18 +67,20 @@ void Canvas::blit(const IndexedBitmap &image, int x, int y, bool masked,
   const int firstRow = std::max(0, -top);
   const int lastRow = std::min(image.height, m_height - top);
 
-  for (int row = firstRow; row < lastRow; ++row) {
-    const uint8_t *source =
-        image.pixels.data() + static_cast<std::ptrdiff_t>(row) * image.width;
-    uint8_t *target = m_pixels.data() +
-                      static_cast<std::ptrdiff_t>(top + row) * m_width + left;
-    for (int column = firstColumn; column < lastColumn; ++column) {
-      const uint8_t index = source[flipped ? image.width - 1 - column : column];
-      if (!masked || index != TRANSPARENT_INDEX) {
-        target[column] = index;
-      }
-    }
+  if (firstColumn >= lastColumn || firstRow >= lastRow) {
+    return;
   }
+  const int sourceColumn = flipped ? image.width - lastColumn : firstColumn;
+  const pixels::Source from{
+      image.pixels.data() +
+          static_cast<std::ptrdiff_t>(firstRow) * image.width + sourceColumn,
+      image.width};
+  const pixels::Target to{
+      m_pixels.data() + static_cast<std::ptrdiff_t>(top + firstRow) * m_width +
+          left + firstColumn,
+      m_width};
+  pixels::draw(from, to, lastColumn - firstColumn, lastRow - firstRow, masked,
+               flipped);
 }
 
 } // namespace openfranko::src::systems::graphics

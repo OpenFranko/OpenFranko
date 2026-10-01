@@ -34,3 +34,10 @@ target_link_libraries(${YIELDING_FILES_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain Assets)
 add_test(NAME ${YIELDING_FILES_TEST_TARGET}
     COMMAND ${YIELDING_FILES_TEST_TARGET})
+
+set(PACKED_FILES_TEST_TARGET packedFilesTest)
+add_executable(${PACKED_FILES_TEST_TARGET}
+    packedFilesTest.cpp)
+target_link_libraries(${PACKED_FILES_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets packedArchive)
+add_test(NAME ${PACKED_FILES_TEST_TARGET} COMMAND ${PACKED_FILES_TEST_TARGET})

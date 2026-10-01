@@ -87,20 +87,28 @@ public:
   void off(int number);
   void offAll();
 
-  bool isActive(int number) const;
-  int16_t x(int number) const;
-  int16_t y(int number) const;
-  int16_t image(int number) const;
+  bool isActive(int number) const {
+    return m_bobs.at(static_cast<std::size_t>(number)).active;
+  }
+  int16_t x(int number) const {
+    return m_bobs.at(static_cast<std::size_t>(number)).object.x;
+  }
+  int16_t y(int number) const {
+    return m_bobs.at(static_cast<std::size_t>(number)).object.y;
+  }
+  int16_t image(int number) const {
+    return m_bobs.at(static_cast<std::size_t>(number)).object.image;
+  }
 
   bool collide(int number, const ImageBank &images, int first = 0,
                int last = BOBS - 1);
   bool collided(int number) const;
 
   void draw(IndexedSurface &surface, ImageBank &images) const;
-  std::vector<SavedArea> drawSaving(IndexedSurface &surface,
-                                    ImageBank &images) const;
+  std::size_t drawSaving(IndexedSurface &surface, ImageBank &images,
+                         std::vector<SavedArea> &saved) const;
   static void restore(IndexedSurface &surface,
-                      const std::vector<SavedArea> &saved);
+                      const std::vector<SavedArea> &saved, std::size_t count);
   static bool paste(IndexedSurface &surface, ImageBank &images, int x, int y,
                     int image);
 
@@ -113,8 +121,10 @@ private:
     int top = 0;
   };
 
-  std::vector<Placement> placements(const IndexedSurface &surface,
-                                    const ImageBank &images) const;
+  const std::vector<Placement> &placements(const IndexedSurface &surface,
+                                           const ImageBank &images) const;
+  void drawPlaced(IndexedSurface &surface, ImageBank &images,
+                  const std::vector<Placement> &placed) const;
 
   struct Bob {
     bool active = false;
@@ -123,6 +133,8 @@ private:
 
   std::array<Bob, BOBS> m_bobs{};
   std::array<bool, BOBS> m_collisions{};
+  mutable std::vector<int> m_order;
+  mutable std::vector<Placement> m_placed;
 };
 
 } // namespace core

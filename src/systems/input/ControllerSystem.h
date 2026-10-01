@@ -21,7 +21,7 @@ inline constexpr int16_t JOY_FIRE = 16;
 
 enum class FunctionKey { F1, F2, F3, F4, Escape, Other };
 
-enum class KeyMode { Game, FrontEnd, NameEntry };
+enum class KeyMode { Game, FrontEnd, NameEntry, CodeEntry };
 
 enum class Key {
   Other,
@@ -57,6 +57,7 @@ public:
   void receiveKey(const KeyEvent &event);
   void receiveMouseButton(bool pressed);
   void setKeyMode(KeyMode mode);
+  KeyMode keyMode() const;
   void clearFireLatch();
   bool isFireLatched() const;
   bool isMouseButtonDown() const;

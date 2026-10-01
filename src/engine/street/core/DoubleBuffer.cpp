@@ -13,11 +13,11 @@ constexpr int LAST_VBL = 3;
 } // namespace
 
 DoubleBuffer::DoubleBuffer(const IndexedSurface &screen)
-    : m_buffers{Buffer{screen, {}}, Buffer{screen, {}}} {}
+    : m_buffers{Buffer{screen, {}, 0}, Buffer{screen, {}, 0}} {}
 
 DoubleBuffer::DoubleBuffer(int width, int height)
-    : m_buffers{Buffer{IndexedSurface(width, height), {}},
-                Buffer{IndexedSurface(width, height), {}}} {}
+    : m_buffers{Buffer{IndexedSurface(width, height), {}, 0},
+                Buffer{IndexedSurface(width, height), {}, 0}} {}
 
 const IndexedSurface &DoubleBuffer::shown() const {
   return m_buffers[static_cast<std::size_t>(m_shown)].pixels;
@@ -34,7 +34,18 @@ const IndexedSurface &DoubleBuffer::logic() const {
 bool DoubleBuffer::isAutobacking() const { return m_phase != 0; }
 
 bool DoubleBuffer::isDirty(const BobLayer &bobs) const {
-  return snapshot(bobs) != m_drawn;
+  for (int number = 0; number < BobLayer::BOBS; ++number) {
+    const BobState &drawn = m_drawn[static_cast<std::size_t>(number)];
+    const bool active = bobs.isActive(number);
+    if (active != drawn.active) {
+      return true;
+    }
+    if (active && (bobs.x(number) != drawn.x || bobs.y(number) != drawn.y ||
+                   bobs.image(number) != drawn.image)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void DoubleBuffer::vbl() {
@@ -57,13 +68,13 @@ void DoubleBuffer::setUpdates(bool on) { m_updates = on; }
 
 void DoubleBuffer::clearBobs() {
   Buffer &buffer = m_buffers[static_cast<std::size_t>(m_logic)];
-  BobLayer::restore(buffer.pixels, buffer.saved);
-  buffer.saved.clear();
+  BobLayer::restore(buffer.pixels, buffer.saved, buffer.savedCount);
+  buffer.savedCount = 0;
 }
 
 void DoubleBuffer::drawBobs(const BobLayer &bobs, ImageBank &images) {
   Buffer &buffer = m_buffers[static_cast<std::size_t>(m_logic)];
-  buffer.saved = bobs.drawSaving(buffer.pixels, images);
+  buffer.savedCount = bobs.drawSaving(buffer.pixels, images, buffer.saved);
   m_drawn = snapshot(bobs);
 }
 

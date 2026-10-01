@@ -170,6 +170,56 @@ DOSBox Staging (in DOSBox-X, set `cputype=pentium_ii`). The game's own code and
 libxmp avoid Pentium Pro instructions (`-march=i586`), as DOSBox-X's fast CPU
 core mis-emulates the Pentium Pro floating point comparisons.
 
+## Atari Jaguar
+
+The Jaguar version runs the game on the console's 68000. TOM draws the
+picture: its Object Processor shows the screen layers, its blitter draws the
+sprites and scenery, and its GPU changes the palette between lines like the
+Amiga's copper. JERRY's DSP mixes the music and the sound effects at about
+22 kHz, with the Amiga's low-pass filter; the 68000 reads the S3M modules and
+tells the DSP what each voice plays.
+
+It needs CMake, a C++ compiler for the computer you build on, an `m68k-elf`
+GCC with C++ support and newlib (on Arch, the AUR packages `m68k-elf-gcc` and
+`m68k-elf-newlib`), and the `rmac` assembler from the
+[Jaguar SDK](https://github.com/cubanismo/jaguar-sdk), whose `maketools.sh`
+builds it into `tools/bin`. `build-jaguar.sh` builds the game into
+`build-jaguar`, packs the extracted game data with it and writes a 4 MB
+cartridge image, `build-jaguar/game/franko.j64`:
+
+```
+./build-jaguar.sh --sdk <jaguar_sdk_dir> --assets <assets_dir>
+```
+
+`--sdk` can be left out when `rmac` is on the `PATH`. Options starting with
+`-D` are passed to CMake, e.g. `-DSKIP_COPY_PROTECTION=ON`. The image plays the
+version of the game that was extracted into `<assets_dir>`, 1.0 or 1.2. When
+the SDK's `jagcrypt` is found, the image gets the encrypted boot block that a
+console checks before it starts a cartridge, so it runs on a console from a
+flash cartridge as well as in emulators like BigPEmu; without `jagcrypt` it
+only runs in emulators.
+
+The joypad plays like the Amiga joystick: the pad moves Franko and A, B and C
+are fire (Space). The keypad stands in for the keyboard: 1 to 4 are F1 to F4,
+9 is F9, `*` and Pause are Esc, `#` is Del, and Option is the mouse button.
+When the game asks for a name for the high score table or for a letter from
+the code card, a keyboard opens at the top of the screen: left and right move
+to the next letter, up and down jump five, A types the letter, B deletes one,
+and C is Return. Outside the game itself, 0 shows or hides that keyboard. Option and 0 together show how many frames the
+game keeps up with and how much memory it uses; building with
+`-DJAGUAR_DEBUG_OVERLAY=ON` shows that from the start.
+
+The console sets the frame rate: 50 Hz on a PAL console, like a PAL Amiga, and
+60 Hz on an NTSC console, where the game starts in its NTSC mode and runs
+faster, as it did on an NTSC Amiga. The game's PAL and NTSC keys switch its
+screen layout, not the console's video standard; an NTSC TV shows 241 of the
+256 lines of the PAL layout. The high score table is kept in the cartridge's
+EEPROM; with an empty or damaged EEPROM the game starts with its usual table.
+
+The 68000 does not always keep up. In BigPEmu, a fight on level 1 updates about
+95% of the frames on a PAL console and about 80% on an NTSC console, so busy
+moments play a little slower; the music keeps its tempo.
+
 # Releases
 
 GitHub Actions (`.github/workflows/ci-cd.yml`) builds OpenFranko for Linux,

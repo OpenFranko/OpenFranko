@@ -78,6 +78,8 @@ void ControllerSystem::receiveMouseButton(bool pressed) {
 
 void ControllerSystem::setKeyMode(KeyMode mode) { m_keyMode = mode; }
 
+KeyMode ControllerSystem::keyMode() const { return m_keyMode; }
+
 void ControllerSystem::clearFireLatch() { m_fireLatched = false; }
 
 bool ControllerSystem::isFireLatched() const { return m_fireLatched; }

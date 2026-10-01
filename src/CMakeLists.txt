@@ -5,6 +5,10 @@ add_executable(${PROJECT_NAME}
     main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE Engine)
 
-if(DJGPP)
+if(JAGUAR)
+    target_link_libraries(${PROJECT_NAME} PRIVATE JaguarHardware)
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME franko SUFFIX .elf)
+    jaguar_binary(${PROJECT_NAME})
+elseif(DJGPP)
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME franko)
 endif()

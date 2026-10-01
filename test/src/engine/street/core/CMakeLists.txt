@@ -42,3 +42,11 @@ target_link_libraries(${STREET_LEVEL_SCRIPT_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain StreetCore)
 add_test(NAME ${STREET_LEVEL_SCRIPT_TEST_TARGET}
     COMMAND ${STREET_LEVEL_SCRIPT_TEST_TARGET})
+
+set(HIGH_SCORE_STORAGE_TEST_TARGET highScoreStorageTest)
+add_executable(${HIGH_SCORE_STORAGE_TEST_TARGET}
+    highScoreStorageTest.cpp)
+target_link_libraries(${HIGH_SCORE_STORAGE_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain StreetCore)
+add_test(NAME ${HIGH_SCORE_STORAGE_TEST_TARGET}
+    COMMAND ${HIGH_SCORE_STORAGE_TEST_TARGET})

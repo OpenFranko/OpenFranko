@@ -1,0 +1,304 @@
+#include "Blitter.h"
+
+#include "Hardware.h"
+
+#include <algorithm>
+
+namespace openfranko::src::systems::jaguar::blitter {
+namespace {
+
+constexpr int PHRASE = 8;
+constexpr int LARGEST_X = 16000;
+constexpr int MAX_ROWS = 4000;
+constexpr int MAX_EXPONENT = 11;
+constexpr int CLASS_MIN_ROWS = 16;
+constexpr uint32_t WINDOW_WIDTH = (3u << 2) << BLIT_WIDTH_SHIFT;
+constexpr uint32_t COPY =
+    BLIT_SRCEN | BLIT_UPDA1 | BLIT_UPDA2 | BLIT_LFU_SOURCE;
+constexpr uint32_t FILL = BLIT_PATDSEL | BLIT_UPDA1;
+constexpr uint32_t MASKED_PHRASES = COPY | BLIT_DSTEN | BLIT_DCOMPEN;
+constexpr uint32_t MASKED_PIXELS = COPY | BLIT_DCOMPEN;
+
+struct Channel {
+  uint32_t base = 0;
+  uint32_t flags = 0;
+  uint32_t pixel = 0;
+  uint32_t step = 0;
+};
+
+int product(int16_t left, int16_t right) {
+  int32_t result = left;
+  asm("muls.w %1,%0" : "+d"(result) : "d"(right) : "cc");
+  return result;
+}
+
+int magnitude(int value) { return value < 0 ? -value : value; }
+
+uint32_t phraseBase(const uint8_t *pixels) {
+  return reinterpret_cast<uint32_t>(pixels) & ~uint32_t(PHRASE - 1);
+}
+
+int phraseOffset(const uint8_t *pixels) {
+  return static_cast<int>(reinterpret_cast<uint32_t>(pixels) & (PHRASE - 1));
+}
+
+uint32_t point(int x, int y) {
+  return static_cast<uint32_t>(y) << 16 | (static_cast<uint32_t>(x) & 0xFFFF);
+}
+
+int phraseEnd(int start, int width) {
+  return (start + width + PHRASE - 1) & ~(PHRASE - 1);
+}
+
+int widthCode(int pitch) {
+  if (pitch < PHRASE || pitch % PHRASE != 0) {
+    return -1;
+  }
+  int exponent = 0;
+  while ((pitch >> exponent) > 7) {
+    ++exponent;
+  }
+  if ((pitch & ((1 << exponent) - 1)) != 0 || exponent + 2 > MAX_EXPONENT) {
+    return -1;
+  }
+  return (exponent + 2) << 2 | ((pitch >> exponent) & 3);
+}
+
+int linearRows(int width, int span, int remaining) {
+  const int room = LARGEST_X - 2 * PHRASE - width;
+  if (span == 0 || room < 0) {
+    return std::clamp(span == 0 ? remaining : 1, 1, MAX_ROWS);
+  }
+  const int rows =
+      static_cast<uint16_t>(room) / static_cast<uint16_t>(span) + 1;
+  return std::clamp(rows, 1, std::min(remaining, MAX_ROWS));
+}
+
+uint32_t flagsFor(int code, uint32_t addressing) {
+  return BLIT_PITCH1 | BLIT_PIXEL8 | addressing |
+         (code >= 0 ? static_cast<uint32_t>(code) << BLIT_WIDTH_SHIFT
+                    : WINDOW_WIDTH);
+}
+
+void setPattern(uint8_t value) {
+  const uint32_t lanes = value * 0x01010101u;
+  longWord(B_PATD) = lanes;
+  longWord(B_PATD + 4) = lanes;
+}
+
+bool aligned(int pitch) { return (pitch & (PHRASE - 1)) == 0; }
+
+int periodShift(int pitch) {
+  int remainder = magnitude(pitch) & (PHRASE - 1);
+  int shift = 3;
+  while (remainder != 0 && (remainder & 1) == 0) {
+    remainder >>= 1;
+    --shift;
+  }
+  return remainder == 0 ? 0 : shift;
+}
+
+void start(const Channel &target, const Channel *source, int rows, int width,
+           uint32_t command) {
+  wait();
+  longWord(A1_BASE) = target.base;
+  longWord(A1_FLAGS) = target.flags;
+  longWord(A1_CLIP) = 0;
+  longWord(A1_PIXEL) = target.pixel;
+  longWord(A1_STEP) = target.step;
+  if (source) {
+    longWord(A2_BASE) = source->base;
+    longWord(A2_FLAGS) = source->flags;
+    longWord(A2_PIXEL) = source->pixel;
+    longWord(A2_STEP) = source->step;
+  }
+  longWord(B_COUNT) =
+      static_cast<uint32_t>(rows) << 16 | static_cast<uint32_t>(width);
+  longWord(B_CMD) = command;
+}
+
+void phrases(Source source, Area target, int width, int height,
+             uint32_t command) {
+  const int sourceCode = widthCode(source.pitch);
+  const int targetCode = widthCode(target.pitch);
+  const bool stepped = sourceCode >= 0 && targetCode >= 0;
+  const int span = std::max(magnitude(source.pitch), target.pitch);
+  const int sourceX = phraseOffset(source.pixels);
+  const int targetX = phraseOffset(target.pixels);
+  const bool extraRead = sourceX > targetX;
+  const int targetEnd = phraseEnd(targetX, width);
+  const int sourceEnd = targetEnd + (extraRead ? PHRASE : 0);
+  Channel to;
+  Channel from;
+  to.flags = flagsFor(stepped ? targetCode : -1, BLIT_XADDPHR);
+  from.flags = flagsFor(stepped ? sourceCode : -1, BLIT_XADDPHR);
+  to.pixel = point(targetX, 0);
+  if (stepped) {
+    from.pixel = point(sourceX, 0);
+    to.step = point(targetX - targetEnd, 1);
+    from.step = point(sourceX - sourceEnd, 1);
+  } else {
+    to.step = point(targetX + target.pitch - targetEnd, 0);
+    from.step = point(sourceX + source.pitch - sourceEnd, 0);
+  }
+  if (extraRead) {
+    command |= BLIT_SRCENX;
+  }
+  const uint8_t *fromRow = source.pixels;
+  uint8_t *toRow = target.pixels;
+  int row = 0;
+  while (row < height) {
+    const int rows = stepped ? std::min(height - row, MAX_ROWS)
+                             : linearRows(width, span, height - row);
+    const int sourceSpan = product(static_cast<int16_t>(rows - 1),
+                                   static_cast<int16_t>(source.pitch));
+    const uint8_t *lowest = source.pitch < 0 ? fromRow + sourceSpan : fromRow;
+    to.base = phraseBase(toRow);
+    from.base = phraseBase(lowest);
+    if (!stepped) {
+      from.pixel = point(static_cast<int>(fromRow - lowest) + sourceX, 0);
+    }
+    start(to, &from, rows, width, command);
+    fromRow += sourceSpan + source.pitch;
+    toRow +=
+        product(static_cast<int16_t>(rows), static_cast<int16_t>(target.pitch));
+    row += rows;
+  }
+}
+
+void pixels(Source source, Area target, int width, int height, uint32_t command,
+            bool mirrored) {
+  const int span = std::max(magnitude(source.pitch), target.pitch);
+  Channel to;
+  Channel from;
+  to.flags = flagsFor(-1, BLIT_XADDPIX | (mirrored ? BLIT_XSIGNSUB : 0));
+  to.step = point(mirrored ? target.pitch + width : target.pitch - width, 0);
+  from.flags = flagsFor(-1, BLIT_XADDPIX);
+  from.step = point(source.pitch - width, 0);
+  const uint8_t *fromRow = source.pixels;
+  uint8_t *toRow = target.pixels;
+  int row = 0;
+  while (row < height) {
+    const int rows = linearRows(width, span, height - row);
+    const int sourceSpan = product(static_cast<int16_t>(rows - 1),
+                                   static_cast<int16_t>(source.pitch));
+    const uint8_t *lowest = source.pitch < 0 ? fromRow + sourceSpan : fromRow;
+    to.base = phraseBase(toRow);
+    to.pixel = point(phraseOffset(toRow) + (mirrored ? width - 1 : 0), 0);
+    from.base = phraseBase(lowest);
+    from.pixel =
+        point(static_cast<int>(fromRow - lowest) + phraseOffset(lowest), 0);
+    start(to, &from, rows, width, command);
+    fromRow += sourceSpan + source.pitch;
+    toRow +=
+        product(static_cast<int16_t>(rows), static_cast<int16_t>(target.pitch));
+    row += rows;
+  }
+}
+
+void transfer(Source source, Area target, int width, int height,
+              uint32_t phraseCommand, uint32_t pixelCommand) {
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+  if (aligned(source.pitch) && aligned(target.pitch)) {
+    phrases(source, target, width, height, phraseCommand);
+    return;
+  }
+  const int shift =
+      std::max(periodShift(source.pitch), periodShift(target.pitch));
+  const int period = 1 << shift;
+  if (height < period * CLASS_MIN_ROWS) {
+    pixels(source, target, width, height, pixelCommand, false);
+    return;
+  }
+  const int16_t sourceStride = static_cast<int16_t>(source.pitch << shift);
+  const int16_t targetStride = static_cast<int16_t>(target.pitch << shift);
+  for (int first = 0; first < period; ++first) {
+    phrases(Source{source.pixels + product(static_cast<int16_t>(first),
+                                           static_cast<int16_t>(source.pitch)),
+                   sourceStride},
+            Area{target.pixels + product(static_cast<int16_t>(first),
+                                         static_cast<int16_t>(target.pitch)),
+                 targetStride},
+            width, (height - first + period - 1) >> shift, phraseCommand);
+  }
+}
+
+void fillPhrases(Area target, int width, int height) {
+  const int code = widthCode(target.pitch);
+  const bool stepped = code >= 0;
+  const int targetX = phraseOffset(target.pixels);
+  const int targetEnd = phraseEnd(targetX, width);
+  Channel to;
+  to.flags = flagsFor(code, BLIT_XADDPHR);
+  to.pixel = point(targetX, 0);
+  to.step = stepped ? point(targetX - targetEnd, 1)
+                    : point(targetX + target.pitch - targetEnd, 0);
+  uint8_t *toRow = target.pixels;
+  int row = 0;
+  while (row < height) {
+    const int rows = stepped ? std::min(height - row, MAX_ROWS)
+                             : linearRows(width, target.pitch, height - row);
+    to.base = phraseBase(toRow);
+    start(to, nullptr, rows, width, FILL);
+    toRow +=
+        product(static_cast<int16_t>(rows), static_cast<int16_t>(target.pitch));
+    row += rows;
+  }
+}
+
+} // namespace
+
+void wait() {
+  while ((longWord(B_CMD) & BLIT_IDLE) == 0) {
+  }
+}
+
+void copy(Source source, Area target, int width, int height) {
+  transfer(source, target, width, height, COPY, COPY);
+  wait();
+}
+
+void copyMasked(Source source, Area target, int width, int height) {
+  wait();
+  setPattern(0);
+  transfer(source, target, width, height, MASKED_PHRASES, MASKED_PIXELS);
+  wait();
+}
+
+void copyMirrored(Source source, Area target, int width, int height,
+                  bool masked) {
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+  wait();
+  setPattern(0);
+  pixels(source, target, width, height, masked ? MASKED_PIXELS : COPY, true);
+  wait();
+}
+
+void fill(Area target, int width, int height, uint8_t value) {
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+  wait();
+  setPattern(value);
+  const int shift = periodShift(target.pitch);
+  const int period = 1 << shift;
+  if (period == 1) {
+    fillPhrases(target, width, height);
+  } else {
+    const int16_t stride = static_cast<int16_t>(target.pitch << shift);
+    for (int first = 0; first < period && first < height; ++first) {
+      fillPhrases(
+          Area{target.pixels + product(static_cast<int16_t>(first),
+                                       static_cast<int16_t>(target.pitch)),
+               stride},
+          width, (height - first + period - 1) >> shift);
+    }
+  }
+  wait();
+}
+
+} // namespace openfranko::src::systems::jaguar::blitter

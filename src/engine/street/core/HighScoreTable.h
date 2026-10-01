@@ -30,6 +30,7 @@ public:
   explicit HighScoreTable(GameVersion version);
 
   static HighScoreTable fromFile(const Bytes &file);
+  static HighScoreTable fromBytes(const Bytes &bytes);
   Bytes toFile() const;
 
   uint8_t letter(int row, int column) const;

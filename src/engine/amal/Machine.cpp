@@ -249,10 +249,18 @@ int16_t Machine::operand(const Channel &channel, const Term &term) const {
 
 int16_t Machine::evaluate(const Channel &channel,
                           const Expression &expression) const {
-  if (expression.terms == 0) {
-    return 0;
-  }
   const Term *term = channel.program.terms + expression.first;
+  switch (expression.terms) {
+  case 0:
+    return 0;
+  case 1:
+    return operand(channel, term[0]);
+  case 3:
+    return apply(term[1].op, operand(channel, term[0]),
+                 operand(channel, term[2]));
+  default:
+    break;
+  }
   const Term *const end = term + expression.terms;
   int16_t accumulator = operand(channel, *term);
   while (++term != end) {
@@ -270,43 +278,45 @@ void Machine::run(Channel &channel) {
     return;
   }
   int jumps = 0;
-  const Program &program = channel.program;
+  const uint16_t *const code = channel.program.code;
+  const Instruction *const instructions = channel.program.instructions;
+  const int length = channel.program.length;
   for (;;) {
     if (channel.moveFrames > 0) {
       stepMove(channel);
       return;
     }
-    if (channel.pc < 0 || channel.pc >= program.length) {
+    const int pc = channel.pc;
+    if (pc < 0 || pc >= length) {
       channel.alive = false;
       return;
     }
-    const Instruction &instruction =
-        program.instructions[program.code[channel.pc]];
+    const Instruction &instruction = instructions[code[pc]];
     switch (instruction.opcode) {
     case Opcode::Pause:
-      ++channel.pc;
+      channel.pc = pc + 1;
       return;
     case Opcode::Wait:
     case Opcode::End:
-      ++channel.pc;
+      channel.pc = pc + 1;
       channel.alive = false;
       return;
     case Opcode::Let:
       write(channel, instruction.reg, evaluate(channel, instruction.first));
-      ++channel.pc;
+      channel.pc = pc + 1;
       break;
     case Opcode::Move: {
       const int16_t dx = evaluate(channel, instruction.first);
       const int16_t dy = evaluate(channel, instruction.second);
       const int16_t frames = evaluate(channel, instruction.third);
-      ++channel.pc;
+      channel.pc = pc + 1;
       startMove(channel, dx, dy, frames);
       stepMove(channel);
       return;
     }
     case Opcode::Anim:
       startAnim(channel);
-      ++channel.pc;
+      channel.pc = pc + 1;
       break;
     case Opcode::Jump:
       channel.pc = instruction.jump;
@@ -321,20 +331,19 @@ void Machine::run(Channel &channel) {
           return;
         }
       } else {
-        ++channel.pc;
+        channel.pc = pc + 1;
       }
       break;
     case Opcode::For: {
       const int16_t start = evaluate(channel, instruction.first);
-      channel.loopLimits[static_cast<std::size_t>(channel.pc)] =
+      channel.loopLimits[static_cast<std::size_t>(pc)] =
           evaluate(channel, instruction.second);
       write(channel, instruction.reg, start);
-      ++channel.pc;
+      channel.pc = pc + 1;
       break;
     }
     case Opcode::Next: {
-      const Instruction &loop =
-          program.instructions[program.code[instruction.jump]];
+      const Instruction &loop = instructions[code[instruction.jump]];
       const int16_t value = toWord(read(channel, loop.reg) + 1);
       write(channel, loop.reg, value);
       if (value <=
@@ -342,7 +351,7 @@ void Machine::run(Channel &channel) {
         channel.pc = instruction.jump + 1;
         return;
       }
-      ++channel.pc;
+      channel.pc = pc + 1;
       break;
     }
     }

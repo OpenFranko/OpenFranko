@@ -341,22 +341,6 @@ void BobLayer::offAll() {
   }
 }
 
-bool BobLayer::isActive(int number) const {
-  return m_bobs.at(static_cast<std::size_t>(number)).active;
-}
-
-int16_t BobLayer::x(int number) const {
-  return m_bobs.at(static_cast<std::size_t>(number)).object.x;
-}
-
-int16_t BobLayer::y(int number) const {
-  return m_bobs.at(static_cast<std::size_t>(number)).object.y;
-}
-
-int16_t BobLayer::image(int number) const {
-  return m_bobs.at(static_cast<std::size_t>(number)).object.image;
-}
-
 bool BobLayer::collide(int number, const ImageBank &images, int first,
                        int last) {
   m_collisions.fill(false);
@@ -401,23 +385,32 @@ bool BobLayer::collided(int number) const {
   return m_collisions.at(static_cast<std::size_t>(number));
 }
 
-std::vector<BobLayer::Placement>
+const std::vector<BobLayer::Placement> &
 BobLayer::placements(const IndexedSurface &surface,
                      const ImageBank &images) const {
-  std::vector<int> order;
+  m_order.clear();
   for (int number = 0; number < BOBS; ++number) {
-    if (m_bobs[static_cast<std::size_t>(number)].active) {
-      order.push_back(number);
+    const Bob &bob = m_bobs[static_cast<std::size_t>(number)];
+    if (!bob.active) {
+      continue;
     }
+    std::size_t at = m_order.size();
+    m_order.push_back(number);
+    while (at > 0) {
+      const amal::Object &before =
+          m_bobs[static_cast<std::size_t>(m_order[at - 1])].object;
+      if (before.y < bob.object.y ||
+          (before.y == bob.object.y && before.x <= bob.object.x)) {
+        break;
+      }
+      m_order[at] = m_order[at - 1];
+      --at;
+    }
+    m_order[at] = number;
   }
-  std::stable_sort(order.begin(), order.end(), [this](int a, int b) {
-    const amal::Object &first = m_bobs[static_cast<std::size_t>(a)].object;
-    const amal::Object &second = m_bobs[static_cast<std::size_t>(b)].object;
-    return first.y != second.y ? first.y < second.y : first.x < second.x;
-  });
 
-  std::vector<Placement> placed;
-  for (int number : order) {
+  m_placed.clear();
+  for (int number : m_order) {
     const amal::Object &bob = m_bobs[static_cast<std::size_t>(number)].object;
     const uint16_t image = static_cast<uint16_t>(bob.image);
     const Picture *picture = images.find(image & ImageBank::NUMBER_MASK);
@@ -428,14 +421,19 @@ BobLayer::placements(const IndexedSurface &surface,
     const int left = bob.x - hotX(*picture, flags);
     const int top = bob.y - hotY(*picture, flags);
     if (surface.intersects(left, top, picture->width, picture->height)) {
-      placed.push_back({number, picture, flags, left, top});
+      m_placed.push_back({number, picture, flags, left, top});
     }
   }
-  return placed;
+  return m_placed;
 }
 
 void BobLayer::draw(IndexedSurface &surface, ImageBank &images) const {
-  for (const Placement &placed : placements(surface, images)) {
+  drawPlaced(surface, images, placements(surface, images));
+}
+
+void BobLayer::drawPlaced(IndexedSurface &surface, ImageBank &images,
+                          const std::vector<Placement> &placedBobs) const {
+  for (const Placement &placed : placedBobs) {
     const int bob = placed.number;
     const int index = static_cast<uint16_t>(
                           m_bobs[static_cast<std::size_t>(bob)].object.image) &
@@ -447,10 +445,11 @@ void BobLayer::draw(IndexedSurface &surface, ImageBank &images) const {
   }
 }
 
-std::vector<SavedArea> BobLayer::drawSaving(IndexedSurface &surface,
-                                            ImageBank &images) const {
-  std::vector<SavedArea> saved;
-  for (const Placement &placed : placements(surface, images)) {
+std::size_t BobLayer::drawSaving(IndexedSurface &surface, ImageBank &images,
+                                 std::vector<SavedArea> &saved) const {
+  std::size_t count = 0;
+  const std::vector<Placement> &placedBobs = placements(surface, images);
+  for (const Placement &placed : placedBobs) {
     const int words = (placed.picture->width + WORD_PIXELS - 1) / WORD_PIXELS +
                       ((placed.left & (WORD_PIXELS - 1)) != 0 ? 1 : 0);
     const int start = wordStart(placed.left);
@@ -462,17 +461,23 @@ std::vector<SavedArea> BobLayer::drawSaving(IndexedSurface &surface,
     if (x1 >= x2 || y1 >= y2) {
       continue;
     }
-    SavedArea area{x1, y1, IndexedSurface(x2 - x1, y2 - y1)};
+    if (count == saved.size()) {
+      saved.emplace_back();
+    }
+    SavedArea &area = saved[count++];
+    area.left = x1;
+    area.top = y1;
+    area.pixels.reshape(x2 - x1, y2 - y1);
     area.pixels.copy(surface, x1, y1, x2, y2, 0, 0);
-    saved.push_back(std::move(area));
   }
-  draw(surface, images);
-  return saved;
+  drawPlaced(surface, images, placedBobs);
+  return count;
 }
 
 void BobLayer::restore(IndexedSurface &surface,
-                       const std::vector<SavedArea> &saved) {
-  for (const SavedArea &area : saved) {
+                       const std::vector<SavedArea> &saved, std::size_t count) {
+  for (std::size_t index = 0; index < count; ++index) {
+    const SavedArea &area = saved[index];
     surface.copy(area.pixels, 0, 0, area.pixels.width(), area.pixels.height(),
                  area.left, area.top);
   }

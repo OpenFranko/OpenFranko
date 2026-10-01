@@ -43,6 +43,7 @@ private:
   struct Buffer {
     IndexedSurface pixels;
     std::vector<SavedArea> saved;
+    std::size_t savedCount = 0;
   };
 
   struct BobState {

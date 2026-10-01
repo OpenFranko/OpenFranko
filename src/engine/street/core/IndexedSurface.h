@@ -31,6 +31,7 @@ public:
   uint8_t pixel(int x, int y) const;
   const std::vector<uint8_t> &pixels() const;
 
+  void reshape(int width, int height);
   void fill(uint8_t color);
   void clear(uint8_t color, int x1, int y1, int x2, int y2);
   void copy(const IndexedSurface &source, int x1, int y1, int x2, int y2, int x,
