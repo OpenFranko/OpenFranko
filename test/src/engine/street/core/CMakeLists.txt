@@ -50,3 +50,10 @@ target_link_libraries(${HIGH_SCORE_STORAGE_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain StreetCore)
 add_test(NAME ${HIGH_SCORE_STORAGE_TEST_TARGET}
     COMMAND ${HIGH_SCORE_STORAGE_TEST_TARGET})
+
+set(SURFACE_PAIR_TEST_TARGET surfacePairTest)
+add_executable(${SURFACE_PAIR_TEST_TARGET}
+    surfacePairTest.cpp)
+target_link_libraries(${SURFACE_PAIR_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain StreetCore)
+add_test(NAME ${SURFACE_PAIR_TEST_TARGET} COMMAND ${SURFACE_PAIR_TEST_TARGET})

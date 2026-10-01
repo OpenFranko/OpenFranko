@@ -75,7 +75,8 @@ void HighScoreScene::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display HighScoreScene::output() const {
-  return ui::screenOutput(m_display, m_shown, m_palette, m_session.border);
+  return ui::screenOutput(m_display.shown(), m_shown, m_palette,
+                          m_session.border);
 }
 
 HighScoreScene::Outcome HighScoreScene::outcome() const { return m_outcome; }
@@ -352,8 +353,9 @@ void HighScoreScene::redraw() {
   if (!m_shown) {
     return;
   }
-  m_display = m_screen;
-  m_bobs.draw(m_display, m_images);
+  core::IndexedSurface &display = m_display.compose();
+  display = m_screen;
+  m_bobs.draw(display, m_images);
 }
 
 } // namespace openfranko::src::engine::street::scenes

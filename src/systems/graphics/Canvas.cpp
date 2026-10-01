@@ -21,6 +21,7 @@ const std::vector<uint8_t> &Canvas::pixels() const { return m_pixels; }
 const std::vector<uint16_t> &Canvas::palette() const { return m_palette; }
 
 void Canvas::fill(uint16_t color) {
+  prepare(true);
   m_palette[FILL_INDEX] = color;
   pixels::fill(pixels::Target{m_pixels.data(), m_width}, m_width, m_height,
                FILL_INDEX);
@@ -32,15 +33,18 @@ void Canvas::setPalette(const std::vector<uint16_t> &colors) {
 }
 
 void Canvas::draw(const IndexedBitmap &image, int x, int y) {
+  prepare(covers(image, x, y));
   blit(image, x, y, false, false);
 }
 
 void Canvas::drawMasked(const IndexedBitmap &image, int x, int y,
                         bool flipped) {
+  prepare(false);
   blit(image, x, y, true, flipped);
 }
 
 Display Canvas::output() const {
+  m_shown = true;
   Layer layer;
   layer.pixels = m_pixels.data();
   layer.stride = m_width;
@@ -55,6 +59,25 @@ Display Canvas::output() const {
   display.displayHeight = m_height;
   display.layers.push_back(std::move(layer));
   return display;
+}
+
+bool Canvas::covers(const IndexedBitmap &image, int x, int y) const {
+  const int left = x - image.hotspotX;
+  const int top = y - image.hotspotY;
+  return left <= 0 && top <= 0 && left + image.width >= m_width &&
+         top + image.height >= m_height;
+}
+
+void Canvas::prepare(bool covered) {
+  if (!m_shown) {
+    return;
+  }
+  m_shown = false;
+  m_spare.resize(m_pixels.size(), FILL_INDEX);
+  std::swap(m_pixels, m_spare);
+  if (!covered) {
+    std::copy(m_spare.begin(), m_spare.end(), m_pixels.begin());
+  }
 }
 
 void Canvas::blit(const IndexedBitmap &image, int x, int y, bool masked,

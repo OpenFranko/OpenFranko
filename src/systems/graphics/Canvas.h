@@ -32,13 +32,17 @@ public:
   Display output() const;
 
 private:
+  bool covers(const IndexedBitmap &image, int x, int y) const;
+  void prepare(bool covered);
   void blit(const IndexedBitmap &image, int x, int y, bool masked,
             bool flipped);
 
   int m_width = 0;
   int m_height = 0;
   std::vector<uint8_t> m_pixels;
+  std::vector<uint8_t> m_spare;
   std::vector<uint16_t> m_palette = std::vector<uint16_t>(256, 0);
+  mutable bool m_shown = false;
 };
 
 } // namespace graphics

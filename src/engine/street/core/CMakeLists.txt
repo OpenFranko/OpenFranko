@@ -17,6 +17,8 @@ add_library(StreetCore
     Json.h
     LevelScript.cpp
     LevelScript.h
+    SurfacePair.cpp
+    SurfacePair.h
     SystemText.cpp
     SystemText.h
     UpdateHold.cpp

@@ -176,7 +176,7 @@ systems::graphics::Display EndingScene::output() const {
     const core::IndexedSurface &surface =
         number == 1 && m_dancerBuffer
             ? m_dancerBuffer->shown()
-            : (number == m_bobScreen ? m_display : screen.surface);
+            : (number == m_bobScreen ? m_display.shown() : screen.surface);
     systems::graphics::Layer layer;
     layer.pixels = surface.pixels().data();
     layer.stride = surface.width();
@@ -625,8 +625,9 @@ void EndingScene::redraw() {
   if (!screen.open || (m_bobScreen == 1 && m_dancerBuffer)) {
     return;
   }
-  m_display = screen.surface;
-  m_stillBobs.draw(m_display, m_images);
+  core::IndexedSurface &display = m_display.compose();
+  display = screen.surface;
+  m_stillBobs.draw(display, m_images);
 }
 
 void EndingScene::stillTest() {

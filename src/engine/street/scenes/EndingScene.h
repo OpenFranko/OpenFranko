@@ -9,6 +9,7 @@
 #include "../core/DoubleBuffer.h"
 #include "../core/EndingCredits.h"
 #include "../core/IndexedSurface.h"
+#include "../core/SurfacePair.h"
 #include "../core/UpdateHold.h"
 #include "../session/GameSession.h"
 #include "../ui/LoadingQueue.h"
@@ -136,7 +137,7 @@ private:
   core::ImageBank m_parked;
   core::BobLayer m_bobs;
   std::array<Screen, 2> m_screens;
-  core::IndexedSurface m_display;
+  core::SurfacePair m_display;
   core::BobLayer m_stillBobs;
   bool m_stillVbl = false;
   std::optional<core::DoubleBuffer> m_dancerBuffer;

@@ -153,3 +153,64 @@ SCENARIO("drawMasked pastes a bob") {
     }
   }
 }
+
+SCENARIO("A shown canvas is never drawn into again") {
+  GIVEN("A 4 x 2 canvas that was filled and shown") {
+    Canvas canvas(4, 2);
+    canvas.fill(0x111);
+    const Display first = canvas.output();
+    const std::vector<uint8_t> shownPixels(first.layers[0].pixels,
+                                           first.layers[0].pixels + 8);
+
+    WHEN("The next frame draws a sprite onto it") {
+      canvas.drawMasked(picture(2, 1, {3, 0}), 1, 1);
+
+      THEN("The shown pixels stay as they were") {
+        REQUIRE(std::vector<uint8_t>(first.layers[0].pixels,
+                                     first.layers[0].pixels + 8) ==
+                shownPixels);
+      }
+
+      THEN("The new frame keeps the fill under the sprite") {
+        REQUIRE(canvas.pixels() == std::vector<uint8_t>{FILL, FILL, FILL, FILL,
+                                                        FILL, 3, FILL, FILL});
+        REQUIRE(canvas.output().layers[0].pixels != first.layers[0].pixels);
+      }
+    }
+
+    WHEN("The next frame starts with a picture over all of it") {
+      canvas.draw(picture(4, 2, {1, 2, 3, 4, 5, 6, 7, 8}), 0, 0);
+      const Display second = canvas.output();
+
+      THEN("It is drawn into the other buffer") {
+        REQUIRE(second.layers[0].pixels != first.layers[0].pixels);
+        REQUIRE(std::vector<uint8_t>(first.layers[0].pixels,
+                                     first.layers[0].pixels + 8) ==
+                shownPixels);
+        REQUIRE(canvas.pixels() ==
+                std::vector<uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
+      }
+
+      AND_WHEN("A third frame is drawn") {
+        canvas.fill(0x222);
+
+        THEN("It goes back to the first buffer, now hidden") {
+          REQUIRE(canvas.output().layers[0].pixels == first.layers[0].pixels);
+          REQUIRE(std::vector<uint8_t>(second.layers[0].pixels,
+                                       second.layers[0].pixels + 8) ==
+                  std::vector<uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
+        }
+      }
+    }
+  }
+
+  GIVEN("A canvas drawn twice before it is shown") {
+    Canvas canvas(2, 1);
+    canvas.fill(0x111);
+    canvas.drawMasked(picture(1, 1, {5}), 0, 0);
+
+    THEN("Both drawings land in the same buffer") {
+      REQUIRE(canvas.pixels() == std::vector<uint8_t>{5, FILL});
+    }
+  }
+}
