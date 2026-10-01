@@ -20,6 +20,9 @@ struct Source {
 };
 
 void wait();
+void useQueue(uint32_t control);
+void stopQueue();
+bool isQueued();
 void copy(Source source, Area target, int width, int height);
 void copyMasked(Source source, Area target, int width, int height);
 void copyMirrored(Source source, Area target, int width, int height,

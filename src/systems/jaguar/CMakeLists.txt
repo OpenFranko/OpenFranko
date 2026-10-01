@@ -61,7 +61,7 @@ add_library(JaguarHardware
     Video.h)
 target_include_directories(JaguarHardware PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set_source_files_properties(Memory.cpp PROPERTIES
-    COMPILE_OPTIONS "-fno-builtin;-fno-tree-loop-distribute-patterns")
+    COMPILE_OPTIONS "-fno-builtin;-fno-tree-loop-distribute-patterns;-fno-lto")
 
 option(JAGUAR_DEBUG_OVERLAY "Show frame timing and memory use on the Jaguar" OFF)
 if(JAGUAR_DEBUG_OVERLAY)
@@ -70,6 +70,10 @@ endif()
 target_link_options(JaguarHardware INTERFACE
     -T ${CMAKE_CURRENT_SOURCE_DIR}/jaguar.ld
     -Wl,-u,_start
+    -Wl,-u,memcpy
+    -Wl,-u,memmove
+    -Wl,-u,memset
+    -Wl,-u,memcmp
     -Wl,--no-warn-rwx-segments
     ${JAGUAR_CRTBEGIN}
     ${JAGUAR_CRTEND})

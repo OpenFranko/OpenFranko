@@ -43,6 +43,13 @@ public:
     uint16_t orientation = 0;
   };
 
+  struct Box {
+    int16_t hotX = 0;
+    int16_t hotY = 0;
+    int16_t width = 0;
+    int16_t height = 0;
+  };
+
   void clear();
   void load(int base, std::vector<Picture> frames);
   const Picture *find(int number) const;
@@ -51,6 +58,13 @@ public:
   void orient(int number, uint16_t flags);
   void noMask(int number);
   bool isMasked(int number) const;
+  const Box *box(int number) const {
+    if (number <= 0 || static_cast<std::size_t>(number) >= m_boxes.size()) {
+      return nullptr;
+    }
+    const Box &found = m_boxes[static_cast<std::size_t>(number)];
+    return found.height != 0 ? &found : nullptr;
+  }
 
 private:
   struct Entry {
@@ -65,8 +79,11 @@ private:
     MaskBox box;
   };
 
+  void refreshBox(std::size_t number);
+
   std::vector<Entry> m_entries;
   std::vector<Outline> m_outlines;
+  std::vector<Box> m_boxes;
 };
 
 struct SavedArea {
@@ -78,6 +95,8 @@ struct SavedArea {
 class BobLayer {
 public:
   static constexpr int BOBS = 64;
+  static constexpr int MASK_BITS = 32;
+  static constexpr int MASK_WORDS = BOBS / MASK_BITS;
 
   amal::Object &object(int number);
   void set(int number, int x, int y, int image);
@@ -98,6 +117,9 @@ public:
   }
   int16_t image(int number) const {
     return m_bobs.at(static_cast<std::size_t>(number)).object.image;
+  }
+  uint32_t activeBits(int word) const {
+    return m_active[static_cast<std::size_t>(word)];
   }
 
   bool collide(int number, const ImageBank &images, int first = 0,
@@ -131,8 +153,11 @@ private:
     amal::Object object;
   };
 
+  Bob &activate(int number);
+
   std::array<Bob, BOBS> m_bobs{};
-  std::array<bool, BOBS> m_collisions{};
+  std::array<uint32_t, MASK_WORDS> m_active{};
+  std::array<uint32_t, MASK_WORDS> m_hits{};
   mutable std::vector<int> m_order;
   mutable std::vector<Placement> m_placed;
 };

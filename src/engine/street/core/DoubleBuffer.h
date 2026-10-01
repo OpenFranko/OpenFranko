@@ -59,9 +59,12 @@ private:
     }
   };
 
-  using Snapshot = std::array<BobState, BobLayer::BOBS>;
+  struct Snapshot {
+    std::array<BobState, BobLayer::BOBS> bobs{};
+    std::array<uint32_t, BobLayer::MASK_WORDS> active{};
+  };
 
-  static Snapshot snapshot(const BobLayer &bobs);
+  static void snapshot(const BobLayer &bobs, Snapshot &state);
   void update(const BobLayer &bobs, ImageBank &images);
 
   std::array<Buffer, 2> m_buffers;

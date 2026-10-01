@@ -1,9 +1,11 @@
 #include "IndexedSurface.h"
 
+#include "../../../systems/Multiply.h"
 #include "../../../systems/graphics/PixelOps.h"
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 namespace openfranko::src::engine::street::core {
 namespace {
@@ -11,7 +13,13 @@ namespace {
 namespace pixels = systems::graphics::pixels;
 
 std::ptrdiff_t rowOffset(int row, int width) {
-  return static_cast<int16_t>(row) * static_cast<int16_t>(width);
+  return systems::multiplySigned16(static_cast<int16_t>(row),
+                                   static_cast<int16_t>(width));
+}
+
+const std::vector<uint8_t> &settled(const std::vector<uint8_t> &pixels) {
+  pixels::finish();
+  return pixels;
 }
 
 int clampToSize(int value, int size) {
@@ -27,20 +35,55 @@ IndexedSurface::IndexedSurface(int width, int height)
     : m_width(width), m_height(height),
       m_pixels(static_cast<std::size_t>(width * height), 0) {}
 
+IndexedSurface::IndexedSurface(const IndexedSurface &other)
+    : m_width(other.m_width), m_height(other.m_height),
+      m_pixels(settled(other.m_pixels)) {}
+
+IndexedSurface &IndexedSurface::operator=(const IndexedSurface &other) {
+  pixels::finish();
+  m_width = other.m_width;
+  m_height = other.m_height;
+  m_pixels = other.m_pixels;
+  return *this;
+}
+
+IndexedSurface &IndexedSurface::operator=(IndexedSurface &&other) noexcept {
+  if (!m_pixels.empty()) {
+    pixels::finish();
+  }
+  m_width = other.m_width;
+  m_height = other.m_height;
+  m_pixels = std::move(other.m_pixels);
+  return *this;
+}
+
+IndexedSurface::~IndexedSurface() {
+  if (!m_pixels.empty()) {
+    pixels::finish();
+  }
+}
+
 int IndexedSurface::width() const { return m_width; }
 
 int IndexedSurface::height() const { return m_height; }
 
 uint8_t IndexedSurface::pixel(int x, int y) const {
+  pixels::finish();
   return m_pixels[static_cast<std::size_t>(y * m_width + x)];
 }
 
 const std::vector<uint8_t> &IndexedSurface::pixels() const { return m_pixels; }
 
 void IndexedSurface::reshape(int width, int height) {
+  const std::size_t size = static_cast<std::size_t>(rowOffset(height, width));
+  if (size > m_pixels.size()) {
+    if (size > m_pixels.capacity()) {
+      pixels::finish();
+    }
+    m_pixels.resize(size);
+  }
   m_width = width;
   m_height = height;
-  m_pixels.resize(static_cast<std::size_t>(width * height));
 }
 
 void IndexedSurface::fill(uint8_t color) {

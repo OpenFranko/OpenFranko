@@ -39,6 +39,7 @@ void blitCopy(void *target, const void *source, std::size_t size) {
   const std::size_t body = static_cast<std::size_t>(rows) * ROW_BYTES;
   if (rows > 0) {
     blitter::copy({from, ROW_BYTES}, {to, ROW_BYTES}, ROW_BYTES, rows);
+    blitter::wait();
   }
   if (size > body) {
     jaguarCopyForward(to + body, from + body, size - body);
@@ -52,6 +53,7 @@ void blitFill(void *target, int value, std::size_t size) {
   if (rows > 0) {
     blitter::fill({to, ROW_BYTES}, ROW_BYTES, rows,
                   static_cast<uint8_t>(value));
+    blitter::wait();
   }
   if (size > body) {
     jaguarFill(to + body, value, size - body);

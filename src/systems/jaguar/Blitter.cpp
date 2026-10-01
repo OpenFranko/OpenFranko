@@ -18,6 +18,20 @@ constexpr uint32_t COPY =
 constexpr uint32_t FILL = BLIT_PATDSEL | BLIT_UPDA1;
 constexpr uint32_t MASKED_PHRASES = COPY | BLIT_DSTEN | BLIT_DCOMPEN;
 constexpr uint32_t MASKED_PIXELS = COPY | BLIT_DCOMPEN;
+constexpr uint32_t QUEUE_ENTRIES = 64;
+constexpr uint32_t ENTRY_LONGS = 16;
+constexpr uint32_t INDEX_MASK = 0xFFFF;
+constexpr uint32_t QUEUE_WRITE_OFFSET = 4;
+constexpr uint32_t QUEUE_READ_OFFSET = 8;
+constexpr uint32_t KIND_PHRASES = 1;
+constexpr uint32_t KIND_PIXELS = 2;
+constexpr uint32_t KIND_FILL = 3;
+
+alignas(64) volatile uint32_t ring[QUEUE_ENTRIES * ENTRY_LONGS];
+volatile uint32_t *queueWrite = nullptr;
+volatile uint32_t *queueRead = nullptr;
+uint32_t written = 0;
+uint32_t pattern = 0;
 
 struct Channel {
   uint32_t base = 0;
@@ -80,11 +94,9 @@ uint32_t flagsFor(int code, uint32_t addressing) {
                     : WINDOW_WIDTH);
 }
 
-void setPattern(uint8_t value) {
-  const uint32_t lanes = value * 0x01010101u;
-  longWord(B_PATD) = lanes;
-  longWord(B_PATD + 4) = lanes;
-}
+void setPattern(uint8_t value) { pattern = value * 0x01010101u; }
+
+uint32_t pending() { return (written - *queueRead) & INDEX_MASK; }
 
 bool aligned(int pitch) { return (pitch & (PHRASE - 1)) == 0; }
 
@@ -98,8 +110,34 @@ int periodShift(int pitch) {
   return remainder == 0 ? 0 : shift;
 }
 
+void enqueue(uint32_t kind, const uint8_t *source, int sourcePitch,
+             uint8_t *target, int targetPitch, int width, int height,
+             uint32_t command, bool mirrored) {
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+  while (pending() >= QUEUE_ENTRIES) {
+  }
+  volatile uint32_t *entry =
+      ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
+  entry[0] = kind;
+  entry[1] = reinterpret_cast<uint32_t>(source);
+  entry[2] = static_cast<uint32_t>(sourcePitch);
+  entry[3] = reinterpret_cast<uint32_t>(target);
+  entry[4] = static_cast<uint32_t>(targetPitch);
+  entry[5] = static_cast<uint32_t>(width);
+  entry[6] = static_cast<uint32_t>(height);
+  entry[7] = command;
+  entry[8] = mirrored ? 1u : 0u;
+  entry[9] = pattern;
+  written = (written + 1) & INDEX_MASK;
+  *queueWrite = written;
+}
+
 void start(const Channel &target, const Channel *source, int rows, int width,
            uint32_t command) {
+  const uint32_t count =
+      static_cast<uint32_t>(rows) << 16 | static_cast<uint32_t>(width);
   wait();
   longWord(A1_BASE) = target.base;
   longWord(A1_FLAGS) = target.flags;
@@ -112,13 +150,25 @@ void start(const Channel &target, const Channel *source, int rows, int width,
     longWord(A2_PIXEL) = source->pixel;
     longWord(A2_STEP) = source->step;
   }
-  longWord(B_COUNT) =
-      static_cast<uint32_t>(rows) << 16 | static_cast<uint32_t>(width);
+  longWord(B_PATD) = pattern;
+  longWord(B_PATD + 4) = pattern;
+  longWord(B_COUNT) = count;
   longWord(B_CMD) = command;
+}
+
+void settle() {
+  if (!queueWrite) {
+    wait();
+  }
 }
 
 void phrases(Source source, Area target, int width, int height,
              uint32_t command) {
+  if (queueWrite) {
+    enqueue(KIND_PHRASES, source.pixels, source.pitch, target.pixels,
+            target.pitch, width, height, command, false);
+    return;
+  }
   const int sourceCode = widthCode(source.pitch);
   const int targetCode = widthCode(target.pitch);
   const bool stepped = sourceCode >= 0 && targetCode >= 0;
@@ -168,6 +218,11 @@ void phrases(Source source, Area target, int width, int height,
 
 void pixels(Source source, Area target, int width, int height, uint32_t command,
             bool mirrored) {
+  if (queueWrite) {
+    enqueue(KIND_PIXELS, source.pixels, source.pitch, target.pixels,
+            target.pitch, width, height, command, mirrored);
+    return;
+  }
   const int span = std::max(magnitude(source.pitch), target.pitch);
   Channel to;
   Channel from;
@@ -226,6 +281,11 @@ void transfer(Source source, Area target, int width, int height,
 }
 
 void fillPhrases(Area target, int width, int height) {
+  if (queueWrite) {
+    enqueue(KIND_FILL, nullptr, 0, target.pixels, target.pitch, width, height,
+            FILL, false);
+    return;
+  }
   const int code = widthCode(target.pitch);
   const bool stepped = code >= 0;
   const int targetX = phraseOffset(target.pixels);
@@ -251,20 +311,41 @@ void fillPhrases(Area target, int width, int height) {
 } // namespace
 
 void wait() {
+  if (queueWrite) {
+    while (pending() != 0) {
+    }
+  }
   while ((longWord(B_CMD) & BLIT_IDLE) == 0) {
   }
 }
 
+void useQueue(uint32_t control) {
+  wait();
+  written = 0;
+  longWord(control) = reinterpret_cast<uint32_t>(ring);
+  longWord(control + QUEUE_WRITE_OFFSET) = 0;
+  longWord(control + QUEUE_READ_OFFSET) = 0;
+  queueRead = &longWord(control + QUEUE_READ_OFFSET);
+  queueWrite = &longWord(control + QUEUE_WRITE_OFFSET);
+}
+
+bool isQueued() { return queueWrite != nullptr; }
+
+void stopQueue() {
+  wait();
+  queueWrite = nullptr;
+  queueRead = nullptr;
+}
+
 void copy(Source source, Area target, int width, int height) {
   transfer(source, target, width, height, COPY, COPY);
-  wait();
+  settle();
 }
 
 void copyMasked(Source source, Area target, int width, int height) {
-  wait();
   setPattern(0);
   transfer(source, target, width, height, MASKED_PHRASES, MASKED_PIXELS);
-  wait();
+  settle();
 }
 
 void copyMirrored(Source source, Area target, int width, int height,
@@ -272,17 +353,15 @@ void copyMirrored(Source source, Area target, int width, int height,
   if (width <= 0 || height <= 0) {
     return;
   }
-  wait();
   setPattern(0);
   pixels(source, target, width, height, masked ? MASKED_PIXELS : COPY, true);
-  wait();
+  settle();
 }
 
 void fill(Area target, int width, int height, uint8_t value) {
   if (width <= 0 || height <= 0) {
     return;
   }
-  wait();
   setPattern(value);
   const int shift = periodShift(target.pitch);
   const int period = 1 << shift;
@@ -298,7 +377,7 @@ void fill(Area target, int width, int height, uint8_t value) {
           width, (height - first + period - 1) >> shift);
     }
   }
-  wait();
+  settle();
 }
 
 } // namespace openfranko::src::systems::jaguar::blitter

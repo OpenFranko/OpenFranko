@@ -73,6 +73,7 @@ void Canvas::prepare(bool covered) {
     return;
   }
   m_shown = false;
+  pixels::finish();
   m_spare.resize(m_pixels.size(), FILL_INDEX);
   std::swap(m_pixels, m_spare);
   if (!covered) {

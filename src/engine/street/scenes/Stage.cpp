@@ -56,26 +56,70 @@ void Stage::compose(std::vector<uint32_t> &frame) const {
   systems::graphics::rasterize(output(), frame);
 }
 
-systems::graphics::Display Stage::output() const {
+const systems::graphics::Display &Stage::output() const {
   return buildOutput(m_copper, m_buffer.shown());
 }
 
-systems::graphics::Display Stage::upcomingOutput() const {
+const systems::graphics::Display &Stage::upcomingOutput() const {
   if (m_outcome != Outcome::Playing) {
     return output();
   }
   return buildOutput(m_copper.upcoming(m_options.ntsc), m_buffer.upcoming());
 }
 
-systems::graphics::Display
+const systems::graphics::Display &
 Stage::buildOutput(const ui::StageDisplay &copper,
                    const core::IndexedSurface &screen) const {
   const ui::StageCopper &live = copper.live();
-  return ui::stageOutput(live.screenShown ? &screen : nullptr, m_palette,
-                         live.screenDisplay, m_screenOffsetX,
-                         m_panelShown ? m_panel.get() : nullptr,
-                         copper.panelY(m_options.tallScreen), m_panelPalette,
-                         copper.window(m_options.tallScreen));
+  const core::IndexedSurface *display = live.screenShown ? &screen : nullptr;
+  const ui::StatusPanel *panel = m_panelShown ? m_panel.get() : nullptr;
+  const uint8_t *screenPixels = display ? display->pixels().data() : nullptr;
+  const int screenWidth = display ? display->width() : 0;
+  const int screenHeight = display ? display->height() : 0;
+  const uint8_t *panelPixels =
+      panel ? panel->surface().pixels().data() : nullptr;
+  const int panelWidth = panel ? panel->surface().width() : 0;
+  const int panelY = copper.panelY(m_options.tallScreen);
+  const ui::StageLayout window = copper.window(m_options.tallScreen);
+  ++m_outputUses;
+  CachedOutput *oldest = &m_outputs[0];
+  for (CachedOutput &cached : m_outputs) {
+    if (cached.valid && cached.screenPixels == screenPixels &&
+        cached.screenWidth == screenWidth &&
+        cached.screenHeight == screenHeight &&
+        cached.screenDisplay.x == live.screenDisplay.x &&
+        cached.screenDisplay.y == live.screenDisplay.y &&
+        cached.screenDisplay.image == live.screenDisplay.image &&
+        cached.offsetX == m_screenOffsetX &&
+        cached.panelPixels == panelPixels && cached.panelWidth == panelWidth &&
+        cached.panelY == panelY && cached.window.ntsc == window.ntsc &&
+        cached.window.laced == window.laced && cached.palette == m_palette &&
+        cached.panelPalette == m_panelPalette) {
+      cached.used = m_outputUses;
+      return cached.display;
+    }
+    if (!cached.valid || (oldest->valid && cached.used < oldest->used)) {
+      oldest = &cached;
+    }
+  }
+  CachedOutput &cached = *oldest;
+  cached.screenPixels = screenPixels;
+  cached.screenWidth = screenWidth;
+  cached.screenHeight = screenHeight;
+  cached.palette = m_palette;
+  cached.screenDisplay = live.screenDisplay;
+  cached.offsetX = m_screenOffsetX;
+  cached.panelPixels = panelPixels;
+  cached.panelWidth = panelWidth;
+  cached.panelY = panelY;
+  cached.panelPalette = m_panelPalette;
+  cached.window = window;
+  ui::stageOutput(cached.display, display, m_palette, live.screenDisplay,
+                  m_screenOffsetX, panel, panelY, m_panelPalette, window);
+  cached.display.revision = systems::graphics::newRevision();
+  cached.used = m_outputUses;
+  cached.valid = true;
+  return cached.display;
 }
 
 Stage::Outcome Stage::outcome() const { return m_outcome; }

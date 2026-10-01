@@ -38,15 +38,21 @@ const IndexedSurface &DoubleBuffer::logic() const {
 bool DoubleBuffer::isAutobacking() const { return m_phase != 0; }
 
 bool DoubleBuffer::isDirty(const BobLayer &bobs) const {
-  for (int number = 0; number < BobLayer::BOBS; ++number) {
-    const BobState &drawn = m_drawn[static_cast<std::size_t>(number)];
-    const bool active = bobs.isActive(number);
-    if (active != drawn.active) {
+  for (int word = 0; word < BobLayer::MASK_WORDS; ++word) {
+    const uint32_t active = bobs.activeBits(word);
+    if (active != m_drawn.active[static_cast<std::size_t>(word)]) {
       return true;
     }
-    if (active && (bobs.x(number) != drawn.x || bobs.y(number) != drawn.y ||
-                   bobs.image(number) != drawn.image)) {
-      return true;
+    int number = word * BobLayer::MASK_BITS;
+    for (uint32_t bits = active; bits != 0; bits >>= 1, ++number) {
+      if ((bits & 1u) == 0) {
+        continue;
+      }
+      const BobState &drawn = m_drawn.bobs[static_cast<std::size_t>(number)];
+      if (bobs.x(number) != drawn.x || bobs.y(number) != drawn.y ||
+          bobs.image(number) != drawn.image) {
+        return true;
+      }
     }
   }
   return false;
@@ -79,7 +85,7 @@ void DoubleBuffer::clearBobs() {
 void DoubleBuffer::drawBobs(const BobLayer &bobs, ImageBank &images) {
   Buffer &buffer = m_buffers[static_cast<std::size_t>(m_logic)];
   buffer.savedCount = bobs.drawSaving(buffer.pixels, images, buffer.saved);
-  m_drawn = snapshot(bobs);
+  snapshot(bobs, m_drawn);
 }
 
 void DoubleBuffer::swap() { m_logic = 1 - m_logic; }
@@ -99,24 +105,28 @@ void DoubleBuffer::autobackStep(const BobLayer &bobs, ImageBank &images) {
     return;
   }
   if (m_phase == LAST_VBL) {
-    m_drawn = snapshot(bobs);
+    snapshot(bobs, m_drawn);
     m_op = nullptr;
     m_phase = 0;
   }
 }
 
-DoubleBuffer::Snapshot DoubleBuffer::snapshot(const BobLayer &bobs) {
-  Snapshot state{};
-  for (int number = 0; number < BobLayer::BOBS; ++number) {
-    BobState &bob = state[static_cast<std::size_t>(number)];
-    bob.active = bobs.isActive(number);
-    if (bob.active) {
+void DoubleBuffer::snapshot(const BobLayer &bobs, Snapshot &state) {
+  for (int word = 0; word < BobLayer::MASK_WORDS; ++word) {
+    const uint32_t active = bobs.activeBits(word);
+    state.active[static_cast<std::size_t>(word)] = active;
+    int number = word * BobLayer::MASK_BITS;
+    for (uint32_t bits = active; bits != 0; bits >>= 1, ++number) {
+      if ((bits & 1u) == 0) {
+        continue;
+      }
+      BobState &bob = state.bobs[static_cast<std::size_t>(number)];
+      bob.active = true;
       bob.x = bobs.x(number);
       bob.y = bobs.y(number);
       bob.image = bobs.image(number);
     }
   }
-  return state;
 }
 
 void DoubleBuffer::update(const BobLayer &bobs, ImageBank &images) {

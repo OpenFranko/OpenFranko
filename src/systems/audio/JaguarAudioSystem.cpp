@@ -93,8 +93,6 @@ struct VoiceUse {
 struct MusicVoice {
   int sample = -1;
   uint32_t period = 0;
-  uint32_t stepWhole = 0;
-  uint32_t stepFraction = 0;
 };
 
 } // namespace
@@ -122,7 +120,8 @@ struct AudioSystem::Output {
   RowPosition position = NO_POSITION;
   ModuleTiming timing{0, 0};
   int framesBpm = -1;
-  double framesFactor = -1.0;
+  uint32_t framesVersion = 0;
+  uint32_t tickVersion = 1;
   uint32_t tickFrames = 0;
   bool playing = false;
   bool once = false;
@@ -179,6 +178,9 @@ void AudioSystem::Output::startDsp() {
   jaguar::loadProgram(dsp);
   jaguar::longWord(dsp.entries[1]) = reinterpret_cast<uint32_t>(shared);
   jaguar::longWord(dsp.entries[1] + 4) = CLOCK_DIVIDER;
+  jaguar::longWord(dsp.entries[1] + 8) =
+      static_cast<uint32_t>(periodSteps >> 32);
+  jaguar::longWord(dsp.entries[1] + 12) = static_cast<uint32_t>(periodSteps);
   jaguar::longWord(jaguar::DSP_PC) = dsp.entries[0];
   jaguar::longWord(jaguar::DSP_CTRL) = jaguar::RISC_GO;
 }
@@ -221,6 +223,7 @@ void AudioSystem::Output::applyModuleTempo() {
     }
   }
   tickFactor = factor;
+  ++tickVersion;
 }
 
 void AudioSystem::Output::followModuleTempo() {
@@ -245,9 +248,9 @@ void AudioSystem::Output::followModuleTempo() {
 }
 
 uint32_t AudioSystem::Output::framesFor(int bpm) {
-  if (bpm != framesBpm || tickFactor != framesFactor) {
+  if (bpm != framesBpm || tickVersion != framesVersion) {
     framesBpm = bpm;
-    framesFactor = tickFactor;
+    framesVersion = tickVersion;
     const double reference =
         std::floor(REFERENCE_RATE * TICK_SECONDS_PER_BPM * tickFactor / bpm);
     tickFrames =
@@ -276,11 +279,8 @@ void AudioSystem::Output::writeTick(const TrackerTick &tick) {
     const S3mSample &sample =
         module->samples[static_cast<std::size_t>(state.sample)];
     const uint32_t start = reinterpret_cast<uint32_t>(sample.data.data());
-    if (voice.period != state.period && voice.period > 0) {
+    if (voice.period > 0) {
       state.period = voice.period;
-      const uint64_t step = periodSteps / voice.period;
-      state.stepWhole = static_cast<uint32_t>(step >> 32);
-      state.stepFraction = static_cast<uint32_t>(step);
     }
     slot[0] = flags;
     slot[1] = start;
@@ -291,8 +291,8 @@ void AudioSystem::Output::writeTick(const TrackerTick &tick) {
       slot[2] = start + lengths[static_cast<std::size_t>(state.sample)];
       slot[3] = 0;
     }
-    slot[4] = state.stepWhole;
-    slot[5] = state.stepFraction;
+    slot[4] = state.period;
+    slot[5] = 0;
     slot[6] = static_cast<uint32_t>(voice.gainLeft) << 16 |
               static_cast<uint32_t>(voice.gainRight);
   }
@@ -569,6 +569,7 @@ void AudioSystem::applyTempo() {
   output.moduleTempoFactor =
       static_cast<double>(PAL_VBL_RATE) / (output.vblRate * output.tempoScale);
   output.tickFactor = output.moduleTempoFactor;
+  ++output.tickVersion;
   output.applyModuleTempo();
 }
 

@@ -44,8 +44,10 @@ struct Display {
   int displayHeight = 0;
   uint16_t border = 0;
   std::vector<Layer> layers;
+  uint32_t revision = 0;
 };
 
+uint32_t newRevision();
 Layer solidLayer(uint16_t color, int top, int rows, int columns);
 void cropRows(Display &display, int first, int count);
 uint32_t toArgb(uint16_t color);

@@ -1,5 +1,7 @@
 #include "Machine.h"
 
+#include "../../systems/Multiply.h"
+
 #include <cstdlib>
 #include <stdexcept>
 
@@ -37,7 +39,7 @@ int16_t apply(Operator op, int16_t accumulator, int16_t value) {
   case Operator::Subtract:
     return toWord(accumulator - value);
   case Operator::Multiply:
-    return toWord(accumulator * value);
+    return toWord(systems::multiplySigned16(accumulator, value));
   case Operator::Divide:
     return value != 0 ? toWord(accumulator / value) : accumulator;
   case Operator::Equal:
@@ -84,8 +86,10 @@ void Machine::create(int channel, const Program &program) {
   Channel &created = m_channels[index];
   std::vector<int16_t> loopLimits = std::move(created.loopLimits);
   loopLimits.assign(static_cast<std::size_t>(program.length), 0);
+  const Step *compiled = steps(program);
   created = Channel{};
   created.program = program;
+  created.steps = compiled;
   created.open = true;
   created.loopLimits = std::move(loopLimits);
   created.object = m_bindings[index];
@@ -165,6 +169,53 @@ void Machine::tick() {
     run(current);
     stepAnim(current);
   }
+}
+
+Machine::Step Machine::compile(const Program &program, int pc) {
+  const Instruction &instruction =
+      program.instructions[program.code[static_cast<std::size_t>(pc)]];
+  Step step;
+  step.instruction = &instruction;
+  step.target = instruction.reg;
+  step.jump = instruction.jump;
+  const bool let = instruction.opcode == Opcode::Let;
+  if (!let && instruction.opcode != Opcode::IfJump) {
+    return step;
+  }
+  const Term *terms = program.terms + instruction.first.first;
+  const auto direct = [](const Term &term) {
+    return term.kind != TermKind::Joystick;
+  };
+  const auto variable = [](const Term &term) {
+    return term.kind == TermKind::Register;
+  };
+  if (instruction.first.terms == 1 && let && direct(terms[0])) {
+    step.form = Form::LetValue;
+    step.left = terms[0].value;
+    step.leftRegister = variable(terms[0]);
+    return step;
+  }
+  if (instruction.first.terms != 3 || !direct(terms[0]) || !direct(terms[2])) {
+    return step;
+  }
+  step.form = let ? Form::Let : Form::If;
+  step.op = terms[1].op;
+  step.left = terms[0].value;
+  step.leftRegister = variable(terms[0]);
+  step.right = terms[2].value;
+  step.rightRegister = variable(terms[2]);
+  return step;
+}
+
+const Machine::Step *Machine::steps(const Program &program) {
+  std::vector<Step> &compiled = m_steps[program.code];
+  if (compiled.size() != static_cast<std::size_t>(program.length)) {
+    compiled.clear();
+    for (int pc = 0; pc < program.length; ++pc) {
+      compiled.push_back(compile(program, pc));
+    }
+  }
+  return compiled.data();
 }
 
 Machine::Channel &Machine::channel(int number) {
@@ -277,9 +328,34 @@ void Machine::run(Channel &channel) {
   if (!channel.alive) {
     return;
   }
+  const auto combine = [](Operator op, int16_t left, int16_t right) {
+    switch (op) {
+    case Operator::Add:
+      return toWord(left + right);
+    case Operator::Subtract:
+      return toWord(left - right);
+    default:
+      return apply(op, left, right);
+    }
+  };
+  const auto holds = [](Operator op, int16_t left, int16_t right) {
+    switch (op) {
+    case Operator::Equal:
+      return left == right;
+    case Operator::Less:
+      return left < right;
+    case Operator::Greater:
+      return left > right;
+    case Operator::NotEqual:
+      return left != right;
+    case Operator::And:
+      return (left & right) != 0;
+    default:
+      return apply(op, left, right) != 0;
+    }
+  };
   int jumps = 0;
-  const uint16_t *const code = channel.program.code;
-  const Instruction *const instructions = channel.program.instructions;
+  const Step *const steps = channel.steps;
   const int length = channel.program.length;
   for (;;) {
     if (channel.moveFrames > 0) {
@@ -291,71 +367,99 @@ void Machine::run(Channel &channel) {
       channel.alive = false;
       return;
     }
-    const Instruction &instruction = instructions[code[pc]];
-    switch (instruction.opcode) {
-    case Opcode::Pause:
-      channel.pc = pc + 1;
-      return;
-    case Opcode::Wait:
-    case Opcode::End:
-      channel.pc = pc + 1;
-      channel.alive = false;
-      return;
-    case Opcode::Let:
-      write(channel, instruction.reg, evaluate(channel, instruction.first));
-      channel.pc = pc + 1;
-      break;
-    case Opcode::Move: {
-      const int16_t dx = evaluate(channel, instruction.first);
-      const int16_t dy = evaluate(channel, instruction.second);
-      const int16_t frames = evaluate(channel, instruction.third);
-      channel.pc = pc + 1;
-      startMove(channel, dx, dy, frames);
-      stepMove(channel);
-      return;
-    }
-    case Opcode::Anim:
-      startAnim(channel);
-      channel.pc = pc + 1;
-      break;
-    case Opcode::Jump:
-      channel.pc = instruction.jump;
-      if (++jumps >= JUMP_BUDGET) {
+    const Step &step = steps[pc];
+    if (step.form == Form::Generic) {
+      if (!runGeneric(channel, *step.instruction, pc, jumps)) {
         return;
       }
-      break;
-    case Opcode::IfJump:
-      if (evaluate(channel, instruction.first) != 0) {
-        channel.pc = instruction.jump;
-        if (++jumps >= JUMP_BUDGET) {
-          return;
-        }
-      } else {
-        channel.pc = pc + 1;
-      }
-      break;
-    case Opcode::For: {
-      const int16_t start = evaluate(channel, instruction.first);
-      channel.loopLimits[static_cast<std::size_t>(pc)] =
-          evaluate(channel, instruction.second);
-      write(channel, instruction.reg, start);
-      channel.pc = pc + 1;
-      break;
+      continue;
     }
-    case Opcode::Next: {
-      const Instruction &loop = instructions[code[instruction.jump]];
-      const int16_t value = toWord(read(channel, loop.reg) + 1);
-      write(channel, loop.reg, value);
-      if (value <=
-          channel.loopLimits[static_cast<std::size_t>(instruction.jump)]) {
-        channel.pc = instruction.jump + 1;
-        return;
-      }
+    const int16_t left =
+        step.leftRegister ? read(channel, step.left) : step.left;
+    if (step.form == Form::LetValue) {
+      write(channel, step.target, left);
       channel.pc = pc + 1;
-      break;
+      continue;
     }
+    const int16_t right =
+        step.rightRegister ? read(channel, step.right) : step.right;
+    if (step.form == Form::Let) {
+      write(channel, step.target, combine(step.op, left, right));
+      channel.pc = pc + 1;
+      continue;
+    }
+    if (!holds(step.op, left, right)) {
+      channel.pc = pc + 1;
+      continue;
+    }
+    channel.pc = step.jump;
+    if (++jumps >= JUMP_BUDGET) {
+      return;
     }
   }
+}
+
+bool Machine::runGeneric(Channel &channel, const Instruction &instruction,
+                         int pc, int &jumps) {
+  switch (instruction.opcode) {
+  case Opcode::Pause:
+    channel.pc = pc + 1;
+    return false;
+  case Opcode::Wait:
+  case Opcode::End:
+    channel.pc = pc + 1;
+    channel.alive = false;
+    return false;
+  case Opcode::Let:
+    write(channel, instruction.reg, evaluate(channel, instruction.first));
+    channel.pc = pc + 1;
+    return true;
+  case Opcode::Move: {
+    const int16_t dx = evaluate(channel, instruction.first);
+    const int16_t dy = evaluate(channel, instruction.second);
+    const int16_t frames = evaluate(channel, instruction.third);
+    channel.pc = pc + 1;
+    startMove(channel, dx, dy, frames);
+    stepMove(channel);
+    return false;
+  }
+  case Opcode::Anim:
+    startAnim(channel);
+    channel.pc = pc + 1;
+    return true;
+  case Opcode::Jump:
+    channel.pc = instruction.jump;
+    return ++jumps < JUMP_BUDGET;
+  case Opcode::IfJump:
+    if (evaluate(channel, instruction.first) != 0) {
+      channel.pc = instruction.jump;
+      return ++jumps < JUMP_BUDGET;
+    }
+    channel.pc = pc + 1;
+    return true;
+  case Opcode::For: {
+    const int16_t start = evaluate(channel, instruction.first);
+    channel.loopLimits[static_cast<std::size_t>(pc)] =
+        evaluate(channel, instruction.second);
+    write(channel, instruction.reg, start);
+    channel.pc = pc + 1;
+    return true;
+  }
+  case Opcode::Next: {
+    const Instruction &loop =
+        *channel.steps[static_cast<std::size_t>(instruction.jump)].instruction;
+    const int16_t value = toWord(read(channel, loop.reg) + 1);
+    write(channel, loop.reg, value);
+    if (value <=
+        channel.loopLimits[static_cast<std::size_t>(instruction.jump)]) {
+      channel.pc = instruction.jump + 1;
+      return false;
+    }
+    channel.pc = pc + 1;
+    return true;
+  }
+  }
+  return true;
 }
 
 void Machine::startMove(Channel &channel, int16_t dx, int16_t dy,
@@ -390,9 +494,8 @@ void Machine::stepMove(Channel &channel) {
 }
 
 void Machine::startAnim(Channel &channel) {
-  const Program &program = channel.program;
   const Instruction &instruction =
-      program.instructions[program.code[channel.pc]];
+      *channel.steps[static_cast<std::size_t>(channel.pc)].instruction;
   channel.animInstruction = channel.pc;
   channel.animLoops = evaluate(channel, instruction.first);
   channel.animNext = 0;
@@ -405,7 +508,8 @@ void Machine::stepAnim(Channel &channel) {
   }
   const Program &program = channel.program;
   const Instruction &instruction =
-      program.instructions[program.code[channel.animInstruction]];
+      *channel.steps[static_cast<std::size_t>(channel.animInstruction)]
+           .instruction;
   if (instruction.frames == 0 || --channel.animCounter != 0) {
     return;
   }

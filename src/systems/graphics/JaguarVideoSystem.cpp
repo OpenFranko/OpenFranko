@@ -1,5 +1,6 @@
 #include "graphics/VideoSystem.h"
 
+#include "jaguar/Blitter.h"
 #include "jaguar/DebugOverlay.h"
 #include "jaguar/FrameBuilder.h"
 #include "jaguar/Hardware.h"
@@ -145,6 +146,7 @@ VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
   const jaguar::RiscProgram gpu = jaguar::gpuProgram();
   jaguar::longWord(jaguar::GPU_CTRL) = 0;
   jaguar::loadProgram(gpu);
+  jaguar::blitter::useQueue(gpu.entries[2]);
   window.copperNext = gpu.entries[1];
   jaguar::longWord(jaguar::GPU_PC) = gpu.entries[0];
   jaguar::longWord(jaguar::GPU_CTRL) = jaguar::RISC_GO;
@@ -166,20 +168,42 @@ VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
 }
 
 VideoSystem::~VideoSystem() {
+  jaguar::blitter::stopQueue();
   jaguar::runtime::setVideoHandler(nullptr);
   activeTarget = nullptr;
 }
 
 void VideoSystem::show(const Display &display) {
-  if (!m_frameChanged && jaguar::sameLayout(display, m_shown)) {
+  Window &window = *m_window;
+  if (display.revision != 0) {
+    if (display.revision == m_shownRevision) {
+      return;
+    }
+    for (int slot = 0; slot < FRAMES; ++slot) {
+      const std::size_t index = static_cast<std::size_t>(slot);
+      if (window.built[index] &&
+          window.sources[index].revision == display.revision) {
+        m_shownRevision = display.revision;
+        m_shownSlot = slot;
+        m_frameChanged = true;
+        return;
+      }
+    }
+  }
+  if (!m_frameChanged && m_shownSlot == NO_FRAME &&
+      jaguar::sameLayout(display, m_shown)) {
     return;
   }
   m_shown = display;
+  m_shownRevision = display.revision;
+  m_shownSlot = NO_FRAME;
   m_frameChanged = true;
 }
 
 void VideoSystem::clear() {
   m_shown = Display{};
+  m_shownRevision = 0;
+  m_shownSlot = NO_FRAME;
   m_frameChanged = true;
   present();
   waitVbl();
@@ -187,9 +211,10 @@ void VideoSystem::clear() {
 
 void VideoSystem::sync() {
   Window &window = *m_window;
-  window.longestUpdate = std::max<uint32_t>(
-      window.longestUpdate, jaguar::profiler::since(window.updateStart));
   present();
+  const uint16_t busy = jaguar::profiler::since(window.updateStart);
+  jaguar::profiler::addBusy(busy);
+  window.longestUpdate = std::max<uint32_t>(window.longestUpdate, busy);
   waitVbl();
   window.updateStart = jaguar::profiler::now();
   window.measure();
@@ -204,6 +229,7 @@ bool VideoSystem::readsBuffersLive() const { return true; }
 int VideoSystem::refreshRate() const { return m_window->geometry.hertz; }
 
 void VideoSystem::present() {
+  jaguar::blitter::wait();
   Window &window = *m_window;
   const unsigned keyboardPanel = jaguar::keyboard::isCompact()
                                      ? KEYBOARD_PANEL | COMPACT_KEYBOARD
@@ -215,6 +241,16 @@ void VideoSystem::present() {
   }
   m_frameChanged = false;
   window.overlayShown = overlay;
+  if (m_shownSlot != NO_FRAME) {
+    const std::size_t index = static_cast<std::size_t>(m_shownSlot);
+    if (window.built[index] && window.sourceOverlays[index] == overlay &&
+        window.sources[index].revision == m_shownRevision) {
+      window.pending = m_shownSlot == window.current ? NO_FRAME : m_shownSlot;
+      return;
+    }
+    m_shown = window.sources[index];
+    m_shownSlot = NO_FRAME;
+  }
   for (int slot = 0; slot < FRAMES; ++slot) {
     const std::size_t index = static_cast<std::size_t>(slot);
     if (window.built[index] && window.sourceOverlays[index] == overlay &&

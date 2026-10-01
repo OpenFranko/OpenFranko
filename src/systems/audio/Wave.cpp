@@ -93,15 +93,16 @@ Sound readWave(const std::vector<uint8_t> &file) {
   const std::size_t count = dataSize / frameBytes;
   Sound sound;
   sound.rate = static_cast<int>(format->rate);
-  sound.frames.reserve(count);
-  for (std::size_t frame = 0; frame < count; ++frame) {
-    int sum = 0;
-    for (std::size_t channel = 0; channel < format->channels; ++channel) {
-      sum += sampleAt(data + frame * frameBytes + channel * sampleBytes,
-                      format->bits);
+  sound.frames.resize(count);
+  const bool stereo = format->channels == 2;
+  const uint8_t *frameData = data;
+  for (int8_t &value : sound.frames) {
+    int sample = sampleAt(frameData, format->bits);
+    if (stereo) {
+      sample = (sample + sampleAt(frameData + sampleBytes, format->bits)) / 2;
     }
-    sound.frames.push_back(
-        static_cast<int8_t>((sum / format->channels) >> BYTE_SHIFT));
+    value = static_cast<int8_t>(sample >> BYTE_SHIFT);
+    frameData += frameBytes;
   }
   return sound;
 }

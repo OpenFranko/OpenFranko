@@ -10,6 +10,8 @@ constexpr uint16_t DIVIDER = 0xFFFF;
 constexpr uint32_t TIMER2_PRESCALER_READ = JERRY + 0x003A;
 constexpr uint32_t TIMER2_DIVIDER_READ = JERRY + 0x003C;
 
+uint32_t busyTicks = 0;
+
 } // namespace
 
 void start() {
@@ -24,5 +26,9 @@ uint16_t now() {
 uint16_t since(uint16_t earlier) {
   return static_cast<uint16_t>(now() - earlier);
 }
+
+void addBusy(uint16_t ticks) { busyTicks += ticks; }
+
+uint32_t busy() { return busyTicks; }
 
 } // namespace openfranko::src::systems::jaguar::profiler

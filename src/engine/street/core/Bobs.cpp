@@ -1,5 +1,8 @@
 #include "Bobs.h"
 
+#include "../../../systems/Multiply.h"
+#include "../../../systems/graphics/PixelOps.h"
+
 #include <algorithm>
 #include <iterator>
 #include <stdexcept>
@@ -109,7 +112,9 @@ RowCursor rowCursor(const Shape &shape, int top) {
   RowCursor cursor;
   cursor.span = shape.mask.rows + row;
   cursor.spanStep = flipY ? -1 : 1;
-  cursor.row = picture.pixels.data() + row * picture.width;
+  cursor.row = picture.pixels.data() +
+               systems::multiplySigned16(static_cast<int16_t>(row),
+                                         static_cast<int16_t>(picture.width));
   cursor.rowStep = flipY ? -picture.width : picture.width;
   cursor.origin = (shape.mask.orientation & ImageBank::FLIP_X)
                       ? shape.left + picture.width - 1
@@ -235,15 +240,19 @@ bool overlaps(const Shape &tested, const Shape &other) {
 } // namespace
 
 void ImageBank::clear() {
+  systems::graphics::pixels::finish();
   m_entries.clear();
   m_outlines.clear();
+  m_boxes.clear();
 }
 
 void ImageBank::load(int base, std::vector<Picture> frames) {
+  systems::graphics::pixels::finish();
   const std::size_t end = static_cast<std::size_t>(base) + frames.size();
   if (m_entries.size() < end) {
     m_entries.resize(end);
     m_outlines.resize(end);
+    m_boxes.resize(end);
   }
   for (std::size_t i = 0; i < frames.size(); ++i) {
     Entry &entry = m_entries[static_cast<std::size_t>(base) + i];
@@ -254,6 +263,7 @@ void ImageBank::load(int base, std::vector<Picture> frames) {
     entry.picture = std::move(frames[i]);
     entry.orientation = 0;
     entry.masked = true;
+    refreshBox(static_cast<std::size_t>(base) + i);
   }
 }
 
@@ -284,16 +294,38 @@ uint16_t ImageBank::orientation(int number) const {
 }
 
 void ImageBank::orient(int number, uint16_t flags) {
-  if (find(number)) {
-    m_entries[static_cast<std::size_t>(number)].orientation =
-        flags & (FLIP_X | FLIP_Y);
+  if (!find(number)) {
+    return;
+  }
+  uint16_t &orientation =
+      m_entries[static_cast<std::size_t>(number)].orientation;
+  const uint16_t wanted = flags & (FLIP_X | FLIP_Y);
+  if (orientation != wanted) {
+    orientation = wanted;
+    refreshBox(static_cast<std::size_t>(number));
   }
 }
 
 void ImageBank::noMask(int number) {
   if (find(number)) {
     m_entries[static_cast<std::size_t>(number)].masked = false;
+    refreshBox(static_cast<std::size_t>(number));
   }
+}
+
+void ImageBank::refreshBox(std::size_t number) {
+  const Entry &entry = m_entries[number];
+  Box &box = m_boxes[number];
+  if (!entry.loaded || !entry.masked) {
+    box = Box{};
+    return;
+  }
+  const Picture &picture = entry.picture;
+  box.hotX = static_cast<int16_t>(hotX(picture, entry.orientation));
+  box.hotY = static_cast<int16_t>(hotY(picture, entry.orientation));
+  box.width = static_cast<int16_t>((picture.width + WORD_PIXELS - 1) /
+                                   WORD_PIXELS * WORD_PIXELS);
+  box.height = static_cast<int16_t>(picture.height);
 }
 
 bool ImageBank::isMasked(int number) const {
@@ -304,85 +336,118 @@ amal::Object &BobLayer::object(int number) {
   return m_bobs.at(static_cast<std::size_t>(number)).object;
 }
 
-void BobLayer::set(int number, int x, int y, int image) {
+BobLayer::Bob &BobLayer::activate(int number) {
   Bob &bob = m_bobs.at(static_cast<std::size_t>(number));
   bob.active = true;
+  m_active[static_cast<std::size_t>(number / MASK_BITS)] |=
+      1u << (number % MASK_BITS);
+  return bob;
+}
+
+void BobLayer::set(int number, int x, int y, int image) {
+  Bob &bob = activate(number);
   bob.object.x = static_cast<int16_t>(x);
   bob.object.y = static_cast<int16_t>(y);
   bob.object.image = static_cast<int16_t>(image);
 }
 
 void BobLayer::setPosition(int number, int x, int y) {
-  Bob &bob = m_bobs.at(static_cast<std::size_t>(number));
-  bob.active = true;
+  Bob &bob = activate(number);
   bob.object.x = static_cast<int16_t>(x);
   bob.object.y = static_cast<int16_t>(y);
 }
 
 void BobLayer::setX(int number, int x) {
-  Bob &bob = m_bobs.at(static_cast<std::size_t>(number));
-  bob.active = true;
+  Bob &bob = activate(number);
   bob.object.x = static_cast<int16_t>(x);
 }
 
 void BobLayer::setImage(int number, int image) {
-  Bob &bob = m_bobs.at(static_cast<std::size_t>(number));
-  bob.active = true;
+  Bob &bob = activate(number);
   bob.object.image = static_cast<int16_t>(image);
 }
 
 void BobLayer::off(int number) {
   m_bobs.at(static_cast<std::size_t>(number)).active = false;
+  m_active[static_cast<std::size_t>(number / MASK_BITS)] &=
+      ~(1u << (number % MASK_BITS));
 }
 
 void BobLayer::offAll() {
-  for (Bob &bob : m_bobs) {
-    bob.active = false;
+  for (int word = 0; word < MASK_WORDS; ++word) {
+    int number = word * MASK_BITS;
+    for (uint32_t bits = m_active[static_cast<std::size_t>(word)]; bits != 0;
+         bits >>= 1, ++number) {
+      if ((bits & 1u) != 0) {
+        m_bobs[static_cast<std::size_t>(number)].active = false;
+      }
+    }
   }
+  m_active.fill(0);
 }
 
 bool BobLayer::collide(int number, const ImageBank &images, int first,
                        int last) {
-  m_collisions.fill(false);
-  const auto shapeOf = [&images](const Bob &bob, Shape &shape) {
-    if (!bob.active) {
-      return false;
-    }
-    const int image =
-        static_cast<uint16_t>(bob.object.image) & ImageBank::NUMBER_MASK;
-    shape.mask = images.mask(image);
-    if (!shape.mask.picture) {
-      return false;
-    }
-    shape.left =
-        bob.object.x - hotX(*shape.mask.picture, shape.mask.orientation);
-    shape.top =
-        bob.object.y - hotY(*shape.mask.picture, shape.mask.orientation);
-    return true;
-  };
-
-  Shape tested;
-  if (!shapeOf(m_bobs.at(static_cast<std::size_t>(number)), tested)) {
+  m_hits.fill(0);
+  const amal::Object &testedBob =
+      m_bobs.at(static_cast<std::size_t>(number)).object;
+  if (!m_bobs[static_cast<std::size_t>(number)].active) {
     return false;
   }
+  const int testedImage =
+      static_cast<uint16_t>(testedBob.image) & ImageBank::NUMBER_MASK;
+  const ImageBank::Box *testedBox = images.box(testedImage);
+  if (!testedBox) {
+    return false;
+  }
+  const int testedLeft = testedBob.x - testedBox->hotX;
+  const int testedTop = testedBob.y - testedBox->hotY;
+  const int testedRight = testedLeft + testedBox->width;
+  const int testedBottom = testedTop + testedBox->height;
+  Shape tested;
   bool any = false;
+  const int begin = std::max(first, 0);
   const int end = std::min(last, BOBS - 1);
-  for (int other = std::max(first, 0); other <= end; ++other) {
-    const Bob &bob = m_bobs[static_cast<std::size_t>(other)];
-    if (!bob.active || other == number) {
-      continue;
-    }
-    Shape shape;
-    if (shapeOf(bob, shape) && overlaps(tested, shape)) {
-      m_collisions[static_cast<std::size_t>(other)] = true;
-      any = true;
+  for (int base = begin - begin % MASK_BITS; base <= end; base += MASK_BITS) {
+    uint32_t bits = m_active[static_cast<std::size_t>(base / MASK_BITS)];
+    for (int other = base; bits != 0 && other <= end; ++other, bits >>= 1) {
+      if ((bits & 1u) == 0 || other < begin || other == number) {
+        continue;
+      }
+      const amal::Object &object =
+          m_bobs[static_cast<std::size_t>(other)].object;
+      const int image =
+          static_cast<uint16_t>(object.image) & ImageBank::NUMBER_MASK;
+      const ImageBank::Box *box = images.box(image);
+      if (!box) {
+        continue;
+      }
+      const int left = object.x - box->hotX;
+      const int top = object.y - box->hotY;
+      if (left >= testedRight || testedLeft >= left + box->width ||
+          top >= testedBottom || testedTop >= top + box->height) {
+        continue;
+      }
+      if (!tested.mask.picture) {
+        tested = Shape{images.mask(testedImage), testedLeft, testedTop};
+      }
+      if (overlaps(tested, Shape{images.mask(image), left, top})) {
+        m_hits[static_cast<std::size_t>(other / MASK_BITS)] |=
+            1u << (other % MASK_BITS);
+        any = true;
+      }
     }
   }
   return any;
 }
 
 bool BobLayer::collided(int number) const {
-  return m_collisions.at(static_cast<std::size_t>(number));
+  if (number < 0 || number >= BOBS) {
+    throw std::out_of_range("Bobs: no such bob");
+  }
+  return (m_hits[static_cast<std::size_t>(number / MASK_BITS)] >>
+              (number % MASK_BITS) &
+          1u) != 0;
 }
 
 const std::vector<BobLayer::Placement> &
@@ -390,6 +455,11 @@ BobLayer::placements(const IndexedSurface &surface,
                      const ImageBank &images) const {
   m_order.clear();
   for (int number = 0; number < BOBS; ++number) {
+    if ((m_active[static_cast<std::size_t>(number / MASK_BITS)] >>
+         (number % MASK_BITS)) == 0) {
+      number |= MASK_BITS - 1;
+      continue;
+    }
     const Bob &bob = m_bobs[static_cast<std::size_t>(number)];
     if (!bob.active) {
       continue;
@@ -468,7 +538,12 @@ std::size_t BobLayer::drawSaving(IndexedSurface &surface, ImageBank &images,
     area.left = x1;
     area.top = y1;
     area.pixels.reshape(x2 - x1, y2 - y1);
-    area.pixels.copy(surface, x1, y1, x2, y2, 0, 0);
+  }
+  for (std::size_t index = 0; index < count; ++index) {
+    SavedArea &area = saved[index];
+    area.pixels.copy(surface, area.left, area.top,
+                     area.left + area.pixels.width(),
+                     area.top + area.pixels.height(), 0, 0);
   }
   drawPlaced(surface, images, placedBobs);
   return count;

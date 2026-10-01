@@ -25,6 +25,11 @@ struct Picture {
 class IndexedSurface {
 public:
   IndexedSurface(int width, int height);
+  IndexedSurface(const IndexedSurface &other);
+  IndexedSurface(IndexedSurface &&other) noexcept = default;
+  IndexedSurface &operator=(const IndexedSurface &other);
+  IndexedSurface &operator=(IndexedSurface &&other) noexcept;
+  ~IndexedSurface();
 
   int width() const;
   int height() const;

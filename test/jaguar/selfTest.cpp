@@ -1,7 +1,9 @@
 #include "../../src/systems/jaguar/Blitter.h"
 #include "../../src/systems/jaguar/Console.h"
 #include "../../src/systems/jaguar/Eeprom.h"
+#include "../../src/systems/jaguar/Hardware.h"
 #include "../../src/systems/jaguar/Profiler.h"
+#include "../../src/systems/jaguar/RiscProgram.h"
 #include "../../src/systems/jaguar/Runtime.h"
 
 #include <algorithm>
@@ -105,6 +107,7 @@ void runCopy(const Case &test) {
     blitter::copyMirrored(from, to, test.width, test.height, masked);
     break;
   }
+  blitter::wait();
   const uint16_t ticks = profiler::since(start);
   if (same(test, target, expected) && test.timed) {
     char line[96];
@@ -126,6 +129,7 @@ void runFill(const char *name, int targetX, int width, int height, int pitch) {
     }
   }
   blitter::fill({target.data() + targetX, pitch}, width, height, 0x5A);
+  blitter::wait();
   same(test, target, expected);
 }
 
@@ -313,16 +317,36 @@ int main() {
       {"mirmask p37 neg", Kind::MirroredMasked, 0, 5, 37, 21, -37, 64, false},
       {"mirmask p37 bob", Kind::MirroredMasked, 0, 3, 37, 64, 37, 368, true},
       {"mirror 320x200", Kind::Mirrored, 0, 0, 320, 200, 320, 320, true},
+      {"copy w6 dst5", Kind::Copy, 1, 5, 6, 7, 64, 72, false},
+      {"mask w5", Kind::Masked, 3, 1, 5, 6, 64, 64, false},
+      {"mask w1 neg", Kind::Masked, 2, 7, 1, 9, -64, 64, false},
+      {"mirror w7 neg", Kind::Mirrored, 1, 4, 7, 6, -64, 64, false},
+      {"mirmask w3", Kind::MirroredMasked, 2, 6, 3, 5, 64, 64, false},
+      {"mirmask w2 p37", Kind::MirroredMasked, 0, 3, 2, 8, 37, 64, false},
   };
-  for (const Case &test : cases) {
-    runCopy(test);
-  }
-  runFill("fill dst+3", 3, 37, 4, 64);
-  runFill("fill aligned", 0, 64, 3, 64);
-  runFill("fill p37", 2, 30, 9, 37);
-  runFill("fill p37 tall", 5, 30, 40, 37);
-  runFill("fill p322", 1, 300, 200, 322);
+  const auto runBlits = [&cases]() {
+    for (const Case &test : cases) {
+      runCopy(test);
+    }
+    runFill("fill dst+3", 3, 37, 4, 64);
+    runFill("fill aligned", 0, 64, 3, 64);
+    runFill("fill p37", 2, 30, 9, 37);
+    runFill("fill p37 tall", 5, 30, 40, 37);
+    runFill("fill p322", 1, 300, 200, 322);
+    runFill("fill w3", 6, 3, 5, 64);
+    runFill("fill w1 p37", 4, 1, 7, 37);
+  };
+  runBlits();
+  const RiscProgram gpu = gpuProgram();
+  longWord(GPU_CTRL) = 0;
+  loadProgram(gpu);
+  blitter::useQueue(gpu.entries[2]);
+  longWord(GPU_PC) = gpu.entries[0];
+  longWord(GPU_CTRL) = RISC_GO;
+  report("GPU queue:");
+  runBlits();
   testMemory();
+  blitter::stopQueue();
   testEeprom();
   char summary[64];
   std::snprintf(summary, sizeof(summary), "Self test: %d passed, %d failed",

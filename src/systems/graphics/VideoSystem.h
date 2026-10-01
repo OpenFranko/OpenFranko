@@ -37,6 +37,8 @@ private:
 
   std::unique_ptr<Window> m_window;
   Display m_shown;
+  int m_shownSlot = -1;
+  uint32_t m_shownRevision = 0;
   std::vector<uint32_t> m_frame;
   bool m_frameChanged = false;
   bool m_ntsc = false;

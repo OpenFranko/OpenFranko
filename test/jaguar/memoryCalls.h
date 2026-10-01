@@ -17,6 +17,7 @@ struct CallSite {
 void start();
 void stop();
 std::vector<CallSite> heaviest(std::size_t count);
+std::vector<CallSite> busiestArithmetic(std::size_t count);
 
 } // namespace memory_calls
 

@@ -98,4 +98,6 @@ void fill(Target target, int width, int height, uint8_t value) {
   }
 }
 
+void finish() {}
+
 } // namespace openfranko::src::systems::graphics::pixels

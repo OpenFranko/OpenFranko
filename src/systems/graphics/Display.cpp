@@ -23,6 +23,14 @@ void mapPalette(const Layer &layer, int row, std::vector<uint32_t> &colors) {
 
 } // namespace
 
+uint32_t newRevision() {
+  static uint32_t revision = 0;
+  if (++revision == 0) {
+    ++revision;
+  }
+  return revision;
+}
+
 Layer solidLayer(uint16_t color, int top, int rows, int columns) {
   Layer layer;
   layer.top = top;

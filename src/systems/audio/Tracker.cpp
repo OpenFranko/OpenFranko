@@ -1,4 +1,5 @@
 #include "audio/Tracker.h"
+#include "Multiply.h"
 
 #include <algorithm>
 #include <cmath>
@@ -6,16 +7,22 @@
 namespace openfranko::src::systems::audio {
 namespace {
 
+using systems::multiplySigned16;
+using systems::multiplyUnsigned16;
+
 constexpr int SEMITONES = 12;
 constexpr int FINE_STEPS = 128;
 constexpr int OCTAVE_STEPS = SEMITONES * FINE_STEPS;
 constexpr uint64_t PERIOD_BASE = 13696ull * Tracker::PERIOD_ONE;
 constexpr int FRACTION = 30;
+constexpr int HALF_BITS = 16;
 constexpr double FRACTION_ONE = 1073741824.0;
 constexpr uint32_t MIN_PERIOD = 1 * Tracker::PERIOD_ONE;
 constexpr uint32_t MAX_PERIOD = 0xFFFF * Tracker::PERIOD_ONE;
 constexpr int CENTER_PAN = 0x80;
 constexpr int VOLUME_SCALE = 16;
+constexpr int GAIN_SHIFT = 8;
+constexpr int ARPEGGIO_STEPS = 3;
 constexpr int MAX_VOLUME = 64;
 constexpr int MAX_NOTE = 120;
 
@@ -51,9 +58,41 @@ const Tables &tables() {
   return instance;
 }
 
-int floorDivide(int value, int divisor) {
-  const int quotient = value / divisor;
-  return value % divisor < 0 ? quotient - 1 : quotient;
+uint32_t halfProduct(uint32_t left, uint32_t right) {
+  return multiplyUnsigned16(static_cast<uint16_t>(left),
+                            static_cast<uint16_t>(right));
+}
+
+uint64_t product(uint32_t left, uint32_t right) {
+  const uint32_t leftHigh = left >> HALF_BITS;
+  const uint32_t rightHigh = right >> HALF_BITS;
+  return (static_cast<uint64_t>(halfProduct(leftHigh, rightHigh))
+          << (2 * HALF_BITS)) +
+         (static_cast<uint64_t>(halfProduct(leftHigh, right)) << HALF_BITS) +
+         (static_cast<uint64_t>(halfProduct(left, rightHigh)) << HALF_BITS) +
+         halfProduct(left, right);
+}
+
+uint32_t octavePeriod(int within) {
+  static std::array<uint32_t, OCTAVE_STEPS> periods{};
+  uint32_t &period = periods[static_cast<std::size_t>(within)];
+  if (period == 0) {
+    const Tables &table = tables();
+    uint64_t value = PERIOD_BASE;
+    value =
+        value * table.semitone[static_cast<std::size_t>(within / FINE_STEPS)] >>
+        FRACTION;
+    value = value * table.fine[static_cast<std::size_t>(within % FINE_STEPS)] >>
+            FRACTION;
+    period = static_cast<uint32_t>(value);
+  }
+  return period;
+}
+
+int gain(int volume, int side) {
+  return multiplySigned16(static_cast<int16_t>(VOLUME_SCALE * volume),
+                          static_cast<int16_t>(side)) >>
+         GAIN_SHIFT;
 }
 
 uint32_t clampPeriod(int64_t period) {
@@ -66,16 +105,17 @@ uint32_t clampPeriod(int64_t period) {
 Tracker::Tracker(const S3mModule &module) : m_module(module) { restart(); }
 
 uint32_t Tracker::notePeriod(int note, int finetune) {
-  const int steps = note * FINE_STEPS + finetune;
-  const int octave = floorDivide(steps, OCTAVE_STEPS);
-  const int within = steps - octave * OCTAVE_STEPS;
-  const Tables &table = tables();
-  uint64_t period = PERIOD_BASE;
-  period =
-      period * table.semitone[static_cast<std::size_t>(within / FINE_STEPS)] >>
-      FRACTION;
-  period = period * table.fine[static_cast<std::size_t>(within % FINE_STEPS)] >>
-           FRACTION;
+  int within = note * FINE_STEPS + finetune;
+  int octave = 0;
+  while (within < 0) {
+    within += OCTAVE_STEPS;
+    --octave;
+  }
+  while (within >= OCTAVE_STEPS) {
+    within -= OCTAVE_STEPS;
+    ++octave;
+  }
+  uint64_t period = octavePeriod(within);
   if (octave >= 0) {
     period >>= octave;
   } else {
@@ -88,11 +128,15 @@ uint32_t Tracker::transposed(uint32_t period, int semitones) {
   if (semitones <= 0) {
     return period;
   }
+  int octaves = 0;
+  while (semitones >= SEMITONES) {
+    semitones -= SEMITONES;
+    ++octaves;
+  }
   const uint64_t scaled =
-      static_cast<uint64_t>(period) *
-          tables().semitone[static_cast<std::size_t>(semitones % SEMITONES)] >>
+      product(period, tables().semitone[static_cast<std::size_t>(semitones)]) >>
       FRACTION;
-  return clampPeriod(static_cast<int64_t>(scaled >> (semitones / SEMITONES)));
+  return clampPeriod(static_cast<int64_t>(scaled >> octaves));
 }
 
 void Tracker::restart() {
@@ -262,7 +306,9 @@ void Tracker::output() {
     if (channel.arpeggioOn) {
       arpeggio =
           channel.arpeggio[static_cast<std::size_t>(channel.arpeggioCount)];
-      channel.arpeggioCount = (channel.arpeggioCount + 1) % 3;
+      channel.arpeggioCount = channel.arpeggioCount + 1 < ARPEGGIO_STEPS
+                                  ? channel.arpeggioCount + 1
+                                  : 0;
     }
     voice.sample = channel.sample;
     voice.trigger = channel.trigger;
@@ -270,8 +316,8 @@ void Tracker::output() {
     voice.period = transposed(channel.period, arpeggio);
     const int volume = channel.sounding ? channel.volume : 0;
     const int pan = m_module.pans[static_cast<std::size_t>(index)] - CENTER_PAN;
-    voice.gainLeft = VOLUME_SCALE * volume * (CENTER_PAN - pan) >> 8;
-    voice.gainRight = VOLUME_SCALE * volume * (CENTER_PAN + pan) >> 8;
+    voice.gainLeft = gain(volume, CENTER_PAN - pan);
+    voice.gainRight = gain(volume, CENTER_PAN + pan);
     channel.trigger = false;
   }
 }

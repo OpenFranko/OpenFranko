@@ -72,6 +72,10 @@ sharedAddress:
 	dc.l	0
 clockDivider:
 	dc.l	18
+stepHigh:
+	dc.l	0
+stepLow:
+	dc.l	0
 
 i2sInterrupt:
 	movei	#DSP_FLAGS,r30
@@ -293,6 +297,7 @@ haveTick:
 	addq	#1,r24
 	addq	#32,r15
 	movei	#voices,r14
+	movei	#voicePeriods,r12
 	moveq	#MUSIC_VOICES,r9
 	movei	#applyVoice,r26
 applyVoice:
@@ -312,9 +317,50 @@ applyNoTrigger:
 	load	(r15+3),r3
 	store	r3,(r14+5)
 	load	(r15+4),r3
-	store	r3,(r14+2)
-	load	(r15+5),r3
-	store	r3,(r14+3)
+	load	(r12),r5
+	cmp	r3,r5
+	movei	#applySameStep,r0
+	jump	eq,(r0)
+	cmpq	#0,r3
+	jump	eq,(r0)
+	nop
+	store	r3,(r12)
+	movei	#stepHigh,r0
+	load	(r0),r5
+	movei	#stepLow,r0
+	load	(r0),r6
+	moveq	#0,r0
+	moveq	#0,r7
+	moveq	#0,r8
+	movei	#64,r2
+	movei	#divideStep,r25
+divideStep:
+	move	r5,r4
+	shrq	#31,r4
+	shlq	#1,r0
+	or	r4,r0
+	move	r6,r4
+	shrq	#31,r4
+	shlq	#1,r5
+	or	r4,r5
+	shlq	#1,r6
+	move	r8,r4
+	shrq	#31,r4
+	shlq	#1,r7
+	or	r4,r7
+	shlq	#1,r8
+	cmp	r3,r0
+	jr	cs,divideNext
+	nop
+	sub	r3,r0
+	addq	#1,r8
+divideNext:
+	subq	#1,r2
+	jump	ne,(r25)
+	nop
+	store	r7,(r14+2)
+	store	r8,(r14+3)
+applySameStep:
 	load	(r15+6),r3
 	store	r3,(r14+6)
 	move	r1,r4
@@ -329,6 +375,7 @@ applyNoTrigger:
 applyActive:
 	nop
 	store	r4,(r14+7)
+	addq	#4,r12
 	addq	#32,r15
 	addq	#32,r14
 	subq	#1,r9
@@ -736,6 +783,8 @@ voiceCounter:
 	dc.l	0
 filterChannels:
 	dc.l	0
+voicePeriods:
+	dc.l	0,0,0,0
 blockCount:
 	dc.l	0
 accumulator:

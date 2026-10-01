@@ -24,8 +24,9 @@ int product(int16_t left, int16_t right) {
 }
 
 bool isSmall(int width, int height) {
-  return width < PHRASE || product(static_cast<int16_t>(width),
-                                   static_cast<int16_t>(height)) < SMALL_AREA;
+  return !blitter::isQueued() &&
+         (width < PHRASE || product(static_cast<int16_t>(width),
+                                    static_cast<int16_t>(height)) < SMALL_AREA);
 }
 
 blitter::Source from(Source source) { return {source.pixels, source.pitch}; }
@@ -88,6 +89,7 @@ void copy(Source source, Target target, int width, int height) {
     return;
   }
   if (isSmall(width, height)) {
+    blitter::wait();
     for (int row = 0; row < height; ++row) {
       std::memmove(target.pixels, source.pixels,
                    static_cast<std::size_t>(width));
@@ -116,6 +118,7 @@ void move(Source source, Target target, int width, int height) {
     return;
   }
   if (isSmall(width, height) || width > SCRATCH_BYTES) {
+    blitter::wait();
     for (int row = height - 1; row >= 0; --row) {
       std::memmove(target.pixels + product(static_cast<int16_t>(row),
                                            static_cast<int16_t>(target.pitch)),
@@ -134,6 +137,7 @@ void draw(Source source, Target target, int width, int height, bool transparent,
     return;
   }
   if (isSmall(width, height)) {
+    blitter::wait();
     drawLoop(source, target, width, height, transparent, mirrored);
     return;
   }
@@ -151,6 +155,7 @@ void fill(Target target, int width, int height, uint8_t value) {
     return;
   }
   if (isSmall(width, height)) {
+    blitter::wait();
     for (int row = 0; row < height; ++row) {
       std::memset(target.pixels, value, static_cast<std::size_t>(width));
       target.pixels += target.pitch;
@@ -159,5 +164,7 @@ void fill(Target target, int width, int height, uint8_t value) {
   }
   blitter::fill(to(target), width, height, value);
 }
+
+void finish() { blitter::wait(); }
 
 } // namespace openfranko::src::systems::graphics::pixels

@@ -24,6 +24,7 @@ void move(Source source, Target target, int width, int height);
 void draw(Source source, Target target, int width, int height, bool transparent,
           bool mirrored);
 void fill(Target target, int width, int height, uint8_t value);
+void finish();
 
 } // namespace pixels
 } // namespace graphics

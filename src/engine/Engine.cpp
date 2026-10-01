@@ -1,5 +1,7 @@
 #include "Engine.h"
 
+#include "../systems/graphics/PixelOps.h"
+
 #include "assets/Assets.h"
 #include "assets/GameFiles.h"
 #include "assets/RequiredFiles.h"
@@ -144,6 +146,7 @@ void Engine::updateState() {
   }
   std::optional<states::EngineStateId> nextState = m_currentState->update();
   while (nextState) {
+    systems::graphics::pixels::finish();
     switchState(*nextState);
     nextState = m_currentState->update();
   }

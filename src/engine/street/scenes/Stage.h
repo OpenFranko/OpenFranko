@@ -14,6 +14,8 @@
 #include "../ui/StatusPanel.h"
 #include "StreetHost.h"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -35,8 +37,8 @@ public:
 
   void advance(const StreetInput &input);
   void compose(std::vector<uint32_t> &frame) const;
-  systems::graphics::Display output() const;
-  systems::graphics::Display upcomingOutput() const;
+  const systems::graphics::Display &output() const;
+  const systems::graphics::Display &upcomingOutput() const;
 
   Outcome outcome() const;
   const core::BobLayer &bobs() const;
@@ -136,11 +138,32 @@ private:
 
   Flow closePlayScreen();
   Flow closeWait(int frames);
-  systems::graphics::Display
+  struct CachedOutput {
+    const uint8_t *screenPixels = nullptr;
+    int screenWidth = 0;
+    int screenHeight = 0;
+    effects::color::AmigaPalette palette;
+    amal::Object screenDisplay;
+    int offsetX = 0;
+    const uint8_t *panelPixels = nullptr;
+    int panelWidth = 0;
+    int panelY = 0;
+    effects::color::AmigaPalette panelPalette;
+    ui::StageLayout window;
+    systems::graphics::Display display;
+    uint32_t used = 0;
+    bool valid = false;
+  };
+
+  static constexpr std::size_t CACHED_OUTPUTS = 3;
+
+  const systems::graphics::Display &
   buildOutput(const ui::StageDisplay &copper,
               const core::IndexedSurface &screen) const;
 
   Closing m_closing = Closing::Wait;
+  mutable std::array<CachedOutput, CACHED_OUTPUTS> m_outputs;
+  mutable uint32_t m_outputUses = 0;
   core::UpdateHold m_hold;
 };
 
