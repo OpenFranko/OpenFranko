@@ -7,9 +7,12 @@ JOBS=${JOBS:-$(nproc)}
 
 TOOLCHAIN_URL=https://github.com/haarer/toolchain68k/releases/download/gcc152-update1/toolchain-m68k-elf-linux-gcc-15.2.0.tar.gz
 TOOLCHAIN_SHA256=ad41506ab6c694d0566f4d3b97d44ab301376cc01ecb5174789d50ad236500e7
+SDK_URL=https://github.com/cubanismo/jaguar-sdk.git
+SDK_COMMIT=b806b6fb8c8f18f3a0e7ce1eef841a0a212bf480
 
 DEPS_DIR=$BUILD_DIR/deps
 TOOLCHAIN_DIR=$BUILD_DIR/toolchain
+SDK_DIR=$BUILD_DIR/jaguar-sdk
 PREFIX=${JAGUAR_TOOLCHAIN_PREFIX:-$TOOLCHAIN_DIR/bin/m68k-elf-}
 HOST_DIR=$BUILD_DIR/host
 CROSS_DIR=$BUILD_DIR/m68k
@@ -25,8 +28,10 @@ usage() {
   echo "Builds the Atari Jaguar version with an m68k-elf GCC and rmac into"
   echo "$BUILD_DIR. Unless JAGUAR_TOOLCHAIN_PREFIX names an installed"
   echo "toolchain (e.g. m68k-elf-), GCC 15.2 with newlib is downloaded into"
-  echo "$TOOLCHAIN_DIR first. With --assets it packs the extracted game"
-  echo "data into a cartridge image, $GAME_DIR/franko.j64."
+  echo "$TOOLCHAIN_DIR first. Unless --sdk is given or rmac is on the PATH,"
+  echo "the Jaguar SDK is fetched into $SDK_DIR and its rmac and"
+  echo "jagcrypt are built. With --assets it packs the extracted game data"
+  echo "into a cartridge image, $GAME_DIR/franko.j64."
   echo "-D options are passed to CMake. Environment: BUILD_DIR, JOBS ($JOBS),"
   echo "JAGUAR_TOOLCHAIN_PREFIX, JAGSDK."
 }
@@ -34,6 +39,15 @@ usage() {
 fail() {
   echo "Error: $*" >&2
   exit 1
+}
+
+run_logged() {
+  local log=$1
+  shift
+  if ! "$@" > "$log" 2>&1; then
+    tail -n 20 "$log" >&2
+    fail "$1 failed, see $log"
+  fi
 }
 
 download() {
@@ -65,6 +79,34 @@ install_toolchain() {
   mv "$TOOLCHAIN_DIR.part" "$TOOLCHAIN_DIR"
 }
 
+install_sdk() {
+  if [ -n "${JAGSDK:-}" ] || command -v rmac > /dev/null; then
+    return
+  fi
+  if [ ! -x "$SDK_DIR/tools/bin/rmac" ] ||
+    [ ! -x "$SDK_DIR/tools/bin/jagcrypt" ]; then
+    local tool
+    for tool in git make; do
+      command -v "$tool" > /dev/null || fail "$tool not found"
+    done
+    echo "Fetching the Jaguar SDK into $SDK_DIR"
+    rm -rf "$SDK_DIR"
+    git init -q "$SDK_DIR"
+    git -C "$SDK_DIR" fetch -q --depth 1 "$SDK_URL" "$SDK_COMMIT" ||
+      fail "Failed to fetch $SDK_URL"
+    git -C "$SDK_DIR" checkout -q FETCH_HEAD
+    git -C "$SDK_DIR" submodule update -q --init tools/src/rmac \
+      tools/src/pc_jagcrypt || fail "Failed to fetch rmac and jagcrypt"
+    echo "Building rmac and jagcrypt"
+    mkdir -p "$SDK_DIR/tools/bin"
+    run_logged "$BUILD_DIR/rmac.log" make -C "$SDK_DIR/tools/src/rmac"
+    cp "$SDK_DIR/tools/src/rmac/rmac" "$SDK_DIR/tools/bin"
+    run_logged "$BUILD_DIR/jagcrypt.log" make -C "$SDK_DIR/tools/src/pc_jagcrypt"
+    cp "$SDK_DIR/tools/src/pc_jagcrypt/jagcrypt" "$SDK_DIR/tools/bin"
+  fi
+  export JAGSDK=$SDK_DIR
+}
+
 check_tools() {
   local tool
   for tool in cmake "${PREFIX}g++" "${PREFIX}objcopy" "${PREFIX}nm" dd stat; do
@@ -85,8 +127,13 @@ build_host_tools() {
 
 build_game() {
   echo "Building OpenFranko for the Jaguar"
-  local compiler cached
+  local compiler cached rmac
   compiler=$(command -v "${PREFIX}g++")
+  if [ -x "${JAGSDK:-}/tools/bin/rmac" ]; then
+    rmac=$JAGSDK/tools/bin/rmac
+  else
+    rmac=$(command -v rmac)
+  fi
   if [ -f "$CROSS_DIR/CMakeCache.txt" ]; then
     cached=$(sed -n 's/^CMAKE_CXX_COMPILER:[A-Z]*=//p' "$CROSS_DIR/CMakeCache.txt")
     if [ "$cached" != "$compiler" ]; then
@@ -96,7 +143,8 @@ build_game() {
   fi
   cmake -S "$SOURCE_DIR" -B "$CROSS_DIR" \
     -DCMAKE_TOOLCHAIN_FILE="$SOURCE_DIR/cmake/JaguarToolchain.cmake" \
-    -DJAGUAR_TOOLCHAIN_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
+    -DJAGUAR_TOOLCHAIN_PREFIX="$PREFIX" -DJAGUAR_RMAC="$rmac" \
+    -DCMAKE_BUILD_TYPE=Release \
     "${CMAKE_ARGS[@]}"
   cmake --build "$CROSS_DIR" --target OpenFranko -j "$JOBS"
 }
@@ -193,6 +241,7 @@ done
 
 mkdir -p "$BUILD_DIR"
 install_toolchain
+install_sdk
 check_tools
 build_game
 if [ -n "$ASSETS_DIR" ]; then

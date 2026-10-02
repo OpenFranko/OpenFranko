@@ -179,30 +179,32 @@ Amiga's copper. JERRY's DSP mixes the music and the sound effects at about
 22 kHz, with the Amiga's low-pass filter; the 68000 reads the S3M modules and
 tells the DSP what each voice plays.
 
-It needs CMake, curl, a C++ compiler for the computer you build on, and the
-`rmac` assembler from the [Jaguar SDK](https://github.com/cubanismo/jaguar-sdk),
-whose `maketools.sh` builds it into `tools/bin`. `build-jaguar.sh` downloads an
-`m68k-elf` GCC 15.2 with C++ support and newlib from
-[toolchain68k](https://github.com/haarer/toolchain68k) into
+It needs CMake, curl, git, make and a C++ compiler for the computer you build
+on. `build-jaguar.sh` downloads an `m68k-elf` GCC 15.2 with C++ support and
+newlib from [toolchain68k](https://github.com/haarer/toolchain68k) into
 `build-jaguar/toolchain` (about 320 MB, checked against its SHA-256). It runs
 on x86-64 Linux and uses the GMP, MPFR, MPC, isl and zstd libraries that a
 native GCC needs too. To use an installed toolchain instead, set
 `JAGUAR_TOOLCHAIN_PREFIX`, e.g. `JAGUAR_TOOLCHAIN_PREFIX=m68k-elf-` with the
-AUR packages `m68k-elf-gcc` and `m68k-elf-newlib` on Arch. The script builds
-the game into `build-jaguar`, packs the extracted game data with it and
-writes a 4 MB cartridge image, `build-jaguar/game/franko.j64`:
+AUR packages `m68k-elf-gcc` and `m68k-elf-newlib` on Arch. It also fetches the
+[Jaguar SDK](https://github.com/cubanismo/jaguar-sdk) at a fixed commit into
+`build-jaguar/jaguar-sdk` and builds its `rmac` assembler and `jagcrypt`. The
+script then builds the game into `build-jaguar`, packs the extracted game
+data with it and writes a 4 MB cartridge image,
+`build-jaguar/game/franko.j64`:
 
 ```
-./build-jaguar.sh --sdk <jaguar_sdk_dir> --assets <assets_dir>
+./build-jaguar.sh --assets <assets_dir>
 ```
 
-`--sdk` can be left out when `rmac` is on the `PATH`. Options starting with
-`-D` are passed to CMake, e.g. `-DSKIP_COPY_PROTECTION=ON`. The image plays the
-version of the game that was extracted into `<assets_dir>`, 1.0 or 1.2. When
-the SDK's `jagcrypt` is found, the image gets the encrypted boot block that a
-console checks before it starts a cartridge, so it runs on a console from a
-flash cartridge as well as in emulators like BigPEmu; without `jagcrypt` it
-only runs in emulators.
+To use an SDK whose `maketools.sh` has already built its tools, pass
+`--sdk <jaguar_sdk_dir>`; nothing is fetched either when `rmac` is on the
+`PATH`. Options starting with `-D` are passed to CMake, e.g.
+`-DSKIP_COPY_PROTECTION=ON`. The image plays the version of the game that was
+extracted into `<assets_dir>`, 1.0 or 1.2. When the SDK's `jagcrypt` is found,
+the image gets the encrypted boot block that a console checks before it starts
+a cartridge, so it runs on a console from a flash cartridge as well as in
+emulators like BigPEmu; without `jagcrypt` it only runs in emulators.
 
 The joypad plays like the Amiga joystick: the pad moves Franko and A, B and C
 are fire (Space). The keypad stands in for the keyboard: 1 to 4 are F1 to F4, 9
