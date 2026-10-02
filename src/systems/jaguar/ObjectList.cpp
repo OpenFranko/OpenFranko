@@ -98,10 +98,6 @@ void ObjectList::alignTo(int bytes) {
   }
 }
 
-void ObjectList::patchBranch(std::size_t at, std::size_t target) {
-  m_phrases[at] = (m_phrases[at] & ~LINK_MASK) | linkField(address(target));
-}
-
 std::size_t ObjectList::size() const { return m_phrases.size(); }
 
 const std::vector<uint64_t> &ObjectList::phrases() const { return m_phrases; }

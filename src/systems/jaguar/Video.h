@@ -17,6 +17,7 @@ struct Geometry {
   int rows = 0;
   int firstHalfLine = 0;
   int lastHalfLine = 0;
+  int vblankHalfLine = 0;
 };
 
 Geometry detectGeometry();
@@ -24,6 +25,7 @@ void setupVideo(const Geometry &geometry);
 void setOlp(uint32_t address);
 bool isBlanking(const Geometry &geometry);
 void waitBlanking(const Geometry &geometry);
+void waitTopBlanking(const Geometry &geometry);
 void waitDisplay(const Geometry &geometry);
 inline uint16_t toRgb16(uint16_t amigaColor) {
   const uint16_t red = (amigaColor >> 8) & 0xF;

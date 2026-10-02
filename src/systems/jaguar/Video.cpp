@@ -16,6 +16,7 @@ constexpr int PAL_VERTICAL_MIDDLE = 322;
 constexpr int NTSC_HERTZ = 60;
 constexpr int PAL_HERTZ = 50;
 constexpr int DISPLAY_BEGIN_OFFSET = 4;
+constexpr int LIST_SWAP_DELAY = 4;
 constexpr uint16_t SECOND_HALF = 0x400;
 constexpr uint16_t NO_DISPLAY_END = 0xFFFF;
 constexpr uint16_t HALF_LINE_MASK = 0x7FF;
@@ -39,6 +40,7 @@ Geometry detectGeometry() {
   geometry.rows = height;
   geometry.firstHalfLine = middle - height;
   geometry.lastHalfLine = middle + height;
+  geometry.vblankHalfLine = geometry.lastHalfLine + LIST_SWAP_DELAY;
   return geometry;
 }
 
@@ -66,6 +68,13 @@ bool isBlanking(const Geometry &geometry) {
 
 void waitBlanking(const Geometry &geometry) {
   while (!isBlanking(geometry)) {
+  }
+}
+
+void waitTopBlanking(const Geometry &geometry) {
+  while (halfLine() < geometry.firstHalfLine) {
+  }
+  while (halfLine() >= geometry.firstHalfLine) {
   }
 }
 

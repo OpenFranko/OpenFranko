@@ -417,7 +417,8 @@ bool outline(const uint8_t *pixels, int width, int height, void *rows,
   return true;
 }
 
-bool flipSigns(const uint8_t *source, int8_t *target, std::size_t count) {
+bool xorCopy(const uint8_t *source, uint8_t *target, std::size_t count,
+             uint32_t mask) {
   const uint32_t misaligned = (reinterpret_cast<uint32_t>(source) |
                                reinterpret_cast<uint32_t>(target)) &
                               (LONG_BYTES - 1);
@@ -433,11 +434,19 @@ bool flipSigns(const uint8_t *source, int8_t *target, std::size_t count) {
   entry[1] = reinterpret_cast<uint32_t>(source);
   entry[2] = reinterpret_cast<uint32_t>(target);
   entry[3] = static_cast<uint32_t>(longs);
-  entry[4] = SIGN_BITS;
+  entry[4] = mask;
   written = (written + 1) & INDEX_MASK;
   *queueWrite = written;
+  const uint8_t byteMask = static_cast<uint8_t>(mask);
   for (std::size_t at = longs * LONG_BYTES; at < count; ++at) {
-    target[at] = static_cast<int8_t>(source[at] ^ 0x80u);
+    target[at] = static_cast<uint8_t>(source[at] ^ byteMask);
+  }
+  return true;
+}
+
+bool flipSigns(const uint8_t *source, int8_t *target, std::size_t count) {
+  if (!xorCopy(source, reinterpret_cast<uint8_t *>(target), count, SIGN_BITS)) {
+    return false;
   }
   wait();
   return true;

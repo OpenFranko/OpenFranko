@@ -61,7 +61,6 @@ public:
   void addBitmap(const BitmapObject &object);
   std::size_t addStop();
   void alignTo(int bytes);
-  void patchBranch(std::size_t at, std::size_t target);
 
   std::size_t size() const;
   const std::vector<uint64_t> &phrases() const;

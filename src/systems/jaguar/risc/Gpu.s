@@ -2,8 +2,8 @@
 	.org	$F03000
 
 GPU_FLAGS	.equ	$F02100
-VC_REGISTER	.equ	$F00006
-OBF_REGISTER	.equ	$F00026
+HC_VC_REGISTER	.equ	$F00004
+OBF_LONG	.equ	$F00024
 CLUT_BASE	.equ	$F00400
 LINE_MASK	.equ	$7FF
 REGISTER_PAGE	.equ	$4000
@@ -849,8 +849,8 @@ copperInterrupt:
 	load	(r30),r29
 	movei	#copperNext,r10
 	load	(r10),r11
-	movei	#VC_REGISTER,r12
-	loadw	(r12),r13
+	movei	#HC_VC_REGISTER,r12
+	load	(r12),r13
 	movei	#LINE_MASK,r14
 	and	r14,r13
 	movei	#CLUT_BASE,r15
@@ -868,12 +868,13 @@ nextEntry:
 	shlq	#16,r16
 	shrq	#16,r16
 applyEntry:
+	load	(r11),r19
+	addq	#4,r11
 	load	(r11),r18
 	addq	#4,r11
-	move	r18,r19
-	shrq	#16,r19
 	add	r15,r19
-	storew	r18,(r19)
+	or	r18,r18
+	store	r18,(r19)
 	subq	#1,r16
 	jr	ne,applyEntry
 	nop
@@ -881,8 +882,8 @@ applyEntry:
 	nop
 copperDone:
 	store	r11,(r10)
-	movei	#OBF_REGISTER,r12
-	storew	r13,(r12)
+	movei	#OBF_LONG,r12
+	store	r13,(r12)
 	bclr	#IMASK_BIT,r29
 	bset	#OBJECT_CLEAR_BIT,r29
 	load	(r31),r28

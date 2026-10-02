@@ -14,7 +14,10 @@
 #include <array>
 #include <cstdio>
 #include <cstring>
+#include <memory>
+#include <new>
 #include <stdexcept>
+#include <vector>
 
 namespace openfranko::src::systems::graphics {
 namespace {
@@ -33,7 +36,9 @@ constexpr int COMPACT_PANEL_LEFT = 26;
 constexpr int COMPACT_PANEL_BOTTOM = 12;
 
 alignas(jaguar::SCALED_ALIGNMENT) uint64_t liveList[LIVE_PHRASES];
-alignas(jaguar::PHRASE_BYTES) uint64_t solidPixels = 0;
+constexpr uint64_t BYTE_COPIES = 0x0101010101010101ull;
+
+alignas(jaguar::PHRASE_BYTES) uint64_t solidPhrases[jaguar::SOLID_PHRASES];
 
 struct VblankTarget {
   virtual ~VblankTarget() = default;
@@ -50,7 +55,13 @@ void onVblank() {
 
 } // namespace
 
-struct VideoSystem::Window : VblankTarget {
+struct TranslationBuffer {
+  const uint8_t *source = nullptr;
+  std::size_t bytes = 0;
+  std::unique_ptr<uint64_t[]> storage;
+};
+
+struct VideoSystem::Window : VblankTarget, jaguar::TranslationBuffers {
   jaguar::Geometry geometry;
   std::array<jaguar::BuiltFrame, FRAMES> frames;
   std::array<Display, FRAMES> sources;
@@ -70,8 +81,16 @@ struct VideoSystem::Window : VblankTarget {
   uint32_t lastSync = 0;
   uint16_t updateStart = 0;
   uint32_t longestUpdate = 0;
+  std::vector<TranslationBuffer> buffers;
 
   void vblank() override;
+  uint8_t *buffer(const uint8_t *source, std::size_t bytes) override;
+  bool isReferenced(const uint64_t *storage) const;
+  void refreshTranslations();
+  jaguar::FrameMemory memory() {
+    return {reinterpret_cast<uint32_t>(liveList),
+            reinterpret_cast<uint32_t>(solidPhrases), this};
+  }
   int backFrame() const;
   void choose(int slot);
   void measure();
@@ -133,6 +152,60 @@ void VideoSystem::Window::measure() {
   longestUpdate = 0;
 }
 
+uint8_t *VideoSystem::Window::buffer(const uint8_t *source, std::size_t bytes) {
+  for (TranslationBuffer &entry : buffers) {
+    if (entry.source == source && entry.bytes == bytes) {
+      return reinterpret_cast<uint8_t *>(entry.storage.get());
+    }
+  }
+  buffers.erase(std::remove_if(buffers.begin(), buffers.end(),
+                               [this](const TranslationBuffer &entry) {
+                                 return !isReferenced(entry.storage.get());
+                               }),
+                buffers.end());
+  TranslationBuffer entry;
+  entry.source = source;
+  entry.bytes = bytes;
+  entry.storage.reset(
+      new (std::nothrow)
+          uint64_t[(bytes + sizeof(uint64_t) - 1) / sizeof(uint64_t)]);
+  if (!entry.storage) {
+    return nullptr;
+  }
+  uint8_t *storage = reinterpret_cast<uint8_t *>(entry.storage.get());
+  buffers.push_back(std::move(entry));
+  return storage;
+}
+
+bool VideoSystem::Window::isReferenced(const uint64_t *storage) const {
+  const uint8_t *target = reinterpret_cast<const uint8_t *>(storage);
+  for (std::size_t slot = 0; slot < frames.size(); ++slot) {
+    if (!built[slot]) {
+      continue;
+    }
+    for (const jaguar::Translation &translation : frames[slot].translations) {
+      if (translation.target == target) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void VideoSystem::Window::refreshTranslations() {
+  const int slot = pending != NO_FRAME ? pending : current;
+  if (slot == NO_FRAME) {
+    return;
+  }
+  for (const jaguar::Translation &translation :
+       frames[static_cast<std::size_t>(slot)].translations) {
+    if (!jaguar::blitter::xorCopy(translation.source, translation.target,
+                                  translation.bytes, translation.mask)) {
+      jaguar::translateOnCpu(translation);
+    }
+  }
+}
+
 int VideoSystem::Window::backFrame() const {
   int oldest = NO_FRAME;
   for (int index = 0; index < FRAMES; ++index) {
@@ -168,20 +241,22 @@ VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
   jaguar::longWord(jaguar::GPU_PC) = gpu.entries[0];
   jaguar::longWord(jaguar::GPU_CTRL) = jaguar::RISC_GO;
 
+  for (int value = 0; value < jaguar::SOLID_PHRASES; ++value) {
+    solidPhrases[value] = static_cast<uint64_t>(value) * BYTE_COPIES;
+  }
   jaguar::BuiltFrame &blank = window.frames[0];
-  jaguar::buildFrame(
-      Display{}, window.geometry, reinterpret_cast<uint32_t>(liveList),
-      reinterpret_cast<uint32_t>(&solidPixels), nullptr, 0, blank);
+  jaguar::buildFrame(Display{}, window.geometry, window.memory(), nullptr, 0,
+                     blank);
   std::memcpy(liveList, blank.phrases.data(),
               blank.phrases.size() * sizeof(uint64_t));
   jaguar::setupVideo(window.geometry);
-  jaguar::waitBlanking(window.geometry);
+  jaguar::waitTopBlanking(window.geometry);
   jaguar::setOlp(reinterpret_cast<uint32_t>(liveList));
   window.current = 0;
   activeTarget = &window;
   jaguar::profiler::start();
   jaguar::runtime::setVideoHandler(onVblank);
-  jaguar::runtime::enableVideoInterrupt(window.geometry.lastHalfLine);
+  jaguar::runtime::enableVideoInterrupt(window.geometry.vblankHalfLine);
 }
 
 VideoSystem::~VideoSystem() {
@@ -248,6 +323,10 @@ int VideoSystem::refreshRate() const { return m_window->geometry.hertz; }
 void VideoSystem::present() {
   jaguar::blitter::wait();
   Window &window = *m_window;
+  struct Refresh {
+    Window &window;
+    ~Refresh() { window.refreshTranslations(); }
+  } refresh{window};
   const unsigned keyboardPanel = jaguar::keyboard::isCompact()
                                      ? KEYBOARD_PANEL | COMPACT_KEYBOARD
                                      : KEYBOARD_PANEL;
@@ -301,9 +380,7 @@ void VideoSystem::present() {
     panels[count++] = {reinterpret_cast<uint32_t>(jaguar::keyboard::pixels()),
                        width, jaguar::keyboard::HEIGHT, column, row};
   }
-  jaguar::buildFrame(m_shown, window.geometry,
-                     reinterpret_cast<uint32_t>(liveList),
-                     reinterpret_cast<uint32_t>(&solidPixels), panels.data(),
+  jaguar::buildFrame(m_shown, window.geometry, window.memory(), panels.data(),
                      count, window.frames[index]);
   if (window.frames[index].phrases.size() > LIVE_PHRASES) {
     throw std::runtime_error("Video system error: too many display layers");

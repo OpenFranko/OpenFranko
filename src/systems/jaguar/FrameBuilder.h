@@ -6,6 +6,7 @@
 #include "Video.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -16,6 +17,7 @@ namespace jaguar {
 
 inline constexpr uint32_t COPPER_END = 0xFFFF0000u;
 inline constexpr int HIRES_THRESHOLD = 480;
+inline constexpr int SOLID_PHRASES = 256;
 
 struct Placement {
   int left = 0;
@@ -31,10 +33,30 @@ struct LayerArea {
   int lastColumn = 0;
 };
 
+struct Translation {
+  const uint8_t *source = nullptr;
+  uint8_t *target = nullptr;
+  std::size_t bytes = 0;
+  uint32_t mask = 0;
+};
+
+class TranslationBuffers {
+public:
+  virtual ~TranslationBuffers() = default;
+  virtual uint8_t *buffer(const uint8_t *source, std::size_t bytes) = 0;
+};
+
+struct FrameMemory {
+  uint32_t liveAddress = 0;
+  uint32_t solidPhrases = 0;
+  TranslationBuffers *buffers = nullptr;
+};
+
 struct BuiltFrame {
   std::vector<uint64_t> phrases;
   std::array<uint16_t, 256> clut{};
   std::vector<uint32_t> copper;
+  std::vector<Translation> translations;
   uint16_t background = 0;
   uint32_t border = 0;
 };
@@ -55,9 +77,9 @@ struct Overlay {
 bool sameLayout(const graphics::Display &left, const graphics::Display &right);
 void allowCopper(bool allowed);
 void buildFrame(const graphics::Display &display, const Geometry &geometry,
-                uint32_t liveAddress, uint32_t solidPhrase,
-                const Overlay *overlays, std::size_t overlayCount,
-                BuiltFrame &frame);
+                const FrameMemory &memory, const Overlay *overlays,
+                std::size_t overlayCount, BuiltFrame &frame);
+void translateOnCpu(const Translation &translation);
 
 } // namespace jaguar
 } // namespace systems

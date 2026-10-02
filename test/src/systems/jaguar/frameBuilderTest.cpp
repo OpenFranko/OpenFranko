@@ -150,11 +150,13 @@ Screen simulate(const Arena &arena, const BuiltFrame &frame,
         while (copper < frame.copper.size() &&
                static_cast<int>(frame.copper[copper] >> 16) <= halfLine) {
           const uint32_t count = frame.copper[copper] & 0xFFFF;
-          for (uint32_t entry = 1; entry <= count; ++entry) {
-            const uint32_t value = frame.copper[copper + entry];
-            clut[(value >> 16) / 2] = static_cast<uint16_t>(value);
+          for (uint32_t entry = 0; entry < count; ++entry) {
+            const uint32_t offset = frame.copper[copper + 1 + 2 * entry];
+            const uint32_t colors = frame.copper[copper + 2 + 2 * entry];
+            clut[offset / 2] = static_cast<uint16_t>(colors >> 16);
+            clut[offset / 2 + 1] = static_cast<uint16_t>(colors);
           }
-          copper += 1 + count;
+          copper += 1 + 2 * count;
         }
         ++at;
         continue;
@@ -203,6 +205,40 @@ uint16_t amiga(uint32_t argb) {
                                (argb & 0xFF) / 17);
 }
 
+class ArenaBuffers : public TranslationBuffers {
+public:
+  explicit ArenaBuffers(Arena &arena) : m_arena(arena) {}
+
+  uint8_t *buffer(const uint8_t *, std::size_t bytes) override {
+    return m_arena.allocate(bytes);
+  }
+
+private:
+  Arena &m_arena;
+};
+
+FrameMemory frameMemory(Arena &arena, ArenaBuffers &buffers) {
+  uint8_t *solid = arena.allocate(SOLID_PHRASES * 8);
+  for (int value = 0; value < SOLID_PHRASES; ++value) {
+    std::memset(solid + value * 8, value, 8);
+  }
+  uint8_t *live = arena.allocate(LIVE_PHRASES * 8);
+  return {arena.address(live), arena.address(solid), &buffers};
+}
+
+BuiltFrame build(Arena &arena, const graphics::Display &display,
+                 const Geometry &geometry, FrameMemory &memory) {
+  ArenaBuffers buffers(arena);
+  memory = frameMemory(arena, buffers);
+  BuiltFrame frame;
+  buildFrame(display, geometry, memory, nullptr, 0, frame);
+  for (const Translation &translation : frame.translations) {
+    translateOnCpu(translation);
+  }
+  memory.buffers = nullptr;
+  return frame;
+}
+
 int mismatches(const graphics::Display &original, const Geometry &geometry) {
   Arena arena;
   graphics::Display display = original;
@@ -217,13 +253,10 @@ int mismatches(const graphics::Display &original, const Geometry &geometry) {
     std::memcpy(copy, layer.pixels, size);
     layer.pixels = copy;
   }
-  uint8_t *solid = arena.allocate(8);
-  uint8_t *live = arena.allocate(LIVE_PHRASES * 8);
-  BuiltFrame frame;
-  buildFrame(display, geometry, arena.address(live), arena.address(solid),
-             nullptr, 0, frame);
+  FrameMemory memory;
+  const BuiltFrame frame = build(arena, display, geometry, memory);
   REQUIRE(frame.phrases.size() <= static_cast<std::size_t>(LIVE_PHRASES));
-  const Screen screen = simulate(arena, frame, arena.address(live), geometry);
+  const Screen screen = simulate(arena, frame, memory.liveAddress, geometry);
   std::vector<uint32_t> argb;
   graphics::rasterize(display, argb);
   const Placement placement = placeDisplay(display, geometry);
@@ -457,6 +490,137 @@ SCENARIO("Jaguar frames show what the desktop rasterizer draws") {
       display.layers.push_back(doubled);
       THEN("Every visible pixel matches at half width") {
         REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("Every frame starts with the same header, so the list can be swapped "
+         "while the Object Processor reads it in the blank") {
+  GIVEN("A plain picture, a play screen over a panel and a hires screen") {
+    graphics::Display plain;
+    plain.width = 320;
+    plain.height = 256;
+    plain.displayHeight = 256;
+    plain.layers.push_back(layer(320, 256, 32, 1));
+
+    graphics::Display stage;
+    stage.width = 304;
+    stage.height = 255;
+    stage.displayHeight = 255;
+    stage.layers.push_back(layer(320, 222, 16, 2));
+    stage.layers.back().columns = 304;
+    graphics::Layer panel = layer(304, 32, 8, 3);
+    panel.top = 223;
+    stage.layers.push_back(panel);
+
+    graphics::Display hires;
+    hires.width = 640;
+    hires.height = 200;
+    hires.displayHeight = 400;
+    hires.layers.push_back(layer(640, 200, 16, 4));
+
+    const std::vector<const graphics::Display *> displays{&plain, &stage,
+                                                          &hires};
+
+    THEN("The first four phrases are identical for every display") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        ArenaBuffers buffers(arena);
+        const FrameMemory memory = frameMemory(arena, buffers);
+        std::vector<std::vector<uint64_t>> headers;
+        for (const graphics::Display *display : displays) {
+          BuiltFrame frame;
+          buildFrame(*display, geometry, memory, nullptr, 0, frame);
+          REQUIRE(frame.phrases.size() > 4);
+          headers.emplace_back(frame.phrases.begin(),
+                               frame.phrases.begin() + 4);
+        }
+        REQUIRE(headers[1] == headers[0]);
+        REQUIRE(headers[2] == headers[0]);
+      }
+    }
+
+    THEN("Every display still matches the desktop rasterizer") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        for (const graphics::Display *display : displays) {
+          REQUIRE(mismatches(*display, geometry) == 0);
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("Layers with clashing palettes get their own colour banks, so the "
+         "frame needs no copper") {
+  GIVEN("A play screen over a panel with a different palette") {
+    graphics::Display stage;
+    stage.width = 304;
+    stage.height = 255;
+    stage.displayHeight = 255;
+    stage.layers.push_back(layer(320, 222, 16, 2));
+    stage.layers.back().columns = 304;
+    graphics::Layer panel = layer(304, 32, 8, 3);
+    panel.top = 223;
+    stage.layers.push_back(panel);
+
+    THEN("The panel is translated into a bank and the colours still match") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame = build(arena, stage, geometry, memory);
+        REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
+        REQUIRE(frame.translations.size() == 1);
+        REQUIRE(frame.translations[0].mask == 0x80808080u);
+        REQUIRE(mismatches(stage, geometry) == 0);
+      }
+    }
+  }
+
+  GIVEN("A black band over the play screen, as in NTSC mode") {
+    graphics::Display stage;
+    stage.width = 304;
+    stage.height = 255;
+    stage.displayHeight = 255;
+    stage.layers.push_back(layer(320, 255, 16, 5));
+    stage.layers.back().columns = 304;
+    stage.layers.push_back(graphics::solidLayer(0x000, 0, 19, 304));
+
+    THEN("The band uses a spare colour and needs no copper") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame = build(arena, stage, geometry, memory);
+        REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
+        REQUIRE(frame.translations.empty());
+        REQUIRE(mismatches(stage, geometry) == 0);
+      }
+    }
+  }
+
+  GIVEN("A laced play screen that starts lower, over a doubled panel") {
+    graphics::Display stage;
+    stage.width = 304;
+    stage.height = 510;
+    stage.displayHeight = 255;
+    graphics::Layer play = layer(320, 444, 16, 6);
+    play.sourceY = -120;
+    play.columns = 304;
+    play.rows = 510;
+    stage.layers.push_back(play);
+    graphics::Layer panel = layer(304, 32, 8, 7);
+    panel.top = 344;
+    panel.repeat = 2;
+    panel.rows = 64;
+    stage.layers.push_back(panel);
+
+    THEN("The empty rows above keep the palette and no copper is needed") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame = build(arena, stage, geometry, memory);
+        REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
+        REQUIRE(mismatches(stage, geometry) == 0);
       }
     }
   }
