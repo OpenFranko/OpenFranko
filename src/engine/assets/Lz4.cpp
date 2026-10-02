@@ -39,15 +39,10 @@ void copyForward(uint8_t *out, const uint8_t *in, std::size_t length) {
   }
 }
 
-} // namespace
-
-void decompressLz4(const uint8_t *source, std::size_t sourceSize,
-                   uint8_t *target, std::size_t targetSize) {
-  const uint8_t *in = source;
-  const uint8_t *const inEnd = source + sourceSize;
-  uint8_t *out = target;
-  uint8_t *const outEnd = target + targetSize;
-  while (in < inEnd) {
+void decodeSequences(const uint8_t *&in, const uint8_t *inEnd,
+                     const uint8_t *target, uint8_t *&out,
+                     const uint8_t *outEnd, const uint8_t *limit) {
+  while (in < inEnd && (limit == nullptr || out < limit)) {
     const unsigned token = *in++;
     const std::size_t literals = extendedLength(token >> 4, in, inEnd);
     if (literals > static_cast<std::size_t>(inEnd - in) ||
@@ -87,9 +82,46 @@ void decompressLz4(const uint8_t *source, std::size_t sourceSize,
       }
     }
   }
-  if (out != outEnd) {
+}
+
+} // namespace
+
+void decompressLz4(const uint8_t *source, std::size_t sourceSize,
+                   uint8_t *target, std::size_t targetSize) {
+  const uint8_t *in = source;
+  uint8_t *out = target;
+  decodeSequences(in, source + sourceSize, target, out, target + targetSize,
+                  nullptr);
+  if (out != target + targetSize) {
     fail();
   }
+}
+
+void decompressLz4Part(const uint8_t *&source, const uint8_t *sourceEnd,
+                       const uint8_t *start, uint8_t *&target,
+                       const uint8_t *targetEnd, const uint8_t *limit) {
+  decodeSequences(source, sourceEnd, start, target, targetEnd, limit);
+}
+
+Lz4Steps::Lz4Steps(const uint8_t *source, std::size_t sourceSize,
+                   uint8_t *target, std::size_t targetSize)
+    : m_source(source), m_sourceEnd(source + sourceSize), m_start(target),
+      m_target(target), m_targetEnd(target + targetSize) {}
+
+bool Lz4Steps::step(std::size_t bytes) {
+  const std::size_t room = static_cast<std::size_t>(m_targetEnd - m_target);
+  const uint8_t *limit = bytes < room ? m_target + bytes : nullptr;
+  unpackLz4Part(m_source, m_sourceEnd, m_start, m_target, m_targetEnd, limit);
+  if (m_source == m_sourceEnd) {
+    if (m_target != m_targetEnd) {
+      fail();
+    }
+    return true;
+  }
+  if (!limit || m_target < limit) {
+    fail();
+  }
+  return false;
 }
 
 } // namespace openfranko::src::engine::assets

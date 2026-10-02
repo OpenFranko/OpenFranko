@@ -9,6 +9,8 @@ add_library(Assets
     PackedArchive.h
     PackedFiles.cpp
     PackedFiles.h
+    PrefetchingFiles.cpp
+    PrefetchingFiles.h
     RequiredFiles.cpp
     RequiredFiles.h
     YieldingFiles.cpp

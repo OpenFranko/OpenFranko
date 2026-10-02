@@ -1,5 +1,7 @@
 #include "SystemText.h"
 
+#include "../../../systems/graphics/PixelOps.h"
+
 #include <array>
 #include <cstddef>
 
@@ -38,20 +40,29 @@ const Glyph *find(char character) {
 
 void drawSystemText(IndexedSurface &surface, int x, int baseline,
                     const std::string &text, uint8_t ink, uint8_t paper) {
-  const int top = baseline - SYSTEM_FONT_BASELINE;
+  if (text.empty()) {
+    return;
+  }
+  Picture picture;
+  picture.width = static_cast<int>(text.size()) * SYSTEM_FONT_WIDTH;
+  picture.height = SYSTEM_FONT_HEIGHT;
+  picture.pixels.resize(static_cast<std::size_t>(picture.width) *
+                        SYSTEM_FONT_HEIGHT);
   for (std::size_t i = 0; i < text.size(); ++i) {
     const Glyph *glyph = find(text[i]);
-    const int left = x + static_cast<int>(i) * SYSTEM_FONT_WIDTH;
     for (int row = 0; row < SYSTEM_FONT_HEIGHT; ++row) {
       const uint8_t bits =
           glyph ? glyph->rows[static_cast<std::size_t>(row)] : 0;
+      uint8_t *pixels = picture.pixels.data() +
+                        static_cast<std::size_t>(row * picture.width) +
+                        i * SYSTEM_FONT_WIDTH;
       for (int column = 0; column < SYSTEM_FONT_WIDTH; ++column) {
-        const uint8_t color = (bits & (0x80 >> column)) ? ink : paper;
-        surface.clear(color, left + column, top + row, left + column + 1,
-                      top + row + 1);
+        pixels[column] = (bits & (0x80 >> column)) ? ink : paper;
       }
     }
   }
+  surface.draw(picture, x, baseline - SYSTEM_FONT_BASELINE, false, false, true);
+  systems::graphics::pixels::finish();
 }
 
 } // namespace openfranko::src::engine::street::core

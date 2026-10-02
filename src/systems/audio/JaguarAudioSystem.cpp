@@ -103,6 +103,9 @@ struct AudioSystem::Output {
   Read read;
   std::string musicPath;
   std::unique_ptr<S3mModule> module;
+  std::string preparedPath;
+  std::unique_ptr<S3mModule> prepared;
+  std::optional<S3mReader> preparing;
   std::unique_ptr<Tracker> tracker;
   std::vector<uint32_t> lengths;
   std::map<std::string, std::unique_ptr<Sound>> sounds;
@@ -390,7 +393,51 @@ AudioSystem::AudioSystem(Read read) : m_output(std::make_unique<Output>()) {
 
 AudioSystem::~AudioSystem() { m_output->stopDsp(); }
 
+class AudioSystem::MusicSteps : public Speaker::MusicLoad {
+public:
+  MusicSteps(AudioSystem &audio, std::string path, std::vector<uint8_t> data,
+             int steps)
+      : m_audio(audio), m_path(std::move(path)),
+        m_reader(std::move(data), jaguar::blitter::flipSigns, steps) {}
+
+  bool step() override {
+    if (!m_module) {
+      m_audio.clearMusic();
+      m_module = std::make_unique<S3mModule>();
+    }
+    if (!m_reader.step(*m_module)) {
+      return false;
+    }
+    if (!m_reader.failed()) {
+      m_audio.installMusic(m_path, std::move(m_module));
+    }
+    return true;
+  }
+
+private:
+  AudioSystem &m_audio;
+  std::string m_path;
+  S3mReader m_reader;
+  std::unique_ptr<S3mModule> m_module;
+};
+
 void AudioSystem::loadMusic(const std::string &path) {
+  if (m_output->module && path == m_output->musicPath) {
+    stopMusic();
+    m_output->waitForDsp();
+    m_output->tracker = std::make_unique<Tracker>(*m_output->module);
+    return;
+  }
+  if (m_output->prepared && path == m_output->preparedPath) {
+    while (stepPreparation()) {
+    }
+    if (m_output->prepared) {
+      clearMusic();
+      installMusic(path, std::move(m_output->prepared));
+      m_output->preparedPath.clear();
+      return;
+    }
+  }
   clearMusic();
   std::vector<uint8_t> file;
   try {
@@ -398,10 +445,52 @@ void AudioSystem::loadMusic(const std::string &path) {
   } catch (const std::runtime_error &) {
     return;
   }
+  S3mReader reader(std::move(file), jaguar::blitter::flipSigns, 0);
   auto module = std::make_unique<S3mModule>();
-  if (!parseS3m(file, *module, jaguar::blitter::flipSigns)) {
-    return;
+  while (!reader.step(*module)) {
   }
+  if (!reader.failed()) {
+    installMusic(path, std::move(module));
+  }
+}
+
+void AudioSystem::prepareMusic(const std::string &path,
+                               std::vector<uint8_t> data) {
+  dropPreparedMusic();
+  m_output->preparing.emplace(std::move(data), jaguar::blitter::flipSigns, 0);
+  m_output->prepared = std::make_unique<S3mModule>();
+  m_output->preparedPath = path;
+}
+
+bool AudioSystem::stepPreparation() {
+  Output &output = *m_output;
+  if (!output.preparing) {
+    return false;
+  }
+  if (output.preparing->step(*output.prepared)) {
+    if (output.preparing->failed()) {
+      output.prepared.reset();
+      output.preparedPath.clear();
+    }
+    output.preparing.reset();
+  }
+  return true;
+}
+
+void AudioSystem::dropPreparedMusic() {
+  m_output->preparing.reset();
+  m_output->prepared.reset();
+  m_output->preparedPath.clear();
+}
+
+std::unique_ptr<Speaker::MusicLoad>
+AudioSystem::beginMusic(const std::string &path, std::vector<uint8_t> data,
+                        int steps) {
+  return std::make_unique<MusicSteps>(*this, path, std::move(data), steps);
+}
+
+void AudioSystem::installMusic(const std::string &path,
+                               std::unique_ptr<S3mModule> module) {
   m_output->lengths.clear();
   for (S3mSample &sample : module->samples) {
     m_output->lengths.push_back(static_cast<uint32_t>(sample.data.size()));

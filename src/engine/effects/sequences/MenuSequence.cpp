@@ -163,6 +163,10 @@ const std::string &MenuSequence::keysRead() const { return m_keysRead; }
 
 bool MenuSequence::isAttractDue() const { return m_attractDue; }
 
+int MenuSequence::idleFrames() const {
+  return m_phase == Phase::Choosing ? m_timer : 0;
+}
+
 bool MenuSequence::isScreenShown() const { return m_screenShown; }
 
 bool MenuSequence::isFinished() const { return m_phase == Phase::Finished; }

@@ -102,23 +102,35 @@ StreetStage::Flow StreetStage::stageInit() {
   m_columnInChunk = COLUMNS_PER_CHUNK;
   m_chunk = 1;
   m_screenOffsetX = stage() == 2 ? 16 : 0;
-  m_loading.queue([this] { m_host.loadMusic(stage() + 600); });
+  m_loading.queueSteps(musicJob(
+      m_host, [this] { return stage() + 600; }, ui::LoadingQueue::FILE_FRAMES));
   return load(Step::StageMusic);
 }
 
 StreetStage::Flow StreetStage::stageMusic() {
   playMusic();
-  m_loading.queue([this] { m_images.load(1, m_host.loadSpriteSet(0, 0)); });
-  m_loading.queue([this] {
-    m_images.load(11, m_host.loadSpriteSet(255 - 5 * global(amal::RQ), 2));
-  });
-  m_loading.queue([this] { m_opening = m_host.loadPicture(stage() + 903); });
-  m_loading.queue([this] {
-    m_script = m_host.loadLevelScript(stage() + 900);
-    if (m_session.shortLevels) {
-      m_script.length = SHORT_LEVEL_LENGTH;
-    }
-  });
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [] { return 0; }, 0, 1, ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [this] { return 255 - 5 * global(amal::RQ); }, 2, 11,
+      ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps(
+      pictureJob(m_host, [this] { return stage() + 903; }, m_opening, nullptr));
+  m_loading.queueSteps(
+      [this, script = core::LevelScript{},
+       load = std::shared_ptr<StreetHost::LevelScriptLoad>()]() mutable {
+        if (!load) {
+          load = m_host.beginLevelScript(stage() + 900);
+        }
+        if (!load->step(script)) {
+          return false;
+        }
+        m_script = std::move(script);
+        if (m_session.shortLevels) {
+          m_script.length = SHORT_LEVEL_LENGTH;
+        }
+        return true;
+      });
   return load(Step::StageScreen);
 }
 
@@ -678,7 +690,8 @@ StreetStage::Flow StreetStage::spawnPasted() {
            load = std::shared_ptr<StreetHost::SpriteSetLoad>()]() mutable {
             if (!loaded) {
               if (!load) {
-                load = m_host.beginSpriteSet(spriteSet, bank, base);
+                load = m_host.beginSpriteSet(spriteSet, bank, base,
+                                             StreetHost::FRAME_BY_FRAME);
               }
               loaded = load->step(m_images);
               return loaded && programs->empty();

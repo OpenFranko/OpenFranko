@@ -34,6 +34,9 @@ constexpr std::size_t BOX_VALUES = 4;
 constexpr uint32_t SIGN_BITS = 0x80808080u;
 constexpr std::size_t LONG_BYTES = 4;
 constexpr std::size_t UNPACKED_END = 5;
+constexpr std::size_t UNPACK_LIMIT = 6;
+constexpr std::size_t UNPACKED_SOURCE = 7;
+constexpr uint32_t NO_LIMIT = 0xFFFFFFFF;
 
 alignas(64) volatile uint32_t ring[QUEUE_ENTRIES * ENTRY_LONGS];
 volatile uint32_t *queueWrite = nullptr;
@@ -340,26 +343,54 @@ void useQueue(uint32_t control) {
 
 bool isQueued() { return queueWrite != nullptr; }
 
+namespace {
+
+volatile uint32_t *queueUnpack(const uint8_t *source, const uint8_t *sourceEnd,
+                               uint8_t *target, const uint8_t *targetEnd,
+                               uint32_t limit) {
+  while (pending() >= QUEUE_ENTRIES) {
+  }
+  volatile uint32_t *entry =
+      ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
+  entry[0] = KIND_LZ4;
+  entry[1] = reinterpret_cast<uint32_t>(source);
+  entry[2] = reinterpret_cast<uint32_t>(sourceEnd);
+  entry[3] = reinterpret_cast<uint32_t>(target);
+  entry[4] = reinterpret_cast<uint32_t>(targetEnd);
+  entry[UNPACKED_END] = 0;
+  entry[UNPACK_LIMIT] = limit;
+  entry[UNPACKED_SOURCE] = 0;
+  written = (written + 1) & INDEX_MASK;
+  *queueWrite = written;
+  wait();
+  return entry;
+}
+
+} // namespace
+
 bool unpack(const uint8_t *source, std::size_t sourceSize, uint8_t *target,
             std::size_t targetSize) {
   if (!queueWrite) {
     return false;
   }
-  while (pending() >= QUEUE_ENTRIES) {
+  const uint8_t *end = target + targetSize;
+  volatile uint32_t *entry =
+      queueUnpack(source, source + sourceSize, target, end, NO_LIMIT);
+  return entry[UNPACKED_END] == reinterpret_cast<uint32_t>(end);
+}
+
+bool unpackPart(const uint8_t *&source, const uint8_t *sourceEnd,
+                uint8_t *&target, const uint8_t *targetEnd,
+                const uint8_t *limit) {
+  if (!queueWrite) {
+    return false;
   }
   volatile uint32_t *entry =
-      ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
-  const uint32_t end = reinterpret_cast<uint32_t>(target + targetSize);
-  entry[0] = KIND_LZ4;
-  entry[1] = reinterpret_cast<uint32_t>(source);
-  entry[2] = reinterpret_cast<uint32_t>(source + sourceSize);
-  entry[3] = reinterpret_cast<uint32_t>(target);
-  entry[4] = end;
-  entry[UNPACKED_END] = 0;
-  written = (written + 1) & INDEX_MASK;
-  *queueWrite = written;
-  wait();
-  return entry[UNPACKED_END] == end;
+      queueUnpack(source, sourceEnd, target, targetEnd,
+                  limit ? reinterpret_cast<uint32_t>(limit) : NO_LIMIT);
+  target = reinterpret_cast<uint8_t *>(entry[UNPACKED_END]);
+  source = reinterpret_cast<const uint8_t *>(entry[UNPACKED_SOURCE]);
+  return true;
 }
 
 bool outline(const uint8_t *pixels, int width, int height, void *rows,

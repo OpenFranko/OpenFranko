@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <utility>
 
 namespace openfranko::src::systems::audio {
 namespace {
@@ -160,18 +161,51 @@ void readPattern(const Reader &file, std::size_t start, int index,
 
 } // namespace
 
-bool parseS3m(const std::vector<uint8_t> &data, S3mModule &module,
-              SignFlip flip) {
-  const Reader file(data);
-  if (data.size() < ORDERS ||
-      std::memcmp(data.data() + SIGNATURE, "SCRM", 4) != 0) {
+S3mReader::S3mReader(std::vector<uint8_t> data, SignFlip flip, int steps)
+    : m_data(std::move(data)), m_flip(flip), m_steps(steps) {}
+
+bool S3mReader::step(S3mModule &module) {
+  const std::size_t items = m_instrumentCount + m_patternCount;
+  if (!m_started) {
+    m_started = true;
+    if (!readHeader(module)) {
+      m_failed = true;
+      return true;
+    }
+    return m_instrumentCount + m_patternCount == 0;
+  }
+  const Reader file(m_data);
+  const std::size_t end = std::min(m_next + m_perStep, items);
+  for (; m_next < end; ++m_next) {
+    if (m_next < m_instrumentCount) {
+      const std::size_t header =
+          file.word(m_instruments + 2 * m_next) * PARAGRAPH;
+      if (header + SAMPLE_HEADER <= m_data.size()) {
+        readSample(file, header, m_format, m_flip, module.samples[m_next]);
+      }
+      continue;
+    }
+    const std::size_t index = m_next - m_instrumentCount;
+    module.patterns.emplace_back();
+    readPattern(file, file.word(m_patterns + 2 * index) * PARAGRAPH,
+                static_cast<int>(index), module);
+  }
+  return m_next >= items;
+}
+
+bool S3mReader::failed() const { return m_failed; }
+
+bool S3mReader::readHeader(S3mModule &module) {
+  const Reader file(m_data);
+  if (m_data.size() < ORDERS ||
+      std::memcmp(m_data.data() + SIGNATURE, "SCRM", 4) != 0) {
     return false;
   }
   module = S3mModule{};
   const std::size_t orderCount = file.word(ORDER_COUNT);
-  const std::size_t instrumentCount = file.word(INSTRUMENT_COUNT);
-  const std::size_t patternCount = file.word(PATTERN_COUNT);
-  const int format = static_cast<int>(file.word(FORMAT_INFO));
+  m_instrumentCount = file.word(INSTRUMENT_COUNT);
+  m_patternCount = file.word(PATTERN_COUNT);
+  m_format = static_cast<int>(file.word(FORMAT_INFO));
   module.speed = file.byte(INITIAL_SPEED) ? file.byte(INITIAL_SPEED) : 6;
   module.tempo =
       file.byte(INITIAL_TEMPO) >= 0x20 ? file.byte(INITIAL_TEMPO) : 125;
@@ -188,10 +222,10 @@ bool parseS3m(const std::vector<uint8_t> &data, S3mModule &module,
   for (std::size_t order = 0; order < orderCount; ++order) {
     module.orders.push_back(file.byte(ORDERS + order));
   }
-  const std::size_t instruments = ORDERS + orderCount;
-  const std::size_t patterns = instruments + 2 * instrumentCount;
+  m_instruments = ORDERS + orderCount;
+  m_patterns = m_instruments + 2 * m_instrumentCount;
   if (file.byte(DEFAULT_PAN) == PAN_TABLE) {
-    const std::size_t pans = patterns + 2 * patternCount;
+    const std::size_t pans = m_patterns + 2 * m_patternCount;
     for (int channel = 0; channel < S3mModule::CHANNELS; ++channel) {
       const uint8_t value = file.byte(pans + static_cast<std::size_t>(channel));
       if (value & PAN_SET) {
@@ -199,19 +233,23 @@ bool parseS3m(const std::vector<uint8_t> &data, S3mModule &module,
       }
     }
   }
-  module.samples.resize(instrumentCount);
-  for (std::size_t index = 0; index < instrumentCount; ++index) {
-    const std::size_t header = file.word(instruments + 2 * index) * PARAGRAPH;
-    if (header + SAMPLE_HEADER <= data.size()) {
-      readSample(file, header, format, flip, module.samples[index]);
-    }
-  }
-  module.patterns.resize(patternCount);
-  for (std::size_t index = 0; index < patternCount; ++index) {
-    readPattern(file, file.word(patterns + 2 * index) * PARAGRAPH,
-                static_cast<int>(index), module);
+  module.samples.resize(m_instrumentCount);
+  module.patterns.reserve(m_patternCount);
+  const std::size_t items = m_instrumentCount + m_patternCount;
+  if (m_steps > 0) {
+    const std::size_t steps =
+        m_steps > 2 ? static_cast<std::size_t>(m_steps - 2) : 1;
+    m_perStep = std::max<std::size_t>(1, (items + steps - 1) / steps);
   }
   return true;
+}
+
+bool parseS3m(const std::vector<uint8_t> &data, S3mModule &module,
+              SignFlip flip) {
+  S3mReader reader(data, flip, 0);
+  while (!reader.step(module)) {
+  }
+  return !reader.failed();
 }
 
 } // namespace openfranko::src::systems::audio

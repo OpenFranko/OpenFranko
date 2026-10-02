@@ -103,6 +103,76 @@ SCENARIO("LZ4 blocks decompress to what was compressed") {
   }
 }
 
+SCENARIO("LZ4 blocks decompress in steps of a few bytes") {
+  GIVEN("Data with repeats, noise and runs") {
+    const std::vector<uint8_t> data = pattern(70000, 9);
+    const std::vector<uint8_t> packed =
+        packedArchive::compressLz4(data.data(), data.size());
+
+    THEN("Any step size gives the same bytes") {
+      for (const std::size_t bytes : {1u, 7u, 256u, 4096u, 100000u}) {
+        CAPTURE(bytes);
+        std::vector<uint8_t> unpacked(data.size(), 0xAA);
+        Lz4Steps steps(packed.data(), packed.size(), unpacked.data(),
+                       unpacked.size());
+        std::size_t taken = 1;
+        while (!steps.step(bytes)) {
+          ++taken;
+        }
+        REQUIRE(unpacked == data);
+        REQUIRE(taken <= data.size() / bytes + 2);
+      }
+    }
+
+    THEN("Each step stops at a sequence boundary past its share") {
+      std::vector<uint8_t> unpacked(data.size());
+      const uint8_t *source = packed.data();
+      uint8_t *target = unpacked.data();
+      decompressLz4Part(source, packed.data() + packed.size(), unpacked.data(),
+                        target, unpacked.data() + unpacked.size(),
+                        unpacked.data() + 1000);
+      REQUIRE(target >= unpacked.data() + 1000);
+      REQUIRE(source < packed.data() + packed.size());
+      decompressLz4Part(source, packed.data() + packed.size(), unpacked.data(),
+                        target, unpacked.data() + unpacked.size(), nullptr);
+      REQUIRE(source == packed.data() + packed.size());
+      REQUIRE(unpacked == data);
+    }
+  }
+
+  GIVEN("An empty block") {
+    const std::vector<uint8_t> packed = packedArchive::compressLz4(nullptr, 0);
+
+    THEN("It is done in one step") {
+      uint8_t unused = 0;
+      Lz4Steps steps(packed.data(), packed.size(), &unused, 0);
+      REQUIRE(steps.step(64));
+    }
+  }
+
+  GIVEN("Blocks that end too soon or run too long") {
+    const std::vector<uint8_t> data = pattern(5000, 4);
+    std::vector<uint8_t> packed =
+        packedArchive::compressLz4(data.data(), data.size());
+
+    THEN("Stepping through them fails") {
+      const auto run = [](const std::vector<uint8_t> &block, std::size_t size) {
+        std::vector<uint8_t> unpacked(size);
+        Lz4Steps steps(block.data(), block.size(), unpacked.data(),
+                       unpacked.size());
+        for (int step = 0; step < 100000 && !steps.step(64); ++step) {
+        }
+      };
+      std::vector<uint8_t> truncated = packed;
+      truncated.resize(truncated.size() / 2);
+      REQUIRE_THROWS_AS(run(truncated, data.size()), std::runtime_error);
+      REQUIRE_THROWS_AS(run(packed, data.size() - 100), std::runtime_error);
+      REQUIRE_THROWS_AS(run(packed, data.size() + 100), std::runtime_error);
+      REQUIRE_NOTHROW(run(packed, data.size()));
+    }
+  }
+}
+
 SCENARIO("A packed archive is read in place") {
   GIVEN("An archive with files and a bitmap") {
     const std::vector<uint8_t> data = archive();
@@ -254,6 +324,81 @@ SCENARIO("A packed archive finds names that share long prefixes") {
               "assets/s50/s50_sam20_8000Hz.wav");
       REQUIRE(samplePath(files, "s50", 3).empty());
       REQUIRE(samplePath(files, "s500", 2).empty());
+    }
+  }
+}
+
+SCENARIO("Packed bitmaps and files are read in steps") {
+  GIVEN("A picture larger than one step") {
+    IndexedBitmap picture;
+    picture.width = 320;
+    picture.height = 100;
+    picture.hotspotX = 3;
+    picture.hotspotY = -2;
+    for (uint16_t color = 0; color < 32; ++color) {
+      picture.palette.push_back(static_cast<uint16_t>(color * 0x111 & 0xFFF));
+    }
+    picture.pixels = pattern(32000, 5);
+    packedArchive::ArchiveWriter writer;
+    writer.addBitmap("assets/big.bmp", picture);
+    writer.addFile("assets/big.bin", pattern(40000, 6));
+    writer.addFile("assets/empty.bin", {});
+    const std::vector<uint8_t> data = writer.finish();
+    PackedFiles files(data.data(), data.size());
+
+    THEN("It takes several steps and matches loading it at once") {
+      IndexedBitmap stepped;
+      const auto load = files.beginBitmap("assets/big.bmp");
+      int steps = 1;
+      while (!load->step(stepped)) {
+        ++steps;
+      }
+      REQUIRE(steps > 2);
+      const IndexedBitmap whole = files.loadBitmap("assets/big.bmp");
+      REQUIRE(stepped.width == whole.width);
+      REQUIRE(stepped.height == whole.height);
+      REQUIRE(stepped.hotspotX == whole.hotspotX);
+      REQUIRE(stepped.hotspotY == whole.hotspotY);
+      REQUIRE(stepped.palette == whole.palette);
+      REQUIRE(stepped.pixels == picture.pixels);
+    }
+
+    THEN("A missing bitmap fails like loading it at once") {
+      IndexedBitmap bitmap;
+      const auto load = files.beginBitmap("assets/missing.bmp");
+      REQUIRE_THROWS_WITH(load->step(bitmap),
+                          "Failed to load bitmap: assets/missing.bmp");
+    }
+
+    THEN("A file takes several steps and matches reading it at once") {
+      std::vector<uint8_t> stepped;
+      const auto load = files.beginRead("assets/big.bin");
+      int steps = 1;
+      while (!load->step(stepped)) {
+        ++steps;
+      }
+      REQUIRE(steps > 2);
+      REQUIRE(stepped == files.read("assets/big.bin"));
+      REQUIRE(stepped == pattern(40000, 6));
+    }
+
+    THEN("An empty file reads in a step") {
+      std::vector<uint8_t> bytes{1, 2};
+      const auto load = files.beginRead("assets/empty.bin");
+      int steps = 1;
+      while (!load->step(bytes)) {
+        ++steps;
+      }
+      REQUIRE(steps <= 2);
+      REQUIRE(bytes.empty());
+    }
+
+    THEN("Missing files and bitmaps fail like reading them at once") {
+      std::vector<uint8_t> bytes;
+      REQUIRE_THROWS_WITH(files.beginRead("assets/missing")->step(bytes),
+                          "Failed to open assets/missing");
+      REQUIRE_THROWS_WITH(files.beginRead("assets/big.bmp")->step(bytes),
+                          "Failed to open assets/big.bmp");
     }
   }
 }

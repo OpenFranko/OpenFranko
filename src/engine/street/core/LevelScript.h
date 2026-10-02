@@ -1,6 +1,8 @@
 #ifndef ENGINE_STREET_CORE_LEVELSCRIPT_H_
 #define ENGINE_STREET_CORE_LEVELSCRIPT_H_
 
+#include "Json.h"
+
 #include <array>
 #include <string>
 #include <vector>
@@ -32,6 +34,24 @@ struct LevelScript {
   std::vector<Wave> waves;
 
   static LevelScript fromJson(const std::string &json);
+};
+
+class LevelScriptReader {
+public:
+  explicit LevelScriptReader(std::string json);
+
+  bool step(LevelScript &script);
+
+private:
+  void readWave(LevelScript &script);
+  void readSlots(Wave &wave);
+  void readSlot(EnemySlot &slot);
+
+  JsonCursor m_json;
+  bool m_opened = false;
+  bool m_inWaves = false;
+  bool m_hasLength = false;
+  bool m_hasWaves = false;
 };
 
 } // namespace core

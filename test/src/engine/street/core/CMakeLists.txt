@@ -57,3 +57,11 @@ add_executable(${SURFACE_PAIR_TEST_TARGET}
 target_link_libraries(${SURFACE_PAIR_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain StreetCore)
 add_test(NAME ${SURFACE_PAIR_TEST_TARGET} COMMAND ${SURFACE_PAIR_TEST_TARGET})
+
+set(STREET_ENDING_CREDITS_TEST_TARGET streetEndingCreditsTest)
+add_executable(${STREET_ENDING_CREDITS_TEST_TARGET}
+    streetEndingCreditsTest.cpp)
+target_link_libraries(${STREET_ENDING_CREDITS_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain StreetCore)
+add_test(NAME ${STREET_ENDING_CREDITS_TEST_TARGET}
+    COMMAND ${STREET_ENDING_CREDITS_TEST_TARGET})

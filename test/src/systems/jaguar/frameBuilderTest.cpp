@@ -333,6 +333,50 @@ SCENARIO("Jaguar frames show what the desktop rasterizer draws") {
       }
     }
 
+    GIVEN("A scrolling picture with a colour changed on every row") {
+      graphics::Display display;
+      display.width = 320;
+      display.height = 256;
+      graphics::Layer picture = layer(320, 256, 32, 9);
+      picture.wrap = true;
+      for (int row = 28; row < 256; ++row) {
+        picture.rowColors.push_back(
+            {row, 0, static_cast<uint16_t>(row * 0x123 & 0xFFF)});
+      }
+      display.layers.push_back(picture);
+      THEN("Each frame matches as it scrolls and its colours change") {
+        REQUIRE(mismatches(display, geometry) == 0);
+        display.layers.back().sourceX = 5;
+        REQUIRE(mismatches(display, geometry) == 0);
+        for (graphics::RowColor &change : display.layers.back().rowColors) {
+          change.color = static_cast<uint16_t>((change.color + 0x111) & 0xFFF);
+        }
+        REQUIRE(mismatches(display, geometry) == 0);
+        display.layers.back().palette[0] = 0x0F0;
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    GIVEN("A masked layer whose rows change colours shared with the next") {
+      graphics::Display display;
+      display.width = 320;
+      display.height = 120;
+      graphics::Layer picture = layer(320, 120, 4, 5);
+      picture.mask = 0x03;
+      for (int row = 4; row < 120; ++row) {
+        picture.rowColors.push_back(
+            {row, static_cast<uint8_t>(row % 4),
+             static_cast<uint16_t>(row * 0x35 & 0xFFF)});
+        picture.rowColors.push_back(
+            {row, static_cast<uint8_t>((row + 1) % 4),
+             static_cast<uint16_t>(row * 0x17 & 0xFFF)});
+      }
+      display.layers.push_back(picture);
+      THEN("The changes land on their rows") {
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
     GIVEN("Layers scrolled to columns between phrases") {
       graphics::Display display;
       display.width = 320;

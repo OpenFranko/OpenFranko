@@ -1,10 +1,11 @@
-#ifndef ENGINE_ASSETS_YIELDINGFILES_H_
-#define ENGINE_ASSETS_YIELDINGFILES_H_
+#ifndef ENGINE_ASSETS_PREFETCHINGFILES_H_
+#define ENGINE_ASSETS_PREFETCHINGFILES_H_
 
 #include "Files.h"
 
+#include <cstddef>
 #include <cstdint>
-#include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -14,9 +15,14 @@ namespace src {
 namespace engine {
 namespace assets {
 
-class YieldingFiles : public Files {
+class PrefetchingFiles : public Files {
 public:
-  YieldingFiles(std::unique_ptr<Files> files, std::function<void()> yield);
+  explicit PrefetchingFiles(std::unique_ptr<Files> files);
+
+  void prefetch(std::vector<std::string> paths);
+  void prefetchMore(const std::vector<std::string> &paths);
+  bool step();
+  void drop();
 
   bool exists(const std::string &path) const override;
   std::vector<std::string> list(const std::string &directory) const override;
@@ -27,8 +33,14 @@ public:
   std::unique_ptr<FileLoad> beginRead(const std::string &path) override;
 
 private:
+  class ReadyBitmap;
+
   std::unique_ptr<Files> m_files;
-  std::function<void()> m_yield;
+  std::vector<std::string> m_paths;
+  std::size_t m_next = 0;
+  std::unique_ptr<BitmapLoad> m_load;
+  systems::graphics::IndexedBitmap m_bitmap;
+  std::map<std::string, systems::graphics::IndexedBitmap> m_ready;
 };
 
 } // namespace assets
@@ -36,4 +48,4 @@ private:
 } // namespace src
 } // namespace openfranko
 
-#endif // ENGINE_ASSETS_YIELDINGFILES_H_
+#endif // ENGINE_ASSETS_PREFETCHINGFILES_H_

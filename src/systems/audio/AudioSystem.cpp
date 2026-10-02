@@ -42,6 +42,18 @@ void AudioSystem::loadMusic(const std::string &path) {
   }
 }
 
+std::unique_ptr<Speaker::MusicLoad>
+AudioSystem::beginMusic(const std::string &path, std::vector<uint8_t> data,
+                        int steps) {
+  return Speaker::beginMusic(path, std::move(data), steps);
+}
+
+void AudioSystem::prepareMusic(const std::string &, std::vector<uint8_t>) {}
+
+bool AudioSystem::stepPreparation() { return false; }
+
+void AudioSystem::dropPreparedMusic() {}
+
 void AudioSystem::clearMusic() {
   std::lock_guard<AudioDevice> lock(*m_output->device);
   m_output->mixer.releaseModule();

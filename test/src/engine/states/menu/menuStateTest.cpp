@@ -59,19 +59,28 @@ SCENARIO("The menu's pictures and bobs come from the files") {
     Menu menu;
     const std::vector<std::string> &loaded = menu.files.loaded;
 
-    THEN("The backdrop, title and hiscore pictures come first") {
-      REQUIRE(std::vector<std::string>(loaded.begin(), loaded.begin() + 3) ==
-              std::vector<std::string>{"assets/03B8.bmp", "assets/03BA.bmp",
-                                       "assets/03B9.bmp"});
+    THEN("The backdrop and the menu's bobs are read on entry") {
+      REQUIRE(loaded.size() == 1 + MENU_IMAGES);
+      REQUIRE(loaded[0] == "assets/03B8.bmp");
+      REQUIRE(loaded[1] == assets::imagePath("0034", 0));
+      REQUIRE(loaded.back() == assets::imagePath("0034", MENU_IMAGES - 1));
     }
 
-    THEN("Then the menu's bobs and the hiscore letters") {
-      REQUIRE(loaded.size() == 3 + MENU_IMAGES + LETTER_IMAGES);
-      REQUIRE(loaded[3] == assets::imagePath("0034", 0));
-      REQUIRE(loaded[3 + MENU_IMAGES - 1] ==
-              assets::imagePath("0034", MENU_IMAGES - 1));
-      REQUIRE(loaded[3 + MENU_IMAGES] == assets::imagePath("0035", 0));
-      REQUIRE(loaded.back() == assets::imagePath("0035", LETTER_IMAGES - 1));
+    THEN("The attract pictures and letters are not read while it opens") {
+      run(*menu.state, OPENING_FRAMES);
+      REQUIRE(loaded.size() == 1 + MENU_IMAGES);
+    }
+
+    WHEN("The attract starts") {
+      run(*menu.state, OPENING_FRAMES + MenuSequence::ATTRACT_AFTER + 10);
+
+      THEN("The title and hiscore pictures are read, then the letters") {
+        REQUIRE(loaded.size() == 3 + MENU_IMAGES + LETTER_IMAGES);
+        REQUIRE(loaded[1 + MENU_IMAGES] == "assets/03BA.bmp");
+        REQUIRE(loaded[2 + MENU_IMAGES] == "assets/03B9.bmp");
+        REQUIRE(loaded[3 + MENU_IMAGES] == assets::imagePath("0035", 0));
+        REQUIRE(loaded.back() == assets::imagePath("0035", LETTER_IMAGES - 1));
+      }
     }
 
     THEN("The music is left to the hiscore screen before") {

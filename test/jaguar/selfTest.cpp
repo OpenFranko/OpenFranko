@@ -320,6 +320,42 @@ void testLz4() {
       }
     }
   }
+  for (int kind = 0; kind < 4; ++kind) {
+    const std::vector<uint8_t> data = lz4Sample(9000, kind);
+    const std::vector<uint8_t> packed =
+        openfranko::lib::converter::packedArchive::compressLz4(data.data(),
+                                                               data.size());
+    for (const std::size_t chunk : {1u, 64u, 1000u, 5000u}) {
+      std::vector<uint8_t> unpacked(data.size() + 8, UNTOUCHED);
+      const uint8_t *source = packed.data();
+      const uint8_t *sourceEnd = packed.data() + packed.size();
+      uint8_t *target = unpacked.data();
+      const uint8_t *end = unpacked.data() + data.size();
+      bool same = true;
+      for (int call = 0; same && source < sourceEnd; ++call) {
+        const uint8_t *limit = std::min<const uint8_t *>(target + chunk, end);
+        same = call < 10000 &&
+               blitter::unpackPart(source, sourceEnd, target, end, limit) &&
+               (target >= limit || source == sourceEnd);
+      }
+      same = same && target == end;
+      for (std::size_t at = 0; same && at < data.size(); ++at) {
+        same = unpacked[at] == data[at];
+      }
+      for (std::size_t at = data.size(); same && at < unpacked.size(); ++at) {
+        same = unpacked[at] == UNTOUCHED;
+      }
+      if (!same) {
+        char line[64];
+        std::snprintf(line, sizeof(line), "lz4 part kind %d chunk %u: FAIL",
+                      kind, static_cast<unsigned>(chunk));
+        report(line);
+        ++failures;
+      } else {
+        ++passes;
+      }
+    }
+  }
   const std::vector<uint8_t> data = lz4Sample(3552, 1);
   std::vector<uint8_t> packed =
       openfranko::lib::converter::packedArchive::compressLz4(data.data(),

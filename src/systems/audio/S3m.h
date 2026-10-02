@@ -4,6 +4,7 @@
 #include "Wave.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <set>
 #include <utility>
@@ -49,6 +50,30 @@ struct S3mModule {
   std::vector<S3mSample> samples;
   std::array<int, CHANNELS> pans{};
   std::set<std::pair<int, int>> tempoRows;
+};
+
+class S3mReader {
+public:
+  S3mReader(std::vector<uint8_t> data, SignFlip flip, int steps);
+
+  bool step(S3mModule &module);
+  bool failed() const;
+
+private:
+  bool readHeader(S3mModule &module);
+
+  std::vector<uint8_t> m_data;
+  SignFlip m_flip;
+  int m_steps;
+  bool m_started = false;
+  bool m_failed = false;
+  std::size_t m_instrumentCount = 0;
+  std::size_t m_patternCount = 0;
+  std::size_t m_instruments = 0;
+  std::size_t m_patterns = 0;
+  int m_format = 0;
+  std::size_t m_next = 0;
+  std::size_t m_perStep = 1;
 };
 
 bool parseS3m(const std::vector<uint8_t> &data, S3mModule &module,

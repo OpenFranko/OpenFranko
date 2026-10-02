@@ -14,6 +14,8 @@ namespace src {
 namespace systems {
 namespace audio {
 
+struct S3mModule;
+
 class AudioSystem : public Speaker {
 public:
   using Read = std::function<std::vector<uint8_t>(const std::string &path)>;
@@ -25,7 +27,13 @@ public:
   AudioSystem &operator=(const AudioSystem &) = delete;
 
   void loadMusic(const std::string &path) override;
+  std::unique_ptr<MusicLoad> beginMusic(const std::string &path,
+                                        std::vector<uint8_t> data,
+                                        int steps) override;
   void clearMusic();
+  void prepareMusic(const std::string &path, std::vector<uint8_t> data);
+  bool stepPreparation();
+  void dropPreparedMusic();
   const std::string &loadedMusic() const override;
   void loadSample(const std::string &name, const std::string &path) override;
   void clearSample(const std::string &name) override;
@@ -46,7 +54,9 @@ public:
 
 private:
   struct Output;
+  class MusicSteps;
 
+  void installMusic(const std::string &path, std::unique_ptr<S3mModule> module);
   void startMusic(bool looping);
   void applyTempo();
 

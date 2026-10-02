@@ -29,6 +29,9 @@ bool queue(Source source, Area target, int width, int height, Mode mode);
 bool isQueued();
 bool unpack(const uint8_t *source, std::size_t sourceSize, uint8_t *target,
             std::size_t targetSize);
+bool unpackPart(const uint8_t *&source, const uint8_t *sourceEnd,
+                uint8_t *&target, const uint8_t *targetEnd,
+                const uint8_t *limit);
 bool outline(const uint8_t *pixels, int width, int height, void *rows,
              void *bands, int32_t *box);
 bool flipSigns(const uint8_t *source, int8_t *target, std::size_t count);

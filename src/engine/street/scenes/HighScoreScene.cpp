@@ -127,7 +127,14 @@ void HighScoreScene::runBasic() {
       break;
     case Step::Pictures:
       m_host.setMusicTempo(menuTempo(m_options.ntsc));
-      m_loading.queue([this] { m_host.loadPicture(assets::TITLE_SCREEN); });
+      m_loading.queueSteps([this, title = std::make_shared<core::Picture>(),
+                            load = std::function<bool()>()]() mutable {
+        if (!load) {
+          load = pictureJob(
+              m_host, [] { return assets::TITLE_SCREEN; }, *title, nullptr);
+        }
+        return load();
+      });
       queuePictures();
       break;
     case Step::Loaded:
@@ -187,20 +194,19 @@ void HighScoreScene::reset() {
     return;
   }
   m_host.stopMusic();
-  m_loading.queue([this] { m_host.loadMusic(assets::MENU_TUNE); });
+  m_loading.queueSteps(musicJob(
+      m_host, [] { return assets::MENU_TUNE; }, ui::LoadingQueue::FILE_FRAMES));
   m_afterLoading = Step::MenuMusic;
   m_step = Step::Loading;
 }
 
 void HighScoreScene::queuePictures() {
-  m_loading.queue([this] {
-    m_picture = m_host.loadPicture(assets::HISCORE_LETTERS);
-    m_picturePalette = m_host.loadPalette(assets::HISCORE_LETTERS);
-  });
-  m_loading.queue([this] {
-    m_images.load(core::ImageBank::FIRST_IMAGE,
-                  m_host.loadSpriteSet(assets::LETTER_SET, LETTER_SAMPLES));
-  });
+  m_loading.queueSteps(pictureJob(
+      m_host, [] { return assets::HISCORE_LETTERS; }, m_picture,
+      &m_picturePalette));
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [] { return assets::LETTER_SET; }, LETTER_SAMPLES,
+      core::ImageBank::FIRST_IMAGE, ui::LoadingQueue::FILE_FRAMES));
   m_afterLoading = Step::Loaded;
   m_step = Step::Loading;
 }

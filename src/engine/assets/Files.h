@@ -22,6 +22,18 @@ public:
     virtual bool next(std::string_view &name) = 0;
   };
 
+  class BitmapLoad {
+  public:
+    virtual ~BitmapLoad() = default;
+    virtual bool step(systems::graphics::IndexedBitmap &bitmap) = 0;
+  };
+
+  class FileLoad {
+  public:
+    virtual ~FileLoad() = default;
+    virtual bool step(std::vector<uint8_t> &data) = 0;
+  };
+
   virtual ~Files() = default;
 
   virtual bool exists(const std::string &path) const = 0;
@@ -29,7 +41,9 @@ public:
   virtual std::unique_ptr<Listing> walk(const std::string &directory) const;
   virtual systems::graphics::IndexedBitmap
   loadBitmap(const std::string &path) = 0;
+  virtual std::unique_ptr<BitmapLoad> beginBitmap(const std::string &path);
   virtual std::vector<uint8_t> read(const std::string &path) = 0;
+  virtual std::unique_ptr<FileLoad> beginRead(const std::string &path);
 };
 
 } // namespace assets

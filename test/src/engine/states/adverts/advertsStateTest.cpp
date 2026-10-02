@@ -34,15 +34,23 @@ struct Adverts {
 
 } // namespace
 
-SCENARIO("The six advert slides are read up front") {
+SCENARIO("The six advert slides are read over the first frames") {
   GIVEN("The adverts state") {
     Adverts adverts;
 
-    THEN("Pictures p80 to p85 are read in order") {
-      REQUIRE(adverts.files.loaded ==
-              std::vector<std::string>{"assets/p80.bmp", "assets/p81.bmp",
-                                       "assets/p82.bmp", "assets/p83.bmp",
-                                       "assets/p84.bmp", "assets/p85.bmp"});
+    THEN("Nothing is read before the first frame") {
+      REQUIRE(adverts.files.loaded.empty());
+    }
+
+    WHEN("The screen has opened") {
+      run(adverts.state, AdvertsState::SLIDES);
+
+      THEN("Pictures p80 to p85 are read in order") {
+        REQUIRE(adverts.files.loaded ==
+                std::vector<std::string>{"assets/p80.bmp", "assets/p81.bmp",
+                                         "assets/p82.bmp", "assets/p83.bmp",
+                                         "assets/p84.bmp", "assets/p85.bmp"});
+      }
     }
   }
 }

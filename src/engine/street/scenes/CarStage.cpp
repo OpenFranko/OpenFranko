@@ -202,15 +202,14 @@ void CarStage::era() {
   m_host.stopMusic();
   m_musicLoaded = false;
   m_images.clear();
-  m_loading.queue([this] {
-    m_images.load(1, m_host.loadSpriteSet(CAR_SET, CAR_SAMPLE_BANK));
-  });
-  m_loading.queue([this] {
-    m_images.load(PEDESTRIAN_IMAGES,
-                  m_host.loadSpriteSet(CAR_SET - stage(), 0));
-  });
-  m_loading.queue(
-      [this] { m_backdrop = m_host.loadPicture(ROAD_PICTURE + stage()); });
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [] { return CAR_SET; }, CAR_SAMPLE_BANK, 1,
+      ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [this] { return CAR_SET - stage(); }, 0,
+      PEDESTRIAN_IMAGES, ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps(pictureJob(
+      m_host, [this] { return ROAD_PICTURE + stage(); }, m_backdrop, nullptr));
   m_afterLoading = Step::Loaded;
   m_step = Step::Loading;
 }

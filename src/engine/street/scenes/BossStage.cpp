@@ -162,25 +162,33 @@ BossStage::Flow BossStage::init() {
 
   m_host.stopMusic();
   m_images.clear();
-  m_loading.queue([this] { m_host.loadMusic(stage() + 603); });
+  m_loading.queueSteps(musicJob(
+      m_host, [this] { return stage() + 603; }, ui::LoadingQueue::FILE_FRAMES));
   return load(Step::BossMusic);
 }
 
 BossStage::Flow BossStage::bossMusic() {
   playMusic();
-  m_loading.queue(
-      [this] { m_columns = m_host.loadScenery(stage() * 10 + 310); });
-  m_loading.queue([this] { m_images.load(1, m_host.loadSpriteSet(0, 0)); });
+  m_loading.queueSteps(
+      [this, load = std::shared_ptr<StreetHost::FramesLoad>()]() mutable {
+        if (!load) {
+          load = m_host.beginScenery(stage() * 10 + 310);
+        }
+        return load->step(m_columns);
+      });
+  constexpr int STEPS = ui::LoadingQueue::FILE_FRAMES;
+  m_loading.queueSteps(
+      spriteSetJob(m_host, m_images, [] { return 0; }, 0, 1, STEPS));
   const int player = 254 - 5 * global(amal::RQ);
-  m_loading.queue([this, player] {
-    m_images.load(11, m_host.loadSpriteSet(player, PLAYER_SAMPLE_BANK));
-  });
-  m_loading.queue([this, player] {
-    m_images.load(38, m_host.loadSpriteSet(player - stage(), 0));
-  });
-  m_loading.queue([this] {
-    m_images.load(43, m_host.loadSpriteSet(201 - stage(), BOSS_SAMPLE_BANK));
-  });
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [player] { return player; }, PLAYER_SAMPLE_BANK, 11,
+      STEPS));
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [this, player] { return player - stage(); }, 0, 38,
+      STEPS));
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [this] { return 201 - stage(); }, BOSS_SAMPLE_BANK, 43,
+      STEPS));
   return load(Step::BossLoaded);
 }
 

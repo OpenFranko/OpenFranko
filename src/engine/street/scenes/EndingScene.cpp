@@ -99,6 +99,7 @@ void EndingScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
     return;
   }
+  stepCredits();
   if (m_stage) {
     stageFrame();
   }
@@ -419,6 +420,7 @@ void EndingScene::runBasic(int16_t joystick) {
       textScreen();
       m_page = 0;
       m_count = 0;
+      finishCredits();
       m_step = m_credits.pages.empty() ? Step::FinalKliker : Step::Page;
       break;
     case Step::Page:
@@ -489,30 +491,52 @@ void EndingScene::start() {
   m_border = ui::STAGE_BORDER;
 }
 
+void EndingScene::stepCredits() {
+  if (m_creditsLoad && m_creditsLoad->step(m_credits)) {
+    m_creditsLoad.reset();
+  }
+}
+
+void EndingScene::finishCredits() {
+  while (m_creditsLoad) {
+    stepCredits();
+  }
+}
+
 void EndingScene::era() {
-  m_credits = m_host.loadEndingCredits();
+  m_credits = core::EndingCredits{};
+  m_creditsLoad = m_host.beginEndingCredits();
   m_panel = std::make_unique<ui::StatusPanel>(
       m_host.loadPanelPicture(StreetHost::LOADING_STRIP), core::Picture{},
       m_session.version);
   m_host.stopMusic();
   m_images.clear();
   m_parked.clear();
-  m_loading.queue([this] {
-    m_images.load(core::ImageBank::FIRST_IMAGE,
-                  m_host.loadSpriteSet(DANCE_SET, 0));
+  m_loading.queueSteps([this, load = spriteSetJob(
+                                  m_host, m_images, [] { return DANCE_SET; }, 0,
+                                  core::ImageBank::FIRST_IMAGE,
+                                  ui::LoadingQueue::FILE_FRAMES)]() mutable {
+    if (!load()) {
+      return false;
+    }
     m_parked = std::move(m_images);
     m_images.clear();
+    return true;
   });
-  m_loading.queue([this] {
-    m_images.load(core::ImageBank::FIRST_IMAGE,
-                  m_host.loadSpriteSet(STILL_SET, 0));
-  });
-  m_loading.queue([this] {
-    m_picture = m_host.loadPicture(STILL_PICTURE);
-    m_picturePalette = m_host.loadPalette(STILL_PICTURE);
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [] { return STILL_SET; }, 0,
+      core::ImageBank::FIRST_IMAGE, ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps([this, load = pictureJob(
+                                  m_host, [] { return STILL_PICTURE; },
+                                  m_picture, &m_picturePalette)]() mutable {
+    if (!load()) {
+      return false;
+    }
     m_picturePalette.resize(STILL_COLORS, effects::color::BLACK);
+    return true;
   });
-  m_loading.queue([this] { m_host.loadMusic(ENDING_TUNE); });
+  m_loading.queueSteps(musicJob(
+      m_host, [] { return ENDING_TUNE; }, ui::LoadingQueue::FILE_FRAMES));
   m_step = Step::Loading;
 }
 

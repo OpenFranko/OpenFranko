@@ -41,3 +41,10 @@ add_executable(${PACKED_FILES_TEST_TARGET}
 target_link_libraries(${PACKED_FILES_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain Assets packedArchive)
 add_test(NAME ${PACKED_FILES_TEST_TARGET} COMMAND ${PACKED_FILES_TEST_TARGET})
+
+set(PREFETCHING_FILES_TEST_TARGET prefetchingFilesTest)
+add_executable(${PREFETCHING_FILES_TEST_TARGET}
+    prefetchingFilesTest.cpp)
+target_link_libraries(${PREFETCHING_FILES_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets)
+add_test(NAME ${PREFETCHING_FILES_TEST_TARGET} COMMAND ${PREFETCHING_FILES_TEST_TARGET})

@@ -29,6 +29,16 @@ YieldingFiles::loadBitmap(const std::string &path) {
   return bitmap;
 }
 
+std::unique_ptr<Files::BitmapLoad>
+YieldingFiles::beginBitmap(const std::string &path) {
+  return m_files->beginBitmap(path);
+}
+
+std::unique_ptr<Files::FileLoad>
+YieldingFiles::beginRead(const std::string &path) {
+  return m_files->beginRead(path);
+}
+
 std::vector<uint8_t> YieldingFiles::read(const std::string &path) {
   std::vector<uint8_t> data = m_files->read(path);
   m_yield();

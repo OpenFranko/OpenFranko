@@ -609,11 +609,15 @@ fillWait:
 	nop
 
 lz4Command:
+	load	(r14+6),r13
 	movei	#BYTE_LIMIT,r9
 	movei	#lz4Token,r28
 	movei	#lz4Done,r29
 lz4Token:
 	cmp	r3,r2
+	jump	cc,(r29)
+	nop
+	cmp	r13,r4
 	jump	cc,(r29)
 	nop
 	loadb	(r2),r6
@@ -684,6 +688,7 @@ lz4MatchCopy:
 	nop
 lz4Done:
 	store	r4,(r14+5)
+	store	r2,(r14+7)
 	movei	#commandDone,r0
 	jump	(r0)
 	nop

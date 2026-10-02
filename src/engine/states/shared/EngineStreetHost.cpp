@@ -198,11 +198,13 @@ private:
 
 class EngineStreetHost::SpriteSetSteps : public SpriteSetLoad {
 public:
-  SpriteSetSteps(EngineStreetHost &host, int resource, int sampleBank, int base)
+  SpriteSetSteps(EngineStreetHost &host, int resource, int sampleBank, int base,
+                 int steps)
       : m_host(host), m_resource(resource), m_sampleBank(sampleBank),
-        m_base(base) {}
+        m_base(base), m_steps(steps) {}
 
   bool step(street::core::ImageBank &images) override {
+    ++m_taken;
     if (!m_listing) {
       if (m_sampleBank != 0 && m_host.clearFirstSample(m_sampleBank)) {
         return false;
@@ -219,12 +221,13 @@ public:
       if (m_sampleBank == 0) {
         m_listing->dropSamples();
       }
+      fitFrames();
       return false;
     }
     const std::vector<SetListing::Frame> &frames = m_listing->frames();
     if (m_nextFrame < frames.size()) {
       const std::size_t end =
-          std::min(m_nextFrame + FRAMES_PER_STEP, frames.size());
+          std::min(m_nextFrame + m_framesPerStep, frames.size());
       for (; m_nextFrame < end; ++m_nextFrame) {
         const SetListing::Frame &frame = frames[m_nextFrame];
         images.load(m_base + frame.index,
@@ -245,7 +248,16 @@ public:
   }
 
 private:
-  static constexpr std::size_t FRAMES_PER_STEP = 1;
+  void fitFrames() {
+    if (m_steps == FRAME_BY_FRAME) {
+      return;
+    }
+    const std::size_t steps = static_cast<std::size_t>(m_steps);
+    const std::size_t reserved = m_taken + m_listing->samples().size();
+    const std::size_t left = steps > reserved ? steps - reserved : 1;
+    const std::size_t frames = m_listing->frames().size();
+    m_framesPerStep = std::max<std::size_t>(1, (frames + left - 1) / left);
+  }
 
   void clearGaps(street::core::ImageBank &images) const {
     const std::size_t count = m_listing->frameCount();
@@ -264,6 +276,9 @@ private:
   int m_resource;
   int m_sampleBank;
   int m_base;
+  int m_steps;
+  std::size_t m_taken = 0;
+  std::size_t m_framesPerStep = 1;
   std::optional<SetListing> m_listing;
   std::size_t m_nextFrame = 0;
   std::size_t m_nextSample = 0;
@@ -271,8 +286,10 @@ private:
 };
 
 std::unique_ptr<street::scenes::StreetHost::SpriteSetLoad>
-EngineStreetHost::beginSpriteSet(int resource, int sampleBank, int base) {
-  return std::make_unique<SpriteSetSteps>(*this, resource, sampleBank, base);
+EngineStreetHost::beginSpriteSet(int resource, int sampleBank, int base,
+                                 int steps) {
+  return std::make_unique<SpriteSetSteps>(*this, resource, sampleBank, base,
+                                          steps);
 }
 
 class EngineStreetHost::ScenerySteps : public FramesLoad {
@@ -335,11 +352,133 @@ std::vector<street::core::Picture> EngineStreetHost::loadScenery(int resource) {
   return loadFrames(resource);
 }
 
+class EngineStreetHost::LevelScriptSteps : public LevelScriptLoad {
+public:
+  LevelScriptSteps(EngineStreetHost &host, int resource)
+      : m_host(host), m_resource(resource) {}
+
+  bool step(street::core::LevelScript &script) override {
+    if (!m_reader) {
+      m_reader.emplace(readText(m_host.m_files, "level script",
+                                m_host.resourcePath(m_resource) + ".json"));
+      return false;
+    }
+    return m_reader->step(script);
+  }
+
+private:
+  EngineStreetHost &m_host;
+  int m_resource;
+  std::optional<street::core::LevelScriptReader> m_reader;
+};
+
+std::unique_ptr<street::scenes::StreetHost::LevelScriptLoad>
+EngineStreetHost::beginLevelScript(int resource) {
+  return std::make_unique<LevelScriptSteps>(*this, resource);
+}
+
+class EngineStreetHost::PictureSteps : public PictureLoad {
+public:
+  PictureSteps(EngineStreetHost &host, int resource)
+      : m_host(host), m_resource(resource) {}
+
+  bool step(street::core::Picture &picture,
+            effects::color::AmigaPalette *palette) override {
+    if (!m_load) {
+      m_load =
+          m_host.m_files.beginBitmap(m_host.resourcePath(m_resource) + ".bmp");
+    }
+    if (!m_load->step(m_bitmap)) {
+      return false;
+    }
+    if (palette) {
+      *palette = m_bitmap.palette;
+    }
+    picture = toPicture(std::move(m_bitmap));
+    return true;
+  }
+
+private:
+  EngineStreetHost &m_host;
+  int m_resource;
+  std::unique_ptr<assets::Files::BitmapLoad> m_load;
+  systems::graphics::IndexedBitmap m_bitmap;
+};
+
+std::unique_ptr<street::scenes::StreetHost::PictureLoad>
+EngineStreetHost::beginPicture(int resource) {
+  return std::make_unique<PictureSteps>(*this, resource);
+}
+
+class EngineStreetHost::MusicSteps : public MusicLoad {
+public:
+  MusicSteps(EngineStreetHost &host, int resource, int steps)
+      : m_host(host), m_path(host.musicPath(resource)), m_steps(steps) {}
+
+  bool step() override {
+    ++m_taken;
+    if (m_music) {
+      return m_music->step();
+    }
+    try {
+      if (!m_read) {
+        m_read = m_host.m_files.beginRead(m_path);
+      }
+      if (!m_read->step(m_data)) {
+        return false;
+      }
+    } catch (const std::runtime_error &) {
+      m_host.m_speaker.loadMusic(m_path);
+      return true;
+    }
+    m_music = m_host.m_speaker.beginMusic(m_path, std::move(m_data),
+                                          std::max(m_steps - m_taken, 1));
+    return false;
+  }
+
+private:
+  EngineStreetHost &m_host;
+  std::string m_path;
+  int m_steps;
+  int m_taken = 0;
+  std::unique_ptr<assets::Files::FileLoad> m_read;
+  std::vector<uint8_t> m_data;
+  std::unique_ptr<systems::audio::Speaker::MusicLoad> m_music;
+};
+
+std::unique_ptr<street::scenes::StreetHost::MusicLoad>
+EngineStreetHost::beginMusic(int resource, int steps) {
+  return std::make_unique<MusicSteps>(*this, resource, steps);
+}
+
 street::core::LevelScript EngineStreetHost::loadLevelScript(int resource) {
   street::core::LevelScript script = street::core::LevelScript::fromJson(
       readText(m_files, "level script", resourcePath(resource) + ".json"));
   m_yield();
   return script;
+}
+
+class EngineStreetHost::CreditsSteps : public CreditsLoad {
+public:
+  explicit CreditsSteps(EngineStreetHost &host) : m_host(host) {}
+
+  bool step(street::core::EndingCredits &credits) override {
+    if (!m_reader) {
+      m_reader.emplace(readText(m_host.m_files, "ending credits",
+                                m_host.m_directory + "/" + CREDITS_FILE));
+      return false;
+    }
+    return m_reader->step(credits);
+  }
+
+private:
+  EngineStreetHost &m_host;
+  std::optional<street::core::EndingCreditsReader> m_reader;
+};
+
+std::unique_ptr<street::scenes::StreetHost::CreditsLoad>
+EngineStreetHost::beginEndingCredits() {
+  return std::make_unique<CreditsSteps>(*this);
 }
 
 street::core::EndingCredits EngineStreetHost::loadEndingCredits() {

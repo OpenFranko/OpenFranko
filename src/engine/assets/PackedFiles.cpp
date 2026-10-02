@@ -5,8 +5,10 @@
 
 #include <algorithm>
 #include <cstring>
+#include <optional>
 #include <stdexcept>
 #include <string_view>
+#include <utility>
 
 namespace openfranko::src::engine::assets {
 namespace {
@@ -25,9 +27,49 @@ bool startsWith(const char *text, const std::string &prefix) {
   return std::strncmp(text, prefix.c_str(), prefix.size()) == 0;
 }
 
+constexpr std::size_t UNPACK_STEP_BYTES = 4096;
+constexpr std::size_t FILL_STEP_BYTES = 16384;
+
 [[noreturn]] void corrupt() {
   throw std::runtime_error("Corrupt asset archive");
 }
+
+class StepUnpack {
+public:
+  StepUnpack(const uint8_t *data, std::size_t storedSize, bool compressed,
+             std::size_t size, std::vector<uint8_t> &target)
+      : m_data(data), m_storedSize(storedSize), m_compressed(compressed),
+        m_size(size) {
+    if (!compressed && storedSize != size) {
+      corrupt();
+    }
+    target.clear();
+    target.reserve(size);
+  }
+
+  bool step(std::vector<uint8_t> &target) {
+    const std::size_t end = std::min(target.size() + FILL_STEP_BYTES, m_size);
+    if (!m_compressed) {
+      target.insert(target.end(), m_data + target.size(), m_data + end);
+      return target.size() == m_size;
+    }
+    if (target.size() < m_size) {
+      target.resize(end);
+      return false;
+    }
+    if (!m_unpack) {
+      m_unpack.emplace(m_data, m_storedSize, target.data(), m_size);
+    }
+    return m_unpack->step(UNPACK_STEP_BYTES);
+  }
+
+private:
+  const uint8_t *m_data;
+  std::size_t m_storedSize;
+  bool m_compressed;
+  std::size_t m_size;
+  std::optional<Lz4Steps> m_unpack;
+};
 
 } // namespace
 
@@ -116,8 +158,9 @@ PackedFiles::walk(const std::string &directory) const {
   return std::make_unique<Walk>(*this, directory);
 }
 
-systems::graphics::IndexedBitmap
-PackedFiles::loadBitmap(const std::string &path) {
+PackedFiles::StoredPixels
+PackedFiles::readBitmapHeader(const std::string &path,
+                              systems::graphics::IndexedBitmap &bitmap) const {
   const std::size_t index = indexOf(normalized(path));
   if (index >= m_count) {
     if (exists(path)) {
@@ -131,7 +174,6 @@ PackedFiles::loadBitmap(const std::string &path) {
     throw std::runtime_error("Failed to load bitmap: " + path);
   }
   const uint8_t *header = found.data;
-  systems::graphics::IndexedBitmap bitmap;
   bitmap.width = packed::readWord(header + packed::BITMAP_WIDTH_OFFSET);
   bitmap.height = packed::readWord(header + packed::BITMAP_HEIGHT_OFFSET);
   bitmap.hotspotX = static_cast<int16_t>(
@@ -151,17 +193,49 @@ PackedFiles::loadBitmap(const std::string &path) {
   }
   const std::size_t pixels = static_cast<std::size_t>(bitmap.width) *
                              static_cast<std::size_t>(bitmap.height);
-  bitmap.pixels.resize(pixels);
-  const uint8_t *stored = header + paletteEnd;
-  const std::size_t storedPixels = found.storedSize - paletteEnd;
-  if (found.flags & packed::COMPRESSED) {
-    unpackLz4(stored, storedPixels, bitmap.pixels.data(), pixels);
-  } else if (storedPixels == pixels) {
-    std::memcpy(bitmap.pixels.data(), stored, pixels);
+  return {header + paletteEnd, found.storedSize - paletteEnd,
+          (found.flags & packed::COMPRESSED) != 0, pixels};
+}
+
+systems::graphics::IndexedBitmap
+PackedFiles::loadBitmap(const std::string &path) {
+  systems::graphics::IndexedBitmap bitmap;
+  const StoredPixels stored = readBitmapHeader(path, bitmap);
+  bitmap.pixels.resize(stored.pixels);
+  if (stored.compressed) {
+    unpackLz4(stored.data, stored.size, bitmap.pixels.data(),
+              bitmap.pixels.size());
+  } else if (stored.size == bitmap.pixels.size()) {
+    std::memcpy(bitmap.pixels.data(), stored.data, stored.size);
   } else {
     corrupt();
   }
   return bitmap;
+}
+
+class PackedFiles::BitmapSteps : public Files::BitmapLoad {
+public:
+  BitmapSteps(const PackedFiles &files, std::string path)
+      : m_files(files), m_path(std::move(path)) {}
+
+  bool step(systems::graphics::IndexedBitmap &bitmap) override {
+    if (!m_unpack) {
+      const StoredPixels stored = m_files.readBitmapHeader(m_path, bitmap);
+      m_unpack.emplace(stored.data, stored.size, stored.compressed,
+                       stored.pixels, bitmap.pixels);
+    }
+    return m_unpack->step(bitmap.pixels);
+  }
+
+private:
+  const PackedFiles &m_files;
+  std::string m_path;
+  std::optional<StepUnpack> m_unpack;
+};
+
+std::unique_ptr<Files::BitmapLoad>
+PackedFiles::beginBitmap(const std::string &path) {
+  return std::make_unique<BitmapSteps>(*this, path);
 }
 
 std::vector<uint8_t> PackedFiles::read(const std::string &path) {
@@ -178,6 +252,35 @@ std::vector<uint8_t> PackedFiles::read(const std::string &path) {
     corrupt();
   }
   return data;
+}
+
+class PackedFiles::ReadSteps : public Files::FileLoad {
+public:
+  ReadSteps(const PackedFiles &files, std::string path)
+      : m_files(files), m_path(std::move(path)) {}
+
+  bool step(std::vector<uint8_t> &data) override {
+    if (!m_unpack) {
+      const Entry found = m_files.require(m_path);
+      if (found.flags & packed::BITMAP) {
+        throw std::runtime_error("Failed to open " + m_path);
+      }
+      m_unpack.emplace(found.data, found.storedSize,
+                       (found.flags & packed::COMPRESSED) != 0, found.size,
+                       data);
+    }
+    return m_unpack->step(data);
+  }
+
+private:
+  const PackedFiles &m_files;
+  std::string m_path;
+  std::optional<StepUnpack> m_unpack;
+};
+
+std::unique_ptr<Files::FileLoad>
+PackedFiles::beginRead(const std::string &path) {
+  return std::make_unique<ReadSteps>(*this, path);
 }
 
 PackedFiles::Entry PackedFiles::entry(std::size_t index) const {

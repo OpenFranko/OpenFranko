@@ -31,8 +31,12 @@ public:
   std::vector<street::core::Picture> loadSpriteSet(int resource,
                                                    int sampleBank) override;
   std::unique_ptr<SpriteSetLoad> beginSpriteSet(int resource, int sampleBank,
-                                                int base) override;
+                                                int base, int steps) override;
   std::unique_ptr<FramesLoad> beginScenery(int resource) override;
+  std::unique_ptr<LevelScriptLoad> beginLevelScript(int resource) override;
+  std::unique_ptr<PictureLoad> beginPicture(int resource) override;
+  std::unique_ptr<MusicLoad> beginMusic(int resource, int steps) override;
+  std::unique_ptr<CreditsLoad> beginEndingCredits() override;
   street::core::Picture loadPicture(int resource) override;
   effects::color::AmigaPalette loadPalette(int resource) override;
   std::vector<street::core::Picture> loadScenery(int resource) override;
@@ -59,6 +63,10 @@ private:
   class SetListing;
   class SpriteSetSteps;
   class ScenerySteps;
+  class LevelScriptSteps;
+  class PictureSteps;
+  class MusicSteps;
+  class CreditsSteps;
 
   using NumberedFiles = std::vector<std::pair<int, std::string>>;
 

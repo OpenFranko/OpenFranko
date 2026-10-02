@@ -570,3 +570,65 @@ SCENARIO("S3M sample data becomes signed bytes") {
     }
   }
 }
+
+SCENARIO("An S3M module is read in steps") {
+  GIVEN("A two-pattern module with two samples") {
+    const std::vector<uint8_t> file = buildS3m(song());
+    S3mModule whole;
+    REQUIRE(parseS3m(file, whole));
+
+    THEN("Each sample and pattern takes a step and the result is the same") {
+      S3mReader reader(file, nullptr, 0);
+      S3mModule stepped;
+      int steps = 1;
+      while (!reader.step(stepped)) {
+        ++steps;
+      }
+      REQUIRE_FALSE(reader.failed());
+      REQUIRE(steps == 1 + 2 + 2);
+      REQUIRE(stepped.orders == whole.orders);
+      REQUIRE(stepped.pans == whole.pans);
+      REQUIRE(stepped.tempoRows == whole.tempoRows);
+      REQUIRE(stepped.samples.size() == whole.samples.size());
+      for (std::size_t index = 0; index < whole.samples.size(); ++index) {
+        REQUIRE(stepped.samples[index].data == whole.samples[index].data);
+        REQUIRE(stepped.samples[index].loopEnd == whole.samples[index].loopEnd);
+      }
+      REQUIRE(stepped.patterns.size() == whole.patterns.size());
+      for (std::size_t index = 0; index < whole.patterns.size(); ++index) {
+        for (std::size_t row = 0; row < S3mModule::ROWS; ++row) {
+          for (std::size_t channel = 0; channel < S3mModule::CHANNELS;
+               ++channel) {
+            const S3mEvent &a = stepped.patterns[index][row][channel];
+            const S3mEvent &b = whole.patterns[index][row][channel];
+            REQUIRE(a.note == b.note);
+            REQUIRE(a.instrument == b.instrument);
+            REQUIRE(a.volume == b.volume);
+            REQUIRE(a.command == b.command);
+            REQUIRE(a.parameter == b.parameter);
+          }
+        }
+      }
+    }
+
+    THEN("A budget of steps is kept") {
+      S3mReader reader(file, nullptr, 3);
+      S3mModule stepped;
+      int steps = 1;
+      while (!reader.step(stepped)) {
+        ++steps;
+      }
+      REQUIRE(steps <= 3);
+      REQUIRE(stepped.patterns.size() == 2);
+    }
+  }
+
+  GIVEN("Data that is not a module") {
+    THEN("The reader stops at once and reports it") {
+      S3mReader reader(std::vector<uint8_t>(200, 0), nullptr, 0);
+      S3mModule module;
+      REQUIRE(reader.step(module));
+      REQUIRE(reader.failed());
+    }
+  }
+}

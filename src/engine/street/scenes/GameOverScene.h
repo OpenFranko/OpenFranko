@@ -85,7 +85,7 @@ private:
   core::IndexedSurface m_screen;
   std::optional<core::DoubleBuffer> m_buffer;
   effects::color::AmigaPalette m_palette;
-  effects::color::AmigaPalette m_rainbow;
+  std::vector<systems::graphics::RowColor> m_rainbowRows;
   effects::color::PaletteFader m_fader;
   effects::animation::AmalAnim m_hand;
 

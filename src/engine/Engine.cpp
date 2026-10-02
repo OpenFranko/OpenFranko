@@ -120,8 +120,10 @@ Engine::Engine(states::EngineStateId firstState,
                street::session::GameSession startingSession)
     : m_audioSystem(
           [this](const std::string &path) { return m_files->read(path); }),
-      m_files(std::make_unique<assets::YieldingFiles>(
-          openCheckedFiles(), [this] { m_audioSystem.update(); })),
+      m_files(std::make_unique<assets::PrefetchingFiles>(
+          std::make_unique<assets::YieldingFiles>(
+              openCheckedFiles(), [this] { m_audioSystem.update(); }))),
+      m_menuPrefetch(*m_files, m_audioSystem),
       m_session(std::move(startingSession)), m_running(true) {
   m_options.ntsc = m_videoSystem.isNtsc();
   m_session.version = assets::detectVersion(*m_files);
@@ -302,6 +304,13 @@ void Engine::switchState(states::EngineStateId nextState) {
         m_session);
     break;
   }
+  if (nextState == states::EngineStateId::HighScore) {
+    m_menuPrefetch.start(m_session.version);
+  } else if (nextState == states::EngineStateId::Menu) {
+    m_menuPrefetch.pause();
+  } else if (nextState != states::EngineStateId::Continue) {
+    m_menuPrefetch.stop();
+  }
 }
 
 states::shared::EngineStreetHost &Engine::makeStreetHost() {
@@ -321,6 +330,7 @@ void Engine::update() {
   }
   m_audioSystem.update();
   updateState();
+  m_menuPrefetch.step();
   m_controllerSystem.setEnteringText(m_currentState &&
                                      m_currentState->isEnteringText());
   m_audioSystem.setVblRate(m_videoSystem.refreshRate());

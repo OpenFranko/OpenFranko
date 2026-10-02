@@ -116,6 +116,8 @@ private:
   void runBasic(int16_t joystick);
   void start();
   void era();
+  void stepCredits();
+  void finishCredits();
   void fotoWhite();
   void hideStill();
   void farewell();
@@ -155,6 +157,7 @@ private:
   effects::color::AmigaColor m_border = ui::STAGE_BORDER;
   bool m_dancerCopper = false;
   core::EndingCredits m_credits;
+  std::unique_ptr<StreetHost::CreditsLoad> m_creditsLoad;
 
   Step m_step = Step::Start;
   int m_frame = 0;

@@ -43,6 +43,45 @@ struct Span {
   int owner = NO_LAYER;
 };
 
+struct PaletteSource {
+  LayerArea area;
+  uint8_t mask = FULL_MASK;
+  std::vector<uint16_t> palette;
+  std::vector<graphics::RowColor> rowColors;
+};
+
+struct PaletteCache {
+  bool valid = false;
+  int height = 0;
+  int top = 0;
+  int rows = 0;
+  int firstHalfLine = 0;
+  std::vector<PaletteSource> sources;
+  std::array<uint16_t, CLUT_SIZE> clut{};
+  std::vector<uint32_t> copper;
+};
+
+bool sameRowColors(const std::vector<graphics::RowColor> &left,
+                   const std::vector<graphics::RowColor> &right) {
+  if (left.size() != right.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < left.size(); ++index) {
+    const graphics::RowColor &a = left[index];
+    const graphics::RowColor &b = right[index];
+    if (a.row != b.row || a.index != b.index || a.color != b.color) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool sameArea(const LayerArea &left, const LayerArea &right) {
+  return left.firstRow == right.firstRow && left.lastRow == right.lastRow &&
+         left.firstColumn == right.firstColumn &&
+         left.lastColumn == right.lastColumn;
+}
+
 Rows sourceRows(const graphics::Layer &layer) {
   Rows rows{layer.top, layer.top + layer.rows};
   if (!layer.pixels || layer.wrap) {
@@ -139,7 +178,9 @@ public:
     for (const graphics::RowColor *change = previous; change != previousEnd;
          ++change) {
       forEachValue(layer, change->index, [&](int value) {
-        set(value, m_table[effectiveColor(layer, value)]);
+        if (!isChanged(layer, current, currentEnd, value)) {
+          set(value, m_table[effectiveColor(layer, value)]);
+        }
       });
     }
     for (const graphics::RowColor *change = current; change != currentEnd;
@@ -154,6 +195,18 @@ public:
 private:
   const graphics::Layer &layerAt(int owner) const {
     return m_display.layers[static_cast<std::size_t>(owner)];
+  }
+
+  static bool isChanged(const graphics::Layer &layer,
+                        const graphics::RowColor *first,
+                        const graphics::RowColor *last, int value) {
+    for (const graphics::RowColor *change = first; change != last; ++change) {
+      if ((change->index & layer.mask) == change->index &&
+          (value & layer.mask) == change->index) {
+        return true;
+      }
+    }
+    return false;
   }
 
   static uint16_t effectiveColor(const graphics::Layer &layer, int value) {
@@ -308,9 +361,9 @@ void recolorSpan(Clut &clut, const Span &span,
   }
 }
 
-void buildPalettes(const graphics::Display &display, const Geometry &geometry,
-                   const Placement &placement,
-                   const std::vector<LayerArea> &areas, BuiltFrame &frame) {
+void composePalettes(const graphics::Display &display, const Geometry &geometry,
+                     const Placement &placement,
+                     const std::vector<LayerArea> &areas, BuiltFrame &frame) {
   frame.copper.clear();
   const int firstRow = std::max(0, -placement.top);
   const int lastRow = std::min(display.height, geometry.rows - placement.top);
@@ -341,6 +394,55 @@ void buildPalettes(const graphics::Display &display, const Geometry &geometry,
   }
   frame.copper.push_back(COPPER_END);
   frame.clut = start;
+}
+
+bool isCached(const PaletteCache &cache, const graphics::Display &display,
+              const Geometry &geometry, const Placement &placement,
+              const std::vector<LayerArea> &areas) {
+  if (!cache.valid || cache.height != display.height ||
+      cache.top != placement.top || cache.rows != geometry.rows ||
+      cache.firstHalfLine != geometry.firstHalfLine ||
+      cache.sources.size() != display.layers.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < display.layers.size(); ++index) {
+    const PaletteSource &source = cache.sources[index];
+    const graphics::Layer &layer = display.layers[index];
+    if (!sameArea(source.area, areas[index]) || source.mask != layer.mask ||
+        source.palette != layer.palette ||
+        !sameRowColors(source.rowColors, layer.rowColors)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void buildPalettes(const graphics::Display &display, const Geometry &geometry,
+                   const Placement &placement,
+                   const std::vector<LayerArea> &areas, BuiltFrame &frame) {
+  static PaletteCache cache;
+  if (isCached(cache, display, geometry, placement, areas)) {
+    frame.clut = cache.clut;
+    frame.copper = cache.copper;
+    return;
+  }
+  composePalettes(display, geometry, placement, areas, frame);
+  cache.valid = true;
+  cache.height = display.height;
+  cache.top = placement.top;
+  cache.rows = geometry.rows;
+  cache.firstHalfLine = geometry.firstHalfLine;
+  cache.sources.resize(display.layers.size());
+  for (std::size_t index = 0; index < display.layers.size(); ++index) {
+    PaletteSource &source = cache.sources[index];
+    const graphics::Layer &layer = display.layers[index];
+    source.area = areas[index];
+    source.mask = layer.mask;
+    source.palette = layer.palette;
+    source.rowColors = layer.rowColors;
+  }
+  cache.clut = frame.clut;
+  cache.copper = frame.copper;
 }
 
 void addObject(const graphics::Layer &layer, const LayerArea &area,
@@ -447,15 +549,8 @@ bool sameLayout(const graphics::Display &left, const graphics::Display &right) {
         a.sourceStep != b.sourceStep || a.repeat != b.repeat ||
         a.wrap != b.wrap || a.left != b.left || a.top != b.top ||
         a.columns != b.columns || a.rows != b.rows || a.mask != b.mask ||
-        a.palette != b.palette || a.rowColors.size() != b.rowColors.size()) {
+        a.palette != b.palette || !sameRowColors(a.rowColors, b.rowColors)) {
       return false;
-    }
-    for (std::size_t change = 0; change < a.rowColors.size(); ++change) {
-      const graphics::RowColor &x = a.rowColors[change];
-      const graphics::RowColor &y = b.rowColors[change];
-      if (x.row != y.row || x.index != y.index || x.color != y.color) {
-        return false;
-      }
     }
   }
   return true;

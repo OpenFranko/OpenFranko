@@ -7,6 +7,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <cstdint>
+#include <cstdio>
 #include <map>
 #include <string>
 #include <vector>
@@ -24,6 +25,12 @@ constexpr int SCENERY = 0x12C;
 constexpr int BANK = 4;
 constexpr int BASE = 10;
 constexpr int STEP_LIMIT = 200;
+constexpr int BIG_SET = 0x15;
+constexpr int BIG_FRAMES = 60;
+constexpr int BIG_SAMPLES = 3;
+constexpr int BUDGET = 20;
+constexpr int MUSIC = 0x259;
+constexpr int FRAME_BY_FRAME = street::scenes::StreetHost::FRAME_BY_FRAME;
 
 IndexedBitmap frame(int width) {
   IndexedBitmap bitmap;
@@ -52,6 +59,17 @@ std::vector<uint8_t> archive() {
   writer.addFile("assets/0013/0013_sam1_5000Hz.wav", {8});
   writer.addBitmap("assets/0014/0014_000.bmp", frame(9));
   writer.addFile("assets/0014/0014_sam1_7000Hz.wav", {9});
+  for (int index = 0; index < BIG_FRAMES; ++index) {
+    char name[32];
+    std::snprintf(name, sizeof(name), "assets/0015/0015_%03d.bmp", index);
+    writer.addBitmap(name, frame(index + 1));
+  }
+  writer.addFile("assets/0259.s3m", std::vector<uint8_t>(30000, 7));
+  for (int sample = 1; sample <= BIG_SAMPLES; ++sample) {
+    writer.addFile("assets/0015/0015_sam" + std::to_string(sample) +
+                       "_5000Hz.wav",
+                   {static_cast<uint8_t>(sample)});
+  }
   return writer.finish();
 }
 
@@ -97,7 +115,8 @@ SCENARIO("The street host loads numbered frames and samples from a set") {
 
     WHEN("The set is loaded in steps") {
       street::core::ImageBank images;
-      const auto load = fixture.host.beginSpriteSet(SPRITE_SET, BANK, BASE);
+      const auto load =
+          fixture.host.beginSpriteSet(SPRITE_SET, BANK, BASE, FRAME_BY_FRAME);
       int steps = 1;
       while (!load->step(images) && steps < STEP_LIMIT) {
         ++steps;
@@ -120,7 +139,8 @@ SCENARIO("The street host loads numbered frames and samples from a set") {
     WHEN("Another set is loaded in steps into the same bank") {
       street::core::ImageBank images;
       for (const int resource : {SPRITE_SET, 0x14}) {
-        const auto load = fixture.host.beginSpriteSet(resource, BANK, BASE);
+        const auto load =
+            fixture.host.beginSpriteSet(resource, BANK, BASE, FRAME_BY_FRAME);
         for (int step = 0; step < STEP_LIMIT && !load->step(images); ++step) {
         }
       }
@@ -136,7 +156,8 @@ SCENARIO("The street host loads numbered frames and samples from a set") {
 
     WHEN("The set is loaded in steps without a sample bank") {
       street::core::ImageBank images;
-      const auto load = fixture.host.beginSpriteSet(SPRITE_SET, 0, BASE);
+      const auto load =
+          fixture.host.beginSpriteSet(SPRITE_SET, 0, BASE, FRAME_BY_FRAME);
       int steps = 1;
       while (!load->step(images) && steps < STEP_LIMIT) {
         ++steps;
@@ -145,6 +166,67 @@ SCENARIO("The street host loads numbered frames and samples from a set") {
       THEN("Only the frames are loaded") {
         REQUIRE(images.find(BASE + 7)->width == 8);
         REQUIRE(fixture.speaker.samples.empty());
+      }
+    }
+
+    WHEN("A big set is loaded within a budget of steps") {
+      street::core::ImageBank images;
+      const auto load =
+          fixture.host.beginSpriteSet(BIG_SET, BANK, BASE, BUDGET);
+      int steps = 1;
+      while (!load->step(images) && steps < STEP_LIMIT) {
+        ++steps;
+      }
+
+      THEN("It fits the budget and loads every frame and sample") {
+        REQUIRE(steps <= BUDGET);
+        for (int index = 0; index < BIG_FRAMES; ++index) {
+          CAPTURE(index);
+          REQUIRE(images.find(BASE + index)->width == index + 1);
+        }
+        REQUIRE(fixture.speaker.samples.size() == BIG_SAMPLES);
+      }
+    }
+
+    WHEN("The big set is loaded frame by frame") {
+      street::core::ImageBank images;
+      const auto load =
+          fixture.host.beginSpriteSet(BIG_SET, BANK, BASE, FRAME_BY_FRAME);
+      int steps = 1;
+      while (!load->step(images) && steps < STEP_LIMIT) {
+        ++steps;
+      }
+
+      THEN("Each frame takes a step of its own") {
+        REQUIRE(steps > BIG_FRAMES + BIG_SAMPLES);
+        REQUIRE(images.find(BASE + BIG_FRAMES - 1)->width == BIG_FRAMES);
+      }
+    }
+
+    WHEN("A tune is loaded in steps") {
+      const auto load = fixture.host.beginMusic(MUSIC, BUDGET);
+      int steps = 1;
+      while (!load->step() && steps < STEP_LIMIT) {
+        ++steps;
+      }
+
+      THEN("The file is read first and the speaker gets the tune") {
+        REQUIRE(steps > 2);
+        REQUIRE(steps <= BUDGET);
+        REQUIRE(fixture.speaker.music == "assets/0259.s3m");
+      }
+    }
+
+    WHEN("A missing tune is loaded in steps") {
+      const auto load = fixture.host.beginMusic(MUSIC + 1, BUDGET);
+      int steps = 1;
+      while (!load->step() && steps < STEP_LIMIT) {
+        ++steps;
+      }
+
+      THEN("The speaker is asked for it like before") {
+        REQUIRE(steps == 1);
+        REQUIRE(fixture.speaker.music == "assets/025A.s3m");
       }
     }
 
@@ -167,7 +249,8 @@ SCENARIO("The street host loads numbered frames and samples from a set") {
         REQUIRE_THROWS_WITH(fixture.host.loadSpriteSet(0x13, BANK),
                             "No frames found in assets/0013");
         street::core::ImageBank images;
-        const auto load = fixture.host.beginSpriteSet(0x13, BANK, BASE);
+        const auto load =
+            fixture.host.beginSpriteSet(0x13, BANK, BASE, FRAME_BY_FRAME);
         REQUIRE_THROWS_WITH(
             [&] {
               for (int step = 0; step < STEP_LIMIT; ++step) {

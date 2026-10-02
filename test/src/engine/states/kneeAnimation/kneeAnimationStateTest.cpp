@@ -33,6 +33,7 @@ namespace {
 
 constexpr auto SAMPLE = "knee";
 constexpr int OPEN_FRAMES = 2;
+constexpr int FIRST_PICTURE_FRAMES = 19;
 constexpr int SAMPLE_FRAME = OPEN_FRAMES + 40;
 constexpr int MUSIC_FRAME = OPEN_FRAMES + 100;
 constexpr int GONE_FRAME = OPEN_FRAMES + 184;
@@ -83,18 +84,27 @@ SCENARIO("The knee's four pictures, sample and the menu tune are loaded") {
   GIVEN("Version 1.0") {
     Knee knee(GameVersion::V10);
 
-    THEN("The parts of 03B7 are read in order") {
-      REQUIRE(knee.files.loaded ==
-              std::vector<std::string>{
-                  "assets/03B7/03B7.bmp", "assets/03B7/03B7_1.bmp",
-                  "assets/03B7/03B7_2.bmp", "assets/03B7/03B7_3.bmp"});
+    THEN("Nothing is read before the first frame") {
+      REQUIRE(knee.files.loaded.empty());
     }
 
-    THEN("The knee comes from bank 0263 and the tune is 0261") {
-      REQUIRE(knee.speaker.samples ==
-              std::map<std::string, std::string>{
-                  {SAMPLE, "assets/0263/0263_sam2_8363Hz.wav"}});
-      REQUIRE(knee.speaker.music == "assets/0261.s3m");
+    WHEN("The grey screen has shown until the first picture is due") {
+      run(*knee.state, OPEN_FRAMES + FIRST_PICTURE_FRAMES);
+
+      THEN("The parts of 03B7 are read in order") {
+        REQUIRE(std::vector<std::string>(knee.files.loaded.begin(),
+                                         knee.files.loaded.begin() + 4) ==
+                std::vector<std::string>{
+                    "assets/03B7/03B7.bmp", "assets/03B7/03B7_1.bmp",
+                    "assets/03B7/03B7_2.bmp", "assets/03B7/03B7_3.bmp"});
+      }
+
+      THEN("The knee comes from bank 0263 and the tune is 0261") {
+        REQUIRE(knee.speaker.samples ==
+                std::map<std::string, std::string>{
+                    {SAMPLE, "assets/0263/0263_sam2_8363Hz.wav"}});
+        REQUIRE(knee.speaker.music == "assets/0261.s3m");
+      }
     }
 
     THEN("A fire pressed before is forgotten") {
@@ -112,6 +122,7 @@ SCENARIO("The knee's four pictures, sample and the menu tune are loaded") {
     Knee knee(GameVersion::V12);
 
     THEN("The pictures are p51's, the knee is s50's third and the tune m9") {
+      run(*knee.state, OPEN_FRAMES + FIRST_PICTURE_FRAMES);
       REQUIRE(knee.files.loaded.front() == "assets/p51/p51.bmp");
       REQUIRE(knee.speaker.samples ==
               std::map<std::string, std::string>{

@@ -14,6 +14,7 @@ constexpr int SCREEN_HEIGHT = 256;
 constexpr int DISPLAY_LINE = 42;
 constexpr std::size_t SCREEN_COLORS = 32;
 constexpr int SCREENS = 2;
+constexpr int LOAD_STEPS = 1;
 
 effects::color::AmigaPalette
 screenPalette(const systems::graphics::IndexedBitmap &picture) {
@@ -31,9 +32,11 @@ AdvertsState::AdvertsState(systems::graphics::Monitor &monitor,
       m_rows(visibleRows(DISPLAY_LINE, SCREEN_HEIGHT, monitor.isNtsc())),
       m_screen(SCREEN_WIDTH, m_rows.count),
       m_palette(SCREEN_COLORS, effects::color::BLACK) {
+  m_slides.resize(SLIDES);
   for (int slide = 0; slide < SLIDES; ++slide) {
-    m_slides.push_back(files.loadBitmap(
-        assets::picturePath("p" + std::to_string(FIRST_SLIDE + slide))));
+    m_slideLoads.push_back(m_loads.add(shared::bitmapStep(
+        files, assets::picturePath("p" + std::to_string(FIRST_SLIDE + slide)),
+        m_slides[static_cast<std::size_t>(slide)])));
   }
 }
 
@@ -41,6 +44,7 @@ std::optional<EngineStateId> AdvertsState::update() {
   if (m_step == Step::Finished) {
     return EngineStateId::Presents;
   }
+  m_loads.step(LOAD_STEPS);
   m_fader.advance(m_palette);
   runBasic(m_controllerSystem.states.button);
   show();
@@ -55,6 +59,7 @@ void AdvertsState::runBasic(bool fire) {
       wait(SCREEN_OPEN_VBLS, Step::Show);
       break;
     case Step::Show:
+      m_loads.finish(m_slideLoads[static_cast<std::size_t>(m_slide)]);
       m_copied = m_slide;
       m_fader.start(m_palette, FADE_SPEED,
                     screenPalette(m_slides[static_cast<std::size_t>(m_slide)]));

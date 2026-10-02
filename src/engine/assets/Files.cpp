@@ -27,7 +27,45 @@ private:
   std::size_t m_next = 0;
 };
 
+class WholeBitmap : public Files::BitmapLoad {
+public:
+  WholeBitmap(Files &files, std::string path)
+      : m_files(files), m_path(std::move(path)) {}
+
+  bool step(systems::graphics::IndexedBitmap &bitmap) override {
+    bitmap = m_files.loadBitmap(m_path);
+    return true;
+  }
+
+private:
+  Files &m_files;
+  std::string m_path;
+};
+
+class WholeFile : public Files::FileLoad {
+public:
+  WholeFile(Files &files, std::string path)
+      : m_files(files), m_path(std::move(path)) {}
+
+  bool step(std::vector<uint8_t> &data) override {
+    data = m_files.read(m_path);
+    return true;
+  }
+
+private:
+  Files &m_files;
+  std::string m_path;
+};
+
 } // namespace
+
+std::unique_ptr<Files::FileLoad> Files::beginRead(const std::string &path) {
+  return std::make_unique<WholeFile>(*this, path);
+}
+
+std::unique_ptr<Files::BitmapLoad> Files::beginBitmap(const std::string &path) {
+  return std::make_unique<WholeBitmap>(*this, path);
+}
 
 std::unique_ptr<Files::Listing>
 Files::walk(const std::string &directory) const {
