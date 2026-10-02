@@ -50,7 +50,6 @@ private:
   void leave();
   void redraw();
 
-  StreetHost &m_host;
   session::GameSession &m_session;
   amal::Machine m_machine;
   core::ImageBank m_images;

@@ -1,6 +1,5 @@
 #include "ContinueScene.h"
 
-#include "../../../systems/audio/Mixer.h"
 #include "../../../systems/input/ControllerSystem.h"
 #include "../../AmigaDisplay.h"
 #include "../../assets/Assets.h"
@@ -21,7 +20,7 @@ constexpr int RIGHT_X = 268;
 constexpr int HAND_Y = 124;
 constexpr int WAGGLE_REGISTER = 1;
 constexpr int MACH_WAIT = 40;
-constexpr int VOICE_BANK = 10;
+constexpr int NO_SAMPLES = 0;
 
 constexpr std::size_t COLORS = 32;
 
@@ -39,12 +38,12 @@ effects::color::AmigaPalette continuePalette() {
 } // namespace
 
 ContinueScene::ContinueScene(StreetHost &host, session::GameSession &session)
-    : m_host(host), m_session(session), m_machine(session.registers),
+    : m_session(session), m_machine(session.registers),
       m_screen(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_display(SCREEN_WIDTH, SCREEN_HEIGHT),
       m_palette(COLORS, effects::color::BLACK) {
   m_images.load(core::ImageBank::FIRST_IMAGE,
-                host.loadSpriteSet(assets::LETTER_SET, VOICE_BANK));
+                host.loadSpriteSet(assets::LETTER_SET, NO_SAMPLES));
 }
 
 void ContinueScene::advance(int16_t joystick) {
@@ -140,8 +139,6 @@ ContinueScene::Flow ContinueScene::choose(int16_t joystick) {
 }
 
 void ContinueScene::close() {
-  m_host.playSample(VOICE_BANK, m_session.registers[amal::RQ] + 1,
-                    systems::audio::Mixer::ALL_VOICES);
   m_machine.destroyAll();
   m_resumeFrame = m_frame + SCREEN_CLOSE_SHOWN_VBLS;
   m_step = Step::Gone;
