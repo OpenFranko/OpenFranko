@@ -233,10 +233,10 @@ moments play a little slower; the music keeps its tempo.
 # Releases
 
 GitHub Actions (`.github/workflows/ci-cd.yml`) builds OpenFranko for Linux,
-Windows and DOS and runs the tests on Linux and Windows for every pull request
-and every push to `main`, and keeps the packages it makes on the run's summary
-page. Pushing a tag that starts with `v` builds them the same way and
-publishes them as a GitHub release:
+Windows, DOS and the Atari Jaguar and runs the tests on Linux and Windows for
+every pull request and every push to `main`, and keeps the packages it makes
+on the run's summary page. Pushing a tag that starts with `v` builds them the
+same way and publishes them as a GitHub release:
 
 ```
 git tag v1.0
@@ -263,6 +263,12 @@ described below, and run the game from the directory that holds `assets` or
   too) and put `assets.tar` next to `franko.exe`. CWSDPMI is by Charles W
   Sandmann, see `cwsdpmi.doc`; its source code is at
   <https://www.delorie.com/pub/djgpp/current/v2misc/csdpmi7s.zip>.
+
+A Jaguar cartridge has to hold the game data, so releases have no Jaguar
+package; build one with `build-jaguar.sh --assets`. Each run keeps the
+Jaguar program it built, `franko.elf` and `franko.bin`, in
+`OpenFranko-jaguar-engine.zip` on its summary page, and also compiles the
+on-target test programs, `jaguarSelfTest` and `jaguarProfileGame`.
 
 # FrankoExtract
 
