@@ -179,13 +179,18 @@ Amiga's copper. JERRY's DSP mixes the music and the sound effects at about
 22 kHz, with the Amiga's low-pass filter; the 68000 reads the S3M modules and
 tells the DSP what each voice plays.
 
-It needs CMake, a C++ compiler for the computer you build on, an `m68k-elf`
-GCC with C++ support and newlib (on Arch, the AUR packages `m68k-elf-gcc` and
-`m68k-elf-newlib`), and the `rmac` assembler from the
-[Jaguar SDK](https://github.com/cubanismo/jaguar-sdk), whose `maketools.sh`
-builds it into `tools/bin`. `build-jaguar.sh` builds the game into
-`build-jaguar`, packs the extracted game data with it and writes a 4 MB
-cartridge image, `build-jaguar/game/franko.j64`:
+It needs CMake, curl, a C++ compiler for the computer you build on, and the
+`rmac` assembler from the [Jaguar SDK](https://github.com/cubanismo/jaguar-sdk),
+whose `maketools.sh` builds it into `tools/bin`. `build-jaguar.sh` downloads an
+`m68k-elf` GCC 15.2 with C++ support and newlib from
+[toolchain68k](https://github.com/haarer/toolchain68k) into
+`build-jaguar/toolchain` (about 320 MB, checked against its SHA-256). It runs
+on x86-64 Linux and uses the GMP, MPFR, MPC, isl and zstd libraries that a
+native GCC needs too. To use an installed toolchain instead, set
+`JAGUAR_TOOLCHAIN_PREFIX`, e.g. `JAGUAR_TOOLCHAIN_PREFIX=m68k-elf-` with the
+AUR packages `m68k-elf-gcc` and `m68k-elf-newlib` on Arch. The script builds
+the game into `build-jaguar`, packs the extracted game data with it and
+writes a 4 MB cartridge image, `build-jaguar/game/franko.j64`:
 
 ```
 ./build-jaguar.sh --sdk <jaguar_sdk_dir> --assets <assets_dir>

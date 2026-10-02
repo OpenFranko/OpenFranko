@@ -1,8 +1,8 @@
 execute_process(
-    COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=crtbegin.o
+    COMMAND ${CMAKE_CXX_COMPILER} -m68000 -print-file-name=crtbegin.o
     OUTPUT_VARIABLE JAGUAR_CRTBEGIN OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(
-    COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=crtend.o
+    COMMAND ${CMAKE_CXX_COMPILER} -m68000 -print-file-name=crtend.o
     OUTPUT_VARIABLE JAGUAR_CRTEND OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 find_program(JAGUAR_RMAC rmac

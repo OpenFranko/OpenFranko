@@ -4,8 +4,13 @@ set -euo pipefail
 SOURCE_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 BUILD_DIR=${BUILD_DIR:-$SOURCE_DIR/build-jaguar}
 JOBS=${JOBS:-$(nproc)}
-PREFIX=${JAGUAR_TOOLCHAIN_PREFIX:-m68k-elf-}
 
+TOOLCHAIN_URL=https://github.com/haarer/toolchain68k/releases/download/gcc152-update1/toolchain-m68k-elf-linux-gcc-15.2.0.tar.gz
+TOOLCHAIN_SHA256=ad41506ab6c694d0566f4d3b97d44ab301376cc01ecb5174789d50ad236500e7
+
+DEPS_DIR=$BUILD_DIR/deps
+TOOLCHAIN_DIR=$BUILD_DIR/toolchain
+PREFIX=${JAGUAR_TOOLCHAIN_PREFIX:-$TOOLCHAIN_DIR/bin/m68k-elf-}
 HOST_DIR=$BUILD_DIR/host
 CROSS_DIR=$BUILD_DIR/m68k
 GAME_DIR=$BUILD_DIR/game
@@ -17,16 +22,47 @@ MAX_CART_SIZE=$((0x600000))
 
 usage() {
   echo "Usage: $0 [--assets <assets_dir>] [--sdk <jaguar_sdk_dir>] [-D<cmake_option>...]"
-  echo "Builds the Atari Jaguar version with an ${PREFIX} cross toolchain and"
-  echo "rmac into $BUILD_DIR. With --assets it packs the extracted game data"
-  echo "into a cartridge image, $GAME_DIR/franko.j64."
+  echo "Builds the Atari Jaguar version with an m68k-elf GCC and rmac into"
+  echo "$BUILD_DIR. Unless JAGUAR_TOOLCHAIN_PREFIX names an installed"
+  echo "toolchain (e.g. m68k-elf-), GCC 15.2 with newlib is downloaded into"
+  echo "$TOOLCHAIN_DIR first. With --assets it packs the extracted game"
+  echo "data into a cartridge image, $GAME_DIR/franko.j64."
   echo "-D options are passed to CMake. Environment: BUILD_DIR, JOBS ($JOBS),"
-  echo "JAGUAR_TOOLCHAIN_PREFIX ($PREFIX), JAGSDK."
+  echo "JAGUAR_TOOLCHAIN_PREFIX, JAGSDK."
 }
 
 fail() {
   echo "Error: $*" >&2
   exit 1
+}
+
+download() {
+  local url=$1 sha256=$2 file=$3
+  if [ ! -f "$file" ]; then
+    echo "Downloading $url"
+    curl -fL --retry 3 -o "$file.part" "$url" || fail "Failed to download $url"
+    mv "$file.part" "$file"
+  fi
+  echo "$sha256  $file" | sha256sum -c --quiet - ||
+    fail "Checksum mismatch for $file"
+}
+
+install_toolchain() {
+  if [ -n "${JAGUAR_TOOLCHAIN_PREFIX:-}" ] || [ -x "${PREFIX}g++" ]; then
+    return
+  fi
+  local tool
+  for tool in curl tar gzip sha256sum; do
+    command -v "$tool" > /dev/null || fail "$tool not found"
+  done
+  mkdir -p "$DEPS_DIR"
+  local archive=$DEPS_DIR/${TOOLCHAIN_URL##*/}
+  download "$TOOLCHAIN_URL" "$TOOLCHAIN_SHA256" "$archive"
+  echo "Unpacking the m68k-elf toolchain into $TOOLCHAIN_DIR"
+  rm -rf "$TOOLCHAIN_DIR" "$TOOLCHAIN_DIR.part"
+  mkdir -p "$TOOLCHAIN_DIR.part"
+  tar -xzf "$archive" -C "$TOOLCHAIN_DIR.part"
+  mv "$TOOLCHAIN_DIR.part" "$TOOLCHAIN_DIR"
 }
 
 check_tools() {
@@ -49,6 +85,15 @@ build_host_tools() {
 
 build_game() {
   echo "Building OpenFranko for the Jaguar"
+  local compiler cached
+  compiler=$(command -v "${PREFIX}g++")
+  if [ -f "$CROSS_DIR/CMakeCache.txt" ]; then
+    cached=$(sed -n 's/^CMAKE_CXX_COMPILER:[A-Z]*=//p' "$CROSS_DIR/CMakeCache.txt")
+    if [ "$cached" != "$compiler" ]; then
+      echo "The cross compiler is now $compiler; reconfiguring $CROSS_DIR"
+      rm -rf "$CROSS_DIR"
+    fi
+  fi
   cmake -S "$SOURCE_DIR" -B "$CROSS_DIR" \
     -DCMAKE_TOOLCHAIN_FILE="$SOURCE_DIR/cmake/JaguarToolchain.cmake" \
     -DJAGUAR_TOOLCHAIN_PREFIX="$PREFIX" -DCMAKE_BUILD_TYPE=Release \
@@ -147,6 +192,7 @@ while [ $# -gt 0 ]; do
 done
 
 mkdir -p "$BUILD_DIR"
+install_toolchain
 check_tools
 build_game
 if [ -n "$ASSETS_DIR" ]; then
