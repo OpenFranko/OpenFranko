@@ -82,14 +82,19 @@ struct VideoSystem::Window : VblankTarget, jaguar::TranslationBuffers {
   uint16_t updateStart = 0;
   uint32_t longestUpdate = 0;
   std::vector<TranslationBuffer> buffers;
+  std::array<std::unique_ptr<uint64_t[]>, FRAMES> lines;
 
   void vblank() override;
   uint8_t *buffer(const uint8_t *source, std::size_t bytes) override;
   bool isReferenced(const uint64_t *storage) const;
   void refreshTranslations();
-  jaguar::FrameMemory memory() {
+  void prepareLines(std::size_t slot, const Display &display);
+  int lineCapacity() const { return geometry.rows + 1; }
+  jaguar::FrameMemory memory(std::size_t slot) {
     return {reinterpret_cast<uint32_t>(liveList),
-            reinterpret_cast<uint32_t>(solidPhrases), this};
+            reinterpret_cast<uint32_t>(solidPhrases), this,
+            reinterpret_cast<uint8_t *>(lines[slot].get()),
+            lines[slot] ? lineCapacity() : 0};
   }
   int backFrame() const;
   void choose(int slot);
@@ -199,10 +204,28 @@ void VideoSystem::Window::refreshTranslations() {
   }
   for (const jaguar::Translation &translation :
        frames[static_cast<std::size_t>(slot)].translations) {
-    if (!jaguar::blitter::xorCopy(translation.source, translation.target,
-                                  translation.bytes, translation.mask)) {
+    if (!jaguar::blitter::translate(translation.source, translation.target,
+                                    translation.bytes, translation.keep,
+                                    translation.flip)) {
       jaguar::translateOnCpu(translation);
     }
+  }
+}
+
+void VideoSystem::Window::prepareLines(std::size_t slot,
+                                       const Display &display) {
+  const bool needed =
+      std::any_of(display.layers.begin(), display.layers.end(),
+                  [](const Layer &layer) { return !layer.rowColors.empty(); });
+  if (needed == static_cast<bool>(lines[slot])) {
+    return;
+  }
+  frames[slot].lineTarget = nullptr;
+  if (needed) {
+    lines[slot].reset(new (std::nothrow)
+                          uint64_t[static_cast<std::size_t>(lineCapacity())]);
+  } else {
+    lines[slot].reset();
   }
 }
 
@@ -244,8 +267,9 @@ VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
   for (int value = 0; value < jaguar::SOLID_PHRASES; ++value) {
     solidPhrases[value] = static_cast<uint64_t>(value) * BYTE_COPIES;
   }
+  jaguar::allowCopper(false);
   jaguar::BuiltFrame &blank = window.frames[0];
-  jaguar::buildFrame(Display{}, window.geometry, window.memory(), nullptr, 0,
+  jaguar::buildFrame(Display{}, window.geometry, window.memory(0), nullptr, 0,
                      blank);
   std::memcpy(liveList, blank.phrases.data(),
               blank.phrases.size() * sizeof(uint64_t));
@@ -380,8 +404,9 @@ void VideoSystem::present() {
     panels[count++] = {reinterpret_cast<uint32_t>(jaguar::keyboard::pixels()),
                        width, jaguar::keyboard::HEIGHT, column, row};
   }
-  jaguar::buildFrame(m_shown, window.geometry, window.memory(), panels.data(),
-                     count, window.frames[index]);
+  window.prepareLines(index, m_shown);
+  jaguar::buildFrame(m_shown, window.geometry, window.memory(index),
+                     panels.data(), count, window.frames[index]);
   if (window.frames[index].phrases.size() > LIVE_PHRASES) {
     throw std::runtime_error("Video system error: too many display layers");
   }

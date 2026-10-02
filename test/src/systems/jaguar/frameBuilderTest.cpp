@@ -18,6 +18,7 @@ constexpr uint32_t ADDRESS_MASK = 0xFFFFFF;
 constexpr uint32_t LINK_MASK = 0x3FFFFF;
 constexpr std::size_t ARENA_BYTES = 4 << 20;
 constexpr int LIVE_PHRASES = 96;
+constexpr int LINE_PHRASES = 300;
 
 Geometry palGeometry() {
   Geometry geometry;
@@ -87,6 +88,7 @@ void drawBitmap(const Arena &arena, const std::vector<uint64_t> &list,
   const int phrases = static_cast<int>(bits(layout, 28, 10));
   const int firstPixel = static_cast<int>(bits(layout, 49, 6));
   const int scale = scaled ? static_cast<int>(bits(list[at + 2], 0, 8)) : 32;
+  const bool transparent = bits(layout, 47, 1) != 0;
   const int pixelBits = 1 << depth;
   const int perPhrase = 64 / pixelBits;
   int column = x;
@@ -96,15 +98,19 @@ void drawBitmap(const Arena &arena, const std::vector<uint64_t> &list,
     const uint8_t *phrase = data + (index / perPhrase) * pitch * 8;
     const int within = index % perPhrase;
     uint16_t color = 0;
+    bool clear = false;
     if (pixelBits == 8) {
       color = clut[phrase[within]];
+      clear = phrase[within] == 0;
     } else if (pixelBits == 16) {
       color = static_cast<uint16_t>(phrase[within * 2] << 8 |
                                     phrase[within * 2 + 1]);
+      clear = color == 0;
     }
     accumulated += scale;
     while (accumulated >= 32) {
-      if (column >= 0 && column < static_cast<int>(line.size())) {
+      if (column >= 0 && column < static_cast<int>(line.size()) &&
+          !(transparent && clear)) {
         line[static_cast<std::size_t>(column)] = color;
       }
       ++column;
@@ -223,7 +229,9 @@ FrameMemory frameMemory(Arena &arena, ArenaBuffers &buffers) {
     std::memset(solid + value * 8, value, 8);
   }
   uint8_t *live = arena.allocate(LIVE_PHRASES * 8);
-  return {arena.address(live), arena.address(solid), &buffers};
+  uint8_t *lines = arena.allocate(LINE_PHRASES * 8, 4);
+  return {arena.address(live), arena.address(solid), &buffers, lines,
+          LINE_PHRASES};
 }
 
 BuiltFrame build(Arena &arena, const graphics::Display &display,
@@ -571,7 +579,8 @@ SCENARIO("Layers with clashing palettes get their own colour banks, so the "
         const BuiltFrame frame = build(arena, stage, geometry, memory);
         REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
         REQUIRE(frame.translations.size() == 1);
-        REQUIRE(frame.translations[0].mask == 0x80808080u);
+        REQUIRE(frame.translations[0].flip == 0x80808080u);
+        REQUIRE(frame.translations[0].keep == 0xFFFFFFFFu);
         REQUIRE(mismatches(stage, geometry) == 0);
       }
     }
@@ -621,6 +630,110 @@ SCENARIO("Layers with clashing palettes get their own colour banks, so the "
         const BuiltFrame frame = build(arena, stage, geometry, memory);
         REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
         REQUIRE(mismatches(stage, geometry) == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("Masked layers and row colours on colour 0 need no copper") {
+  GIVEN("A masked stage over the panel, as when the ending starts") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer stage = layer(320, 256, 16, 6);
+    stage.mask = 0x0F;
+    display.layers.push_back(stage);
+    graphics::Layer panel = layer(304, 32, 8, 7);
+    panel.top = 220;
+    display.layers.push_back(panel);
+
+    THEN("The panel is translated into a bank and the colours match") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame = build(arena, display, geometry, memory);
+        REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
+        REQUIRE(frame.translations.size() == 1);
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+  }
+
+  GIVEN("Two masked screens with their own palettes, as in the credits") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer lower = layer(320, 164, 16, 8);
+    lower.top = 81;
+    lower.mask = 0x0F;
+    display.layers.push_back(lower);
+    graphics::Layer upper = layer(320, 80, 32, 9);
+    upper.mask = 0x0F;
+    upper.palette.resize(16);
+    display.layers.push_back(upper);
+
+    THEN("The smaller screen is masked while it is copied into its bank") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame = build(arena, display, geometry, memory);
+        REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
+        REQUIRE(frame.translations.size() == 1);
+        REQUIRE(frame.translations[0].keep == 0x0F0F0F0Fu);
+        REQUIRE(frame.translations[0].flip == 0x80808080u);
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+  }
+
+  GIVEN("A scrolling picture over a rainbow on colour 0, as on the game over "
+        "screen") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer picture = layer(640, 256, 32, 10);
+    picture.wrap = true;
+    picture.columns = 320;
+    picture.sourceX = 37;
+    for (int row = 0; row < 240; ++row) {
+      picture.rowColors.push_back(
+          {row, 0, static_cast<uint16_t>((row / 8 * 0x101) & 0xFFF)});
+    }
+    display.layers.push_back(picture);
+
+    THEN("A 16-bit object behind the picture shows the row colours") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame = build(arena, display, geometry, memory);
+        REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+  }
+
+  GIVEN("A rainbow on a laced display") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 512;
+    display.displayHeight = 256;
+    graphics::Layer picture = layer(320, 512, 32, 11);
+    for (int row = 0; row < 480; ++row) {
+      picture.rowColors.push_back(
+          {row, 0, static_cast<uint16_t>((row * 0x31) & 0xFFF)});
+    }
+    display.layers.push_back(picture);
+
+    THEN("Every shown line takes the colour of its row") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame = build(arena, display, geometry, memory);
+        REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
+        REQUIRE(mismatches(display, geometry) == 0);
       }
     }
   }

@@ -481,6 +481,43 @@ void testFlip() {
   }
 }
 
+void testTranslate() {
+  const std::size_t sizes[] = {0, 3, 4, 7, 64, 10243};
+  const uint32_t masks[][2] = {{0x0F0F0F0Fu, 0x80808080u},
+                               {0x1F1F1F1Fu, 0x40404040u},
+                               {0xFFFFFFFFu, 0xC0C0C0C0u}};
+  for (const std::size_t size : sizes) {
+    for (const auto &mask : masks) {
+      std::vector<uint8_t> source(size + 8);
+      for (std::size_t at = 0; at < source.size(); ++at) {
+        source[at] = static_cast<uint8_t>(at * 53 + size);
+      }
+      std::vector<uint8_t> target(size + 8, 0x55);
+      const bool done = blitter::translate(source.data(), target.data(), size,
+                                           mask[0], mask[1]);
+      blitter::wait();
+      bool same = done;
+      for (std::size_t at = 0; same && at < size; ++at) {
+        same = target[at] == ((source[at] & static_cast<uint8_t>(mask[0])) ^
+                              static_cast<uint8_t>(mask[1]));
+      }
+      for (std::size_t at = size; same && at < target.size(); ++at) {
+        same = target[at] == 0x55;
+      }
+      if (!same) {
+        char line[64];
+        std::snprintf(line, sizeof(line), "translate %u %08lx: FAIL",
+                      static_cast<unsigned>(size),
+                      static_cast<unsigned long>(mask[0]));
+        report(line);
+        ++failures;
+      } else {
+        ++passes;
+      }
+    }
+  }
+}
+
 void testEeprom() {
   eeprom::Bank before{};
   eeprom::readBank(before);
@@ -581,6 +618,7 @@ int main() {
   testLz4();
   testOutline();
   testFlip();
+  testTranslate();
   testMemory();
   blitter::stopQueue();
   testEeprom();

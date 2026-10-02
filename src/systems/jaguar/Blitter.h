@@ -35,8 +35,8 @@ bool unpackPart(const uint8_t *&source, const uint8_t *sourceEnd,
 bool outline(const uint8_t *pixels, int width, int height, void *rows,
              void *bands, int32_t *box);
 bool flipSigns(const uint8_t *source, int8_t *target, std::size_t count);
-bool xorCopy(const uint8_t *source, uint8_t *target, std::size_t count,
-             uint32_t mask);
+bool translate(const uint8_t *source, uint8_t *target, std::size_t count,
+               uint32_t keep, uint32_t flip);
 void copy(Source source, Area target, int width, int height);
 void copyMasked(Source source, Area target, int width, int height);
 void copyMirrored(Source source, Area target, int width, int height,

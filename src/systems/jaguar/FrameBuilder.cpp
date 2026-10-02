@@ -75,6 +75,11 @@ struct PaletteCache {
   std::vector<uint32_t> copper;
 };
 
+uint16_t effectiveColor(const graphics::Layer &layer, int value) {
+  const std::size_t index = static_cast<std::size_t>(value & layer.mask);
+  return index < layer.palette.size() ? layer.palette[index] & COLOR_MASK : 0;
+}
+
 bool sameRowColors(const std::vector<graphics::RowColor> &left,
                    const std::vector<graphics::RowColor> &right) {
   if (left.size() != right.size()) {
@@ -221,11 +226,6 @@ private:
       }
     }
     return false;
-  }
-
-  static uint16_t effectiveColor(const graphics::Layer &layer, int value) {
-    const std::size_t index = static_cast<std::size_t>(value & layer.mask);
-    return index < layer.palette.size() ? layer.palette[index] & COLOR_MASK : 0;
   }
 
   template <typename Visit>
@@ -486,7 +486,7 @@ void buildPalettes(const graphics::Display &display, const Geometry &geometry,
 
 void addObject(const graphics::Layer &layer, const LayerArea &area,
                const Placement &placement, const Geometry &geometry,
-               uint32_t solidPhrase, ObjectList &list) {
+               uint32_t solidPhrase, bool transparent, ObjectList &list) {
   if (area.firstRow >= area.lastRow || area.firstColumn >= area.lastColumn) {
     return;
   }
@@ -519,6 +519,7 @@ void addObject(const graphics::Layer &layer, const LayerArea &area,
       static_cast<uint32_t>(reinterpret_cast<uintptr_t>(layer.pixels)) +
       static_cast<uint32_t>(sourceRow * layer.stride + sourceColumn);
   int offset = static_cast<int>(address % PHRASE_BYTES);
+  object.transparent = transparent;
   object.scaled = lineRepeat > 1 || placement.halfWidth > 1;
   object.imageWidth = (offset + width + PHRASE_BYTES - 1) / PHRASE_BYTES;
   if (offset % 2 != 0 && !object.scaled) {
@@ -536,33 +537,105 @@ void addObject(const graphics::Layer &layer, const LayerArea &area,
   list.addBitmap(object);
 }
 
+void addLineColors(const LayerArea &area, const Placement &placement,
+                   const Geometry &geometry, const uint8_t *phrases,
+                   ObjectList &list) {
+  const int perLine = placement.rowsPerLine;
+  const int width =
+      ceilDiv(area.lastColumn - area.firstColumn, placement.halfWidth);
+  BitmapObject object;
+  object.y =
+      geometry.firstHalfLine + 2 * (placement.top + area.firstRow / perLine);
+  object.x = placement.left + area.firstColumn / placement.halfWidth;
+  object.depth = Depth::Bits16;
+  object.data = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(phrases));
+  object.pitch = 0;
+  object.dataWidth = 1;
+  object.imageWidth = ceilDiv(width, PIXELS_PER_PHRASE_16);
+  object.height = (area.lastRow - area.firstRow) / perLine;
+  list.addBitmap(object);
+}
+
+void writeLineColors(const graphics::Layer &layer, const LayerArea &area,
+                     const Placement &placement, uint8_t *target,
+                     BuiltFrame &frame) {
+  const int perLine = placement.rowsPerLine;
+  const int lines = (area.lastRow - area.firstRow) / perLine;
+  const std::array<uint16_t, AMIGA_COLORS> &table = rgb16Table();
+  static std::vector<uint16_t> colors;
+  colors.assign(static_cast<std::size_t>(lines),
+                table[effectiveColor(layer, 0)]);
+  for (const graphics::RowColor &change : layer.rowColors) {
+    const int offset = change.row - area.firstRow;
+    if (offset >= 0 && offset < lines * perLine && offset % perLine == 0) {
+      colors[static_cast<std::size_t>(offset / perLine)] =
+          table[change.color & COLOR_MASK];
+    }
+  }
+  if (frame.lineTarget == target && frame.lineColors == colors) {
+    return;
+  }
+  for (std::size_t line = 0; line < colors.size(); ++line) {
+    const uint8_t high = static_cast<uint8_t>(colors[line] >> 8);
+    const uint8_t low = static_cast<uint8_t>(colors[line]);
+    uint8_t *phrase = target + line * PHRASE_BYTES;
+    for (int pixel = 0; pixel < PIXELS_PER_PHRASE_16; ++pixel) {
+      phrase[2 * pixel] = high;
+      phrase[2 * pixel + 1] = low;
+    }
+  }
+  frame.lineColors = colors;
+  frame.lineTarget = target;
+}
+
+uint8_t *linePhrases(const FrameMemory &memory, int lines) {
+  if (!memory.linePhrases || lines <= 0) {
+    return nullptr;
+  }
+  const uintptr_t raw = reinterpret_cast<uintptr_t>(memory.linePhrases);
+  const uintptr_t skip = (PHRASE_BYTES - raw % PHRASE_BYTES) % PHRASE_BYTES;
+  const int capacity = memory.lineCapacity - (skip != 0 ? 1 : 0);
+  return lines <= capacity ? memory.linePhrases + skip : nullptr;
+}
+
 struct LayerPlan {
   bool merged = false;
-  uint32_t mask = 0;
+  uint32_t bank = 0;
   int solidSlot = NO_SLOT;
   uint8_t *buffer = nullptr;
 };
 
+bool isKept(const graphics::Layer &layer, std::size_t value) {
+  return (value & layer.mask) == value;
+}
+
 class Banking {
 public:
-  bool fits(const std::vector<uint16_t> &palette, uint32_t mask) const {
-    for (std::size_t value = 0; value < palette.size(); ++value) {
-      const std::size_t slot = value ^ mask;
+  bool fits(const graphics::Layer &layer, uint32_t bank) const {
+    for (std::size_t value = 0; value < layer.palette.size(); ++value) {
+      if (!isKept(layer, value)) {
+        continue;
+      }
+      const std::size_t slot = value ^ bank;
       if (slot >= CLUT_SIZE) {
         return false;
       }
-      if (m_used[slot] && m_colors[slot] != (palette[value] & COLOR_MASK)) {
+      if (m_used[slot] &&
+          m_colors[slot] != (layer.palette[value] & COLOR_MASK)) {
         return false;
       }
     }
     return true;
   }
 
-  void claim(const std::vector<uint16_t> &palette, uint32_t mask) {
-    for (std::size_t value = 0; value < palette.size(); ++value) {
-      const std::size_t slot = value ^ mask;
+  void claim(const graphics::Layer &layer, uint32_t bank) {
+    for (std::size_t value = 0; value < layer.palette.size(); ++value) {
+      if (!isKept(layer, value)) {
+        continue;
+      }
+      const std::size_t slot = value ^ bank;
       m_used[slot] = true;
-      m_colors[slot] = palette[value] & COLOR_MASK;
+      m_colors[slot] = layer.palette[value] & COLOR_MASK;
     }
   }
 
@@ -584,8 +657,18 @@ public:
     return NO_SLOT;
   }
 
-  void palette(std::vector<uint16_t> &colors) const {
+  void palette(const graphics::Layer *base,
+               std::vector<uint16_t> &colors) const {
     colors.assign(m_colors.begin(), m_colors.end());
+    if (!base) {
+      return;
+    }
+    for (int slot = 0; slot < CLUT_SIZE; ++slot) {
+      const std::size_t index = static_cast<std::size_t>(slot);
+      if (!m_used[index]) {
+        colors[index] = effectiveColor(*base, slot);
+      }
+    }
   }
 
 private:
@@ -627,18 +710,27 @@ std::size_t baseLayer(const graphics::Display &display,
   return base;
 }
 
-void planBanks(const graphics::Display &display,
-               const std::vector<LayerArea> &areas, const FrameMemory &memory,
-               std::vector<LayerPlan> &plans, Banking &banking) {
-  plans.assign(display.layers.size(), LayerPlan{});
-  for (const graphics::Layer &layer : display.layers) {
-    if (layer.mask != FULL_MASK) {
-      return;
+bool takesLineColors(const graphics::Layer &layer, const LayerPlan &plan) {
+  if (layer.rowColors.empty() || !layer.pixels || layer.mask != FULL_MASK ||
+      !plan.merged || plan.bank != 0 || plan.buffer) {
+    return false;
+  }
+  for (const graphics::RowColor &change : layer.rowColors) {
+    if (change.index != 0) {
+      return false;
     }
   }
+  return true;
+}
+
+std::size_t planBanks(const graphics::Display &display,
+                      const std::vector<LayerArea> &areas,
+                      const FrameMemory &memory, std::vector<LayerPlan> &plans,
+                      Banking &banking) {
+  plans.assign(display.layers.size(), LayerPlan{});
   const std::size_t base = baseLayer(display, areas);
   if (base < display.layers.size()) {
-    banking.claim(display.layers[base].palette, 0);
+    banking.claim(display.layers[base], 0);
     plans[base].merged = true;
   }
   for (std::size_t index = 0; index < display.layers.size(); ++index) {
@@ -654,27 +746,28 @@ void planBanks(const graphics::Display &display,
       plan.merged = plan.solidSlot != NO_SLOT;
       continue;
     }
-    if (banking.fits(layer.palette, 0)) {
-      banking.claim(layer.palette, 0);
+    if (banking.fits(layer, 0)) {
+      banking.claim(layer, 0);
       plan.merged = true;
       continue;
     }
     if (!memory.buffers || !isTranslatable(layer)) {
       continue;
     }
-    for (const uint32_t mask : BANK_MASKS) {
-      if (!banking.fits(layer.palette, mask)) {
+    for (const uint32_t bank : BANK_MASKS) {
+      if (!banking.fits(layer, bank)) {
         continue;
       }
       plan.buffer = memory.buffers->buffer(layer.pixels, sourceBytes(layer));
       if (plan.buffer) {
-        banking.claim(layer.palette, mask);
+        banking.claim(layer, bank);
         plan.merged = true;
-        plan.mask = mask;
+        plan.bank = bank;
       }
       break;
     }
   }
+  return base;
 }
 
 uint32_t borderColor(uint16_t color) {
@@ -765,21 +858,41 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
   static std::vector<uint16_t> merged;
   static graphics::Display adjusted;
   Banking banking;
-  planBanks(display, areas, memory, plans, banking);
-  banking.palette(merged);
+  const std::size_t base = planBanks(display, areas, memory, plans, banking);
+  banking.palette(
+      base < display.layers.size() ? &display.layers[base] : nullptr, merged);
   adjusted = display;
   frame.translations.clear();
+  const bool combined =
+      std::count_if(plans.begin(), plans.end(),
+                    [](const LayerPlan &plan) { return plan.merged; }) > 1;
+  std::size_t lineLayer = display.layers.size();
+  uint8_t *lines = nullptr;
   for (std::size_t index = 0; index < plans.size(); ++index) {
     const LayerPlan &plan = plans[index];
+    const graphics::Layer &source = display.layers[index];
     graphics::Layer &layer = adjusted.layers[index];
     if (plan.merged) {
       layer.palette = merged;
+      if (combined) {
+        layer.mask = FULL_MASK;
+      }
     }
     if (plan.buffer) {
-      frame.translations.push_back({display.layers[index].pixels, plan.buffer,
-                                    sourceBytes(layer),
-                                    plan.mask * BYTE_COPIES});
+      frame.translations.push_back(
+          {source.pixels, plan.buffer, sourceBytes(source),
+           source.mask * BYTE_COPIES, plan.bank * BYTE_COPIES});
       layer.pixels = plan.buffer;
+    }
+    if (!lines && takesLineColors(source, plan)) {
+      const LayerArea &area = areas[index];
+      lines = linePhrases(memory, (area.lastRow - area.firstRow) /
+                                      placement.rowsPerLine);
+      if (lines) {
+        lineLayer = index;
+        layer.rowColors.clear();
+        writeLineColors(source, area, placement, lines, frame);
+      }
     }
   }
 
@@ -801,11 +914,14 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
     list.addGpuObject(ALL_LINES, 0);
   }
   for (std::size_t index = 0; index < adjusted.layers.size(); ++index) {
+    if (index == lineLayer) {
+      addLineColors(areas[index], placement, geometry, lines, list);
+    }
     const int slot =
         plans[index].solidSlot == NO_SLOT ? 0 : plans[index].solidSlot;
     addObject(adjusted.layers[index], areas[index], placement, geometry,
               memory.solidPhrases + static_cast<uint32_t>(slot) * PHRASE_BYTES,
-              list);
+              index == lineLayer, list);
   }
   for (std::size_t index = 0; index < overlayCount; ++index) {
     const Overlay &overlay = overlays[index];
@@ -824,9 +940,11 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
 }
 
 void translateOnCpu(const Translation &translation) {
-  const uint8_t mask = static_cast<uint8_t>(translation.mask);
+  const uint8_t keep = static_cast<uint8_t>(translation.keep);
+  const uint8_t flip = static_cast<uint8_t>(translation.flip);
   for (std::size_t at = 0; at < translation.bytes; ++at) {
-    translation.target[at] = translation.source[at] ^ mask;
+    translation.target[at] =
+        static_cast<uint8_t>((translation.source[at] & keep) ^ flip);
   }
 }
 

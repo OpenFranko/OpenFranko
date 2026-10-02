@@ -828,11 +828,12 @@ flipCommand:
 	jump	eq,(r29)
 	nop
 flipLoop:
-	load	(r2),r6
+	load	(r2),r7
 	addq	#4,r2
-	xor	r5,r6
+	and	r6,r7
+	xor	r5,r7
 	subq	#1,r4
-	store	r6,(r3)
+	store	r7,(r3)
 	jr	ne,flipLoop
 	addq	#4,r3
 	jump	(r29)

@@ -37,7 +37,8 @@ struct Translation {
   const uint8_t *source = nullptr;
   uint8_t *target = nullptr;
   std::size_t bytes = 0;
-  uint32_t mask = 0;
+  uint32_t keep = 0xFFFFFFFFu;
+  uint32_t flip = 0;
 };
 
 class TranslationBuffers {
@@ -50,6 +51,8 @@ struct FrameMemory {
   uint32_t liveAddress = 0;
   uint32_t solidPhrases = 0;
   TranslationBuffers *buffers = nullptr;
+  uint8_t *linePhrases = nullptr;
+  int lineCapacity = 0;
 };
 
 struct BuiltFrame {
@@ -57,6 +60,8 @@ struct BuiltFrame {
   std::array<uint16_t, 256> clut{};
   std::vector<uint32_t> copper;
   std::vector<Translation> translations;
+  std::vector<uint16_t> lineColors;
+  const uint8_t *lineTarget = nullptr;
   uint16_t background = 0;
   uint32_t border = 0;
 };

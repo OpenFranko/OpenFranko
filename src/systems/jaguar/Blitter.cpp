@@ -32,6 +32,7 @@ constexpr uint32_t KIND_FLIP = 6;
 constexpr std::size_t OUTLINE_BOX = 6;
 constexpr std::size_t BOX_VALUES = 4;
 constexpr uint32_t SIGN_BITS = 0x80808080u;
+constexpr uint32_t ALL_BITS = 0xFFFFFFFFu;
 constexpr std::size_t LONG_BYTES = 4;
 constexpr std::size_t UNPACKED_END = 5;
 constexpr std::size_t UNPACK_LIMIT = 6;
@@ -417,8 +418,8 @@ bool outline(const uint8_t *pixels, int width, int height, void *rows,
   return true;
 }
 
-bool xorCopy(const uint8_t *source, uint8_t *target, std::size_t count,
-             uint32_t mask) {
+bool translate(const uint8_t *source, uint8_t *target, std::size_t count,
+               uint32_t keep, uint32_t flip) {
   const uint32_t misaligned = (reinterpret_cast<uint32_t>(source) |
                                reinterpret_cast<uint32_t>(target)) &
                               (LONG_BYTES - 1);
@@ -434,18 +435,21 @@ bool xorCopy(const uint8_t *source, uint8_t *target, std::size_t count,
   entry[1] = reinterpret_cast<uint32_t>(source);
   entry[2] = reinterpret_cast<uint32_t>(target);
   entry[3] = static_cast<uint32_t>(longs);
-  entry[4] = mask;
+  entry[4] = flip;
+  entry[5] = keep;
   written = (written + 1) & INDEX_MASK;
   *queueWrite = written;
-  const uint8_t byteMask = static_cast<uint8_t>(mask);
+  const uint8_t byteKeep = static_cast<uint8_t>(keep);
+  const uint8_t byteFlip = static_cast<uint8_t>(flip);
   for (std::size_t at = longs * LONG_BYTES; at < count; ++at) {
-    target[at] = static_cast<uint8_t>(source[at] ^ byteMask);
+    target[at] = static_cast<uint8_t>((source[at] & byteKeep) ^ byteFlip);
   }
   return true;
 }
 
 bool flipSigns(const uint8_t *source, int8_t *target, std::size_t count) {
-  if (!xorCopy(source, reinterpret_cast<uint8_t *>(target), count, SIGN_BITS)) {
+  if (!translate(source, reinterpret_cast<uint8_t *>(target), count, ALL_BITS,
+                 SIGN_BITS)) {
     return false;
   }
   wait();
