@@ -22,7 +22,7 @@ namespace {
 namespace jaguar = systems::jaguar;
 
 constexpr std::size_t LIVE_PHRASES = 96;
-constexpr int FRAMES = 3;
+constexpr int FRAMES = 8;
 constexpr int NO_FRAME = -1;
 constexpr int COPPER_ENTRY = 1;
 constexpr int PANEL_MARGIN = 16;
@@ -56,6 +56,8 @@ struct VideoSystem::Window : VblankTarget {
   std::array<Display, FRAMES> sources;
   std::array<unsigned, FRAMES> sourceOverlays{};
   std::array<bool, FRAMES> built{};
+  std::array<uint32_t, FRAMES> used{};
+  uint32_t uses = 0;
   volatile int current = NO_FRAME;
   volatile int pending = NO_FRAME;
   volatile uint32_t vbls = 0;
@@ -71,6 +73,7 @@ struct VideoSystem::Window : VblankTarget {
 
   void vblank() override;
   int backFrame() const;
+  void choose(int slot);
   void measure();
 };
 
@@ -131,12 +134,26 @@ void VideoSystem::Window::measure() {
 }
 
 int VideoSystem::Window::backFrame() const {
+  int oldest = NO_FRAME;
   for (int index = 0; index < FRAMES; ++index) {
-    if (index != current && index != pending) {
+    if (index == current || index == pending) {
+      continue;
+    }
+    const std::size_t slot = static_cast<std::size_t>(index);
+    if (!built[slot]) {
       return index;
     }
+    if (oldest == NO_FRAME ||
+        used[slot] < used[static_cast<std::size_t>(oldest)]) {
+      oldest = index;
+    }
   }
-  return 0;
+  return oldest == NO_FRAME ? 0 : oldest;
+}
+
+void VideoSystem::Window::choose(int slot) {
+  used[static_cast<std::size_t>(slot)] = ++uses;
+  pending = slot == current ? NO_FRAME : slot;
 }
 
 VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
@@ -245,7 +262,7 @@ void VideoSystem::present() {
     const std::size_t index = static_cast<std::size_t>(m_shownSlot);
     if (window.built[index] && window.sourceOverlays[index] == overlay &&
         window.sources[index].revision == m_shownRevision) {
-      window.pending = m_shownSlot == window.current ? NO_FRAME : m_shownSlot;
+      window.choose(m_shownSlot);
       return;
     }
     m_shown = window.sources[index];
@@ -255,7 +272,8 @@ void VideoSystem::present() {
     const std::size_t index = static_cast<std::size_t>(slot);
     if (window.built[index] && window.sourceOverlays[index] == overlay &&
         jaguar::sameLayout(window.sources[index], m_shown)) {
-      window.pending = slot == window.current ? NO_FRAME : slot;
+      window.sources[index].revision = m_shown.revision;
+      window.choose(slot);
       return;
     }
   }
@@ -293,7 +311,7 @@ void VideoSystem::present() {
   window.sources[index] = m_shown;
   window.sourceOverlays[index] = overlay;
   window.built[index] = true;
-  window.pending = back;
+  window.choose(back);
 }
 
 void VideoSystem::waitVbl() {

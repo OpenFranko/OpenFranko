@@ -5,16 +5,17 @@
 
 #include <cstring>
 #include <stdexcept>
+#include <string_view>
 
 namespace openfranko::src::engine::assets {
 namespace {
 
-std::string normalized(std::string path) {
+std::string_view normalized(std::string_view path) {
   while (path.compare(0, 2, "./") == 0) {
-    path.erase(0, 2);
+    path.remove_prefix(2);
   }
   while (!path.empty() && path.back() == '/') {
-    path.pop_back();
+    path.remove_suffix(1);
   }
   return path;
 }
@@ -48,28 +49,30 @@ PackedFiles::PackedFiles(const uint8_t *data, std::size_t size)
 std::size_t PackedFiles::entries() const { return m_count; }
 
 bool PackedFiles::exists(const std::string &path) const {
-  const std::string name = normalized(path);
-  const std::size_t found = lowerBound(name);
-  if (found < m_count && name == nameAt(found)) {
+  const std::string_view name = normalized(path);
+  if (indexOf(name) < m_count) {
     return true;
   }
-  const std::string directory = name + "/";
+  const std::string directory = std::string(name) + "/";
   const std::size_t child = lowerBound(directory);
   return child < m_count && startsWith(nameAt(child), directory);
 }
 
 std::vector<std::string> PackedFiles::list(const std::string &directory) const {
-  const std::string prefix = normalized(directory) + "/";
+  const std::string prefix = std::string(normalized(directory)) + "/";
   std::vector<std::string> paths;
   for (std::size_t index = lowerBound(prefix);
        index < m_count && startsWith(nameAt(index), prefix); ++index) {
-    const std::string path = nameAt(index);
-    const std::size_t slash = path.find('/', prefix.size());
-    if (slash == std::string::npos) {
-      paths.push_back(path);
-    } else if (paths.empty() || paths.back().size() != slash ||
-               path.compare(0, slash, paths.back()) != 0) {
-      paths.push_back(path.substr(0, slash));
+    const char *path = nameAt(index);
+    const char *slash = std::strchr(path + prefix.size(), '/');
+    if (!slash) {
+      paths.emplace_back(path);
+      continue;
+    }
+    const std::size_t length = static_cast<std::size_t>(slash - path);
+    if (paths.empty() || paths.back().size() != length ||
+        paths.back().compare(0, length, path, length) != 0) {
+      paths.emplace_back(path, length);
     }
   }
   return paths;
@@ -77,10 +80,14 @@ std::vector<std::string> PackedFiles::list(const std::string &directory) const {
 
 systems::graphics::IndexedBitmap
 PackedFiles::loadBitmap(const std::string &path) {
-  if (!exists(path)) {
+  const std::size_t index = indexOf(normalized(path));
+  if (index >= m_count) {
+    if (exists(path)) {
+      throw std::runtime_error("Failed to open " + path);
+    }
     throw std::runtime_error("Failed to load bitmap: " + path);
   }
-  const Entry found = require(path);
+  const Entry found = entry(index);
   if ((found.flags & packed::BITMAP) == 0 ||
       found.storedSize < packed::BITMAP_HEADER_SIZE) {
     throw std::runtime_error("Failed to load bitmap: " + path);
@@ -110,7 +117,7 @@ PackedFiles::loadBitmap(const std::string &path) {
   const uint8_t *stored = header + paletteEnd;
   const std::size_t storedPixels = found.storedSize - paletteEnd;
   if (found.flags & packed::COMPRESSED) {
-    decompressLz4(stored, storedPixels, bitmap.pixels.data(), pixels);
+    unpackLz4(stored, storedPixels, bitmap.pixels.data(), pixels);
   } else if (storedPixels == pixels) {
     std::memcpy(bitmap.pixels.data(), stored, pixels);
   } else {
@@ -126,7 +133,7 @@ std::vector<uint8_t> PackedFiles::read(const std::string &path) {
   }
   std::vector<uint8_t> data(found.size);
   if (found.flags & packed::COMPRESSED) {
-    decompressLz4(found.data, found.storedSize, data.data(), data.size());
+    unpackLz4(found.data, found.storedSize, data.data(), data.size());
   } else if (found.storedSize == found.size) {
     std::memcpy(data.data(), found.data, found.size);
   } else {
@@ -164,6 +171,18 @@ std::size_t PackedFiles::lowerBound(const std::string &name) const {
   return low;
 }
 
+std::size_t PackedFiles::indexOf(std::string_view name) const {
+  std::size_t found = m_next;
+  if (found >= m_count || name != nameAt(found)) {
+    found = lowerBound(std::string(name));
+    if (found >= m_count || name != nameAt(found)) {
+      return m_count;
+    }
+  }
+  m_next = found + 1;
+  return found;
+}
+
 const char *PackedFiles::nameAt(std::size_t index) const {
   const std::size_t offset =
       packed::readLong(m_data + packed::HEADER_SIZE +
@@ -175,9 +194,8 @@ const char *PackedFiles::nameAt(std::size_t index) const {
 }
 
 PackedFiles::Entry PackedFiles::require(const std::string &path) const {
-  const std::string name = normalized(path);
-  const std::size_t found = lowerBound(name);
-  if (found >= m_count || name != nameAt(found)) {
+  const std::size_t found = indexOf(normalized(path));
+  if (found >= m_count) {
     throw std::runtime_error("Failed to open " + path);
   }
   return entry(found);

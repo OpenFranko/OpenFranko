@@ -49,7 +49,7 @@ int sampleAt(const uint8_t *bytes, uint16_t bits) {
 
 } // namespace
 
-Sound readWave(const std::vector<uint8_t> &file) {
+Sound readWave(const std::vector<uint8_t> &file, SignFlip flip) {
   if (file.size() < RIFF_HEADER_SIZE || !isChunk(file.data(), "RIFF") ||
       !isChunk(file.data() + 8, "WAVE")) {
     fail("Not a WAVE file");
@@ -95,6 +95,16 @@ Sound readWave(const std::vector<uint8_t> &file) {
   sound.rate = static_cast<int>(format->rate);
   sound.frames.resize(count);
   const bool stereo = format->channels == 2;
+  if (!stereo && format->bits == 8) {
+    if (flip && flip(data, sound.frames.data(), count)) {
+      return sound;
+    }
+    const uint8_t *byte = data;
+    for (int8_t &value : sound.frames) {
+      value = static_cast<int8_t>(*byte++ - BYTE_OFFSET);
+    }
+    return sound;
+  }
   const uint8_t *frameData = data;
   for (int8_t &value : sound.frames) {
     int sample = sampleAt(frameData, format->bits);

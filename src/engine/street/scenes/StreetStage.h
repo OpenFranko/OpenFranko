@@ -83,6 +83,7 @@ private:
   Flow advanceLeavePasted();
   Flow spawnFlushed();
   Flow spawnPasted();
+  int imageBase(int spriteSet) const;
   void spawnLoaded();
   void gameOver();
   void runBasic(const StreetInput &input) override;

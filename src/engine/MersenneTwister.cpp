@@ -1,5 +1,7 @@
 #include "MersenneTwister.h"
 
+#include "../systems/Multiply.h"
+
 namespace openfranko::src::engine {
 namespace {
 
@@ -15,6 +17,32 @@ constexpr uint32_t TEMPER_MASK_B = 0x9D2C5680;
 constexpr int TEMPER_SHIFT_T = 15;
 constexpr uint32_t TEMPER_MASK_C = 0xEFC60000;
 constexpr int TEMPER_SHIFT_L = 18;
+constexpr int HALF_BITS = 16;
+constexpr uint32_t HALF_MASK = 0xFFFF;
+
+struct Product {
+  uint32_t high = 0;
+  uint32_t low = 0;
+};
+
+Product multiplyWide(uint32_t left, uint32_t right) {
+  const uint16_t leftLow = static_cast<uint16_t>(left & HALF_MASK);
+  const uint16_t leftHigh = static_cast<uint16_t>(left >> HALF_BITS);
+  const uint16_t rightLow = static_cast<uint16_t>(right & HALF_MASK);
+  const uint16_t rightHigh = static_cast<uint16_t>(right >> HALF_BITS);
+  const uint32_t lowest = systems::multiplyUnsigned16(leftLow, rightLow);
+  const uint32_t first = systems::multiplyUnsigned16(leftHigh, rightLow);
+  const uint32_t second = systems::multiplyUnsigned16(leftLow, rightHigh);
+  Product product;
+  product.high = systems::multiplyUnsigned16(leftHigh, rightHigh) +
+                 (first >> HALF_BITS) + (second >> HALF_BITS);
+  product.low = lowest + (first << HALF_BITS);
+  product.high += product.low < lowest ? 1 : 0;
+  const uint32_t before = product.low;
+  product.low += second << HALF_BITS;
+  product.high += product.low < before ? 1 : 0;
+  return product;
+}
 
 } // namespace
 
@@ -43,6 +71,21 @@ MersenneTwister::result_type MersenneTwister::operator()() {
   value ^= (value << TEMPER_SHIFT_T) & TEMPER_MASK_C;
   value ^= value >> TEMPER_SHIFT_L;
   return value;
+}
+
+MersenneTwister::result_type MersenneTwister::upTo(result_type limit) {
+  const uint32_t range = limit + 1;
+  if (range == 0) {
+    return (*this)();
+  }
+  Product product = multiplyWide((*this)(), range);
+  if (product.low < range) {
+    const uint32_t threshold = (0u - range) % range;
+    while (product.low < threshold) {
+      product = multiplyWide((*this)(), range);
+    }
+  }
+  return product.high;
 }
 
 } // namespace openfranko::src::engine

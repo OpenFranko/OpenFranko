@@ -4,6 +4,7 @@
 #include "audio/S3m.h"
 #include "audio/Tracker.h"
 #include "audio/Wave.h"
+#include "jaguar/Blitter.h"
 #include "jaguar/Hardware.h"
 #include "jaguar/RiscProgram.h"
 #include "jaguar/Video.h"
@@ -40,6 +41,7 @@ constexpr double BUTTERWORTH_Q = 0.7071067811865476;
 constexpr double TWO_PI = 6.28318530717958647692;
 constexpr double FILTER_ONE = 4096.0;
 constexpr double STEP_ONE = 4294967296.0;
+constexpr std::size_t STEP_CACHE = 8;
 constexpr double FRAMES_ONE = 65536.0;
 constexpr double PERIOD_RATE = Tracker::C4_PERIOD *
                                static_cast<double>(Tracker::C4_RATE) *
@@ -108,6 +110,8 @@ struct AudioSystem::Output {
   std::optional<VoiceUse> silencing;
   std::array<MusicVoice, S3mModule::CHANNELS> music;
   double rate = 0.0;
+  std::array<std::pair<int, uint64_t>, STEP_CACHE> steps{};
+  std::size_t nextStep = 0;
   uint64_t periodSteps = 0;
   double tempoScale = 1.0;
   int vblRate = PAL_VBL_RATE;
@@ -147,6 +151,7 @@ struct AudioSystem::Output {
   bool isActive(int voice) const;
   bool isSounding(const VoiceUse &use) const;
   void command(int voice, const Sound *sound, int frequency, bool loop);
+  uint64_t stepFor(int playRate);
   void play(const std::string &name, int voiceMask, int frequency);
 };
 
@@ -154,6 +159,7 @@ void AudioSystem::Output::startDsp() {
   const bool ntsc = jaguar::detectGeometry().ntsc;
   rate = (ntsc ? NTSC_CLOCK : PAL_CLOCK) /
          (CLOCKS_PER_FRAME * (CLOCK_DIVIDER + 1));
+  steps.fill({});
   periodSteps = static_cast<uint64_t>(PERIOD_RATE * STEP_ONE / rate);
   for (volatile uint32_t &value : shared) {
     value = 0;
@@ -352,8 +358,7 @@ void AudioSystem::Output::command(int voice, const Sound *sound, int frequency,
     use = VoiceUse{sound, frequency, PENDING_UPDATES};
     const uint32_t start = reinterpret_cast<uint32_t>(sound->frames.data());
     const uint32_t length = static_cast<uint32_t>(sound->frames.size());
-    const uint64_t step =
-        static_cast<uint64_t>(static_cast<double>(playRate) / rate * STEP_ONE);
+    const uint64_t step = stepFor(playRate);
     slot[0] = start;
     slot[1] = start + length;
     slot[2] = loop ? length : 0;
@@ -363,6 +368,19 @@ void AudioSystem::Output::command(int voice, const Sound *sound, int frequency,
   }
   shared[SFX_SEQ + static_cast<std::size_t>(voice)] =
       ++commands[static_cast<std::size_t>(voice)];
+}
+
+uint64_t AudioSystem::Output::stepFor(int playRate) {
+  for (const auto &[cachedRate, step] : steps) {
+    if (cachedRate == playRate) {
+      return step;
+    }
+  }
+  const uint64_t step =
+      static_cast<uint64_t>(static_cast<double>(playRate) / rate * STEP_ONE);
+  steps[nextStep] = {playRate, step};
+  nextStep = (nextStep + 1) % STEP_CACHE;
+  return step;
 }
 
 AudioSystem::AudioSystem(Read read) : m_output(std::make_unique<Output>()) {
@@ -413,8 +431,8 @@ const std::string &AudioSystem::loadedMusic() const {
 void AudioSystem::loadSample(const std::string &name, const std::string &path) {
   clearSample(name);
   try {
-    m_output->sounds[name] =
-        std::make_unique<Sound>(readWave(m_output->read(path)));
+    m_output->sounds[name] = std::make_unique<Sound>(
+        readWave(m_output->read(path), jaguar::blitter::flipSigns));
   } catch (const std::runtime_error &) {
     return;
   }

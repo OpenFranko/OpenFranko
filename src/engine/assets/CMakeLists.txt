@@ -15,7 +15,7 @@ add_library(Assets
 target_link_libraries(Assets PUBLIC Common Graphics)
 
 if(JAGUAR)
-    target_sources(Assets PRIVATE JaguarGameFiles.cpp)
+    target_sources(Assets PRIVATE JaguarGameFiles.cpp JaguarLz4.cpp)
     target_link_libraries(Assets PRIVATE JaguarHardware)
 else()
     target_sources(Assets PRIVATE
@@ -23,5 +23,6 @@ else()
         ArchiveFiles.h
         DiskFiles.cpp
         DiskFiles.h
-        GameFiles.cpp)
+        GameFiles.cpp
+        Lz4Unpack.cpp)
 endif()

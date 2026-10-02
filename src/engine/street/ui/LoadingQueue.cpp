@@ -5,10 +5,17 @@
 namespace openfranko::src::engine::street::ui {
 
 void LoadingQueue::queue(std::function<void()> load) {
-  m_files.push_back(std::move(load));
+  m_files.push_back(Job{std::move(load), nullptr});
+}
+
+void LoadingQueue::queueSteps(std::function<bool()> step) {
+  m_files.push_back(Job{nullptr, std::move(step)});
 }
 
 bool LoadingQueue::advance(StatusPanel *panel) {
+  if (m_running && m_running()) {
+    m_running = nullptr;
+  }
   if (m_phase != Phase::Idle && --m_countdown > 0) {
     return false;
   }
@@ -20,13 +27,21 @@ bool LoadingQueue::advance(StatusPanel *panel) {
     m_countdown = UNPACK_FRAMES;
     return false;
   }
+  if (m_running) {
+    m_countdown = 1;
+    return false;
+  }
   m_phase = Phase::Idle;
   if (m_files.empty()) {
     return true;
   }
-  std::function<void()> load = std::move(m_files.front());
+  Job job = std::move(m_files.front());
   m_files.pop_front();
-  load();
+  if (job.load) {
+    job.load();
+  } else if (!job.step()) {
+    m_running = std::move(job.step);
+  }
   if (panel) {
     panel->showLoading();
   }

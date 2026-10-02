@@ -95,6 +95,8 @@ void Machine::create(int channel, const Program &program) {
   created.object = m_bindings[index];
 }
 
+void Machine::prepare(const Program &program) { steps(program); }
+
 void Machine::create(int channel, const std::string &source) {
   slot(channel);
   auto found = m_programs.find(source);
@@ -211,6 +213,7 @@ const Machine::Step *Machine::steps(const Program &program) {
   std::vector<Step> &compiled = m_steps[program.code];
   if (compiled.size() != static_cast<std::size_t>(program.length)) {
     compiled.clear();
+    compiled.reserve(static_cast<std::size_t>(program.length));
     for (int pc = 0; pc < program.length; ++pc) {
       compiled.push_back(compile(program, pc));
     }

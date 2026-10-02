@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <memory>
 #include <utility>
 
 namespace openfranko::src::engine::street::scenes {
@@ -286,7 +287,7 @@ StreetStage::Flow StreetStage::refereeMoves() {
   };
 
   if (global(amal::RD) == 2) {
-    bobCol(PLAYER);
+    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
       if (col(i) && reg(i * 2 + 1, 4) == 1 && yBob(PLAYER) < yBob(i) + 6 &&
           yBob(PLAYER) > yBob(i) - 6 && xBob(PLAYER) < 240 &&
@@ -310,7 +311,7 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 1 || global(amal::RD) == 2) {
-    bobCol(PLAYER);
+    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
       if (col(i) && inFront(i) && yBob(i) == yBob(PLAYER)) {
         const int p = i * 2 + 1;
@@ -324,7 +325,7 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 3) {
-    bobCol(PLAYER);
+    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
       if (col(i) && yBob(i) == yBob(PLAYER)) {
         const int p = i * 2 + 1;
@@ -338,7 +339,7 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 4) {
-    bobCol(PLAYER);
+    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
       if (col(i) && global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1 &&
           reg(i * 2, 3) == 0 && inFront(i)) {
@@ -353,7 +354,7 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 5) {
-    bobCol(PLAYER);
+    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
       if (col(i) && global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1) {
         const int p = i * 2 + 1;
@@ -367,7 +368,7 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 6) {
-    bobCol(PLAYER);
+    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
       if (reg(i * 2 + 1, 5) == 0 && global(amal::RC) != reg(i * 2, 2) &&
           col(i) && reg(2, 5) == 0 && yBob(PLAYER) == yBob(i) && inFront(i)) {
@@ -388,7 +389,7 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   for (int i = 2; i <= 4; ++i) {
-    if (bobCol(i) && col(PLAYER) && global(amal::RD) == 0 &&
+    if (bobCol(i, PLAYER, PLAYER) && col(PLAYER) && global(amal::RD) == 0 &&
         yBob(PLAYER) == yBob(i) && reg(2, 1) == 0 && reg(i * 2, 9) > 0 &&
         reg(i * 2, 9) < 4 && reg(i * 2 + 1, 0) == 0) {
       if ((reg(i * 2, 2) == 0 && xBob(PLAYER) > xBob(i)) ||
@@ -433,13 +434,13 @@ StreetStage::Flow StreetStage::refereeMoves() {
       reg(channel, 0) = 4;
       reg(i * 2 + 1, 3) = 0;
     };
-    if ((i == 2 || i == 4) && bobCol(i) && col(3) && sameDepth()) {
+    if ((i == 2 || i == 4) && bobCol(i, 3, 3) && col(3) && sameDepth()) {
       knockDown(7);
     }
-    if ((i == 3 || i == 2) && bobCol(i) && col(4) && sameDepth()) {
+    if ((i == 3 || i == 2) && bobCol(i, 4, 4) && col(4) && sameDepth()) {
       knockDown(9);
     }
-    if ((i == 3 || i == 4) && bobCol(i) && col(2) && sameDepth()) {
+    if ((i == 3 || i == 4) && bobCol(i, 2, 2) && col(2) && sameDepth()) {
       knockDown(5);
     }
   }
@@ -536,9 +537,13 @@ StreetStage::Flow StreetStage::advanceTop(const StreetInput &input) {
     m_machine.freezeAll();
     m_bobs.setPosition(PLAYER, xBob(PLAYER), (global(amal::RB) / 4) * 4);
     m_bobs.setImage(PLAYER, IDLE_IMAGE + m_facing);
-    m_loading.queue([this] {
-      m_columns = m_host.loadScenery(300 + stage() * 10 + m_chunk);
-    });
+    m_loading.queueSteps(
+        [this, load = std::shared_ptr<StreetHost::FramesLoad>()]() mutable {
+          if (!load) {
+            load = m_host.beginScenery(300 + stage() * 10 + m_chunk);
+          }
+          return load->step(m_columns);
+        });
     return load(Step::AdvanceChunkLoaded);
   }
   return advanceWalk(input);
@@ -641,6 +646,7 @@ StreetStage::Flow StreetStage::spawnPasted() {
                          wave.slots[1].spriteSet == resident ||
                          wave.slots[2].spriteSet == resident);
   }
+  auto programs = std::make_shared<std::vector<amal::Program>>();
   int slot = 0;
   for (const core::EnemySlot &enemy : wave.slots) {
     bool missing = false;
@@ -669,14 +675,39 @@ StreetStage::Flow StreetStage::spawnPasted() {
       }
       const int spriteSet = enemy.spriteSet;
       const int bank = 4 + slot - 1;
-      m_loading.queue([this, base, spriteSet, bank] {
-        m_images.load(base, m_host.loadSpriteSet(spriteSet, bank));
-      });
+      m_loading.queueSteps(
+          [this, base, spriteSet, bank, programs, loaded = false,
+           load = std::shared_ptr<StreetHost::SpriteSetLoad>()]() mutable {
+            if (!loaded) {
+              if (!load) {
+                load = m_host.beginSpriteSet(spriteSet, bank, base);
+              }
+              loaded = load->step(m_images);
+              return loaded && programs->empty();
+            }
+            m_machine.prepare(programs->back());
+            programs->pop_back();
+            return programs->empty();
+          });
       m_resident[static_cast<std::size_t>(slot)] = enemy.spriteSet;
       m_needed[static_cast<std::size_t>(slot)] = -1;
     }
   }
+  for (const core::EnemySlot &enemy : wave.slots) {
+    if (enemy.spriteSet == core::EnemySlot::EMPTY) {
+      continue;
+    }
+    const auto enemyPrograms =
+        actors::compiled::enemy(imageBase(enemy.spriteSet), enemy.type);
+    programs->push_back(enemyPrograms.walk);
+    programs->push_back(enemyPrograms.damage);
+  }
   return load(Step::SpawnLoaded);
+}
+
+int StreetStage::imageBase(int spriteSet) const {
+  return 0 - 25 * actors::amosBool(m_resident[2] == spriteSet) -
+         50 * actors::amosBool(m_resident[3] == spriteSet);
 }
 
 void StreetStage::spawnLoaded() {
@@ -695,10 +726,8 @@ void StreetStage::spawnLoaded() {
     m_energy[static_cast<std::size_t>(j - 1)] = enemy.energy;
     m_aggression[static_cast<std::size_t>(j - 1)] = enemy.aggression;
     m_bobs.set(j, enemy.x, enemy.y, HIDDEN_IMAGE);
-    const int base = 0 -
-                     25 * actors::amosBool(m_resident[2] == enemy.spriteSet) -
-                     50 * actors::amosBool(m_resident[3] == enemy.spriteSet);
-    const auto programs = actors::compiled::enemy(base, enemy.type);
+    const auto programs =
+        actors::compiled::enemy(imageBase(enemy.spriteSet), enemy.type);
     m_machine.create(j * 2, programs.walk);
     m_machine.create(j * 2 + 1, programs.damage);
   }

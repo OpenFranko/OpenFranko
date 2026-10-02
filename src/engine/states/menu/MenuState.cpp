@@ -12,6 +12,8 @@
 namespace openfranko::src::engine::states::menu {
 namespace {
 
+constexpr int NO_ROWS_DRAWN = -1;
+
 constexpr int BACKDROP = 0x3B8;
 constexpr int MENU_BOBS = 0x34;
 
@@ -214,6 +216,7 @@ void MenuState::startAttract() {
                   ATTRACT_SCREEN_HEIGHT, m_monitor.isNtsc());
   m_attractTop = rows.first;
   m_attractScreen = systems::graphics::Canvas(ATTRACT_SCREEN_WIDTH, rows.count);
+  m_rowsDrawn = NO_ROWS_DRAWN;
   const effects::sequences::AttractSequence::Kind kind = m_nextAttract;
   const bool title = kind == effects::sequences::AttractSequence::Kind::Title;
   m_nextAttract = title ? effects::sequences::AttractSequence::Kind::Hiscores
@@ -257,10 +260,14 @@ void MenuState::drawAttractPicture() {
   }
 
   m_attractScreen.setPalette(m_attract->palette());
-  m_attractScreen.draw(m_hiscores, 0, -m_attractTop);
-  for (int drawn = 0; drawn < m_attract->rowsShown(); ++drawn) {
+  const int shown = m_attract->rowsShown();
+  if (m_rowsDrawn == NO_ROWS_DRAWN || shown < m_rowsDrawn) {
+    m_attractScreen.draw(m_hiscores, 0, -m_attractTop);
+    m_rowsDrawn = 0;
+  }
+  for (; m_rowsDrawn < shown; ++m_rowsDrawn) {
     drawHiscoreRow(effects::sequences::AttractSequence::HISCORE_ROWS - 1 -
-                   drawn);
+                   m_rowsDrawn);
   }
   show(m_attractScreen);
 }

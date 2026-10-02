@@ -17,6 +17,13 @@ INDEX_MASK	.equ	$FFFF
 DIV_CONTROL	.equ	$F0211C
 KIND_PIXELS	.equ	2
 KIND_FILL	.equ	3
+KIND_LZ4	.equ	4
+KIND_OUTLINE	.equ	5
+KIND_FLIP	.equ	6
+EMPTY_SPAN	.equ	$7FFF8000
+SPAN_MAX	.equ	$7FFF
+SPAN_MIN	.equ	$FFFF8000
+BYTE_LIMIT	.equ	255
 MAX_ROWS	.equ	4000
 ROOM		.equ	15984
 PIXEL8		.equ	$18
@@ -117,6 +124,18 @@ queueLoop:
 	nop
 	movei	#fillCommand,r0
 	cmpq	#KIND_FILL,r1
+	jump	eq,(r0)
+	nop
+	movei	#lz4Command,r0
+	cmpq	#KIND_LZ4,r1
+	jump	eq,(r0)
+	nop
+	movei	#outlineCommand,r0
+	cmpq	#KIND_OUTLINE,r1
+	jump	eq,(r0)
+	nop
+	movei	#flipCommand,r0
+	cmpq	#KIND_FLIP,r1
 	jump	eq,(r0)
 	nop
 
@@ -584,6 +603,234 @@ fillWait:
 	cmp	r7,r28
 	movei	#fillLoop,r0
 	jump	mi,(r0)
+	nop
+	movei	#commandDone,r0
+	jump	(r0)
+	nop
+
+lz4Command:
+	movei	#BYTE_LIMIT,r9
+	movei	#lz4Token,r28
+	movei	#lz4Done,r29
+lz4Token:
+	cmp	r3,r2
+	jump	cc,(r29)
+	nop
+	loadb	(r2),r6
+	addq	#1,r2
+	move	r6,r7
+	shrq	#4,r7
+	cmpq	#15,r7
+	jr	ne,lz4Literals
+	nop
+lz4LiteralExtension:
+	loadb	(r2),r8
+	addq	#1,r2
+	cmp	r9,r8
+	jr	eq,lz4LiteralExtension
+	add	r8,r7
+lz4Literals:
+	move	r4,r0
+	add	r7,r0
+	cmp	r0,r5
+	jump	cs,(r29)
+	cmpq	#0,r7
+	jr	eq,lz4LiteralsDone
+	nop
+lz4LiteralCopy:
+	loadb	(r2),r8
+	addq	#1,r2
+	storeb	r8,(r4)
+	subq	#1,r7
+	jr	ne,lz4LiteralCopy
+	addq	#1,r4
+lz4LiteralsDone:
+	cmp	r3,r2
+	jump	cc,(r29)
+	nop
+	loadb	(r2),r10
+	addq	#1,r2
+	loadb	(r2),r11
+	addq	#1,r2
+	shlq	#8,r11
+	or	r11,r10
+	move	r4,r12
+	sub	r10,r12
+	moveq	#15,r11
+	and	r11,r6
+	cmpq	#15,r6
+	jr	ne,lz4MatchChecked
+	addq	#4,r6
+lz4MatchExtension:
+	loadb	(r2),r8
+	addq	#1,r2
+	cmp	r9,r8
+	jr	eq,lz4MatchExtension
+	add	r8,r6
+lz4MatchChecked:
+	move	r4,r0
+	add	r6,r0
+	cmp	r0,r5
+	jump	cs,(r29)
+	nop
+lz4MatchCopy:
+	loadb	(r12),r8
+	addq	#1,r12
+	storeb	r8,(r4)
+	subq	#1,r6
+	jr	ne,lz4MatchCopy
+	addq	#1,r4
+	jump	(r28)
+	nop
+lz4Done:
+	store	r4,(r14+5)
+	movei	#commandDone,r0
+	jump	(r0)
+	nop
+
+outlineCommand:
+	movei	#EMPTY_SPAN,r11
+	movei	#SPAN_MAX,r12
+	movei	#SPAN_MIN,r13
+	moveq	#0,r16
+	subq	#1,r16
+	moveq	#0,r17
+	moveq	#0,r18
+	move	r5,r19
+	movei	#outlineRow,r28
+	movei	#outlineBox,r29
+	movei	#outlineEmpty,r1
+outlineRow:
+	cmpq	#0,r4
+	jump	eq,(r29)
+	move	r2,r8
+	move	r2,r7
+	add	r3,r7
+outlineLeft:
+	cmp	r8,r7
+	jump	eq,(r1)
+	nop
+	loadb	(r8),r10
+	cmpq	#0,r10
+	jr	eq,outlineLeft
+	addq	#1,r8
+	move	r7,r9
+outlineRight:
+	subq	#1,r9
+	loadb	(r9),r10
+	cmpq	#0,r10
+	jr	eq,outlineRight
+	nop
+	subq	#1,r8
+	sub	r2,r8
+	sub	r2,r9
+	cmp	r12,r8
+	jr	pl,outlineKeepLeft
+	nop
+	move	r8,r12
+outlineKeepLeft:
+	cmp	r9,r13
+	jr	pl,outlineKeepRight
+	nop
+	move	r9,r13
+outlineKeepRight:
+	cmpq	#0,r16
+	jr	pl,outlineHaveTop
+	nop
+	move	r18,r16
+outlineHaveTop:
+	move	r18,r17
+	addq	#1,r17
+	shlq	#16,r8
+	or	r9,r8
+	store	r8,(r19)
+	jr	outlineNext
+	addq	#4,r19
+outlineEmpty:
+	store	r11,(r19)
+	addq	#4,r19
+outlineNext:
+	move	r7,r2
+	addq	#1,r18
+	jump	(r28)
+	subq	#1,r4
+outlineBox:
+	cmpq	#0,r16
+	jr	pl,outlineBoxFound
+	nop
+	moveq	#0,r12
+	moveq	#0,r13
+	moveq	#0,r16
+	jr	outlineBoxStore
+	moveq	#0,r17
+outlineBoxFound:
+	addq	#1,r13
+outlineBoxStore:
+	store	r12,(r14+6)
+	store	r16,(r14+7)
+	store	r13,(r14+8)
+	store	r17,(r14+9)
+	load	(r14+3),r4
+	move	r5,r8
+	movei	#outlineBandRow,r28
+	movei	#commandDone,r29
+	movei	#outlineBandInner,r16
+outlineBandRow:
+	cmpq	#0,r4
+	jump	eq,(r29)
+	moveq	#4,r10
+	cmp	r4,r10
+	jr	mi,outlineBandCount
+	nop
+	move	r4,r10
+outlineBandCount:
+	movei	#SPAN_MAX,r12
+	movei	#SPAN_MIN,r13
+	move	r8,r9
+outlineBandInner:
+	load	(r9),r0
+	addq	#4,r9
+	move	r0,r1
+	sharq	#16,r1
+	shlq	#16,r0
+	sharq	#16,r0
+	cmp	r12,r1
+	jr	pl,outlineBandKeepFirst
+	nop
+	move	r1,r12
+outlineBandKeepFirst:
+	cmp	r0,r13
+	jr	pl,outlineBandKeepLast
+	nop
+	move	r0,r13
+outlineBandKeepLast:
+	subq	#1,r10
+	jump	ne,(r16)
+	nop
+	shlq	#16,r12
+	shlq	#16,r13
+	shrq	#16,r13
+	or	r13,r12
+	store	r12,(r6)
+	addq	#4,r6
+	addq	#4,r8
+	jump	(r28)
+	subq	#1,r4
+
+flipCommand:
+	movei	#commandDone,r29
+	cmpq	#0,r4
+	jump	eq,(r29)
+	nop
+flipLoop:
+	load	(r2),r6
+	addq	#4,r2
+	xor	r5,r6
+	subq	#1,r4
+	store	r6,(r3)
+	jr	ne,flipLoop
+	addq	#4,r3
+	jump	(r29)
 	nop
 
 commandDone:

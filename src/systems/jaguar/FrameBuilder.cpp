@@ -113,19 +113,21 @@ public:
         m_frame(frame), m_table(rgb16Table()) {}
 
   void load(int owner, int row) {
-    base(owner, m_frame.clut);
-    override(owner, row, m_frame.clut);
+    const int loaded = base(owner, m_frame.clut);
+    m_limit = std::max(loaded, override(owner, row, m_frame.clut));
   }
 
   void change(int owner, int row) {
     std::array<uint16_t, CLUT_SIZE> next{};
-    base(owner, next);
-    override(owner, row, next);
+    const int loaded = base(owner, next);
+    const int limit = std::max(loaded, override(owner, row, next));
+    const int range = std::max(m_limit, limit);
     begin(row);
-    for (int value = 0; value < CLUT_SIZE; ++value) {
+    for (int value = 0; value < range; ++value) {
       set(value, next[static_cast<std::size_t>(value)]);
     }
     end();
+    m_limit = limit;
   }
 
   void recolor(int owner, int row, const graphics::RowColor *previous,
@@ -176,10 +178,10 @@ private:
     }
   }
 
-  void base(int owner, std::array<uint16_t, CLUT_SIZE> &colors) const {
+  int base(int owner, std::array<uint16_t, CLUT_SIZE> &colors) const {
     if (owner == NO_LAYER) {
       colors.fill(0);
-      return;
+      return 0;
     }
     const graphics::Layer &layer = layerAt(owner);
     if (layer.mask == FULL_MASK) {
@@ -190,18 +192,20 @@ private:
       }
       std::fill(colors.begin() + static_cast<std::ptrdiff_t>(count),
                 colors.end(), 0);
-      return;
+      return static_cast<int>(count);
     }
     for (int value = 0; value < CLUT_SIZE; ++value) {
       colors[static_cast<std::size_t>(value)] =
           m_table[effectiveColor(layer, value)];
     }
+    return CLUT_SIZE;
   }
 
-  void override(int owner, int row,
-                std::array<uint16_t, CLUT_SIZE> &colors) const {
+  int override(int owner, int row,
+               std::array<uint16_t, CLUT_SIZE> &colors) const {
+    int limit = 0;
     if (owner == NO_LAYER) {
-      return;
+      return limit;
     }
     const graphics::Layer &layer = layerAt(owner);
     for (const graphics::RowColor &change : layer.rowColors) {
@@ -209,9 +213,11 @@ private:
         forEachValue(layer, change.index, [&](int value) {
           colors[static_cast<std::size_t>(value)] =
               m_table[change.color & COLOR_MASK];
+          limit = std::max(limit, value + 1);
         });
       }
     }
+    return limit;
   }
 
   void begin(int row) {
@@ -226,6 +232,9 @@ private:
     if (shown != color) {
       shown = color;
       m_frame.copper.push_back(static_cast<uint32_t>(value * 2) << 16 | color);
+      if (color != 0 && value >= m_limit) {
+        m_limit = value + 1;
+      }
     }
   }
 
@@ -245,6 +254,7 @@ private:
   BuiltFrame &m_frame;
   const std::array<uint16_t, AMIGA_COLORS> &m_table;
   std::size_t m_header = 0;
+  int m_limit = 0;
 };
 
 bool rowOrder(const graphics::RowColor &left, const graphics::RowColor &right) {

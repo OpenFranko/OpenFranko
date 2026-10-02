@@ -167,4 +167,14 @@ void fill(Target target, int width, int height, uint8_t value) {
 
 void finish() { blitter::wait(); }
 
+bool outline(const uint8_t *pixels, int width, int height, Span *rows,
+             Span *bands, Bounds &bounds) {
+  int32_t box[4];
+  if (!blitter::outline(pixels, width, height, rows, bands, box)) {
+    return false;
+  }
+  bounds = Bounds{box[0], box[1], box[2], box[3]};
+  return true;
+}
+
 } // namespace openfranko::src::systems::graphics::pixels

@@ -1,6 +1,7 @@
 #ifndef SYSTEMS_JAGUAR_BLITTER_H_
 #define SYSTEMS_JAGUAR_BLITTER_H_
 
+#include <cstddef>
 #include <cstdint>
 
 namespace openfranko {
@@ -23,6 +24,11 @@ void wait();
 void useQueue(uint32_t control);
 void stopQueue();
 bool isQueued();
+bool unpack(const uint8_t *source, std::size_t sourceSize, uint8_t *target,
+            std::size_t targetSize);
+bool outline(const uint8_t *pixels, int width, int height, void *rows,
+             void *bands, int32_t *box);
+bool flipSigns(const uint8_t *source, int8_t *target, std::size_t count);
 void copy(Source source, Area target, int width, int height);
 void copyMasked(Source source, Area target, int width, int height);
 void copyMirrored(Source source, Area target, int width, int height,

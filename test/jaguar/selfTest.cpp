@@ -1,3 +1,4 @@
+#include "../../lib/converter/packedArchive/lz4Compressor.h"
 #include "../../src/systems/jaguar/Blitter.h"
 #include "../../src/systems/jaguar/Console.h"
 #include "../../src/systems/jaguar/Eeprom.h"
@@ -253,6 +254,184 @@ void testMemory() {
   }
 }
 
+std::vector<uint8_t> lz4Sample(std::size_t size, int kind) {
+  std::vector<uint8_t> data(size, 0);
+  uint32_t seed = static_cast<uint32_t>(size) * 2654435761u + kind;
+  for (std::size_t at = 0; at < size; ++at) {
+    seed = seed * 1103515245u + 12345u;
+    const uint8_t noise = static_cast<uint8_t>(seed >> 24);
+    switch (kind) {
+    case 0:
+      data[at] = at % 64 < 40 ? static_cast<uint8_t>(at % 7) : noise;
+      break;
+    case 1:
+      data[at] = at % 97 == 0 || at % 48 == 13 ? noise : 0;
+      break;
+    case 2:
+      data[at] = noise;
+      break;
+    default:
+      data[at] = static_cast<uint8_t>(at < size / 2 ? 9 : at % 5);
+      break;
+    }
+  }
+  return data;
+}
+
+void testLz4() {
+  const std::size_t sizes[] = {0, 1, 15, 300, 3552, 9000};
+  for (int kind = 0; kind < 4; ++kind) {
+    for (const std::size_t size : sizes) {
+      const std::vector<uint8_t> data = lz4Sample(size, kind);
+      const std::vector<uint8_t> packed =
+          openfranko::lib::converter::packedArchive::compressLz4(data.data(),
+                                                                 data.size());
+      std::vector<uint8_t> unpacked(size + 8, UNTOUCHED);
+      const bool done =
+          blitter::unpack(packed.data(), packed.size(), unpacked.data(), size);
+      bool same = done;
+      for (std::size_t at = 0; same && at < size; ++at) {
+        same = unpacked[at] == data[at];
+      }
+      for (std::size_t at = size; same && at < unpacked.size(); ++at) {
+        same = unpacked[at] == UNTOUCHED;
+      }
+      if (!same) {
+        char line[64];
+        std::snprintf(line, sizeof(line), "lz4 kind %d size %u: FAIL", kind,
+                      static_cast<unsigned>(size));
+        report(line);
+        ++failures;
+      } else {
+        ++passes;
+      }
+    }
+  }
+  const std::vector<uint8_t> data = lz4Sample(3552, 1);
+  std::vector<uint8_t> packed =
+      openfranko::lib::converter::packedArchive::compressLz4(data.data(),
+                                                             data.size());
+  packed.resize(packed.size() / 2);
+  std::vector<uint8_t> unpacked(data.size() + 8, UNTOUCHED);
+  const bool done = blitter::unpack(packed.data(), packed.size(),
+                                    unpacked.data(), data.size());
+  bool guarded = !done;
+  for (std::size_t at = data.size(); at < unpacked.size(); ++at) {
+    guarded = guarded && unpacked[at] == UNTOUCHED;
+  }
+  report(guarded ? "lz4 truncated: rejected" : "lz4 truncated: FAIL");
+  guarded ? ++passes : ++failures;
+}
+
+uint32_t packSpan(int first, int last) {
+  return static_cast<uint32_t>(first) << 16 |
+         (static_cast<uint32_t>(last) & 0xFFFFu);
+}
+
+void testOutline() {
+  const int widths[] = {0, 1, 2, 3, 7, 16, 33, 48, 79, 320};
+  const int heights[] = {0, 1, 3, 5, 74};
+  uint32_t seed = 12345;
+  for (const int width : widths) {
+    for (const int height : heights) {
+      std::vector<uint8_t> pixels(static_cast<std::size_t>(width) *
+                                      static_cast<std::size_t>(height),
+                                  0);
+      for (std::size_t at = 0; at < pixels.size(); ++at) {
+        seed = seed * 1103515245u + 12345u;
+        const int row = width == 0 ? 0 : static_cast<int>(at) / width;
+        if (row % 4 != 1 && row != 0 && (seed >> 24) % 5 == 0) {
+          pixels[at] = static_cast<uint8_t>(seed >> 16);
+        }
+      }
+      const std::size_t count = static_cast<std::size_t>(height);
+      std::vector<uint32_t> rows(count + 1, 0xDEADBEEFu);
+      std::vector<uint32_t> bands(count + 1, 0xDEADBEEFu);
+      int32_t box[4] = {-9, -9, -9, -9};
+      const bool done = blitter::outline(pixels.data(), width, height,
+                                         rows.data(), bands.data(), box);
+      std::vector<int> firsts(count, 0x7FFF);
+      std::vector<int> lasts(count, -0x8000);
+      int left = 0x7FFF;
+      int right = -0x8000;
+      int top = -1;
+      int bottom = 0;
+      for (int row = 0; row < height; ++row) {
+        for (int x = 0; x < width; ++x) {
+          if (pixels[static_cast<std::size_t>(row * width + x)] != 0) {
+            const std::size_t at = static_cast<std::size_t>(row);
+            firsts[at] = std::min(firsts[at], x);
+            lasts[at] = std::max(lasts[at], x);
+          }
+        }
+        const std::size_t at = static_cast<std::size_t>(row);
+        if (firsts[at] <= lasts[at]) {
+          left = std::min(left, firsts[at]);
+          right = std::max(right, lasts[at] + 1);
+          top = top < 0 ? row : top;
+          bottom = row + 1;
+        }
+      }
+      if (top < 0) {
+        left = 0;
+        right = 0;
+        top = 0;
+        bottom = 0;
+      }
+      bool same = done && rows[count] == 0xDEADBEEFu &&
+                  bands[count] == 0xDEADBEEFu && box[0] == left &&
+                  box[1] == top && box[2] == right && box[3] == bottom;
+      for (std::size_t row = 0; same && row < count; ++row) {
+        int first = 0x7FFF;
+        int last = -0x8000;
+        for (std::size_t inside = row; inside < count && inside < row + 4;
+             ++inside) {
+          first = std::min(first, firsts[inside]);
+          last = std::max(last, lasts[inside]);
+        }
+        same = rows[row] == packSpan(firsts[row], lasts[row]) &&
+               bands[row] == packSpan(first, last);
+      }
+      if (!same) {
+        char line[64];
+        std::snprintf(line, sizeof(line), "outline %dx%d: FAIL", width, height);
+        report(line);
+        ++failures;
+      } else {
+        ++passes;
+      }
+    }
+  }
+}
+
+void testFlip() {
+  const std::size_t sizes[] = {0, 3, 4, 5, 64, 6453, 27570};
+  for (const std::size_t size : sizes) {
+    std::vector<uint8_t> source(size + 8);
+    for (std::size_t at = 0; at < source.size(); ++at) {
+      source[at] = static_cast<uint8_t>(at * 37 + size);
+    }
+    std::vector<int8_t> target(size + 8, 0x55);
+    const bool done = blitter::flipSigns(source.data(), target.data(), size);
+    bool same = done;
+    for (std::size_t at = 0; same && at < size; ++at) {
+      same = target[at] == static_cast<int8_t>(source[at] - 128);
+    }
+    for (std::size_t at = size; same && at < target.size(); ++at) {
+      same = target[at] == 0x55;
+    }
+    if (!same) {
+      char line[64];
+      std::snprintf(line, sizeof(line), "flip %u: FAIL",
+                    static_cast<unsigned>(size));
+      report(line);
+      ++failures;
+    } else {
+      ++passes;
+    }
+  }
+}
+
 void testEeprom() {
   eeprom::Bank before{};
   eeprom::readBank(before);
@@ -345,6 +524,9 @@ int main() {
   longWord(GPU_CTRL) = RISC_GO;
   report("GPU queue:");
   runBlits();
+  testLz4();
+  testOutline();
+  testFlip();
   testMemory();
   blitter::stopQueue();
   testEeprom();

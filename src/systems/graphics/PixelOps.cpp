@@ -100,4 +100,8 @@ void fill(Target target, int width, int height, uint8_t value) {
 
 void finish() {}
 
+bool outline(const uint8_t *, int, int, Span *, Span *, Bounds &) {
+  return false;
+}
+
 } // namespace openfranko::src::systems::graphics::pixels

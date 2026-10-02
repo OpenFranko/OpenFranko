@@ -59,6 +59,7 @@ public:
 
   void bind(int channel, Object *object);
   void create(int channel, const Program &program);
+  void prepare(const Program &program);
   void create(int channel, const std::string &source);
   void start(int channel);
   void startAll();

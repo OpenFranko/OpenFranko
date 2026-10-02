@@ -9,6 +9,7 @@ namespace {
 constexpr unsigned RUN_MASK = 15;
 constexpr unsigned EXTENSION_LIMIT = 255;
 constexpr std::size_t MIN_MATCH = 4;
+constexpr std::size_t SHORT_COPY = 16;
 
 [[noreturn]] void fail() { throw std::runtime_error("Corrupt LZ4 data"); }
 
@@ -28,6 +29,16 @@ std::size_t extendedLength(std::size_t length, const uint8_t *&in,
   return length;
 }
 
+void copyForward(uint8_t *out, const uint8_t *in, std::size_t length) {
+  if (length >= SHORT_COPY) {
+    std::memcpy(out, in, length);
+    return;
+  }
+  while (length-- != 0) {
+    *out++ = *in++;
+  }
+}
+
 } // namespace
 
 void decompressLz4(const uint8_t *source, std::size_t sourceSize,
@@ -43,7 +54,7 @@ void decompressLz4(const uint8_t *source, std::size_t sourceSize,
         literals > static_cast<std::size_t>(outEnd - out)) {
       fail();
     }
-    std::memcpy(out, in, literals);
+    copyForward(out, in, literals);
     out += literals;
     in += literals;
     if (in == inEnd) {
@@ -65,7 +76,10 @@ void decompressLz4(const uint8_t *source, std::size_t sourceSize,
     }
     const uint8_t *match = out - offset;
     if (offset >= length) {
-      std::memcpy(out, match, length);
+      copyForward(out, match, length);
+      out += length;
+    } else if (offset == 1) {
+      std::memset(out, *match, length);
       out += length;
     } else {
       for (std::size_t i = 0; i < length; ++i) {

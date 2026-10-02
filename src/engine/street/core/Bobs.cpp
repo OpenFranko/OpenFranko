@@ -4,7 +4,7 @@
 #include "../../../systems/graphics/PixelOps.h"
 
 #include <algorithm>
-#include <iterator>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -15,10 +15,12 @@ struct Shape {
   ImageBank::Mask mask;
   int left = 0;
   int top = 0;
+  MaskBox solid;
 };
 
 struct RowCursor {
   const RowSpan *span = nullptr;
+  const RowSpan *band = nullptr;
   int spanStep = 1;
   const uint8_t *row = nullptr;
   int rowStep = 0;
@@ -44,28 +46,54 @@ int hotY(const Picture &picture, uint16_t flags) {
 
 bool isOpaque(uint8_t pixel) { return pixel != 0; }
 
-std::vector<RowSpan> rowSpans(const Picture &picture) {
-  std::vector<RowSpan> rows(static_cast<std::size_t>(picture.height));
+constexpr RowSpan EMPTY_ROW{std::numeric_limits<int16_t>::max(),
+                            std::numeric_limits<int16_t>::min()};
+
+void rowSpans(const Picture &picture, RowSpan *rows) {
   const uint8_t *row = picture.pixels.data();
-  for (RowSpan &span : rows) {
+  for (RowSpan *span = rows; span != rows + picture.height; ++span) {
+    *span = EMPTY_ROW;
     const uint8_t *end = row + picture.width;
-    const uint8_t *first = std::find_if(row, end, isOpaque);
+    const uint8_t *first = row;
+    while (first != end && !isOpaque(*first)) {
+      ++first;
+    }
     if (first != end) {
-      const auto last =
-          std::find_if(std::make_reverse_iterator(end),
-                       std::make_reverse_iterator(first), isOpaque);
-      span.first = static_cast<int>(first - row);
-      span.last = static_cast<int>(last.base() - row) - 1;
+      const uint8_t *last = end - 1;
+      while (!isOpaque(*last)) {
+        --last;
+      }
+      span->first = static_cast<int16_t>(first - row);
+      span->last = static_cast<int16_t>(last - row);
     }
     row = end;
   }
-  return rows;
 }
 
-MaskBox maskBox(const std::vector<RowSpan> &rows) {
+void widen(RowSpan &span, const RowSpan &other) {
+  if (other.first < span.first) {
+    span.first = other.first;
+  }
+  if (other.last > span.last) {
+    span.last = other.last;
+  }
+}
+
+void rowBands(const RowSpan *rows, std::size_t height, RowSpan *bands) {
+  constexpr std::size_t HALF_BAND = ImageBank::BAND_ROWS / 2;
+  std::copy(rows, rows + height, bands);
+  for (std::size_t row = 1; row < height; ++row) {
+    widen(bands[row - 1], bands[row]);
+  }
+  for (std::size_t row = HALF_BAND; row < height; ++row) {
+    widen(bands[row - HALF_BAND], bands[row]);
+  }
+}
+
+MaskBox maskBox(const RowSpan *rows, std::size_t height) {
   MaskBox box;
   bool found = false;
-  for (std::size_t row = 0; row < rows.size(); ++row) {
+  for (std::size_t row = 0; row < height; ++row) {
     const RowSpan &span = rows[row];
     if (span.first > span.last) {
       continue;
@@ -76,7 +104,7 @@ MaskBox maskBox(const std::vector<RowSpan> &rows) {
       found = true;
       continue;
     }
-    box.left = std::min(box.left, span.first);
+    box.left = std::min<int>(box.left, span.first);
     box.right = std::max(box.right, span.last + 1);
     box.bottom = y + 1;
   }
@@ -104,6 +132,12 @@ MaskBox screenBox(const Shape &shape) {
   return screen;
 }
 
+Shape shapeAt(const ImageBank::Mask &mask, int left, int top) {
+  Shape shape{mask, left, top, MaskBox{}};
+  shape.solid = screenBox(shape);
+  return shape;
+}
+
 RowCursor rowCursor(const Shape &shape, int top) {
   const Picture &picture = *shape.mask.picture;
   const bool flipY = (shape.mask.orientation & ImageBank::FLIP_Y) != 0;
@@ -111,6 +145,7 @@ RowCursor rowCursor(const Shape &shape, int top) {
       flipY ? picture.height - 1 - (top - shape.top) : top - shape.top;
   RowCursor cursor;
   cursor.span = shape.mask.rows + row;
+  cursor.band = flipY ? nullptr : shape.mask.bands + row;
   cursor.spanStep = flipY ? -1 : 1;
   cursor.row = picture.pixels.data() +
                systems::multiplySigned16(static_cast<int16_t>(row),
@@ -122,14 +157,12 @@ RowCursor rowCursor(const Shape &shape, int top) {
   return cursor;
 }
 
-template <bool FLIP_X> int solidFrom(const RowCursor &cursor) {
-  return FLIP_X ? cursor.origin - cursor.span->last
-                : cursor.origin + cursor.span->first;
+template <bool FLIP_X> int solidFrom(int origin, const RowSpan &span) {
+  return FLIP_X ? origin - span.last : origin + span.first;
 }
 
-template <bool FLIP_X> int solidTo(const RowCursor &cursor) {
-  return FLIP_X ? cursor.origin - cursor.span->first
-                : cursor.origin + cursor.span->last;
+template <bool FLIP_X> int solidTo(int origin, const RowSpan &span) {
+  return FLIP_X ? origin - span.first : origin + span.last;
 }
 
 template <bool FLIP_X> const uint8_t *pixelAt(const RowCursor &cursor, int x) {
@@ -142,38 +175,98 @@ void nextRow(RowCursor &cursor) {
   cursor.row += cursor.rowStep;
 }
 
+void nextBandedRow(RowCursor &cursor) {
+  ++cursor.span;
+  ++cursor.band;
+  cursor.row += cursor.rowStep;
+}
+
+void skipBand(RowCursor &cursor) {
+  cursor.span += ImageBank::BAND_ROWS;
+  cursor.band += ImageBank::BAND_ROWS;
+  cursor.row += cursor.rowStep * ImageBank::BAND_ROWS;
+}
+
+template <bool FIRST_FLIP_X, bool SECOND_FLIP_X>
+bool spansMeet(const RowCursor &first, const RowSpan &firstSpan,
+               const RowCursor &second, const RowSpan &secondSpan, int left,
+               int right, int &from, int &to) {
+  from = std::max(
+      left, std::max(solidFrom<FIRST_FLIP_X>(first.origin, firstSpan),
+                     solidFrom<SECOND_FLIP_X>(second.origin, secondSpan)));
+  to = std::min(right,
+                std::min(solidTo<FIRST_FLIP_X>(first.origin, firstSpan),
+                         solidTo<SECOND_FLIP_X>(second.origin, secondSpan)));
+  return from <= to;
+}
+
+template <bool FIRST_FLIP_X, bool SECOND_FLIP_X>
+bool rowMeets(const RowCursor &first, const RowCursor &second, int left,
+              int right) {
+  constexpr int FIRST_STEP = FIRST_FLIP_X ? -1 : 1;
+  constexpr int SECOND_STEP = SECOND_FLIP_X ? -1 : 1;
+  int from = 0;
+  int to = 0;
+  if (!spansMeet<FIRST_FLIP_X, SECOND_FLIP_X>(
+          first, *first.span, second, *second.span, left, right, from, to)) {
+    return false;
+  }
+  const uint8_t *firstPixel = pixelAt<FIRST_FLIP_X>(first, from);
+  const uint8_t *secondPixel = pixelAt<SECOND_FLIP_X>(second, from);
+  for (int x = from; x <= to; ++x) {
+    if (*firstPixel != 0 && *secondPixel != 0) {
+      return true;
+    }
+    firstPixel += FIRST_STEP;
+    secondPixel += SECOND_STEP;
+  }
+  return false;
+}
+
 template <bool FIRST_FLIP_X, bool SECOND_FLIP_X>
 bool solidRowsMeet(RowCursor first, RowCursor second, int left, int right,
                    int rows) {
-  constexpr int FIRST_STEP = FIRST_FLIP_X ? -1 : 1;
-  constexpr int SECOND_STEP = SECOND_FLIP_X ? -1 : 1;
-  for (;;) {
-    const int from = std::max(left, std::max(solidFrom<FIRST_FLIP_X>(first),
-                                             solidFrom<SECOND_FLIP_X>(second)));
-    const int to = std::min(right, std::min(solidTo<FIRST_FLIP_X>(first),
-                                            solidTo<SECOND_FLIP_X>(second)));
-    if (from <= to) {
-      const uint8_t *firstPixel = pixelAt<FIRST_FLIP_X>(first, from);
-      const uint8_t *secondPixel = pixelAt<SECOND_FLIP_X>(second, from);
-      for (int x = from; x <= to; ++x) {
-        if (*firstPixel != 0 && *secondPixel != 0) {
-          return true;
-        }
-        firstPixel += FIRST_STEP;
-        secondPixel += SECOND_STEP;
+  if (!first.band || !second.band) {
+    for (;;) {
+      if (rowMeets<FIRST_FLIP_X, SECOND_FLIP_X>(first, second, left, right)) {
+        return true;
       }
+      if (--rows == 0) {
+        return false;
+      }
+      nextRow(first);
+      nextRow(second);
     }
-    if (--rows == 0) {
-      return false;
+  }
+  for (;;) {
+    int from = 0;
+    int to = 0;
+    if (!spansMeet<FIRST_FLIP_X, SECOND_FLIP_X>(
+            first, *first.band, second, *second.band, left, right, from, to)) {
+      if (rows <= ImageBank::BAND_ROWS) {
+        return false;
+      }
+      rows -= ImageBank::BAND_ROWS;
+      skipBand(first);
+      skipBand(second);
+      continue;
     }
-    nextRow(first);
-    nextRow(second);
+    for (int count = std::min(rows, ImageBank::BAND_ROWS); count > 0; --count) {
+      if (rowMeets<FIRST_FLIP_X, SECOND_FLIP_X>(first, second, left, right)) {
+        return true;
+      }
+      if (--rows == 0) {
+        return false;
+      }
+      nextBandedRow(first);
+      nextBandedRow(second);
+    }
   }
 }
 
 bool solidPixelsMeet(const Shape &a, const Shape &b, const MaskBox &area) {
-  const MaskBox firstBox = screenBox(a);
-  const MaskBox secondBox = screenBox(b);
+  const MaskBox &firstBox = a.solid;
+  const MaskBox &secondBox = b.solid;
   const int left = std::max(area.left, std::max(firstBox.left, secondBox.left));
   const int right =
       std::min(area.right, std::min(firstBox.right, secondBox.right));
@@ -200,16 +293,8 @@ bool solidPixelsMeet(const Shape &a, const Shape &b, const MaskBox &area) {
                                            rows);
 }
 
-MaskBox blitBox(const Shape &shape) {
-  const Picture &picture = *shape.mask.picture;
-  const int words = (picture.width + WORD_PIXELS - 1) / WORD_PIXELS;
-  return MaskBox{shape.left, shape.top, shape.left + words * WORD_PIXELS,
-                 shape.top + picture.height};
-}
-
-bool overlaps(const Shape &tested, const Shape &other) {
-  const MaskBox testedBox = blitBox(tested);
-  const MaskBox otherBox = blitBox(other);
+bool overlaps(const Shape &tested, const MaskBox &testedBox, const Shape &other,
+              const MaskBox &otherBox) {
   const MaskBox shared{std::max(testedBox.left, otherBox.left),
                        std::max(testedBox.top, otherBox.top),
                        std::min(testedBox.right, otherBox.right),
@@ -232,9 +317,27 @@ bool overlaps(const Shape &tested, const Shape &other) {
   Shape spilled = right;
   spilled.left = rightBox.right;
   spilled.top = right.top - 1;
+  const int moved = spilled.left - right.left;
+  spilled.solid = MaskBox{right.solid.left + moved, right.solid.top - 1,
+                          right.solid.right + moved, right.solid.bottom - 1};
   const MaskBox strip{rightBox.right, shared.top,
                       rightBox.right + WORD_PIXELS - shift, shared.bottom};
   return solidPixelsMeet(left, spilled, strip);
+}
+
+constexpr uint32_t LOW_BYTE = 0xFF;
+constexpr int BYTE_BITS = 8;
+
+uint32_t rangeBits(int from, int to) {
+  if (from > to || to < 0 || from >= BobLayer::MASK_BITS) {
+    return 0;
+  }
+  const uint32_t below =
+      from <= 0 ? 0u : (1u << static_cast<unsigned>(from)) - 1u;
+  const uint32_t upTo = to >= BobLayer::MASK_BITS - 1
+                            ? ~0u
+                            : (1u << static_cast<unsigned>(to + 1)) - 1u;
+  return upTo & ~below;
 }
 
 } // namespace
@@ -248,23 +351,49 @@ void ImageBank::clear() {
 
 void ImageBank::load(int base, std::vector<Picture> frames) {
   systems::graphics::pixels::finish();
-  const std::size_t end = static_cast<std::size_t>(base) + frames.size();
+  grow(static_cast<std::size_t>(base) + frames.size());
+  for (std::size_t i = 0; i < frames.size(); ++i) {
+    store(static_cast<std::size_t>(base) + i, std::move(frames[i]));
+  }
+}
+
+void ImageBank::load(int number, Picture picture) {
+  systems::graphics::pixels::finish();
+  grow(static_cast<std::size_t>(number) + 1);
+  store(static_cast<std::size_t>(number), std::move(picture));
+}
+
+void ImageBank::grow(std::size_t end) {
   if (m_entries.size() < end) {
     m_entries.resize(end);
     m_outlines.resize(end);
     m_boxes.resize(end);
   }
-  for (std::size_t i = 0; i < frames.size(); ++i) {
-    Entry &entry = m_entries[static_cast<std::size_t>(base) + i];
-    Outline &outline = m_outlines[static_cast<std::size_t>(base) + i];
-    outline.rows = rowSpans(frames[i]);
-    outline.box = maskBox(outline.rows);
-    entry.loaded = frames[i].width > 0 && frames[i].height > 0;
-    entry.picture = std::move(frames[i]);
-    entry.orientation = 0;
-    entry.masked = true;
-    refreshBox(static_cast<std::size_t>(base) + i);
+}
+
+void ImageBank::store(std::size_t number, Picture &&picture) {
+  Entry &entry = m_entries[number];
+  Outline &outline = m_outlines[number];
+  const std::size_t height =
+      static_cast<std::size_t>(std::max(picture.height, 0));
+  if (outline.capacity < height) {
+    outline.spans.reset(new RowSpan[2 * height]);
+    outline.capacity = height;
   }
+  RowSpan *rows = outline.spans.get();
+  RowSpan *bands = rows + outline.capacity;
+  if (!systems::graphics::pixels::outline(picture.pixels.data(), picture.width,
+                                          picture.height, rows, bands,
+                                          outline.box)) {
+    rowSpans(picture, rows);
+    rowBands(rows, height, bands);
+    outline.box = maskBox(rows, height);
+  }
+  entry.loaded = picture.width > 0 && picture.height > 0;
+  entry.picture = std::move(picture);
+  entry.orientation = 0;
+  entry.masked = true;
+  refreshBox(number);
 }
 
 const Picture *ImageBank::find(int number) const {
@@ -284,7 +413,8 @@ ImageBank::Mask ImageBank::mask(int number) const {
     return {};
   }
   const Outline &outline = m_outlines[static_cast<std::size_t>(number)];
-  return Mask{&entry.picture, outline.rows.data(), outline.box,
+  return Mask{&entry.picture, outline.spans.get(),
+              outline.spans.get() + outline.capacity, outline.box,
               entry.orientation};
 }
 
@@ -389,51 +519,73 @@ void BobLayer::offAll() {
 bool BobLayer::collide(int number, const ImageBank &images, int first,
                        int last) {
   m_hits.fill(0);
-  const amal::Object &testedBob =
-      m_bobs.at(static_cast<std::size_t>(number)).object;
-  if (!m_bobs[static_cast<std::size_t>(number)].active) {
+  const Bob &testedBob = m_bobs.at(static_cast<std::size_t>(number));
+  if (!testedBob.active) {
     return false;
   }
   const int testedImage =
-      static_cast<uint16_t>(testedBob.image) & ImageBank::NUMBER_MASK;
+      static_cast<uint16_t>(testedBob.object.image) & ImageBank::NUMBER_MASK;
   const ImageBank::Box *testedBox = images.box(testedImage);
   if (!testedBox) {
     return false;
   }
-  const int testedLeft = testedBob.x - testedBox->hotX;
-  const int testedTop = testedBob.y - testedBox->hotY;
-  const int testedRight = testedLeft + testedBox->width;
-  const int testedBottom = testedTop + testedBox->height;
-  Shape tested;
-  bool any = false;
+  const int testedLeft = testedBob.object.x - testedBox->hotX;
+  const int testedTop = testedBob.object.y - testedBox->hotY;
+  const MaskBox testedArea{testedLeft, testedTop, testedLeft + testedBox->width,
+                           testedTop + testedBox->height};
   const int begin = std::max(first, 0);
   const int end = std::min(last, BOBS - 1);
-  for (int base = begin - begin % MASK_BITS; base <= end; base += MASK_BITS) {
-    uint32_t bits = m_active[static_cast<std::size_t>(base / MASK_BITS)];
-    for (int other = base; bits != 0 && other <= end; ++other, bits >>= 1) {
-      if ((bits & 1u) == 0 || other < begin || other == number) {
+  const ImageBank::Box *boxes = images.boxes();
+  const int boxCount = images.boxCount();
+  Shape tested;
+  bool any = false;
+  for (int word = begin / MASK_BITS; begin <= end && word <= end / MASK_BITS;
+       ++word) {
+    const int base = word * MASK_BITS;
+    uint32_t bits = m_active[static_cast<std::size_t>(word)] &
+                    rangeBits(begin - base, end - base);
+    if (number / MASK_BITS == word) {
+      bits &= ~(1u << (number % MASK_BITS));
+    }
+    int other = base;
+    while (bits != 0) {
+      if ((bits & LOW_BYTE) == 0) {
+        bits >>= BYTE_BITS;
+        other += BYTE_BITS;
+        continue;
+      }
+      const int candidate = other;
+      const bool present = (bits & 1u) != 0;
+      bits >>= 1;
+      ++other;
+      if (!present) {
         continue;
       }
       const amal::Object &object =
-          m_bobs[static_cast<std::size_t>(other)].object;
+          m_bobs[static_cast<std::size_t>(candidate)].object;
       const int image =
           static_cast<uint16_t>(object.image) & ImageBank::NUMBER_MASK;
-      const ImageBank::Box *box = images.box(image);
-      if (!box) {
+      if (image == 0 || image >= boxCount) {
         continue;
       }
-      const int left = object.x - box->hotX;
-      const int top = object.y - box->hotY;
-      if (left >= testedRight || testedLeft >= left + box->width ||
-          top >= testedBottom || testedTop >= top + box->height) {
+      const ImageBank::Box &box = boxes[image];
+      if (box.height == 0) {
+        continue;
+      }
+      const int left = object.x - box.hotX;
+      if (left >= testedArea.right || testedLeft >= left + box.width) {
+        continue;
+      }
+      const int top = object.y - box.hotY;
+      if (top >= testedArea.bottom || testedTop >= top + box.height) {
         continue;
       }
       if (!tested.mask.picture) {
-        tested = Shape{images.mask(testedImage), testedLeft, testedTop};
+        tested = shapeAt(images.mask(testedImage), testedLeft, testedTop);
       }
-      if (overlaps(tested, Shape{images.mask(image), left, top})) {
-        m_hits[static_cast<std::size_t>(other / MASK_BITS)] |=
-            1u << (other % MASK_BITS);
+      if (overlaps(tested, testedArea, shapeAt(images.mask(image), left, top),
+                   MaskBox{left, top, left + box.width, top + box.height})) {
+        m_hits[static_cast<std::size_t>(word)] |= 1u << (candidate - base);
         any = true;
       }
     }

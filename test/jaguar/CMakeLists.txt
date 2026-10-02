@@ -1,4 +1,5 @@
 add_executable(jaguarSelfTest
+    ../../lib/converter/packedArchive/lz4Compressor.cpp
     selfTest.cpp)
 target_link_libraries(jaguarSelfTest PRIVATE JaguarHardware)
 set_target_properties(jaguarSelfTest PROPERTIES SUFFIX .elf)

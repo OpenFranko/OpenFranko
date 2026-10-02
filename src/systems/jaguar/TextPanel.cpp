@@ -26,4 +26,17 @@ void drawPanelLine(uint16_t *pixels, int width, int line, const char *text,
   }
 }
 
+void drawPanelCell(uint16_t *pixels, int width, int line, int column,
+                   char character, uint16_t ink, uint16_t paper) {
+  uint16_t *cell = pixels + line * CELL_HEIGHT * width + column * CELL_WIDTH;
+  const uint8_t *rows = glyph(static_cast<unsigned char>(character));
+  for (int row = 0; row < CELL_HEIGHT; ++row) {
+    const uint8_t bits = rows && row < GLYPH_HEIGHT ? rows[row] : 0;
+    for (int x = 0; x < CELL_WIDTH; ++x) {
+      cell[x] = x < GLYPH_WIDTH && (bits & (0x10 >> x)) != 0 ? ink : paper;
+    }
+    cell += width;
+  }
+}
+
 } // namespace openfranko::src::systems::jaguar

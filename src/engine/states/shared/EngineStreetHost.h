@@ -9,7 +9,9 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace openfranko {
@@ -28,6 +30,9 @@ public:
 
   std::vector<street::core::Picture> loadSpriteSet(int resource,
                                                    int sampleBank) override;
+  std::unique_ptr<SpriteSetLoad> beginSpriteSet(int resource, int sampleBank,
+                                                int base) override;
+  std::unique_ptr<FramesLoad> beginScenery(int resource) override;
   street::core::Picture loadPicture(int resource) override;
   effects::color::AmigaPalette loadPalette(int resource) override;
   std::vector<street::core::Picture> loadScenery(int resource) override;
@@ -51,12 +56,24 @@ public:
   static std::string sampleName(int bank, int sample);
 
 private:
+  class SpriteSetSteps;
+  class ScenerySteps;
+
+  using NumberedPaths = std::vector<std::pair<int, std::string>>;
+
   std::string resourceName(int resource) const;
+  NumberedPaths framePaths(int resource) const;
+  NumberedPaths samplePaths(int resource) const;
+  void listSpriteSet(int resource, NumberedPaths &frames,
+                     NumberedPaths &samples) const;
+  street::core::Picture loadFrame(const std::string &path) const;
+  void loadSample(int bank, int sample, const std::string &path);
   std::string resourcePath(int resource) const;
   std::string musicPath(int resource) const;
   std::vector<street::core::Picture> loadFrames(int resource) const;
   void loadSamples(int resource, int bank);
   void clearSamples(int bank);
+  const std::string &cachedSampleName(int bank, int sample);
 
   systems::audio::Speaker &m_speaker;
   assets::Files &m_files;
@@ -65,6 +82,7 @@ private:
   std::string m_directory;
   MersenneTwister &m_random;
   std::map<int, std::vector<int>> m_samples;
+  std::vector<std::vector<std::string>> m_sampleNames;
 };
 
 } // namespace shared

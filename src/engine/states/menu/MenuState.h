@@ -62,6 +62,7 @@ private:
   effects::sequences::AttractSequence::Kind m_nextAttract =
       effects::sequences::AttractSequence::Kind::Title;
   int m_attractTop = 0;
+  int m_rowsDrawn = 0;
   int m_attractClosing = 0;
   int m_musicWait = 0;
 };

@@ -4,10 +4,13 @@
 #include "../../MenuTempo.h"
 #include "../../assets/Assets.h"
 
+#include <algorithm>
 #include <cctype>
+#include <memory>
 #include <optional>
 #include <random>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
 namespace openfranko::src::engine::states::shared {
@@ -26,25 +29,28 @@ street::core::Picture toPicture(systems::graphics::IndexedBitmap bitmap) {
   return picture;
 }
 
-std::optional<int> numberAfter(const std::string &text,
-                               const std::string &prefix,
-                               const std::string &suffix) {
+constexpr int DECIMAL_BASE = 10;
+
+std::optional<int> numberAfter(std::string_view text, std::string_view prefix,
+                               std::string_view suffix) {
   if (text.size() <= prefix.size() + suffix.size() ||
       text.compare(0, prefix.size(), prefix) != 0) {
     return std::nullopt;
   }
   std::size_t end = prefix.size();
+  int number = 0;
   while (end < text.size() &&
          std::isdigit(static_cast<unsigned char>(text[end]))) {
+    number = number * DECIMAL_BASE + (text[end] - '0');
     ++end;
   }
   if (end == prefix.size() || text.compare(end, suffix.size(), suffix) != 0) {
     return std::nullopt;
   }
-  return std::stoi(text.substr(prefix.size(), end - prefix.size()));
+  return number;
 }
 
-std::string fileName(const std::string &path) {
+std::string_view fileName(std::string_view path) {
   std::size_t start = path.size();
   while (start > 0 && path[start - 1] != '/' && path[start - 1] != '\\') {
     --start;
@@ -52,7 +58,7 @@ std::string fileName(const std::string &path) {
   return path.substr(start);
 }
 
-bool endsWith(const std::string &text, const std::string &suffix) {
+bool endsWith(std::string_view text, std::string_view suffix) {
   return text.size() >= suffix.size() &&
          text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
@@ -84,6 +90,115 @@ EngineStreetHost::~EngineStreetHost() {
       m_speaker.clearSample(sampleName(entry.first, sample));
     }
   }
+}
+
+class EngineStreetHost::SpriteSetSteps : public SpriteSetLoad {
+public:
+  SpriteSetSteps(EngineStreetHost &host, int resource, int sampleBank, int base)
+      : m_host(host), m_resource(resource), m_sampleBank(sampleBank),
+        m_base(base) {}
+
+  bool step(street::core::ImageBank &images) override {
+    if (!m_started) {
+      m_started = true;
+      m_host.listSpriteSet(m_resource, m_frames, m_samples);
+      if (m_sampleBank == 0) {
+        m_samples.clear();
+      } else {
+        m_host.clearSamples(m_sampleBank);
+      }
+      return false;
+    }
+    if (m_nextFrame < m_frames.size()) {
+      const std::size_t end =
+          std::min(m_nextFrame + FRAMES_PER_STEP, m_frames.size());
+      for (; m_nextFrame < end; ++m_nextFrame) {
+        const auto &[index, path] = m_frames[m_nextFrame];
+        images.load(m_base + index, m_host.loadFrame(path));
+      }
+      if (m_nextFrame < m_frames.size()) {
+        return false;
+      }
+      clearGaps(images);
+      return m_samples.empty();
+    }
+    if (m_nextSample < m_samples.size()) {
+      const auto &[sample, path] = m_samples[m_nextSample++];
+      m_host.loadSample(m_sampleBank, sample, path);
+    }
+    return m_nextSample >= m_samples.size();
+  }
+
+private:
+  static constexpr std::size_t FRAMES_PER_STEP = 2;
+
+  void clearGaps(street::core::ImageBank &images) const {
+    int count = 0;
+    for (const auto &frame : m_frames) {
+      count = std::max(count, frame.first + 1);
+    }
+    std::vector<bool> present(static_cast<std::size_t>(count), false);
+    for (const auto &frame : m_frames) {
+      present[static_cast<std::size_t>(frame.first)] = true;
+    }
+    for (int index = 0; index < count; ++index) {
+      if (!present[static_cast<std::size_t>(index)]) {
+        images.load(m_base + index, street::core::Picture{});
+      }
+    }
+  }
+
+  EngineStreetHost &m_host;
+  int m_resource;
+  int m_sampleBank;
+  int m_base;
+  NumberedPaths m_frames;
+  NumberedPaths m_samples;
+  std::size_t m_nextFrame = 0;
+  std::size_t m_nextSample = 0;
+  bool m_started = false;
+};
+
+std::unique_ptr<street::scenes::StreetHost::SpriteSetLoad>
+EngineStreetHost::beginSpriteSet(int resource, int sampleBank, int base) {
+  return std::make_unique<SpriteSetSteps>(*this, resource, sampleBank, base);
+}
+
+class EngineStreetHost::ScenerySteps : public FramesLoad {
+public:
+  ScenerySteps(const EngineStreetHost &host, int resource)
+      : m_host(host), m_frames(host.framePaths(resource)) {}
+
+  bool step(std::vector<street::core::Picture> &frames) override {
+    if (!m_started) {
+      m_started = true;
+      int count = 0;
+      for (const auto &frame : m_frames) {
+        count = std::max(count, frame.first + 1);
+      }
+      frames.assign(static_cast<std::size_t>(count), street::core::Picture{});
+    }
+    const std::size_t end =
+        std::min(m_next + COLUMNS_PER_STEP, m_frames.size());
+    for (; m_next < end; ++m_next) {
+      const auto &[index, path] = m_frames[m_next];
+      frames[static_cast<std::size_t>(index)] = m_host.loadFrame(path);
+    }
+    return m_next >= m_frames.size();
+  }
+
+private:
+  static constexpr std::size_t COLUMNS_PER_STEP = 2;
+
+  const EngineStreetHost &m_host;
+  NumberedPaths m_frames;
+  std::size_t m_next = 0;
+  bool m_started = false;
+};
+
+std::unique_ptr<street::scenes::StreetHost::FramesLoad>
+EngineStreetHost::beginScenery(int resource) {
+  return std::make_unique<ScenerySteps>(*this, resource);
 }
 
 std::vector<street::core::Picture>
@@ -145,12 +260,12 @@ void EngineStreetHost::setMusicTempo(int tempo) {
 }
 
 void EngineStreetHost::playSample(int bank, int sample, int voices) {
-  m_speaker.playSample(sampleName(bank, sample), voices);
+  m_speaker.playSample(cachedSampleName(bank, sample), voices);
 }
 
 void EngineStreetHost::playSampleAt(int bank, int sample, int voices,
                                     int frequency) {
-  m_speaker.playSampleAt(sampleName(bank, sample), voices, frequency);
+  m_speaker.playSampleAt(cachedSampleName(bank, sample), voices, frequency);
 }
 
 void EngineStreetHost::setSampleLooping(bool loop) {
@@ -161,7 +276,7 @@ int EngineStreetHost::random(int limit) {
   if (limit <= 0) {
     return 0;
   }
-  return std::uniform_int_distribution<int>(0, limit)(m_random);
+  return static_cast<int>(m_random.upTo(static_cast<uint32_t>(limit)));
 }
 
 void EngineStreetHost::yield() { m_yield(); }
@@ -169,6 +284,28 @@ void EngineStreetHost::yield() { m_yield(); }
 std::string EngineStreetHost::sampleName(int bank, int sample) {
   return "streetBank" + std::to_string(bank) + "Sample" +
          std::to_string(sample);
+}
+
+const std::string &EngineStreetHost::cachedSampleName(int bank, int sample) {
+  if (bank < 0 || sample < 0) {
+    static std::string unusual;
+    unusual = sampleName(bank, sample);
+    return unusual;
+  }
+  const std::size_t bankIndex = static_cast<std::size_t>(bank);
+  const std::size_t sampleIndex = static_cast<std::size_t>(sample);
+  if (m_sampleNames.size() <= bankIndex) {
+    m_sampleNames.resize(bankIndex + 1);
+  }
+  std::vector<std::string> &names = m_sampleNames[bankIndex];
+  if (names.size() <= sampleIndex) {
+    names.resize(sampleIndex + 1);
+  }
+  std::string &name = names[sampleIndex];
+  if (name.empty()) {
+    name = sampleName(bank, sample);
+  }
+  return name;
 }
 
 GameVersion EngineStreetHost::version() const { return m_version; }
@@ -185,41 +322,76 @@ std::string EngineStreetHost::musicPath(int resource) const {
   return resourcePath(resource) + ".s3m";
 }
 
-std::vector<street::core::Picture>
-EngineStreetHost::loadFrames(int resource) const {
+void EngineStreetHost::listSpriteSet(int resource, NumberedPaths &frames,
+                                     NumberedPaths &samples) const {
   const std::string name = resourceName(resource);
   const std::string directory = m_directory + "/" + name;
-  const std::string prefix = name + "_";
-  std::vector<street::core::Picture> frames;
-  for (const std::string &path : m_files.list(directory)) {
-    const auto index = numberAfter(fileName(path), prefix, ".bmp");
-    if (!index) {
-      continue;
+  const std::string framePrefix = name + "_";
+  const std::string samplePrefix = name + "_sam";
+  for (std::string &path : m_files.list(directory)) {
+    const std::string_view file = fileName(path);
+    if (const auto index = numberAfter(file, framePrefix, ".bmp")) {
+      frames.emplace_back(*index, std::move(path));
+    } else if (const auto sample = numberAfter(file, samplePrefix, "_");
+               sample && endsWith(file, ".wav")) {
+      samples.emplace_back(*sample, std::move(path));
     }
-    if (frames.size() <= static_cast<std::size_t>(*index)) {
-      frames.resize(static_cast<std::size_t>(*index) + 1);
-    }
-    frames[static_cast<std::size_t>(*index)] =
-        toPicture(m_files.loadBitmap(path));
   }
   if (frames.empty()) {
     throw std::runtime_error("No frames found in " + directory);
   }
+}
+
+EngineStreetHost::NumberedPaths
+EngineStreetHost::framePaths(int resource) const {
+  NumberedPaths frames;
+  NumberedPaths samples;
+  listSpriteSet(resource, frames, samples);
   return frames;
+}
+
+EngineStreetHost::NumberedPaths
+EngineStreetHost::samplePaths(int resource) const {
+  const std::string name = resourceName(resource);
+  const std::string prefix = name + "_sam";
+  NumberedPaths samples;
+  for (const std::string &path : m_files.list(m_directory + "/" + name)) {
+    const std::string_view file = fileName(path);
+    const auto sample = numberAfter(file, prefix, "_");
+    if (sample && endsWith(file, ".wav")) {
+      samples.emplace_back(*sample, path);
+    }
+  }
+  return samples;
+}
+
+street::core::Picture
+EngineStreetHost::loadFrame(const std::string &path) const {
+  return toPicture(m_files.loadBitmap(path));
+}
+
+std::vector<street::core::Picture>
+EngineStreetHost::loadFrames(int resource) const {
+  std::vector<street::core::Picture> frames;
+  for (const auto &[index, path] : framePaths(resource)) {
+    if (frames.size() <= static_cast<std::size_t>(index)) {
+      frames.resize(static_cast<std::size_t>(index) + 1);
+    }
+    frames[static_cast<std::size_t>(index)] = loadFrame(path);
+  }
+  return frames;
+}
+
+void EngineStreetHost::loadSample(int bank, int sample,
+                                  const std::string &path) {
+  m_speaker.loadSample(sampleName(bank, sample), path);
+  m_samples[bank].push_back(sample);
 }
 
 void EngineStreetHost::loadSamples(int resource, int bank) {
   clearSamples(bank);
-  const std::string name = resourceName(resource);
-  const std::string prefix = name + "_sam";
-  for (const std::string &path : m_files.list(m_directory + "/" + name)) {
-    const std::string file = fileName(path);
-    const auto sample = numberAfter(file, prefix, "_");
-    if (!sample || !endsWith(file, ".wav")) {
-      continue;
-    }
-    m_speaker.loadSample(sampleName(bank, *sample), path);
-    m_samples[bank].push_back(*sample);
+  for (const auto &[sample, path] : samplePaths(resource)) {
+    loadSample(bank, sample, path);
   }
 }
 

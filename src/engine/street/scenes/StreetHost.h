@@ -2,12 +2,15 @@
 #define ENGINE_STREET_SCENES_STREETHOST_H_
 
 #include "../../effects/color/AmigaPalette.h"
+#include "../core/Bobs.h"
 #include "../core/EndingCredits.h"
 #include "../core/IndexedSurface.h"
 #include "../core/LevelScript.h"
 #include "../session/GameSession.h"
 
 #include <cstdint>
+#include <memory>
+#include <utility>
 #include <vector>
 
 namespace openfranko {
@@ -21,7 +24,27 @@ public:
   static constexpr int LOADING_STRIP = 0;
   static constexpr int PANEL_ARTWORK = 1;
 
+  class SpriteSetLoad {
+  public:
+    virtual ~SpriteSetLoad() = default;
+    virtual bool step(core::ImageBank &images) = 0;
+  };
+
+  class FramesLoad {
+  public:
+    virtual ~FramesLoad() = default;
+    virtual bool step(std::vector<core::Picture> &frames) = 0;
+  };
+
   virtual ~StreetHost() = default;
+
+  virtual std::unique_ptr<SpriteSetLoad>
+  beginSpriteSet(int resource, int sampleBank, int base) {
+    return std::make_unique<WholeSpriteSet>(*this, resource, sampleBank, base);
+  }
+  virtual std::unique_ptr<FramesLoad> beginScenery(int resource) {
+    return std::make_unique<WholeScenery>(*this, resource);
+  }
 
   virtual std::vector<core::Picture> loadSpriteSet(int resource,
                                                    int sampleBank) = 0;
@@ -43,6 +66,40 @@ public:
   virtual void setSampleLooping(bool loop) = 0;
   virtual int random(int limit) = 0;
   virtual void yield() = 0;
+
+private:
+  class WholeSpriteSet : public SpriteSetLoad {
+  public:
+    WholeSpriteSet(StreetHost &host, int resource, int sampleBank, int base)
+        : m_host(host), m_resource(resource), m_sampleBank(sampleBank),
+          m_base(base) {}
+
+    bool step(core::ImageBank &images) override {
+      images.load(m_base, m_host.loadSpriteSet(m_resource, m_sampleBank));
+      return true;
+    }
+
+  private:
+    StreetHost &m_host;
+    int m_resource;
+    int m_sampleBank;
+    int m_base;
+  };
+
+  class WholeScenery : public FramesLoad {
+  public:
+    WholeScenery(StreetHost &host, int resource)
+        : m_host(host), m_resource(resource) {}
+
+    bool step(std::vector<core::Picture> &frames) override {
+      frames = m_host.loadScenery(m_resource);
+      return true;
+    }
+
+  private:
+    StreetHost &m_host;
+    int m_resource;
+  };
 };
 
 struct StreetInput {

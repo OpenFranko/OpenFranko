@@ -456,7 +456,8 @@ CarStage::Flow CarStage::driveBottom() {
 void CarStage::runOver() {
   for (int channel = 1; channel <= PEDESTRIANS; ++channel) {
     const int bob = FIRST_PEDESTRIAN + channel - 1;
-    const bool touched = m_bobs.collide(CAR, m_images) && m_bobs.collided(bob);
+    const bool touched =
+        m_bobs.collide(CAR, m_images, bob, bob) && m_bobs.collided(bob);
     const int y = m_bobs.y(bob);
     const int carY = m_bobs.y(CAR);
     if (!touched || y <= carY - HIT_REACH_ABOVE ||

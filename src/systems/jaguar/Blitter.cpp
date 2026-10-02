@@ -26,6 +26,14 @@ constexpr uint32_t QUEUE_READ_OFFSET = 8;
 constexpr uint32_t KIND_PHRASES = 1;
 constexpr uint32_t KIND_PIXELS = 2;
 constexpr uint32_t KIND_FILL = 3;
+constexpr uint32_t KIND_LZ4 = 4;
+constexpr uint32_t KIND_OUTLINE = 5;
+constexpr uint32_t KIND_FLIP = 6;
+constexpr std::size_t OUTLINE_BOX = 6;
+constexpr std::size_t BOX_VALUES = 4;
+constexpr uint32_t SIGN_BITS = 0x80808080u;
+constexpr std::size_t LONG_BYTES = 4;
+constexpr std::size_t UNPACKED_END = 5;
 
 alignas(64) volatile uint32_t ring[QUEUE_ENTRIES * ENTRY_LONGS];
 volatile uint32_t *queueWrite = nullptr;
@@ -317,6 +325,7 @@ void wait() {
   }
   while ((longWord(B_CMD) & BLIT_IDLE) == 0) {
   }
+  asm volatile("" ::: "memory");
 }
 
 void useQueue(uint32_t control) {
@@ -330,6 +339,78 @@ void useQueue(uint32_t control) {
 }
 
 bool isQueued() { return queueWrite != nullptr; }
+
+bool unpack(const uint8_t *source, std::size_t sourceSize, uint8_t *target,
+            std::size_t targetSize) {
+  if (!queueWrite) {
+    return false;
+  }
+  while (pending() >= QUEUE_ENTRIES) {
+  }
+  volatile uint32_t *entry =
+      ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
+  const uint32_t end = reinterpret_cast<uint32_t>(target + targetSize);
+  entry[0] = KIND_LZ4;
+  entry[1] = reinterpret_cast<uint32_t>(source);
+  entry[2] = reinterpret_cast<uint32_t>(source + sourceSize);
+  entry[3] = reinterpret_cast<uint32_t>(target);
+  entry[4] = end;
+  entry[UNPACKED_END] = 0;
+  written = (written + 1) & INDEX_MASK;
+  *queueWrite = written;
+  wait();
+  return entry[UNPACKED_END] == end;
+}
+
+bool outline(const uint8_t *pixels, int width, int height, void *rows,
+             void *bands, int32_t *box) {
+  if (!queueWrite) {
+    return false;
+  }
+  while (pending() >= QUEUE_ENTRIES) {
+  }
+  volatile uint32_t *entry =
+      ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
+  entry[0] = KIND_OUTLINE;
+  entry[1] = reinterpret_cast<uint32_t>(pixels);
+  entry[2] = static_cast<uint32_t>(width);
+  entry[3] = static_cast<uint32_t>(height);
+  entry[4] = reinterpret_cast<uint32_t>(rows);
+  entry[5] = reinterpret_cast<uint32_t>(bands);
+  written = (written + 1) & INDEX_MASK;
+  *queueWrite = written;
+  wait();
+  for (std::size_t value = 0; value < BOX_VALUES; ++value) {
+    box[value] = static_cast<int32_t>(entry[OUTLINE_BOX + value]);
+  }
+  return true;
+}
+
+bool flipSigns(const uint8_t *source, int8_t *target, std::size_t count) {
+  const uint32_t misaligned = (reinterpret_cast<uint32_t>(source) |
+                               reinterpret_cast<uint32_t>(target)) &
+                              (LONG_BYTES - 1);
+  if (!queueWrite || misaligned != 0) {
+    return false;
+  }
+  const std::size_t longs = count / LONG_BYTES;
+  while (pending() >= QUEUE_ENTRIES) {
+  }
+  volatile uint32_t *entry =
+      ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
+  entry[0] = KIND_FLIP;
+  entry[1] = reinterpret_cast<uint32_t>(source);
+  entry[2] = reinterpret_cast<uint32_t>(target);
+  entry[3] = static_cast<uint32_t>(longs);
+  entry[4] = SIGN_BITS;
+  written = (written + 1) & INDEX_MASK;
+  *queueWrite = written;
+  for (std::size_t at = longs * LONG_BYTES; at < count; ++at) {
+    target[at] = static_cast<int8_t>(source[at] ^ 0x80u);
+  }
+  wait();
+  return true;
+}
 
 void stopQueue() {
   wait();

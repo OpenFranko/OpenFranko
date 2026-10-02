@@ -11,6 +11,8 @@ namespace assets {
 
 void decompressLz4(const uint8_t *source, std::size_t sourceSize,
                    uint8_t *target, std::size_t targetSize);
+void unpackLz4(const uint8_t *source, std::size_t sourceSize, uint8_t *target,
+               std::size_t targetSize);
 
 } // namespace assets
 } // namespace engine

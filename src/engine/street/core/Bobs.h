@@ -1,12 +1,14 @@
 #ifndef ENGINE_STREET_CORE_BOBS_H_
 #define ENGINE_STREET_CORE_BOBS_H_
 
+#include "../../../systems/graphics/PixelOps.h"
 #include "../../amal/Machine.h"
 #include "IndexedSurface.h"
 
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <vector>
 
 namespace openfranko {
@@ -17,17 +19,9 @@ namespace core {
 
 using Paste = std::function<void(int x, int y, int image)>;
 
-struct RowSpan {
-  int first = 0;
-  int last = -1;
-};
+using RowSpan = systems::graphics::pixels::Span;
 
-struct MaskBox {
-  int left = 0;
-  int top = 0;
-  int right = 0;
-  int bottom = 0;
-};
+using MaskBox = systems::graphics::pixels::Bounds;
 
 class ImageBank {
 public:
@@ -36,9 +30,12 @@ public:
   static constexpr uint16_t NUMBER_MASK = 0x3FFF;
   static constexpr int FIRST_IMAGE = 1;
 
+  static constexpr int BAND_ROWS = 4;
+
   struct Mask {
     const Picture *picture = nullptr;
     const RowSpan *rows = nullptr;
+    const RowSpan *bands = nullptr;
     MaskBox box;
     uint16_t orientation = 0;
   };
@@ -52,6 +49,7 @@ public:
 
   void clear();
   void load(int base, std::vector<Picture> frames);
+  void load(int number, Picture picture);
   const Picture *find(int number) const;
   Mask mask(int number) const;
   uint16_t orientation(int number) const;
@@ -65,6 +63,8 @@ public:
     const Box &found = m_boxes[static_cast<std::size_t>(number)];
     return found.height != 0 ? &found : nullptr;
   }
+  const Box *boxes() const { return m_boxes.data(); }
+  int boxCount() const { return static_cast<int>(m_boxes.size()); }
 
 private:
   struct Entry {
@@ -75,10 +75,13 @@ private:
   };
 
   struct Outline {
-    std::vector<RowSpan> rows;
+    std::unique_ptr<RowSpan[]> spans;
+    std::size_t capacity = 0;
     MaskBox box;
   };
 
+  void grow(std::size_t end);
+  void store(std::size_t number, Picture &&picture);
   void refreshBox(std::size_t number);
 
   std::vector<Entry> m_entries;

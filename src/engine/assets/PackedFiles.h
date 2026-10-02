@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace openfranko {
@@ -35,12 +36,14 @@ private:
 
   Entry entry(std::size_t index) const;
   std::size_t lowerBound(const std::string &name) const;
+  std::size_t indexOf(std::string_view name) const;
   const char *nameAt(std::size_t index) const;
   Entry require(const std::string &path) const;
 
   const uint8_t *m_data;
   std::size_t m_size;
   std::size_t m_count;
+  mutable std::size_t m_next = 0;
 };
 
 } // namespace assets

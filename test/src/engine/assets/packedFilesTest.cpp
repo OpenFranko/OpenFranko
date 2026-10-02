@@ -71,6 +71,20 @@ SCENARIO("LZ4 blocks decompress to what was compressed") {
     }
   }
 
+  GIVEN("Data with long runs of one byte, like transparent sprite rows") {
+    std::vector<uint8_t> data(5000, 0);
+    for (std::size_t at = 0; at < data.size(); at += 97) {
+      data[at] = static_cast<uint8_t>(at);
+      data[at / 2] = 7;
+    }
+    const std::vector<uint8_t> packed =
+        packedArchive::compressLz4(data.data(), data.size());
+    std::vector<uint8_t> unpacked(data.size(), 0xAA);
+    decompressLz4(packed.data(), packed.size(), unpacked.data(),
+                  unpacked.size());
+    REQUIRE(unpacked == data);
+  }
+
   GIVEN("A truncated block") {
     const std::vector<uint8_t> data = pattern(1000, 3);
     std::vector<uint8_t> packed =
