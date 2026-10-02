@@ -70,6 +70,7 @@ private:
   std::vector<street::core::Picture> loadFrames(int resource) const;
   void loadSamples(int resource, int bank);
   void clearSamples(int bank);
+  bool clearFirstSample(int bank);
   const std::string &cachedSampleName(int bank, int sample);
 
   systems::audio::Speaker &m_speaker;

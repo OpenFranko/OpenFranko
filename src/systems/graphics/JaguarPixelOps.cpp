@@ -88,6 +88,10 @@ void copy(Source source, Target target, int width, int height) {
   if (width <= 0 || height <= 0) {
     return;
   }
+  if (blitter::queue(from(source), to(target), width, height,
+                     blitter::Mode::Copy)) {
+    return;
+  }
   if (isSmall(width, height)) {
     blitter::wait();
     for (int row = 0; row < height; ++row) {
@@ -134,6 +138,13 @@ void move(Source source, Target target, int width, int height) {
 void draw(Source source, Target target, int width, int height, bool transparent,
           bool mirrored) {
   if (width <= 0 || height <= 0) {
+    return;
+  }
+  const blitter::Mode mode =
+      mirrored ? (transparent ? blitter::Mode::MirroredMasked
+                              : blitter::Mode::Mirrored)
+               : (transparent ? blitter::Mode::Masked : blitter::Mode::Copy);
+  if (blitter::queue(from(source), to(target), width, height, mode)) {
     return;
   }
   if (isSmall(width, height)) {

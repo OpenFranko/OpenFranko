@@ -199,46 +199,47 @@ private:
 class EngineStreetHost::SpriteSetSteps : public SpriteSetLoad {
 public:
   SpriteSetSteps(EngineStreetHost &host, int resource, int sampleBank, int base)
-      : m_host(host), m_listing(host, resource), m_sampleBank(sampleBank),
+      : m_host(host), m_resource(resource), m_sampleBank(sampleBank),
         m_base(base) {}
 
   bool step(street::core::ImageBank &images) override {
-    if (!m_listed) {
-      if (!m_cleared) {
-        m_cleared = true;
-        if (m_sampleBank != 0) {
-          m_host.clearSamples(m_sampleBank);
-        }
+    if (!m_listing) {
+      if (m_sampleBank != 0 && m_host.clearFirstSample(m_sampleBank)) {
+        return false;
       }
-      if (!m_listing.step(SetListing::ENTRIES_PER_STEP)) {
+      m_listing.emplace(m_host, m_resource);
+      return false;
+    }
+    if (!m_listed) {
+      if (!m_listing->step(SetListing::ENTRIES_PER_STEP)) {
         return false;
       }
       m_listed = true;
-      m_listing.requireFrames();
+      m_listing->requireFrames();
       if (m_sampleBank == 0) {
-        m_listing.dropSamples();
+        m_listing->dropSamples();
       }
       return false;
     }
-    const std::vector<SetListing::Frame> &frames = m_listing.frames();
+    const std::vector<SetListing::Frame> &frames = m_listing->frames();
     if (m_nextFrame < frames.size()) {
       const std::size_t end =
           std::min(m_nextFrame + FRAMES_PER_STEP, frames.size());
       for (; m_nextFrame < end; ++m_nextFrame) {
         const SetListing::Frame &frame = frames[m_nextFrame];
         images.load(m_base + frame.index,
-                    m_host.loadFrame(m_listing.path(frame)));
+                    m_host.loadFrame(m_listing->path(frame)));
       }
       if (m_nextFrame < frames.size()) {
         return false;
       }
       clearGaps(images);
-      return m_listing.samples().empty();
+      return m_listing->samples().empty();
     }
-    const NumberedFiles &samples = m_listing.samples();
+    const NumberedFiles &samples = m_listing->samples();
     if (m_nextSample < samples.size()) {
       const auto &[sample, file] = samples[m_nextSample++];
-      m_host.loadSample(m_sampleBank, sample, m_listing.path(file));
+      m_host.loadSample(m_sampleBank, sample, m_listing->path(file));
     }
     return m_nextSample >= samples.size();
   }
@@ -247,9 +248,9 @@ private:
   static constexpr std::size_t FRAMES_PER_STEP = 1;
 
   void clearGaps(street::core::ImageBank &images) const {
-    const std::size_t count = m_listing.frameCount();
+    const std::size_t count = m_listing->frameCount();
     std::vector<bool> present(count, false);
-    for (const SetListing::Frame &frame : m_listing.frames()) {
+    for (const SetListing::Frame &frame : m_listing->frames()) {
       present[static_cast<std::size_t>(frame.index)] = true;
     }
     for (std::size_t index = 0; index < count; ++index) {
@@ -260,12 +261,12 @@ private:
   }
 
   EngineStreetHost &m_host;
-  SetListing m_listing;
+  int m_resource;
   int m_sampleBank;
   int m_base;
+  std::optional<SetListing> m_listing;
   std::size_t m_nextFrame = 0;
   std::size_t m_nextSample = 0;
-  bool m_cleared = false;
   bool m_listed = false;
 };
 
@@ -465,6 +466,16 @@ void EngineStreetHost::loadSamples(int resource, int bank) {
   for (const auto &[sample, file] : listing.samples()) {
     loadSample(bank, sample, listing.path(file));
   }
+}
+
+bool EngineStreetHost::clearFirstSample(int bank) {
+  std::vector<int> &samples = m_samples[bank];
+  if (samples.empty()) {
+    return false;
+  }
+  m_speaker.clearSample(sampleName(bank, samples.front()));
+  samples.erase(samples.begin());
+  return true;
 }
 
 void EngineStreetHost::clearSamples(int bank) {

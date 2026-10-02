@@ -456,13 +456,11 @@ CarStage::Flow CarStage::driveBottom() {
 void CarStage::runOver() {
   for (int channel = 1; channel <= PEDESTRIANS; ++channel) {
     const int bob = FIRST_PEDESTRIAN + channel - 1;
-    const bool touched =
-        m_bobs.collide(CAR, m_images, bob, bob) && m_bobs.collided(bob);
     const int y = m_bobs.y(bob);
     const int carY = m_bobs.y(CAR);
-    if (!touched || y <= carY - HIT_REACH_ABOVE ||
-        y >= carY + HIT_REACH_BELOW ||
-        m_hit[static_cast<std::size_t>(channel)]) {
+    if (y <= carY - HIT_REACH_ABOVE || y >= carY + HIT_REACH_BELOW ||
+        m_hit[static_cast<std::size_t>(channel)] ||
+        !m_bobs.collide(CAR, m_images, bob, bob) || !m_bobs.collided(bob)) {
       continue;
     }
     m_speed /= 4;

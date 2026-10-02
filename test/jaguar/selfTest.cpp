@@ -43,6 +43,7 @@ uint8_t sample(int x, int y) {
 
 int failures = 0;
 int passes = 0;
+bool queueCalls = false;
 
 void report(const std::string &line) { console::print(line); }
 
@@ -96,17 +97,29 @@ void runCopy(const Case &test) {
   const blitter::Source from{first, test.sourcePitch};
   const blitter::Area to{target.data() + test.targetX, test.targetPitch};
   const uint16_t start = profiler::now();
-  switch (test.kind) {
-  case Kind::Copy:
-    blitter::copy(from, to, test.width, test.height);
-    break;
-  case Kind::Masked:
-    blitter::copyMasked(from, to, test.width, test.height);
-    break;
-  case Kind::Mirrored:
-  case Kind::MirroredMasked:
-    blitter::copyMirrored(from, to, test.width, test.height, masked);
-    break;
+  if (queueCalls) {
+    const blitter::Mode modes[] = {blitter::Mode::Copy, blitter::Mode::Masked,
+                                   blitter::Mode::Mirrored,
+                                   blitter::Mode::MirroredMasked};
+    if (!blitter::queue(from, to, test.width, test.height,
+                        modes[static_cast<int>(test.kind)])) {
+      report(std::string(test.name) + ": not queued");
+      ++failures;
+      return;
+    }
+  } else {
+    switch (test.kind) {
+    case Kind::Copy:
+      blitter::copy(from, to, test.width, test.height);
+      break;
+    case Kind::Masked:
+      blitter::copyMasked(from, to, test.width, test.height);
+      break;
+    case Kind::Mirrored:
+    case Kind::MirroredMasked:
+      blitter::copyMirrored(from, to, test.width, test.height, masked);
+      break;
+    }
   }
   blitter::wait();
   const uint16_t ticks = profiler::since(start);
@@ -524,6 +537,11 @@ int main() {
   longWord(GPU_CTRL) = RISC_GO;
   report("GPU queue:");
   runBlits();
+  queueCalls = true;
+  for (const Case &test : cases) {
+    runCopy(test);
+  }
+  queueCalls = false;
   testLz4();
   testOutline();
   testFlip();

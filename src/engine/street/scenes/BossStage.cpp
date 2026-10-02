@@ -442,8 +442,8 @@ BossStage::Flow BossStage::fightTop() {
     }
   } else {
     const bool attack = m_host.random(10) == 0;
-    const bool touching = bobCol(BOSS, PLAYER) && col(PLAYER);
-    if (attack && touching && idle() && clear() && facingPlayer()) {
+    if (attack && idle() && clear() && facingPlayer() && bobCol(BOSS, PLAYER) &&
+        col(PLAYER)) {
       snapBoss();
       reg(PLAYER_DAMAGE_CHANNEL, 2) =
           word(32 + 64 * actors::amosBool(global(amal::RC) == 0));
@@ -463,8 +463,8 @@ BossStage::Flow BossStage::fightTop() {
   }
 
   if (global(amal::RD) == 1 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
-    if (bobCol(PLAYER, BOSS) && col(BOSS) && inFront() &&
-        yBob(BOSS) == yBob(PLAYER)) {
+    if (inFront() && yBob(BOSS) == yBob(PLAYER) && bobCol(PLAYER, BOSS) &&
+        col(BOSS)) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
       reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(amal::RC));
       reg(BOSS_DAMAGE_CHANNEL, 2) = 1;
@@ -472,8 +472,8 @@ BossStage::Flow BossStage::fightTop() {
     }
   }
   if (global(amal::RD) == 2 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
-    if (bobCol(PLAYER, BOSS) && col(BOSS) && inFront() &&
-        yBob(BOSS) == yBob(PLAYER)) {
+    if (inFront() && yBob(BOSS) == yBob(PLAYER) && bobCol(PLAYER, BOSS) &&
+        col(BOSS)) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
       reg(BOSS_DAMAGE_CHANNEL, 3) =
           word(32 + 64 * actors::amosBool(reg(BOSS_DAMAGE_CHANNEL, 1) == 0));
@@ -484,9 +484,9 @@ BossStage::Flow BossStage::fightTop() {
   }
   if (global(amal::RD) == 4 || global(amal::RD) == 5) {
     const int move = global(amal::RD);
-    if (bobCol(PLAYER, BOSS) && col(BOSS) && reg(BOSS_WALK_CHANNEL, 1) != 1 &&
-        global(amal::RB) == yBob(BOSS) && reg(BOSS_DAMAGE_CHANNEL, 2) != 1 &&
-        reg(BOSS_WALK_CHANNEL, 3) == 0 && facingBoss()) {
+    if (reg(BOSS_WALK_CHANNEL, 1) != 1 && global(amal::RB) == yBob(BOSS) &&
+        reg(BOSS_DAMAGE_CHANNEL, 2) != 1 && reg(BOSS_WALK_CHANNEL, 3) == 0 &&
+        facingBoss() && bobCol(PLAYER, BOSS) && col(BOSS)) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
       reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(amal::RC));
       reg(BOSS_DAMAGE_CHANNEL, 3) =
@@ -496,10 +496,10 @@ BossStage::Flow BossStage::fightTop() {
     }
   }
   if (global(amal::RD) == 6 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
-    if (bobCol(PLAYER, BOSS) && reg(BOSS_DAMAGE_CHANNEL, 5) == 0 &&
-        global(amal::RC) != reg(BOSS_WALK_CHANNEL, 2) && col(BOSS) &&
+    if (reg(BOSS_DAMAGE_CHANNEL, 5) == 0 &&
+        global(amal::RC) != reg(BOSS_WALK_CHANNEL, 2) &&
         reg(PLAYER_DAMAGE_CHANNEL, 5) == 0 && yBob(PLAYER) == yBob(BOSS) &&
-        facingBoss()) {
+        facingBoss() && bobCol(PLAYER, BOSS) && col(BOSS)) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
       m_machine.freeze(PLAYER_WALK_CHANNEL);
       reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(amal::RC));

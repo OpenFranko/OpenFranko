@@ -287,15 +287,15 @@ StreetStage::Flow StreetStage::refereeMoves() {
   };
 
   if (global(amal::RD) == 2) {
-    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && reg(i * 2 + 1, 4) == 1 && yBob(PLAYER) < yBob(i) + 6 &&
+      if (reg(i * 2 + 1, 4) == 1 && yBob(PLAYER) < yBob(i) + 6 &&
           yBob(PLAYER) > yBob(i) - 6 && xBob(PLAYER) < 240 &&
           xBob(PLAYER) > 42 && global(amal::RC) != reg(i * 2, 2) &&
           xBob(PLAYER) <
               xBob(i) - 25 * actors::amosBool(global(amal::RC) == 0) &&
           xBob(PLAYER) >
-              xBob(i) + 25 * actors::amosBool(global(amal::RC) != 0)) {
+              xBob(i) + 25 * actors::amosBool(global(amal::RC) != 0) &&
+          bobCol(PLAYER, i, i) && col(i)) {
         const int p = i * 2 + 1;
         m_bobs.setPosition(
             i, xBob(PLAYER) + 24 + 48 * actors::amosBool(global(amal::RC) == 0),
@@ -311,9 +311,9 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 1 || global(amal::RD) == 2) {
-    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && inFront(i) && yBob(i) == yBob(PLAYER)) {
+      if (inFront(i) && yBob(i) == yBob(PLAYER) && bobCol(PLAYER, i, i) &&
+          col(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         reg(p, 1) = word(0x8000 - global(amal::RC));
@@ -325,9 +325,8 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 3) {
-    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && yBob(i) == yBob(PLAYER)) {
+      if (yBob(i) == yBob(PLAYER) && bobCol(PLAYER, i, i) && col(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         reg(i * 2, 9) = 0;
@@ -339,10 +338,9 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 4) {
-    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1 &&
-          reg(i * 2, 3) == 0 && inFront(i)) {
+      if (global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1 &&
+          reg(i * 2, 3) == 0 && inFront(i) && bobCol(PLAYER, i, i) && col(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         reg(p, 1) = word(0x8000 - global(amal::RC));
@@ -354,9 +352,9 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 5) {
-    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1) {
+      if (global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1 &&
+          bobCol(PLAYER, i, i) && col(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         reg(p, 1) = reg(i * 2, 2);
@@ -368,10 +366,10 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 6) {
-    bobCol(PLAYER, 2, 4);
     for (int i = 2; i <= 4; ++i) {
       if (reg(i * 2 + 1, 5) == 0 && global(amal::RC) != reg(i * 2, 2) &&
-          col(i) && reg(2, 5) == 0 && yBob(PLAYER) == yBob(i) && inFront(i)) {
+          reg(2, 5) == 0 && yBob(PLAYER) == yBob(i) && inFront(i) &&
+          bobCol(PLAYER, i, i) && col(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         m_machine.freeze(1);
@@ -389,9 +387,9 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   for (int i = 2; i <= 4; ++i) {
-    if (bobCol(i, PLAYER, PLAYER) && col(PLAYER) && global(amal::RD) == 0 &&
-        yBob(PLAYER) == yBob(i) && reg(2, 1) == 0 && reg(i * 2, 9) > 0 &&
-        reg(i * 2, 9) < 4 && reg(i * 2 + 1, 0) == 0) {
+    if (global(amal::RD) == 0 && yBob(PLAYER) == yBob(i) && reg(2, 1) == 0 &&
+        reg(i * 2, 9) > 0 && reg(i * 2, 9) < 4 && reg(i * 2 + 1, 0) == 0 &&
+        bobCol(i, PLAYER, PLAYER) && col(PLAYER)) {
       if ((reg(i * 2, 2) == 0 && xBob(PLAYER) > xBob(i)) ||
           (reg(i * 2, 2) != 0 && xBob(PLAYER) < xBob(i))) {
         m_machine.freeze(1);
@@ -434,13 +432,13 @@ StreetStage::Flow StreetStage::refereeMoves() {
       reg(channel, 0) = 4;
       reg(i * 2 + 1, 3) = 0;
     };
-    if ((i == 2 || i == 4) && bobCol(i, 3, 3) && col(3) && sameDepth()) {
+    if ((i == 2 || i == 4) && sameDepth() && bobCol(i, 3, 3) && col(3)) {
       knockDown(7);
     }
-    if ((i == 3 || i == 2) && bobCol(i, 4, 4) && col(4) && sameDepth()) {
+    if ((i == 3 || i == 2) && sameDepth() && bobCol(i, 4, 4) && col(4)) {
       knockDown(9);
     }
-    if ((i == 3 || i == 4) && bobCol(i, 2, 2) && col(2) && sameDepth()) {
+    if ((i == 3 || i == 4) && sameDepth() && bobCol(i, 2, 2) && col(2)) {
       knockDown(5);
     }
   }

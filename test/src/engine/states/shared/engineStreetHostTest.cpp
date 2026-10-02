@@ -50,6 +50,8 @@ std::vector<uint8_t> archive() {
   writer.addBitmap("assets/012C/012C_000.bmp", frame(3));
   writer.addBitmap("assets/012C/012C_002.bmp", frame(5));
   writer.addFile("assets/0013/0013_sam1_5000Hz.wav", {8});
+  writer.addBitmap("assets/0014/0014_000.bmp", frame(9));
+  writer.addFile("assets/0014/0014_sam1_7000Hz.wav", {9});
   return writer.finish();
 }
 
@@ -112,6 +114,23 @@ SCENARIO("The street host loads numbered frames and samples from a set") {
           REQUIRE((picture ? picture->width : 0) == expected[index]);
         }
         REQUIRE(fixture.speaker.samples == SAMPLES);
+      }
+    }
+
+    WHEN("Another set is loaded in steps into the same bank") {
+      street::core::ImageBank images;
+      for (const int resource : {SPRITE_SET, 0x14}) {
+        const auto load = fixture.host.beginSpriteSet(resource, BANK, BASE);
+        for (int step = 0; step < STEP_LIMIT && !load->step(images); ++step) {
+        }
+      }
+
+      THEN("Only the samples of the second set remain in the bank") {
+        REQUIRE(
+            fixture.speaker.samples ==
+            std::map<std::string, std::string>{
+                {"streetBank4Sample1", "assets/0014/0014_sam1_7000Hz.wav"}});
+        REQUIRE(images.find(BASE)->width == 9);
       }
     }
 

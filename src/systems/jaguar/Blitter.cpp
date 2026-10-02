@@ -418,6 +418,31 @@ void stopQueue() {
   queueRead = nullptr;
 }
 
+bool queue(Source source, Area target, int width, int height, Mode mode) {
+  if (!queueWrite) {
+    return false;
+  }
+  if (mode == Mode::Mirrored || mode == Mode::MirroredMasked) {
+    setPattern(0);
+    enqueue(KIND_PIXELS, source.pixels, source.pitch, target.pixels,
+            target.pitch, width, height,
+            mode == Mode::MirroredMasked ? MASKED_PIXELS : COPY, true);
+    return true;
+  }
+  const bool masked = mode == Mode::Masked;
+  if (masked) {
+    setPattern(0);
+  }
+  if (aligned(source.pitch) && aligned(target.pitch)) {
+    enqueue(KIND_PHRASES, source.pixels, source.pitch, target.pixels,
+            target.pitch, width, height, masked ? MASKED_PHRASES : COPY, false);
+    return true;
+  }
+  transfer(source, target, width, height, masked ? MASKED_PHRASES : COPY,
+           masked ? MASKED_PIXELS : COPY);
+  return true;
+}
+
 void copy(Source source, Area target, int width, int height) {
   transfer(source, target, width, height, COPY, COPY);
   settle();

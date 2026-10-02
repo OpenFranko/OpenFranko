@@ -20,9 +20,12 @@ struct Source {
   int pitch = 0;
 };
 
+enum class Mode : uint8_t { Copy, Masked, Mirrored, MirroredMasked };
+
 void wait();
 void useQueue(uint32_t control);
 void stopQueue();
+bool queue(Source source, Area target, int width, int height, Mode mode);
 bool isQueued();
 bool unpack(const uint8_t *source, std::size_t sourceSize, uint8_t *target,
             std::size_t targetSize);
