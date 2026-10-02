@@ -18,7 +18,7 @@ env:
   LINUX_PACKAGE: OpenFranko-linux-x86_64.tar.gz
   WINDOWS_PACKAGE: OpenFranko-windows-x86_64.zip
   DOS_PACKAGE: OpenFranko-dos.zip
-  JAGUAR_ENGINE: OpenFranko-jaguar-engine.zip
+  JAGUAR_PACKAGE: OpenFranko-jaguar.zip
 
 jobs:
   linux:
@@ -44,8 +44,10 @@ jobs:
         run: |
           mkdir -p package/OpenFranko
           cp build/src/OpenFranko build/tools/converter/frankoExtract \
-            README.md LICENSE package/OpenFranko/
-          strip package/OpenFranko/OpenFranko package/OpenFranko/frankoExtract
+            build/tools/converter/makeCartridge README.md LICENSE \
+            package/OpenFranko/
+          strip package/OpenFranko/OpenFranko package/OpenFranko/frankoExtract \
+            package/OpenFranko/makeCartridge
           tar -czf "$LINUX_PACKAGE" -C package OpenFranko
       - uses: actions/upload-artifact@v7
         with:
@@ -87,7 +89,8 @@ jobs:
         run: |
           mkdir -p package/OpenFranko
           cp build/src/OpenFranko.exe build/tools/converter/frankoExtract.exe \
-            README.md LICENSE package/OpenFranko/
+            build/tools/converter/makeCartridge.exe README.md LICENSE \
+            package/OpenFranko/
           strip package/OpenFranko/*.exe
           dlls=$(objdump -p package/OpenFranko/*.exe | grep 'DLL Name')
           echo "$dlls"
@@ -158,14 +161,14 @@ jobs:
           --target jaguarSelfTest jaguarProfileGame
       - name: Package
         run: |
-          mkdir -p package/OpenFranko-jaguar
-          cp build-jaguar/m68k/src/franko.elf build-jaguar/m68k/src/franko.bin \
-            package/OpenFranko-jaguar/
+          mkdir -p package/OpenFranko
+          cp build-jaguar/game/franko-jaguar.bin build-jaguar/m68k/src/franko.elf \
+            README.md LICENSE package/OpenFranko/
           cd package
-          zip -r "../$JAGUAR_ENGINE" OpenFranko-jaguar
+          zip -r "../$JAGUAR_PACKAGE" OpenFranko
       - uses: actions/upload-artifact@v7
         with:
-          path: ${{ env.JAGUAR_ENGINE }}
+          path: ${{ env.JAGUAR_PACKAGE }}
           archive: false
           if-no-files-found: error
           overwrite: true
@@ -191,7 +194,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           packages=("dist/$LINUX_PACKAGE" "dist/$WINDOWS_PACKAGE"
-            "dist/$DOS_PACKAGE")
+            "dist/$DOS_PACKAGE" "dist/$JAGUAR_PACKAGE")
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" "${packages[@]}" --clobber
           else

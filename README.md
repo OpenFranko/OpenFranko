@@ -206,6 +206,12 @@ the image gets the encrypted boot block that a console checks before it starts
 a cartridge, so it runs on a console from a flash cartridge as well as in
 emulators like BigPEmu; without `jagcrypt` it only runs in emulators.
 
+The script always writes the Jaguar program as
+`build-jaguar/game/franko-jaguar.bin`. With `--assets` it hands it to
+`makeCartridge`, a tool built with `-DBUILD_TOOLS=ON`, which packs the game
+data behind it and writes the cartridge image; the release packages use the
+same tool, see [Releases](#releases).
+
 The joypad plays like the Amiga joystick: the pad moves Franko and A, B and C
 are fire (Space). The keypad stands in for the keyboard: 1 to 4 are F1 to F4, 9
 is F9, `*` and Pause are Esc, `#` is Del, and Option is the mouse button. When
@@ -233,9 +239,10 @@ moments play a little slower; the music keeps its tempo.
 # Releases
 
 GitHub Actions (`.github/workflows/ci-cd.yml`) builds OpenFranko for Linux,
-Windows, DOS and the Atari Jaguar and runs the tests on Linux and Windows for
-every pull request and every push to `main`, and keeps the packages it makes
-on the run's summary page. Pushing a tag that starts with `v` builds them the
+Windows, DOS and the Atari Jaguar, runs the tests on Linux and Windows and
+compiles the Jaguar's on-target test programs for every pull request and
+every push to `main`, and keeps the packages it makes on the run's summary
+page. Pushing a tag that starts with `v` builds them the
 same way and publishes them as a GitHub release:
 
 ```
@@ -251,12 +258,13 @@ The packages hold no game data. Extract it with their `frankoExtract` as
 described below, and run the game from the directory that holds `assets` or
 `assets.tar`:
 
-- `OpenFranko-linux-x86_64.tar.gz` holds `OpenFranko` and `frankoExtract`.
+- `OpenFranko-linux-x86_64.tar.gz` holds `OpenFranko`, `frankoExtract` and
+  `makeCartridge`.
   They are built on Ubuntu 24.04, so they need it or a newer distribution, and
   the SDL2 and libxmp libraries (`libsdl2-2.0-0` and `libxmp4` on Debian and
   Ubuntu).
-- `OpenFranko-windows-x86_64.zip` holds `OpenFranko.exe` and
-  `frankoExtract.exe`, which need no DLLs.
+- `OpenFranko-windows-x86_64.zip` holds `OpenFranko.exe`, `frankoExtract.exe`
+  and `makeCartridge.exe`, which need no DLLs.
 - `OpenFranko-dos.zip` holds `franko.exe` and `CWSDPMI.EXE`. Extract the game
   data with the Linux or Windows package, pack the `assets` directory with
   `tar --format=ustar -cf assets.tar assets` (Windows 10 and newer have `tar`
@@ -264,11 +272,21 @@ described below, and run the game from the directory that holds `assets` or
   Sandmann, see `cwsdpmi.doc`; its source code is at
   <https://www.delorie.com/pub/djgpp/current/v2misc/csdpmi7s.zip>.
 
-A Jaguar cartridge has to hold the game data, so releases have no Jaguar
-package; build one with `build-jaguar.sh --assets`. Each run keeps the
-Jaguar program it built, `franko.elf` and `franko.bin`, in
-`OpenFranko-jaguar-engine.zip` on its summary page, and also compiles the
-on-target test programs, `jaguarSelfTest` and `jaguarProfileGame`.
+- `OpenFranko-jaguar.zip` holds `franko-jaguar.bin`, the Atari Jaguar
+  program, and `franko.elf`, its symbols for reading the address on a crash
+  screen. Extract the game data with the Linux or Windows package and make
+  a cartridge image with its `makeCartridge`:
+
+  ```
+  makeCartridge -p franko-jaguar.bin -i assets -o franko.j64
+  ```
+
+  The image plays the version that was extracted, 1.0 or 1.2, and runs in
+  emulators like BigPEmu. A console only starts a cartridge with a signed
+  boot block: add `-j <jagcrypt>` to sign it with `jagcrypt` from the
+  [Jaguar SDK](https://github.com/cubanismo/jaguar-sdk), whose `maketools.sh`
+  builds it. `jagcrypt` is not in the packages because it comes with no
+  license that allows passing it on.
 
 # FrankoExtract
 

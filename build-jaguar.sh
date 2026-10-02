@@ -17,11 +17,8 @@ PREFIX=${JAGUAR_TOOLCHAIN_PREFIX:-$TOOLCHAIN_DIR/bin/m68k-elf-}
 HOST_DIR=$BUILD_DIR/host
 CROSS_DIR=$BUILD_DIR/m68k
 GAME_DIR=$BUILD_DIR/game
-CART_BASE=$((0x800000))
+PROGRAM_IMAGE=$GAME_DIR/franko-jaguar.bin
 CODE_BASE=$((0x802000))
-HEADER_OFFSET=$((0x400))
-CART_SIZE=$((0x400000))
-MAX_CART_SIZE=$((0x600000))
 
 usage() {
   echo "Usage: $0 [--assets <assets_dir>] [--sdk <jaguar_sdk_dir>] [-D<cmake_option>...]"
@@ -30,8 +27,9 @@ usage() {
   echo "toolchain (e.g. m68k-elf-), GCC 15.2 with newlib is downloaded into"
   echo "$TOOLCHAIN_DIR first. Unless --sdk is given or rmac is on the PATH,"
   echo "the Jaguar SDK is fetched into $SDK_DIR and its rmac and"
-  echo "jagcrypt are built. With --assets it packs the extracted game data"
-  echo "into a cartridge image, $GAME_DIR/franko.j64."
+  echo "jagcrypt are built. It writes the program image $PROGRAM_IMAGE,"
+  echo "and with --assets makeCartridge packs the extracted game data behind"
+  echo "it into a cartridge image, $GAME_DIR/franko.j64."
   echo "-D options are passed to CMake. Environment: BUILD_DIR, JOBS ($JOBS),"
   echo "JAGUAR_TOOLCHAIN_PREFIX, JAGSDK."
 }
@@ -109,7 +107,7 @@ install_sdk() {
 
 check_tools() {
   local tool
-  for tool in cmake "${PREFIX}g++" "${PREFIX}objcopy" "${PREFIX}nm" dd stat; do
+  for tool in cmake "${PREFIX}g++" "${PREFIX}objcopy" "${PREFIX}nm" truncate; do
     command -v "$tool" > /dev/null || fail "$tool not found"
   done
   if ! command -v rmac > /dev/null && [ ! -x "${JAGSDK:-}/tools/bin/rmac" ]; then
@@ -118,11 +116,11 @@ check_tools() {
 }
 
 build_host_tools() {
-  echo "Building packAssets"
+  echo "Building makeCartridge"
   cmake -S "$SOURCE_DIR" -B "$HOST_DIR" -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_TOOLS=ON > "$BUILD_DIR/host-configure.log" 2>&1 ||
     fail "Configuring the host tools failed, see $BUILD_DIR/host-configure.log"
-  cmake --build "$HOST_DIR" --target packAssets -j "$JOBS"
+  cmake --build "$HOST_DIR" --target makeCartridge -j "$JOBS"
 }
 
 build_game() {
@@ -149,62 +147,26 @@ build_game() {
   cmake --build "$CROSS_DIR" --target OpenFranko -j "$JOBS"
 }
 
-write_header() {
-  local image=$1
-  head -c "$HEADER_OFFSET" /dev/zero > "$image"
-  printf '\x04\x04\x04\x04\x00\x80\x20\x00\x00\x00\x00\x00' >> "$image"
-  local filler=$((CODE_BASE - CART_BASE - HEADER_OFFSET - 12))
-  head -c "$filler" /dev/zero | tr '\0' '\377' >> "$image"
+write_program_image() {
+  local elf=$CROSS_DIR/src/franko.elf
+  local rom_end
+  rom_end=$("${PREFIX}nm" "$elf" | awk '$3 == "__rom_end" { print $1 }')
+  [ -n "$rom_end" ] || fail "__rom_end not found in $elf"
+  mkdir -p "$GAME_DIR"
+  cp "$CROSS_DIR/src/franko.bin" "$PROGRAM_IMAGE"
+  truncate -s $((0x$rom_end - CODE_BASE)) "$PROGRAM_IMAGE"
 }
 
 assemble_cartridge() {
   local assets=$1
-  local elf=$CROSS_DIR/src/franko.elf
-  local binary=$CROSS_DIR/src/franko.bin
-  local archive=$BUILD_DIR/assets.ofpa
-  local payload=$BUILD_DIR/cart.bin
-  mkdir -p "$GAME_DIR"
-  echo "Packing $assets"
-  "$HOST_DIR/tools/converter/packAssets" -i "$assets" -o "$archive"
-  local rom_end
-  rom_end=$("${PREFIX}nm" "$elf" | awk '$3 == "__rom_end" { print $1 }')
-  [ -n "$rom_end" ] || fail "__rom_end not found in $elf"
-  local code_size=$((0x$rom_end - CODE_BASE))
-  cp "$binary" "$payload"
-  truncate -s "$code_size" "$payload"
-  cat "$archive" >> "$payload"
-  local size
-  size=$(stat -c %s "$payload")
-  local total=$((CODE_BASE - CART_BASE + size))
-  [ "$total" -le "$MAX_CART_SIZE" ] ||
-    fail "The cartridge needs $total bytes, more than the 6 MB a Jaguar cartridge holds"
-  local cart_size=$CART_SIZE
-  if [ "$total" -gt "$CART_SIZE" ]; then
-    cart_size=$MAX_CART_SIZE
-  fi
-  local jagcrypt=
+  local signing=()
   if command -v jagcrypt > /dev/null; then
-    jagcrypt=$(command -v jagcrypt)
+    signing=(-j "$(command -v jagcrypt)")
   elif [ -x "${JAGSDK:-}/tools/bin/jagcrypt" ]; then
-    jagcrypt=$JAGSDK/tools/bin/jagcrypt
+    signing=(-j "$JAGSDK/tools/bin/jagcrypt")
   fi
-  local image=$GAME_DIR/franko.j64
-  if [ -n "$jagcrypt" ] && [ "$cart_size" -eq "$CART_SIZE" ]; then
-    echo "Signing the cartridge with $jagcrypt"
-    local work
-    work=$(mktemp -d)
-    cp "$payload" "$work/cart.bin"
-    (cd "$work" && "$jagcrypt" -u cart.bin > jagcrypt.log 2>&1) ||
-      fail "jagcrypt failed, see $work/jagcrypt.log"
-    cp "$work/cart.U1" "$image"
-    rm -rf "$work"
-  else
-    write_header "$image"
-    cat "$payload" >> "$image"
-    local padding=$((cart_size - $(stat -c %s "$image")))
-    head -c "$padding" /dev/zero | tr '\0' '\377' >> "$image"
-  fi
-  rm -f "$payload"
+  "$HOST_DIR/tools/converter/makeCartridge" -p "$PROGRAM_IMAGE" -i "$assets" \
+    -o "$GAME_DIR/franko.j64" "${signing[@]}" || fail "makeCartridge failed"
 }
 
 ASSETS_DIR=
@@ -244,11 +206,11 @@ install_toolchain
 install_sdk
 check_tools
 build_game
+write_program_image
 if [ -n "$ASSETS_DIR" ]; then
   build_host_tools
   assemble_cartridge "$ASSETS_DIR"
-  echo "Wrote $GAME_DIR/franko.j64"
 else
-  echo "Built $CROSS_DIR/src/franko.elf"
+  echo "Wrote $PROGRAM_IMAGE"
   echo "Pass --assets <assets_dir> to pack the extracted assets into a cartridge."
 fi

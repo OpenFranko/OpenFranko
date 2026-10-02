@@ -61,6 +61,11 @@ add_executable(packAssets
     packAssets.cpp)
 target_link_libraries(packAssets PRIVATE argumentParser packedArchive)
 
+add_executable(makeCartridge
+    makeCartridge.cpp)
+target_link_libraries(makeCartridge
+    PRIVATE argumentParser jaguarCartridge packedArchive)
+
 add_executable(frankoExtract
     frankoExtract.cpp)
 target_link_libraries(frankoExtract

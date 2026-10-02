@@ -65,6 +65,14 @@ target_link_libraries(${HEADERS_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain headers)
 add_test(NAME ${HEADERS_TEST_TARGET} COMMAND ${HEADERS_TEST_TARGET})
 
+set(JAGUAR_CARTRIDGE_TEST_TARGET jaguarCartridgeTest)
+add_executable(${JAGUAR_CARTRIDGE_TEST_TARGET}
+    jaguarCartridgeTest.cpp)
+target_link_libraries(${JAGUAR_CARTRIDGE_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain jaguarCartridge)
+add_test(NAME ${JAGUAR_CARTRIDGE_TEST_TARGET}
+    COMMAND ${JAGUAR_CARTRIDGE_TEST_TARGET})
+
 set(LEVEL_SCRIPT_TEST_TARGET levelScriptTest)
 add_executable(${LEVEL_SCRIPT_TEST_TARGET}
     levelScriptTest.cpp)
