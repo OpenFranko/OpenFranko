@@ -85,9 +85,13 @@ SCENARIO("The intro pages come from intro.json and the letters from s50") {
 
       THEN("Its letter is read and pasted in white on the strip") {
         REQUIRE(presents.files.wasLoaded(glyphPath('A')));
-        REQUIRE_FALSE(presents.files.wasLoaded(glyphPath('B')));
         REQUIRE(presents.monitor.pixel(STRIP_X + 2, STRIP_Y + 2) ==
                 toArgb(0xFFF));
+      }
+
+      THEN("The second page's letter is read ahead, the third page's is not") {
+        REQUIRE(presents.files.wasLoaded(glyphPath('B')));
+        REQUIRE_FALSE(presents.files.wasLoaded(glyphPath('C')));
       }
 
       THEN("The strip sits on a hires screen shown at double height") {

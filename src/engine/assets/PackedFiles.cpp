@@ -3,6 +3,7 @@
 #include "Lz4.h"
 #include "PackedArchive.h"
 
+#include <algorithm>
 #include <cstring>
 #include <stdexcept>
 #include <string_view>
@@ -194,15 +195,26 @@ PackedFiles::Entry PackedFiles::entry(std::size_t index) const {
   return found;
 }
 
-std::size_t PackedFiles::lowerBound(const std::string &name) const {
+std::size_t PackedFiles::lowerBound(std::string_view name) const {
   std::size_t low = 0;
   std::size_t high = m_count;
+  std::size_t lowShared = 0;
+  std::size_t highShared = 0;
   while (low < high) {
     const std::size_t middle = low + (high - low) / 2;
-    if (std::strcmp(nameAt(middle), name.c_str()) < 0) {
+    const char *entry = nameAt(middle);
+    std::size_t shared = std::min(lowShared, highShared);
+    while (shared < name.size() && entry[shared] != '\0' &&
+           entry[shared] == name[shared]) {
+      ++shared;
+    }
+    if (shared < name.size() && static_cast<unsigned char>(entry[shared]) <
+                                    static_cast<unsigned char>(name[shared])) {
       low = middle + 1;
+      lowShared = shared;
     } else {
       high = middle;
+      highShared = shared;
     }
   }
   return low;
@@ -210,14 +222,30 @@ std::size_t PackedFiles::lowerBound(const std::string &name) const {
 
 std::size_t PackedFiles::indexOf(std::string_view name) const {
   std::size_t found = m_next;
-  if (found >= m_count || name != nameAt(found)) {
-    found = lowerBound(std::string(name));
-    if (found >= m_count || name != nameAt(found)) {
-      return m_count;
-    }
+  if (found < m_count && isNamed(found, name)) {
+    m_next = found + 1;
+    return found;
+  }
+  if (found > 0 && isNamed(found - 1, name)) {
+    return found - 1;
+  }
+  found = lowerBound(name);
+  if (found >= m_count || !isNamed(found, name)) {
+    return m_count;
   }
   m_next = found + 1;
   return found;
+}
+
+bool PackedFiles::isNamed(std::size_t index, std::string_view name) const {
+  const char *entry = nameAt(index);
+  for (const char letter : name) {
+    if (*entry == '\0' || *entry != letter) {
+      return false;
+    }
+    ++entry;
+  }
+  return *entry == '\0';
 }
 
 const char *PackedFiles::nameAt(std::size_t index) const {

@@ -39,8 +39,9 @@ private:
   };
 
   Entry entry(std::size_t index) const;
-  std::size_t lowerBound(const std::string &name) const;
+  std::size_t lowerBound(std::string_view name) const;
   std::size_t indexOf(std::string_view name) const;
+  bool isNamed(std::size_t index, std::string_view name) const;
   const char *nameAt(std::size_t index) const;
   Entry require(const std::string &path) const;
 

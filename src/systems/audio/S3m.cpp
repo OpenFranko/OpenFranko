@@ -40,6 +40,7 @@ constexpr uint8_t NOTE_OFF = 254;
 constexpr uint8_t SET_SPEED = 1;
 constexpr uint8_t SET_TEMPO = 20;
 constexpr int SIGNED_FORMAT = 1;
+constexpr uint8_t SIGN_BIT = 0x80;
 constexpr double C4_RATE = 8363.0;
 constexpr double FINETUNE_STEPS = 1536.0;
 constexpr int FINETUNE_PER_NOTE = 128;
@@ -60,12 +61,14 @@ public:
 
   std::size_t size() const { return m_data.size(); }
 
+  const uint8_t *bytes(std::size_t at) const { return m_data.data() + at; }
+
 private:
   const std::vector<uint8_t> &m_data;
 };
 
 void readSample(const Reader &file, std::size_t header, int format,
-                S3mSample &sample) {
+                SignFlip flip, S3mSample &sample) {
   if (file.byte(header) != SAMPLE_TYPE) {
     return;
   }
@@ -82,11 +85,18 @@ void readSample(const Reader &file, std::size_t header, int format,
   const std::size_t available =
       memory < file.size() ? std::min<std::size_t>(length, file.size() - memory)
                            : 0;
+  sample.data.reserve(available + 1);
   sample.data.resize(available);
-  for (std::size_t at = 0; at < available; ++at) {
-    const uint8_t value = file.byte(memory + at);
-    sample.data[at] = static_cast<int8_t>(
-        format == SIGNED_FORMAT ? value : static_cast<uint8_t>(value - 128));
+  if (available > 0) {
+    const uint8_t *source = file.bytes(memory);
+    int8_t *target = sample.data.data();
+    if (format == SIGNED_FORMAT) {
+      std::memcpy(target, source, available);
+    } else if (!flip || !flip(source, target, available)) {
+      for (std::size_t at = 0; at < available; ++at) {
+        target[at] = static_cast<int8_t>(source[at] ^ SIGN_BIT);
+      }
+    }
   }
   const uint32_t size = static_cast<uint32_t>(available);
   sample.loopEnd = std::min(loopEnd, size);
@@ -150,7 +160,8 @@ void readPattern(const Reader &file, std::size_t start, int index,
 
 } // namespace
 
-bool parseS3m(const std::vector<uint8_t> &data, S3mModule &module) {
+bool parseS3m(const std::vector<uint8_t> &data, S3mModule &module,
+              SignFlip flip) {
   const Reader file(data);
   if (data.size() < ORDERS ||
       std::memcmp(data.data() + SIGNATURE, "SCRM", 4) != 0) {
@@ -192,7 +203,7 @@ bool parseS3m(const std::vector<uint8_t> &data, S3mModule &module) {
   for (std::size_t index = 0; index < instrumentCount; ++index) {
     const std::size_t header = file.word(instruments + 2 * index) * PARAGRAPH;
     if (header + SAMPLE_HEADER <= data.size()) {
-      readSample(file, header, format, module.samples[index]);
+      readSample(file, header, format, flip, module.samples[index]);
     }
   }
   module.patterns.resize(patternCount);

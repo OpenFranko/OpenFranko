@@ -1,12 +1,16 @@
 #include "../../../../src/engine/assets/PackedFiles.h"
 #include "../../../../lib/converter/packedArchive/lz4Compressor.h"
 #include "../../../../lib/converter/packedArchive/packedArchive.h"
+#include "../../../../src/engine/assets/Assets.h"
 #include "../../../../src/engine/assets/Lz4.h"
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <random>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -169,6 +173,87 @@ SCENARIO("A packed archive is read in place") {
     THEN("It is rejected") {
       REQUIRE_THROWS_AS(PackedFiles(data.data(), data.size()),
                         std::runtime_error);
+    }
+  }
+}
+
+SCENARIO("A packed archive finds names that share long prefixes") {
+  GIVEN("Banks whose names extend each other, with many numbered files") {
+    const std::vector<std::string> banks = {"s5", "s50", "s500", "s50x"};
+    std::set<std::string> names;
+    for (const std::string &bank : banks) {
+      for (int index = 0; index < 150; ++index) {
+        names.insert(imagePath(bank, index));
+      }
+    }
+    names.insert("assets/s50/s50_sam2_13160Hz.wav");
+    names.insert("assets/s50/s50_sam20_8000Hz.wav");
+    names.insert("assets/s50/s50_sam2_notes.txt");
+    names.insert("assets/s50.bmp");
+    names.insert("assets/s5");
+    packedArchive::ArchiveWriter writer;
+    for (const std::string &name : names) {
+      writer.addFile(name, bytes(name));
+    }
+    const std::vector<uint8_t> data = writer.finish();
+    PackedFiles files(data.data(), data.size());
+
+    std::vector<std::string> shuffled(names.begin(), names.end());
+    std::mt19937 random(7);
+    std::shuffle(shuffled.begin(), shuffled.end(), random);
+
+    THEN("Every file reads back in any order") {
+      for (const std::string &name : shuffled) {
+        CAPTURE(name);
+        REQUIRE(files.exists(name));
+        REQUIRE(files.read(name) == bytes(name));
+      }
+    }
+
+    THEN("Neighbouring names exist only as files or directories") {
+      const auto expected = [&names](std::string probe) {
+        while (!probe.empty() && probe.back() == '/') {
+          probe.pop_back();
+        }
+        if (names.count(probe) != 0) {
+          return true;
+        }
+        const auto after = names.lower_bound(probe + "/");
+        return after != names.end() &&
+               after->compare(0, probe.size() + 1, probe + "/") == 0;
+      };
+      for (const std::string &name : shuffled) {
+        std::vector<std::string> probes = {
+            name.substr(0, name.size() - 1), name + "a", name + "/",
+            name.substr(0, name.find_last_of('/')),
+            name.substr(0, name.find_last_of('/') + 2)};
+        std::string lower = name;
+        --lower.back();
+        probes.push_back(lower);
+        std::string higher = name;
+        ++higher.back();
+        probes.push_back(higher);
+        std::string middle = name;
+        ++middle[middle.size() / 2];
+        probes.push_back(middle);
+        for (const std::string &probe : probes) {
+          CAPTURE(probe);
+          REQUIRE(files.exists(probe) == expected(probe));
+        }
+      }
+      REQUIRE(files.exists("assets/s5"));
+      REQUIRE(files.exists("assets/s50"));
+      REQUIRE_FALSE(files.exists("assets/s"));
+      REQUIRE_FALSE(files.exists("assets/s50/s50_150.bmp"));
+      REQUIRE_FALSE(files.exists("assets/s500/s500_07.bmp"));
+    }
+
+    THEN("A sample is found by its number and extension") {
+      REQUIRE(samplePath(files, "s50", 2) == "assets/s50/s50_sam2_13160Hz.wav");
+      REQUIRE(samplePath(files, "s50", 20) ==
+              "assets/s50/s50_sam20_8000Hz.wav");
+      REQUIRE(samplePath(files, "s50", 3).empty());
+      REQUIRE(samplePath(files, "s500", 2).empty());
     }
   }
 }

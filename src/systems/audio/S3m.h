@@ -1,6 +1,8 @@
 #ifndef SYSTEMS_AUDIO_S3M_H_
 #define SYSTEMS_AUDIO_S3M_H_
 
+#include "Wave.h"
+
 #include <array>
 #include <cstdint>
 #include <set>
@@ -49,7 +51,8 @@ struct S3mModule {
   std::set<std::pair<int, int>> tempoRows;
 };
 
-bool parseS3m(const std::vector<uint8_t> &data, S3mModule &module);
+bool parseS3m(const std::vector<uint8_t> &data, S3mModule &module,
+              SignFlip flip = nullptr);
 
 } // namespace audio
 } // namespace systems

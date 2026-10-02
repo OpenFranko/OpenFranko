@@ -2,7 +2,7 @@
 #include "Multiply.h"
 
 #include <algorithm>
-#include <cmath>
+#include <array>
 
 namespace openfranko::src::systems::audio {
 namespace {
@@ -37,26 +37,47 @@ constexpr int MIN_TEMPO = 0x20;
 constexpr int FINE_SLIDE = 0xF0;
 constexpr int EXTRA_FINE_SLIDE = 0xE0;
 
-struct Tables {
-  std::array<uint32_t, SEMITONES> semitone{};
-  std::array<uint32_t, FINE_STEPS> fine{};
+constexpr double LN2 = 0.6931471805599453094;
+constexpr int EXP_TERMS = 24;
 
-  Tables() {
-    for (int step = 0; step < SEMITONES; ++step) {
-      semitone[static_cast<std::size_t>(step)] = static_cast<uint32_t>(
-          std::floor(FRACTION_ONE * std::pow(2.0, -step / 12.0) + 0.5));
-    }
-    for (int step = 0; step < FINE_STEPS; ++step) {
-      fine[static_cast<std::size_t>(step)] = static_cast<uint32_t>(
-          std::floor(FRACTION_ONE * std::pow(2.0, -step / 1536.0) + 0.5));
-    }
+constexpr double twoToMinus(double exponent) {
+  const double x = -exponent * LN2;
+  double term = 1.0;
+  double sum = 1.0;
+  for (int k = 1; k <= EXP_TERMS; ++k) {
+    term *= x / k;
+    sum += term;
   }
-};
-
-const Tables &tables() {
-  static const Tables instance;
-  return instance;
+  return sum;
 }
+
+template <std::size_t COUNT>
+constexpr std::array<uint32_t, COUNT> ratios(int divisor) {
+  std::array<uint32_t, COUNT> table{};
+  for (std::size_t step = 0; step < COUNT; ++step) {
+    table[step] = static_cast<uint32_t>(
+        FRACTION_ONE * twoToMinus(static_cast<double>(step) / divisor) + 0.5);
+  }
+  return table;
+}
+
+constexpr std::array<uint32_t, SEMITONES> SEMITONE_RATIOS =
+    ratios<SEMITONES>(SEMITONES);
+constexpr std::array<uint32_t, FINE_STEPS> FINE_RATIOS =
+    ratios<FINE_STEPS>(OCTAVE_STEPS);
+
+constexpr std::array<uint32_t, OCTAVE_STEPS> octavePeriods() {
+  std::array<uint32_t, OCTAVE_STEPS> periods{};
+  for (std::size_t within = 0; within < OCTAVE_STEPS; ++within) {
+    uint64_t value = PERIOD_BASE;
+    value = value * SEMITONE_RATIOS[within / FINE_STEPS] >> FRACTION;
+    value = value * FINE_RATIOS[within % FINE_STEPS] >> FRACTION;
+    periods[within] = static_cast<uint32_t>(value);
+  }
+  return periods;
+}
+
+constexpr std::array<uint32_t, OCTAVE_STEPS> OCTAVE_PERIODS = octavePeriods();
 
 uint32_t halfProduct(uint32_t left, uint32_t right) {
   return multiplyUnsigned16(static_cast<uint16_t>(left),
@@ -74,19 +95,7 @@ uint64_t product(uint32_t left, uint32_t right) {
 }
 
 uint32_t octavePeriod(int within) {
-  static std::array<uint32_t, OCTAVE_STEPS> periods{};
-  uint32_t &period = periods[static_cast<std::size_t>(within)];
-  if (period == 0) {
-    const Tables &table = tables();
-    uint64_t value = PERIOD_BASE;
-    value =
-        value * table.semitone[static_cast<std::size_t>(within / FINE_STEPS)] >>
-        FRACTION;
-    value = value * table.fine[static_cast<std::size_t>(within % FINE_STEPS)] >>
-            FRACTION;
-    period = static_cast<uint32_t>(value);
-  }
-  return period;
+  return OCTAVE_PERIODS[static_cast<std::size_t>(within)];
 }
 
 int gain(int volume, int side) {
@@ -134,7 +143,7 @@ uint32_t Tracker::transposed(uint32_t period, int semitones) {
     ++octaves;
   }
   const uint64_t scaled =
-      product(period, tables().semitone[static_cast<std::size_t>(semitones)]) >>
+      product(period, SEMITONE_RATIOS[static_cast<std::size_t>(semitones)]) >>
       FRACTION;
   return clampPeriod(static_cast<int64_t>(scaled >> octaves));
 }

@@ -5,6 +5,7 @@
 
 #include <xmp.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -308,6 +309,25 @@ double correlation(const std::vector<int16_t> &first,
   return cross / std::sqrt(energyFirst * energySecond);
 }
 
+constexpr uint8_t SIGN_BIT = 0x80;
+constexpr int8_t FLIPPED = 7;
+
+bool flipToConstant(const uint8_t *, int8_t *target, std::size_t size) {
+  std::fill(target, target + size, FLIPPED);
+  return true;
+}
+
+bool refuseFlip(const uint8_t *, int8_t *, std::size_t) { return false; }
+
+std::vector<int8_t> converted(const std::vector<uint8_t> &source,
+                              uint8_t flip) {
+  std::vector<int8_t> data;
+  for (const uint8_t value : source) {
+    data.push_back(static_cast<int8_t>(value ^ flip));
+  }
+  return data;
+}
+
 } // namespace
 
 SCENARIO("An S3M module is read into patterns, samples and pans") {
@@ -419,6 +439,134 @@ SCENARIO("The tracker sounds like libxmp") {
     THEN("Both last the same time and play the same waveform") {
       REQUIRE(ours.size() / 2 == Catch::Approx(theirs.size() / 2).margin(512));
       REQUIRE(correlation(ours, theirs) > 0.99);
+    }
+  }
+}
+
+namespace {
+
+constexpr int REFERENCE_SEMITONES = 12;
+constexpr int REFERENCE_FINE_STEPS = 128;
+constexpr int REFERENCE_OCTAVE = REFERENCE_SEMITONES * REFERENCE_FINE_STEPS;
+constexpr uint64_t REFERENCE_BASE = 13696ull * Tracker::PERIOD_ONE;
+constexpr double REFERENCE_ONE = 1073741824.0;
+constexpr int REFERENCE_FRACTION = 30;
+
+uint64_t referenceRatio(int step, double divisor) {
+  return static_cast<uint64_t>(
+      std::floor(REFERENCE_ONE * std::pow(2.0, -step / divisor) + 0.5));
+}
+
+uint32_t referenceClamp(uint64_t period) {
+  return static_cast<uint32_t>(std::clamp<uint64_t>(
+      period, Tracker::PERIOD_ONE, 0xFFFFull * Tracker::PERIOD_ONE));
+}
+
+uint32_t referencePeriod(int note, int finetune) {
+  int within = note * REFERENCE_FINE_STEPS + finetune;
+  int octave = 0;
+  while (within < 0) {
+    within += REFERENCE_OCTAVE;
+    --octave;
+  }
+  while (within >= REFERENCE_OCTAVE) {
+    within -= REFERENCE_OCTAVE;
+    ++octave;
+  }
+  uint64_t value = REFERENCE_BASE;
+  value = value * referenceRatio(within / REFERENCE_FINE_STEPS,
+                                 REFERENCE_SEMITONES) >>
+          REFERENCE_FRACTION;
+  value =
+      value * referenceRatio(within % REFERENCE_FINE_STEPS, REFERENCE_OCTAVE) >>
+      REFERENCE_FRACTION;
+  value = octave >= 0 ? value >> octave : value << -octave;
+  return referenceClamp(value);
+}
+
+} // namespace
+
+SCENARIO("Tracker periods follow the equal tempered ratios of std::pow") {
+  GIVEN("Every note with every finetune") {
+    THEN("The period matches the one computed with std::pow") {
+      for (int note = 0; note < 120; ++note) {
+        for (int finetune = -127; finetune <= 127; ++finetune) {
+          CAPTURE(note, finetune);
+          REQUIRE(Tracker::notePeriod(note, finetune) ==
+                  referencePeriod(note, finetune));
+        }
+      }
+    }
+  }
+
+  GIVEN("Periods transposed upwards") {
+    THEN("Each semitone matches the std::pow ratio") {
+      const uint32_t periods[] = {Tracker::PERIOD_ONE,
+                                  428 * Tracker::PERIOD_ONE, 12345,
+                                  0xFFFF * Tracker::PERIOD_ONE};
+      for (const uint32_t period : periods) {
+        for (int semitones = 0; semitones <= 40; ++semitones) {
+          CAPTURE(period, semitones);
+          uint32_t expected = period;
+          if (semitones > 0) {
+            const uint64_t scaled =
+                static_cast<uint64_t>(period) *
+                    referenceRatio(semitones % REFERENCE_SEMITONES,
+                                   REFERENCE_SEMITONES) >>
+                REFERENCE_FRACTION;
+            expected =
+                referenceClamp(scaled >> (semitones / REFERENCE_SEMITONES));
+          }
+          REQUIRE(Tracker::transposed(period, semitones) == expected);
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("S3M sample data becomes signed bytes") {
+  GIVEN("A module with unsigned samples") {
+    const ModuleSpec spec = song();
+    const std::vector<uint8_t> file = buildS3m(spec);
+
+    THEN("Every byte has its sign bit flipped") {
+      S3mModule module;
+      REQUIRE(parseS3m(file, module));
+      for (std::size_t index = 0; index < spec.samples.size(); ++index) {
+        CAPTURE(index);
+        REQUIRE(module.samples[index].data ==
+                converted(spec.samples[index].data, SIGN_BIT));
+      }
+    }
+
+    THEN("A sign flip that does the work is used") {
+      S3mModule module;
+      REQUIRE(parseS3m(file, module, flipToConstant));
+      REQUIRE(module.samples[0].data ==
+              std::vector<int8_t>(spec.samples[0].data.size(), FLIPPED));
+    }
+
+    THEN("A sign flip that refuses leaves the work to the parser") {
+      S3mModule module;
+      REQUIRE(parseS3m(file, module, refuseFlip));
+      REQUIRE(module.samples[0].data ==
+              converted(spec.samples[0].data, SIGN_BIT));
+    }
+  }
+
+  GIVEN("A module with signed samples") {
+    const ModuleSpec spec = song();
+    std::vector<uint8_t> file = buildS3m(spec);
+    put16(file, 0x2A, 1);
+
+    THEN("The bytes are kept and no sign flip is asked for") {
+      S3mModule module;
+      REQUIRE(parseS3m(file, module, flipToConstant));
+      for (std::size_t index = 0; index < spec.samples.size(); ++index) {
+        CAPTURE(index);
+        REQUIRE(module.samples[index].data ==
+                converted(spec.samples[index].data, 0));
+      }
     }
   }
 }

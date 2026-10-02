@@ -399,7 +399,7 @@ void AudioSystem::loadMusic(const std::string &path) {
     return;
   }
   auto module = std::make_unique<S3mModule>();
-  if (!parseS3m(file, *module)) {
+  if (!parseS3m(file, *module, jaguar::blitter::flipSigns)) {
     return;
   }
   m_output->lengths.clear();

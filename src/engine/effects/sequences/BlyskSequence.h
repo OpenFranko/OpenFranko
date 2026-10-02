@@ -28,6 +28,8 @@ public:
   void advance(bool fireLatched);
 
   std::optional<int> page() const;
+  std::optional<int> nextPage() const;
+  bool isSteady() const;
   const color::AmigaPalette &palette() const;
   bool isFinished() const;
   bool isSkipped() const;
