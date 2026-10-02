@@ -232,9 +232,11 @@ screen layout, not the console's video standard; an NTSC TV shows 241 of the
 256 lines of the PAL layout. The high score table is kept in the cartridge's
 EEPROM; with an empty or damaged EEPROM the game starts with its usual table.
 
-The 68000 does not always keep up. In BigPEmu, a fight on level 1 updates about
-95% of the frames on a PAL console and about 80% on an NTSC console, so busy
-moments play a little slower; the music keeps its tempo.
+The 68000 keeps up with the game. In BigPEmu on an NTSC console, where a frame
+is shortest, fights update 59 or 60 of the 60 frames each second; a PAL
+console has 20% more time per frame. When the game changes screens, loading
+can hold a black or still picture for a few more frames, at most about a
+third of a second. The music keeps its tempo even when a frame is missed.
 
 # Releases
 
