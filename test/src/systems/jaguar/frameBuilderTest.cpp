@@ -228,8 +228,8 @@ int mismatches(const graphics::Display &original, const Geometry &geometry) {
   graphics::rasterize(display, argb);
   const Placement placement = placeDisplay(display, geometry);
   int wrong = 0;
-  for (int row = 0; row < display.height; ++row) {
-    const int screenRow = row + placement.top;
+  for (int row = 0; row < display.height; row += placement.rowsPerLine) {
+    const int screenRow = row / placement.rowsPerLine + placement.top;
     if (screenRow < 0 || screenRow >= geometry.rows) {
       continue;
     }
@@ -406,6 +406,36 @@ SCENARIO("Jaguar frames show what the desktop rasterizer draws") {
       scrolled.columns = 320;
       display.layers.push_back(scrolled);
       THEN("Its last column is still shown") {
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    GIVEN("A laced play screen over a doubled panel, as in 320x512 mode") {
+      graphics::Display display;
+      display.width = 304;
+      display.height = 510;
+      display.displayHeight = 255;
+      display.border = 0x555;
+      graphics::Layer play = layer(320, 444, 16, 6);
+      play.sourceY = 6;
+      play.columns = 304;
+      play.rows = 510;
+      display.layers.push_back(play);
+      graphics::Layer panel = layer(304, 32, 8, 7);
+      panel.top = 344;
+      panel.repeat = 2;
+      panel.rows = 64;
+      display.layers.push_back(panel);
+      display.layers.push_back(graphics::solidLayer(0x000, 0, 30, 304));
+      const Placement placement = placeDisplay(display, geometry);
+
+      THEN("Each line shows every other row, so the play screen halves "
+           "and the panel keeps its 32 lines") {
+        REQUIRE(placement.rowsPerLine == 2);
+        REQUIRE(placement.top == (geometry.rows - 255) / 2);
+        const LayerArea area =
+            visibleArea(display, display.layers[1], placement, geometry);
+        REQUIRE((area.lastRow - area.firstRow) / placement.rowsPerLine == 32);
         REQUIRE(mismatches(display, geometry) == 0);
       }
     }

@@ -272,9 +272,9 @@ void MenuState::advanceAttract(
 void MenuState::switchStandard() {
   m_monitor.setNtsc(m_options.ntsc);
   if (m_session.version == GameVersion::V12) {
-    m_speaker.setMusicTempo(menuTempo(m_options.ntsc));
+    m_speaker.setMusicTempo(CONVERTED_MENU_TEMPO);
   } else {
-    m_speaker.setMusicTempoScale(menuTuneScale(menuTempo(m_options.ntsc)));
+    m_speaker.setMusicTempoScale(menuTuneScale(CONVERTED_MENU_TEMPO));
   }
   m_menuScreen = menuScreen(m_options.ntsc);
 }

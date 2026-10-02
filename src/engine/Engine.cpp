@@ -333,7 +333,6 @@ void Engine::update() {
   m_menuPrefetch.step();
   m_controllerSystem.setEnteringText(m_currentState &&
                                      m_currentState->isEnteringText());
-  m_audioSystem.setVblRate(m_videoSystem.refreshRate());
   m_videoSystem.sync();
 }
 

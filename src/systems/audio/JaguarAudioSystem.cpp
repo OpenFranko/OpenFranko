@@ -33,7 +33,6 @@ constexpr double PAL_CLOCK = 26593900.0;
 constexpr double CLOCKS_PER_FRAME = 64.0;
 constexpr double REFERENCE_RATE = 22050.0;
 constexpr double TICK_SECONDS_PER_BPM = 2.5;
-constexpr int PAL_VBL_RATE = 50;
 constexpr double AMOS_TEMPO_PER_BPM = 4.0 / 5.0;
 constexpr int DEFAULT_MUSIC_VOLUME = 56;
 constexpr double LED_FILTER_HERTZ = 3275.0;
@@ -117,7 +116,6 @@ struct AudioSystem::Output {
   std::size_t nextStep = 0;
   uint64_t periodSteps = 0;
   double tempoScale = 1.0;
-  int vblRate = PAL_VBL_RATE;
   double moduleTempoFactor = 1.0;
   double tickFactor = 1.0;
   int tempoOverride = 0;
@@ -585,14 +583,6 @@ void AudioSystem::setMusicTempo(int tempo) {
   output.applyModuleTempo();
 }
 
-void AudioSystem::setVblRate(int hertz) {
-  if (hertz == m_output->vblRate) {
-    return;
-  }
-  m_output->vblRate = hertz;
-  applyTempo();
-}
-
 void AudioSystem::setLowPassFilter(bool on) {
   m_output->filter = on;
   shared[FILTER] = on ? 1 : 0;
@@ -673,8 +663,7 @@ void AudioSystem::startMusic(bool looping) {
 
 void AudioSystem::applyTempo() {
   Output &output = *m_output;
-  output.moduleTempoFactor =
-      static_cast<double>(PAL_VBL_RATE) / (output.vblRate * output.tempoScale);
+  output.moduleTempoFactor = 1.0 / output.tempoScale;
   output.tickFactor = output.moduleTempoFactor;
   ++output.tickVersion;
   output.applyModuleTempo();

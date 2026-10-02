@@ -23,7 +23,6 @@ struct AudioSystem::Output {
   std::map<std::string, std::unique_ptr<Sound>> sounds;
   std::string musicPath;
   double tempoScale = 1.0;
-  int vblRate = 0;
   bool sampleLooping = false;
   std::unique_ptr<AudioDevice> device;
 };

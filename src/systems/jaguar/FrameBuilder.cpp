@@ -32,6 +32,10 @@ int ceilDiv(int value, int divisor) {
   return value >= 0 ? (value + divisor - 1) / divisor : -(-value / divisor);
 }
 
+int alignUp(int value, int multiple) {
+  return ceilDiv(value, multiple) * multiple;
+}
+
 struct Rows {
   int first = 0;
   int last = 0;
@@ -54,6 +58,7 @@ struct PaletteCache {
   bool valid = false;
   int height = 0;
   int top = 0;
+  int rowsPerLine = 1;
   int rows = 0;
   int firstHalfLine = 0;
   std::vector<PaletteSource> sources;
@@ -275,8 +280,9 @@ private:
 
   void begin(int row) {
     m_header = m_frame.copper.size();
-    const uint32_t line = static_cast<uint32_t>(m_geometry.firstHalfLine +
-                                                2 * (m_placement.top + row));
+    const uint32_t line = static_cast<uint32_t>(
+        m_geometry.firstHalfLine +
+        2 * (m_placement.top + ceilDiv(row, m_placement.rowsPerLine)));
     m_frame.copper.push_back(line << 16);
   }
 
@@ -365,8 +371,10 @@ void composePalettes(const graphics::Display &display, const Geometry &geometry,
                      const Placement &placement,
                      const std::vector<LayerArea> &areas, BuiltFrame &frame) {
   frame.copper.clear();
-  const int firstRow = std::max(0, -placement.top);
-  const int lastRow = std::min(display.height, geometry.rows - placement.top);
+  const int perLine = placement.rowsPerLine;
+  const int firstRow = std::max(0, -placement.top * perLine);
+  const int lastRow =
+      std::min(display.height, (geometry.rows - placement.top) * perLine);
   if (firstRow >= lastRow) {
     frame.clut.fill(0);
     frame.copper.push_back(COPPER_END);
@@ -400,7 +408,9 @@ bool isCached(const PaletteCache &cache, const graphics::Display &display,
               const Geometry &geometry, const Placement &placement,
               const std::vector<LayerArea> &areas) {
   if (!cache.valid || cache.height != display.height ||
-      cache.top != placement.top || cache.rows != geometry.rows ||
+      cache.top != placement.top ||
+      cache.rowsPerLine != placement.rowsPerLine ||
+      cache.rows != geometry.rows ||
       cache.firstHalfLine != geometry.firstHalfLine ||
       cache.sources.size() != display.layers.size()) {
     return false;
@@ -430,6 +440,7 @@ void buildPalettes(const graphics::Display &display, const Geometry &geometry,
   cache.valid = true;
   cache.height = display.height;
   cache.top = placement.top;
+  cache.rowsPerLine = placement.rowsPerLine;
   cache.rows = geometry.rows;
   cache.firstHalfLine = geometry.firstHalfLine;
   cache.sources.resize(display.layers.size());
@@ -453,9 +464,14 @@ void addObject(const graphics::Layer &layer, const LayerArea &area,
   }
   const int repeat = std::max(layer.repeat, 1);
   const int step = std::max(layer.sourceStep, 1);
+  const int perLine = placement.rowsPerLine;
+  const int lineRepeat = repeat % perLine == 0 ? repeat / perLine : 1;
+  const int lineStep = repeat % perLine == 0 ? step : step * perLine;
+  const int lines = (area.lastRow - area.firstRow) / perLine;
   const int width = area.lastColumn - area.firstColumn;
   BitmapObject object;
-  object.y = geometry.firstHalfLine + 2 * (placement.top + area.firstRow);
+  object.y =
+      geometry.firstHalfLine + 2 * (placement.top + area.firstRow / perLine);
   object.x = placement.left + area.firstColumn / placement.halfWidth;
   object.depth = Depth::Bits8;
   if (!layer.pixels) {
@@ -464,7 +480,7 @@ void addObject(const graphics::Layer &layer, const LayerArea &area,
     object.dataWidth = 0;
     object.imageWidth =
         (width / placement.halfWidth + PHRASE_BYTES - 1) / PHRASE_BYTES;
-    object.height = area.lastRow - area.firstRow;
+    object.height = lines;
     list.addBitmap(object);
     return;
   }
@@ -475,7 +491,7 @@ void addObject(const graphics::Layer &layer, const LayerArea &area,
       static_cast<uint32_t>(reinterpret_cast<uintptr_t>(layer.pixels)) +
       static_cast<uint32_t>(sourceRow * layer.stride + sourceColumn);
   int offset = static_cast<int>(address % PHRASE_BYTES);
-  object.scaled = repeat > 1 || placement.halfWidth > 1;
+  object.scaled = lineRepeat > 1 || placement.halfWidth > 1;
   object.imageWidth = (offset + width + PHRASE_BYTES - 1) / PHRASE_BYTES;
   if (offset % 2 != 0 && !object.scaled) {
     --offset;
@@ -483,11 +499,11 @@ void addObject(const graphics::Layer &layer, const LayerArea &area,
   }
   object.data = address - static_cast<uint32_t>(address % PHRASE_BYTES);
   object.firstPixel = offset * PIXEL_BITS;
-  object.dataWidth = layer.stride * step / PHRASE_BYTES;
-  object.height = ceilDiv(area.lastRow - area.firstRow, repeat);
+  object.dataWidth = layer.stride * lineStep / PHRASE_BYTES;
+  object.height = ceilDiv(lines, lineRepeat);
   if (object.scaled) {
     object.horizontalScale = placement.halfWidth > 1 ? HALF_SCALE : SCALE_ONE;
-    object.verticalScale = static_cast<uint8_t>(SCALE_ONE * repeat);
+    object.verticalScale = static_cast<uint8_t>(SCALE_ONE * lineRepeat);
   }
   list.addBitmap(object);
 }
@@ -505,8 +521,13 @@ Placement placeDisplay(const graphics::Display &display,
                        const Geometry &geometry) {
   Placement placement;
   placement.halfWidth = display.width > HIRES_THRESHOLD ? 2 : 1;
+  placement.rowsPerLine = placement.halfWidth == 1 &&
+                                  display.displayHeight > 0 &&
+                                  display.height >= 2 * display.displayHeight
+                              ? 2
+                              : 1;
   placement.left = (geometry.columns - display.width / placement.halfWidth) / 2;
-  placement.top = (geometry.rows - display.height) / 2;
+  placement.top = (geometry.rows - display.height / placement.rowsPerLine) / 2;
   return placement;
 }
 
@@ -515,10 +536,13 @@ LayerArea visibleArea(const graphics::Display &display,
                       const Geometry &geometry) {
   const Rows rows = sourceRows(layer);
   const Rows columns = sourceColumns(layer);
+  const int perLine = placement.rowsPerLine;
   LayerArea area;
-  area.firstRow = std::max({0, rows.first, -placement.top});
-  area.lastRow =
-      std::min({display.height, rows.last, geometry.rows - placement.top});
+  area.firstRow =
+      alignUp(std::max({0, rows.first, -placement.top * perLine}), perLine);
+  area.lastRow = alignUp(std::min({display.height, rows.last,
+                                   (geometry.rows - placement.top) * perLine}),
+                         perLine);
   area.firstColumn =
       std::max({0, columns.first, -placement.left * placement.halfWidth});
   area.lastColumn =

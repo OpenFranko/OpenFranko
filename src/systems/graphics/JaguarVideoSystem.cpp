@@ -295,8 +295,8 @@ void VideoSystem::present() {
       const jaguar::Placement placement =
           jaguar::placeDisplay(m_shown, window.geometry);
       column = placement.left + COMPACT_PANEL_LEFT / placement.halfWidth;
-      row = placement.top + m_shown.height - jaguar::keyboard::HEIGHT -
-            COMPACT_PANEL_BOTTOM;
+      row = placement.top + m_shown.height / placement.rowsPerLine -
+            jaguar::keyboard::HEIGHT - COMPACT_PANEL_BOTTOM;
     }
     panels[count++] = {reinterpret_cast<uint32_t>(jaguar::keyboard::pixels()),
                        width, jaguar::keyboard::HEIGHT, column, row};

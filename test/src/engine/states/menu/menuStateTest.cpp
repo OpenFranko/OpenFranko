@@ -127,6 +127,51 @@ SCENARIO("Version 1.2 starts the menu tune itself") {
   }
 }
 
+SCENARIO("Switching to NTSC leaves the menu tune at its PAL speed") {
+  auto fireNtscIcon = [](Menu &menu, int opening) {
+    run(*menu.state, opening);
+    menu.controller.states.right = true;
+    run(*menu.state, 1);
+    menu.controller.states.right = false;
+    run(*menu.state, 9);
+    menu.controller.states.down = true;
+    run(*menu.state, 1);
+    menu.controller.states.down = false;
+    run(*menu.state, 9);
+    menu.controller.states.button = true;
+    run(*menu.state, 1);
+    menu.controller.states.button = false;
+  };
+
+  GIVEN("Version 1.0 with PAL chosen") {
+    Menu menu(GameVersion::V10, false);
+
+    WHEN("The NTSC icon is fired") {
+      fireNtscIcon(menu, OPENING_FRAMES);
+
+      THEN("The monitor goes NTSC and the tune's tempo stays 37") {
+        REQUIRE(menu.options.ntsc);
+        REQUIRE(menu.monitor.ntsc);
+        REQUIRE(menu.speaker.tempoScales == std::vector<double>{1.0});
+      }
+    }
+  }
+
+  GIVEN("Version 1.2 with PAL chosen") {
+    Menu menu(GameVersion::V12, false);
+
+    WHEN("The NTSC icon is fired") {
+      fireNtscIcon(menu, OPENING_FRAMES + MenuSequence::VERSION12_MUSIC_WAIT);
+
+      THEN("Tempo 37 is set again rather than 32") {
+        REQUIRE(menu.options.ntsc);
+        REQUIRE(menu.speaker.tempos ==
+                std::vector<int>{CONVERTED_MENU_TEMPO, CONVERTED_MENU_TEMPO});
+      }
+    }
+  }
+}
+
 SCENARIO("START leads to the character selection from the first stage") {
   GIVEN("An open menu") {
     Menu menu;

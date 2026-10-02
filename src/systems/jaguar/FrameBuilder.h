@@ -21,6 +21,7 @@ struct Placement {
   int left = 0;
   int top = 0;
   int halfWidth = 1;
+  int rowsPerLine = 1;
 };
 
 struct LayerArea {

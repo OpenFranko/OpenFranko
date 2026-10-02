@@ -6,11 +6,6 @@ namespace src {
 namespace engine {
 
 inline constexpr int CONVERTED_MENU_TEMPO = 37;
-inline constexpr int NTSC_TEMPO_DROP = 5;
-
-constexpr int menuTempo(bool ntsc) {
-  return CONVERTED_MENU_TEMPO - (ntsc ? NTSC_TEMPO_DROP : 0);
-}
 
 constexpr double menuTuneScale(int tempo) {
   return static_cast<double>(tempo) / CONVERTED_MENU_TEMPO;

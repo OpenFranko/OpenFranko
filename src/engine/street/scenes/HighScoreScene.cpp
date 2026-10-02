@@ -126,7 +126,7 @@ void HighScoreScene::runBasic() {
       flow = wait(MUSIC_START_WAIT, Step::Pictures);
       break;
     case Step::Pictures:
-      m_host.setMusicTempo(menuTempo(m_options.ntsc));
+      m_host.setMusicTempo(CONVERTED_MENU_TEMPO);
       m_loading.queueSteps([this, title = std::make_shared<core::Picture>(),
                             load = std::function<bool()>()]() mutable {
         if (!load) {

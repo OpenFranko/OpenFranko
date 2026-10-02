@@ -43,7 +43,6 @@ public:
   void setMusicVolume(int volume) override;
   void setMusicTempoScale(double scale) override;
   void setMusicTempo(int tempo) override;
-  void setVblRate(int hertz);
   void setLowPassFilter(bool on) override;
   void playSample(const std::string &name, int voiceMask) override;
   void playSampleAt(const std::string &name, int voiceMask,
