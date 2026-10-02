@@ -56,16 +56,13 @@ public:
   static std::string sampleName(int bank, int sample);
 
 private:
+  class SetListing;
   class SpriteSetSteps;
   class ScenerySteps;
 
-  using NumberedPaths = std::vector<std::pair<int, std::string>>;
+  using NumberedFiles = std::vector<std::pair<int, std::string>>;
 
   std::string resourceName(int resource) const;
-  NumberedPaths framePaths(int resource) const;
-  NumberedPaths samplePaths(int resource) const;
-  void listSpriteSet(int resource, NumberedPaths &frames,
-                     NumberedPaths &samples) const;
   street::core::Picture loadFrame(const std::string &path) const;
   void loadSample(int bank, int sample, const std::string &path);
   std::string resourcePath(int resource) const;

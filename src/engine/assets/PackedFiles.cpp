@@ -58,24 +58,61 @@ bool PackedFiles::exists(const std::string &path) const {
   return child < m_count && startsWith(nameAt(child), directory);
 }
 
+class PackedFiles::Walk : public Files::Listing {
+public:
+  Walk(const PackedFiles &files, const std::string &directory)
+      : m_files(files), m_prefix(std::string(normalized(directory)) + "/"),
+        m_index(files.lowerBound(m_prefix)), m_end(files.lowerBound(after())) {}
+
+  bool next(std::string_view &name) override {
+    while (m_index < m_end) {
+      const char *entry = m_files.nameAt(m_index++) + m_prefix.size();
+      const char *end = entry;
+      while (*end != '\0' && *end != '/') {
+        ++end;
+      }
+      name = std::string_view(entry, static_cast<std::size_t>(end - entry));
+      if (*end == '\0') {
+        return true;
+      }
+      if (name == m_folder) {
+        continue;
+      }
+      m_folder = name;
+      return true;
+    }
+    return false;
+  }
+
+  const std::string &prefix() const { return m_prefix; }
+
+private:
+  std::string after() const {
+    std::string bound = m_prefix;
+    ++bound.back();
+    return bound;
+  }
+
+  const PackedFiles &m_files;
+  std::string m_prefix;
+  std::size_t m_index;
+  std::size_t m_end;
+  std::string_view m_folder;
+};
+
 std::vector<std::string> PackedFiles::list(const std::string &directory) const {
-  const std::string prefix = std::string(normalized(directory)) + "/";
+  Walk walk(*this, directory);
   std::vector<std::string> paths;
-  for (std::size_t index = lowerBound(prefix);
-       index < m_count && startsWith(nameAt(index), prefix); ++index) {
-    const char *path = nameAt(index);
-    const char *slash = std::strchr(path + prefix.size(), '/');
-    if (!slash) {
-      paths.emplace_back(path);
-      continue;
-    }
-    const std::size_t length = static_cast<std::size_t>(slash - path);
-    if (paths.empty() || paths.back().size() != length ||
-        paths.back().compare(0, length, path, length) != 0) {
-      paths.emplace_back(path, length);
-    }
+  std::string_view name;
+  while (walk.next(name)) {
+    paths.push_back(walk.prefix() + std::string(name));
   }
   return paths;
+}
+
+std::unique_ptr<Files::Listing>
+PackedFiles::walk(const std::string &directory) const {
+  return std::make_unique<Walk>(*this, directory);
 }
 
 systems::graphics::IndexedBitmap

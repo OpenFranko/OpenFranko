@@ -134,6 +134,24 @@ SCENARIO("A packed archive is read in place") {
                                        "assets/music/song.s3m"});
     }
 
+    THEN("Walking a directory names the listed entries, in order") {
+      const auto walked = [&files](const std::string &directory) {
+        const auto walk = files.walk(directory);
+        std::vector<std::string> names;
+        std::string_view name;
+        while (walk->next(name)) {
+          names.emplace_back(name);
+        }
+        REQUIRE_FALSE(walk->next(name));
+        return names;
+      };
+      REQUIRE(walked("assets") ==
+              std::vector<std::string>{"0384", "music", "text.txt"});
+      REQUIRE(walked("./assets/music/") ==
+              std::vector<std::string>{"empty.bin", "song.s3m"});
+      REQUIRE(walked("assets/missing").empty());
+    }
+
     THEN("Missing files and wrong kinds fail like the other file sources") {
       REQUIRE_THROWS_WITH(files.read("assets/missing"),
                           "Failed to open assets/missing");

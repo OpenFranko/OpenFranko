@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -20,12 +21,15 @@ public:
 
   bool exists(const std::string &path) const override;
   std::vector<std::string> list(const std::string &directory) const override;
+  std::unique_ptr<Listing> walk(const std::string &directory) const override;
   systems::graphics::IndexedBitmap loadBitmap(const std::string &path) override;
   std::vector<uint8_t> read(const std::string &path) override;
 
   std::size_t entries() const;
 
 private:
+  class Walk;
+
   struct Entry {
     const char *name = nullptr;
     const uint8_t *data = nullptr;

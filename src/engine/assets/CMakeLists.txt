@@ -1,6 +1,7 @@
 add_library(Assets
     Assets.cpp
     Assets.h
+    Files.cpp
     Files.h
     GameFiles.h
     Lz4.cpp

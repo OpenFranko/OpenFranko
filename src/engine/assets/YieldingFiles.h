@@ -20,6 +20,7 @@ public:
 
   bool exists(const std::string &path) const override;
   std::vector<std::string> list(const std::string &directory) const override;
+  std::unique_ptr<Listing> walk(const std::string &directory) const override;
   systems::graphics::IndexedBitmap loadBitmap(const std::string &path) override;
   std::vector<uint8_t> read(const std::string &path) override;
 
