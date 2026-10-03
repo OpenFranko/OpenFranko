@@ -57,6 +57,7 @@ private:
   std::optional<EngineStateId> runPages();
   std::optional<EngineStateId> runStory();
   std::optional<EngineStateId> leave();
+  void fillScreen(effects::color::AmigaColor color);
   void drawStory(const effects::sequences::StorySequence::View &view);
   void drawStoryImage(StoryImage &image, int index, int x, int y, bool masked);
 
@@ -80,6 +81,8 @@ private:
   bool m_stripShown = false;
   effects::color::AmigaColor m_background = 0x000;
   effects::sequences::StorySequence::View m_lastView;
+  std::optional<effects::sequences::StorySequence::View> m_drawnView;
+  bool m_titleDrawn = false;
 };
 
 } // namespace titleAndStory

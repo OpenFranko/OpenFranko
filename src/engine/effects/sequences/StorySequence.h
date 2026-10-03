@@ -23,6 +23,11 @@ public:
     std::optional<int> frame;
     std::optional<int> picture;
     std::optional<int> text;
+
+    bool operator==(const View &other) const {
+      return frame == other.frame && picture == other.picture &&
+             text == other.text;
+    }
   };
 
   static constexpr int FRAMES_PER_ANIMATION_FRAME = 8;

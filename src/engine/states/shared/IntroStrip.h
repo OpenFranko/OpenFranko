@@ -46,6 +46,7 @@ private:
   systems::graphics::Canvas m_frame;
   systems::graphics::IndexedBitmap m_strip;
   std::optional<int> m_pasted;
+  bool m_stripDrawn = false;
   std::optional<int> m_preloading;
   std::vector<int> m_waiting;
 };

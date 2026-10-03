@@ -10,6 +10,7 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <utility>
@@ -190,6 +191,61 @@ SCENARIO("Version 1.2 reads the next page's letters while a page holds lit") {
       THEN("The pages shown before the knee are not read") {
         REQUIRE_FALSE(title.files.wasLoaded(glyphPath('A')));
         REQUIRE_FALSE(title.files.wasLoaded(glyphPath('B')));
+      }
+    }
+  }
+}
+
+namespace {
+
+int repaints(Title &title, int frames) {
+  int changes = 0;
+  const uint8_t *last = nullptr;
+  for (int frame = 0; frame < frames; ++frame) {
+    run(*title.state, 1);
+    const auto &layers = title.monitor.shown().layers;
+    const uint8_t *pixels = layers.empty() ? nullptr : layers.front().pixels;
+    if (frame > 0 && pixels != last) {
+      ++changes;
+    }
+    last = pixels;
+  }
+  return changes;
+}
+
+} // namespace
+
+SCENARIO("The title and story are painted only when they change") {
+  GIVEN("Version 1.0") {
+    Title title(GameVersion::V10);
+
+    WHEN("The title holds lit") {
+      run(*title.state, FADE_IN_FRAMES + 10);
+
+      THEN("The picture is not painted again") {
+        REQUIRE(repaints(title, 100) == 0);
+      }
+    }
+
+    WHEN("The story runs for eight animation frames") {
+      run(*title.state, TITLE_FRAMES + STORY_OPEN_FRAMES + 1);
+
+      THEN("It is painted once per animation frame at most") {
+        const int changes = repaints(title, 64);
+        REQUIRE(changes >= 1);
+        REQUIRE(changes <= 8);
+      }
+    }
+  }
+
+  GIVEN("Version 1.2 with four pages of credits") {
+    Title title(GameVersion::V12, introFiles());
+
+    WHEN("The third page fades in, holds and goes") {
+      run(*title.state, VERSION12_TITLE_FRAMES);
+
+      THEN("The strip is painted only when a page changes") {
+        REQUIRE(repaints(title, 80) <= 3);
       }
     }
   }

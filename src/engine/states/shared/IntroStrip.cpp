@@ -57,14 +57,18 @@ void IntroStrip::show(const effects::sequences::BlyskSequence &sequence) {
     if (m_pasted) {
       paste(*m_pasted);
     }
+    m_stripDrawn = false;
   } else if (const std::optional<int> next = sequence.nextPage();
              next && sequence.isSteady()) {
     preload(*next);
   }
-  m_frame.fill(effects::color::BLACK);
   m_frame.setPalette(sequence.palette());
-  m_frame.draw(m_strip, STRIP_LEFT,
-               STRIP_DISPLAY_LINE - FRAME_DISPLAY_LINE - m_rows.first);
+  if (!m_stripDrawn) {
+    m_frame.fill(effects::color::BLACK);
+    m_frame.draw(m_strip, STRIP_LEFT,
+                 STRIP_DISPLAY_LINE - FRAME_DISPLAY_LINE - m_rows.first);
+    m_stripDrawn = true;
+  }
   systems::graphics::Display display = m_frame.output();
   display.displayHeight = 2 * display.height;
   m_monitor.show(display);
@@ -72,6 +76,7 @@ void IntroStrip::show(const effects::sequences::BlyskSequence &sequence) {
 
 void IntroStrip::showBlack() {
   m_frame.fill(effects::color::BLACK);
+  m_stripDrawn = false;
   systems::graphics::Display display = m_frame.output();
   display.displayHeight = 2 * display.height;
   m_monitor.show(display);
