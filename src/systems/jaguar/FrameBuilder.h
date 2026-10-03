@@ -84,6 +84,7 @@ struct BuiltFrame {
   int lineObject = -1;
   int lineLayer = -1;
   std::vector<SpriteSlots> spriteSlots;
+  std::vector<int> masks;
 };
 
 Placement placeDisplay(const graphics::Display &display,
@@ -101,6 +102,7 @@ struct Overlay {
 
 bool sameLayout(const graphics::Display &left, const graphics::Display &right);
 bool sameLayers(const graphics::Display &left, const graphics::Display &right);
+bool scrollsOnly(const graphics::Display &left, const graphics::Display &right);
 bool sameSprites(const graphics::Display &left, const graphics::Display &right);
 bool sameSprites(const graphics::Display &display, const SpriteLists &sprites);
 void allowCopper(bool allowed);
@@ -110,6 +112,8 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
 bool recolorFrame(const graphics::Display &display,
                   const graphics::Display &built, const Geometry &geometry,
                   const FrameMemory &memory, BuiltFrame &frame);
+bool copyFrame(const BuiltFrame &from, const FrameMemory &memory,
+               BuiltFrame &to);
 bool scrollFrame(const graphics::Display &display,
                  const graphics::Display &built, const Geometry &geometry,
                  const FrameMemory &memory, BuiltFrame &frame);

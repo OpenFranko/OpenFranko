@@ -160,7 +160,7 @@ private:
     bool valid = false;
   };
 
-  static constexpr std::size_t CACHED_OUTPUTS = 3;
+  static constexpr std::size_t CACHED_OUTPUTS = 8;
 
   const systems::graphics::Display &
   buildOutput(const ui::StageDisplay &copper,

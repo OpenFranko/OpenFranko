@@ -135,7 +135,9 @@ struct VideoSystem::Window : VblankTarget, jaguar::TranslationBuffers {
   }
   int backFrame() const;
   void want(const Display &display);
-  int recentFrame(unsigned overlay) const;
+  bool scrollsTo(int slot, const Display &display, unsigned overlay) const;
+  int scrollBase(const Display &display, unsigned overlay) const;
+  bool copy(int from, int to);
   int twinFrame(int slot, uint32_t revision, unsigned overlay) const;
   void build(int slot, const Display &shown, unsigned overlay);
   void choose(int slot);
@@ -375,12 +377,22 @@ void VideoSystem::Window::want(const Display &display) {
   }
 }
 
-int VideoSystem::Window::recentFrame(unsigned overlay) const {
+bool VideoSystem::Window::scrollsTo(int slot, const Display &display,
+                                    unsigned overlay) const {
+  const std::size_t index = static_cast<std::size_t>(slot);
+  return built[index] && sourceOverlays[index] == overlay &&
+         jaguar::scrollsOnly(display, sources[index]);
+}
+
+int VideoSystem::Window::scrollBase(const Display &display,
+                                    unsigned overlay) const {
+  if (current != NO_FRAME && scrollsTo(current, display, overlay)) {
+    return current;
+  }
   int recent = NO_FRAME;
   for (int index = 0; index < FRAMES; ++index) {
     const std::size_t slot = static_cast<std::size_t>(index);
-    if (index == current || index == pending || !built[slot] ||
-        sourceOverlays[slot] != overlay) {
+    if (index == current || !scrollsTo(index, display, overlay)) {
       continue;
     }
     if (recent == NO_FRAME ||
@@ -389,6 +401,19 @@ int VideoSystem::Window::recentFrame(unsigned overlay) const {
     }
   }
   return recent;
+}
+
+bool VideoSystem::Window::copy(int from, int to) {
+  const std::size_t source = static_cast<std::size_t>(from);
+  const std::size_t target = static_cast<std::size_t>(to);
+  built[target] = false;
+  if (!jaguar::copyFrame(frames[source], memory(target), frames[target])) {
+    return false;
+  }
+  assign(sources[target], sources[source]);
+  sourceOverlays[target] = sourceOverlays[source];
+  built[target] = true;
+  return true;
 }
 
 int VideoSystem::Window::twinFrame(int slot, uint32_t revision,
@@ -616,16 +641,22 @@ void VideoSystem::present() {
     settle(slot);
     return;
   }
-  int target = window.recentFrame(overlay);
+  int target = window.backFrame();
   bool scrolled = false;
+  if (!window.scrollsTo(target, m_shown, overlay)) {
+    const int base = window.scrollBase(m_shown, overlay);
+    if (base == NO_FRAME || !window.copy(base, target)) {
+      target = NO_FRAME;
+    }
+  }
   if (target != NO_FRAME) {
-    const std::size_t recent = static_cast<std::size_t>(target);
-    window.prepareLines(recent, m_shown);
+    const std::size_t back = static_cast<std::size_t>(target);
+    window.prepareLines(back, m_shown);
     scrolled =
-        jaguar::scrollFrame(m_shown, window.sources[recent], window.geometry,
-                            window.memory(recent), window.frames[recent]);
+        jaguar::scrollFrame(m_shown, window.sources[back], window.geometry,
+                            window.memory(back), window.frames[back]);
     if (!scrolled) {
-      window.built[recent] = false;
+      window.built[back] = false;
     }
   }
   if (!scrolled) {

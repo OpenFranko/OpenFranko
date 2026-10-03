@@ -1247,7 +1247,7 @@ namespace {
 
 void addMasks(const graphics::Display &display, const Placement &placement,
               const Geometry &geometry, uint8_t *phrase, uint16_t color,
-              ObjectList &list) {
+              ObjectList &list, std::vector<int> &masks) {
   fillPhrase(phrase, color);
   const int firstLine = std::max(placement.top, 0);
   const int lastLine =
@@ -1265,9 +1265,9 @@ void addMasks(const graphics::Display &display, const Placement &placement,
   mask.y = geometry.firstHalfLine + 2 * firstLine;
   mask.height = lastLine - firstLine;
   mask.x = placement.left - MASK_PIXELS;
-  list.addBitmap(mask);
+  masks.push_back(static_cast<int>(list.addBitmap(mask)));
   mask.x = placement.left + divided(display.width, placement.halfWidth);
-  list.addBitmap(mask);
+  masks.push_back(static_cast<int>(list.addBitmap(mask)));
 }
 
 void addSprites(const graphics::Layer &layer, std::size_t index,
@@ -1393,6 +1393,7 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
   frame.lineObject = NO_OBJECT;
   frame.lineLayer = NO_OBJECT;
   frame.spriteSlots.clear();
+  frame.masks.clear();
   for (std::size_t index = 0; index < count; ++index) {
     if (index == lineLayer) {
       frame.lineObject = static_cast<int>(
@@ -1412,7 +1413,7 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
   }
   if (!frame.spriteSlots.empty() && memory.maskPhrase) {
     addMasks(display, placement, geometry, memory.maskPhrase, frame.background,
-             list);
+             list, frame.masks);
   }
   for (std::size_t index = 0; index < overlayCount; ++index) {
     const Overlay &overlay = overlays[index];
@@ -1429,8 +1430,6 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
   list.addStop();
   frame.phrases.assign(list.phrases().begin(), list.phrases().end());
 }
-
-namespace {
 
 bool scrollsOnly(const graphics::Display &left,
                  const graphics::Display &right) {
@@ -1455,6 +1454,8 @@ bool scrollsOnly(const graphics::Display &left,
   }
   return true;
 }
+
+namespace {
 
 bool patchSprites(const graphics::Display &display,
                   const graphics::Display &built, const SpriteLists *wanted,
@@ -1512,6 +1513,25 @@ bool samePlacement(const Placement &left, const Placement &right) {
 }
 
 } // namespace
+
+bool copyFrame(const BuiltFrame &from, const FrameMemory &memory,
+               BuiltFrame &to) {
+  if (from.lineObject != NO_OBJECT ||
+      (!from.masks.empty() && !memory.maskPhrase)) {
+    return false;
+  }
+  to = from;
+  to.lineTarget = nullptr;
+  if (!to.masks.empty()) {
+    fillPhrase(memory.maskPhrase, to.background);
+    const uint32_t data =
+        static_cast<uint32_t>(reinterpret_cast<uintptr_t>(memory.maskPhrase));
+    for (const int mask : to.masks) {
+      retargetBitmap(to.phrases.data() + mask, data);
+    }
+  }
+  return true;
+}
 
 bool scrollFrame(const graphics::Display &display,
                  const graphics::Display &built, const Geometry &geometry,

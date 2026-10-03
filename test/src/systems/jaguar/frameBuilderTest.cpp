@@ -1330,6 +1330,35 @@ SCENARIO("A sprite object can be rewritten without a bitmap object") {
   }
 }
 
+SCENARIO("A bitmap object can be pointed at other data") {
+  GIVEN("Objects already linked into a list") {
+    THEN("Only the data address changes") {
+      for (int seed = 0; seed < 64; ++seed) {
+        BitmapObject object;
+        object.data = static_cast<uint32_t>(0x123458u * (seed + 1)) & 0xFFFFF8u;
+        object.x = (seed * 37 - 100) & 0xFFF;
+        object.y = (seed * 91 + 3) & 0x7FF;
+        object.height = (seed * 13 + 1) & 0x3FF;
+        object.dataWidth = (seed * 7 + 2) & 0x3FF;
+        object.imageWidth = (seed * 41 + 5) & 0x3FF;
+        object.depth = static_cast<Depth>(seed % 5);
+        object.transparent = (seed & 1) != 0;
+        object.scaled = (seed & 8) != 0;
+        const uint32_t link = static_cast<uint32_t>(0x654320u + seed * 0x40u);
+        uint64_t phrases[3] = {};
+        bitmapPhrases(object, link, phrases);
+        object.data = static_cast<uint32_t>(0x2468A8u * (seed + 5)) & 0xFFFFF8u;
+        retargetBitmap(phrases, object.data);
+        uint64_t expected[3] = {};
+        bitmapPhrases(object, link, expected);
+        REQUIRE(phrases[0] == expected[0]);
+        REQUIRE(phrases[1] == expected[1]);
+        REQUIRE(phrases[2] == expected[2]);
+      }
+    }
+  }
+}
+
 SCENARIO("Sprites are shown as objects over the layer that carries them") {
   const Bob small = bob(16, 12, 1);
   const Bob wide = bob(48, 40, 2);
@@ -1528,6 +1557,73 @@ SCENARIO("Sprites are shown as objects over the layer that carries them") {
     THEN("Their layouts differ") {
       REQUIRE(sameLayout(first, first));
       REQUIRE_FALSE(sameLayout(first, second));
+    }
+  }
+}
+
+SCENARIO("A frame copied into another slot keeps working there") {
+  const Bob small = bob(16, 12, 1);
+  const Bob wide = bob(48, 40, 2);
+  const std::vector<const Bob *> shapes = {&wide, &small};
+  const Places places = {{-20, 60}, {296, 120}};
+
+  GIVEN("A stage frame with bobs over both edges") {
+    THEN("The copy keeps its own masks and shakes like the original") {
+      for (const bool laced : {false, true}) {
+        graphics::Display stage = withBobs(stageDisplay(laced), shapes, places);
+        stage.border = 0x555;
+        for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+          Arena arena;
+          ArenaBuffers buffers(arena);
+          const FrameMemory first = frameMemory(arena, buffers);
+          FrameMemory second = first;
+          second.maskPhrase = arena.allocate(8);
+          const graphics::Display shown = inArena(arena, stage);
+          BuiltFrame frame;
+          buildFrame(shown, geometry, first, nullptr, 0, frame);
+          for (const Translation &translation : frame.translations) {
+            translateOnCpu(translation);
+          }
+          REQUIRE(frame.masks.size() == 2);
+          BuiltFrame copy;
+          REQUIRE(copyFrame(frame, second, copy));
+          std::memset(first.maskPhrase, 0x5A, 8);
+          REQUIRE(wrongPixels(arena, copy, second, shown, geometry) == 0);
+          REQUIRE(borderLeaks(arena, copy, second, shown, geometry) == 0);
+          graphics::Display next = shown;
+          next.layers.front().sourceY -= 8;
+          REQUIRE(scrollFrame(next, shown, geometry, second, copy));
+          REQUIRE(wrongPixels(arena, copy, second, next, geometry) == 0);
+          REQUIRE(borderLeaks(arena, copy, second, next, geometry) == 0);
+        }
+      }
+    }
+  }
+
+  GIVEN("A frame whose colours come from line phrases") {
+    graphics::Display display;
+    display.width = 368;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer picture = layer(1008, 256, 32, 16);
+    picture.wrap = true;
+    picture.columns = 368;
+    for (int row = 0; row < 223; ++row) {
+      picture.rowColors.push_back(
+          {row, 0, static_cast<uint16_t>((row * 0x13) & 0xFFF)});
+    }
+    display.layers.push_back(picture);
+
+    THEN("It is not copied") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display built = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(built, palGeometry(), memory, nullptr, 0, frame);
+      REQUIRE(frame.lineObject != -1);
+      BuiltFrame copy;
+      REQUIRE_FALSE(copyFrame(frame, memory, copy));
     }
   }
 }

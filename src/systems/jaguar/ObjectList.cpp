@@ -12,6 +12,8 @@ constexpr uint64_t STOP_TYPE = 4;
 constexpr int NEVER_LINE = 0x7FE;
 constexpr int LINK_SHIFT = 24;
 constexpr uint64_t LINK_MASK = uint64_t(0x7FFFF) << LINK_SHIFT;
+constexpr int DATA_SHIFT = 43;
+constexpr uint64_t DATA_MASK = uint64_t(0x1FFFFF) << DATA_SHIFT;
 
 uint64_t field(uint64_t value, int bits, int shift) {
   return (value & ((uint64_t(1) << bits) - 1)) << shift;
@@ -144,6 +146,10 @@ void rewriteSprite(uint64_t *phrases, uint32_t data, int x, int y, int height,
       phrase(bits(width >> 4, 6, 0) | bits(1, 1, 15) | bits(firstPixel, 6, 17),
              bits(x, 12, 0) | bits(static_cast<int>(Depth::Bits8), 3, 12) |
                  bits(1, 3, 15) | bits(dataWidth, 10, 18) | bits(width, 4, 28));
+}
+
+void retargetBitmap(uint64_t *phrases, uint32_t data) {
+  phrases[0] = (phrases[0] & ~DATA_MASK) | field(data >> 3, 21, DATA_SHIFT);
 }
 
 bool isScaledBitmap(uint64_t phrase) {
