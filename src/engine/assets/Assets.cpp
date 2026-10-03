@@ -1,8 +1,9 @@
 #include "Assets.h"
 
 #include <cstdio>
-#include <filesystem>
+#include <memory>
 #include <stdexcept>
+#include <string_view>
 
 namespace openfranko::src::engine::assets {
 namespace {
@@ -24,6 +25,29 @@ constexpr int LAST_SCREEN = 0x3C2;
 constexpr int FIRST_SCREEN_NUMBER = 51;
 constexpr int MIRAGE_LOGO = 0x3C3;
 constexpr int WORLD_SOFTWARE_LOGO = 50;
+
+constexpr std::size_t IMAGE_SUFFIX_SIZE = 16;
+constexpr int PADDED_LIMIT = 1000;
+constexpr std::string_view WAVE = ".wav";
+
+void appendPadded(std::string &path, int number) {
+  if (number >= 0 && number < PADDED_LIMIT) {
+    char hundreds = '0';
+    for (; number >= 100; number -= 100) {
+      ++hundreds;
+    }
+    char tens = '0';
+    for (; number >= 10; number -= 10) {
+      ++tens;
+    }
+    path.append(1, hundreds).append(1, tens);
+    path.append(1, static_cast<char>('0' + number));
+    return;
+  }
+  char digits[16];
+  std::snprintf(digits, sizeof(digits), "%03d", number);
+  path.append(digits);
+}
 
 std::string hexName(int resource) {
   char name[8];
@@ -73,9 +97,12 @@ std::string picturePath(const std::string &name, const std::string &directory) {
 
 std::string imagePath(const std::string &name, int index,
                       const std::string &directory) {
-  char file[32];
-  std::snprintf(file, sizeof(file), "_%03d.bmp", index);
-  return directory + "/" + name + "/" + name + file;
+  std::string path;
+  path.reserve(directory.size() + 2 * name.size() + IMAGE_SUFFIX_SIZE);
+  path.append(directory).append(1, '/').append(name).append(1, '/');
+  path.append(name).append(1, '_');
+  appendPadded(path, index);
+  return path.append(".bmp");
 }
 
 std::string partPath(const std::string &name, int part,
@@ -92,11 +119,13 @@ std::string musicPath(const std::string &name, const std::string &directory) {
 std::string samplePath(const Files &files, const std::string &name, int sample,
                        const std::string &directory) {
   const std::string prefix = name + "_sam" + std::to_string(sample) + "_";
-  for (const std::string &path : files.list(directory + "/" + name)) {
-    const std::filesystem::path file(path);
-    if (file.filename().string().compare(0, prefix.size(), prefix) == 0 &&
-        file.extension() == ".wav") {
-      return path;
+  const std::string bank = directory + "/" + name;
+  const std::unique_ptr<Files::Listing> listing = files.walk(bank);
+  std::string_view file;
+  while (listing->next(file)) {
+    if (file.substr(0, prefix.size()) == prefix && file.size() >= WAVE.size() &&
+        file.substr(file.size() - WAVE.size()) == WAVE) {
+      return bank + "/" + std::string(file);
     }
   }
   return {};

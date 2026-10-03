@@ -1,8 +1,9 @@
 #include "Engine.h"
 
-#include "assets/ArchiveFiles.h"
+#include "../systems/graphics/PixelOps.h"
+
 #include "assets/Assets.h"
-#include "assets/DiskFiles.h"
+#include "assets/GameFiles.h"
 #include "assets/RequiredFiles.h"
 #include "assets/YieldingFiles.h"
 #include "states/adverts/AdvertsState.h"
@@ -29,7 +30,6 @@
 #include "states/worldSoftware/WorldSoftwareState.h"
 
 #include <cstddef>
-#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -105,15 +105,8 @@ void requireGameData(const assets::Files &files) {
                            "\nExtract the game data again with frankoExtract.");
 }
 
-std::unique_ptr<assets::Files> openFiles() {
-  if (std::filesystem::exists(assets::ARCHIVE)) {
-    return std::make_unique<assets::ArchiveFiles>(assets::ARCHIVE);
-  }
-  return std::make_unique<assets::DiskFiles>();
-}
-
 std::unique_ptr<assets::Files> openCheckedFiles() {
-  std::unique_ptr<assets::Files> files = openFiles();
+  std::unique_ptr<assets::Files> files = assets::openGameFiles();
   requireGameData(*files);
   return files;
 }
@@ -127,9 +120,12 @@ Engine::Engine(states::EngineStateId firstState,
                street::session::GameSession startingSession)
     : m_audioSystem(
           [this](const std::string &path) { return m_files->read(path); }),
-      m_files(std::make_unique<assets::YieldingFiles>(
-          openCheckedFiles(), [this] { m_audioSystem.update(); })),
+      m_files(std::make_unique<assets::PrefetchingFiles>(
+          std::make_unique<assets::YieldingFiles>(
+              openCheckedFiles(), [this] { m_audioSystem.update(); }))),
+      m_menuPrefetch(*m_files, m_audioSystem),
       m_session(std::move(startingSession)), m_running(true) {
+  m_options.ntsc = m_videoSystem.isNtsc();
   m_session.version = assets::detectVersion(*m_files);
   m_session.highScores =
       street::core::readHighScoreFile(street::core::HighScoreTable::FILE_NAME)
@@ -152,6 +148,7 @@ void Engine::updateState() {
   }
   std::optional<states::EngineStateId> nextState = m_currentState->update();
   while (nextState) {
+    systems::graphics::pixels::finish();
     switchState(*nextState);
     nextState = m_currentState->update();
   }
@@ -182,7 +179,9 @@ void Engine::switchState(states::EngineStateId nextState) {
     nextState = states::EngineStateId::Level3;
   }
 #endif
-  m_videoSystem.clear();
+  if (!m_session.streetExit) {
+    m_videoSystem.clear();
+  }
   m_currentState.reset();
   m_streetHost.reset();
   m_booting = nextState == states::EngineStateId::Mirage;
@@ -307,6 +306,13 @@ void Engine::switchState(states::EngineStateId nextState) {
         m_session);
     break;
   }
+  if (nextState == states::EngineStateId::HighScore) {
+    m_menuPrefetch.start(m_session.version);
+  } else if (nextState == states::EngineStateId::Menu) {
+    m_menuPrefetch.pause();
+  } else if (nextState != states::EngineStateId::Continue) {
+    m_menuPrefetch.stop();
+  }
 }
 
 states::shared::EngineStreetHost &Engine::makeStreetHost() {
@@ -326,7 +332,9 @@ void Engine::update() {
   }
   m_audioSystem.update();
   updateState();
-  m_audioSystem.setVblRate(m_videoSystem.refreshRate());
+  m_menuPrefetch.step();
+  m_controllerSystem.setEnteringText(m_currentState &&
+                                     m_currentState->isEnteringText());
   m_videoSystem.sync();
 }
 

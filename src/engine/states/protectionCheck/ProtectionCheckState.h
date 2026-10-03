@@ -27,6 +27,7 @@ public:
                        InkeyBuffer &keyboard, Check check = Check::Title);
 
   std::optional<EngineStateId> update() override;
+  bool isEnteringText() const override;
 
   const effects::protection::CodeCardCheck &check() const;
 

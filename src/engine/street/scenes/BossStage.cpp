@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace openfranko::src::engine::street::scenes {
 namespace {
@@ -125,7 +126,9 @@ bool BossStage::isAtRailing() const {
          m_step == Step::RailingGrinned || m_step == Step::RailingDone;
 }
 
-bool BossStage::bobCol(int number) { return m_bobs.collide(number, m_images); }
+bool BossStage::bobCol(int number, int other) {
+  return m_bobs.collide(number, m_images, other, other);
+}
 
 BossStage::Flow BossStage::waitFrames(int frames, Step next) {
   m_step = next;
@@ -146,9 +149,11 @@ BossStage::Flow BossStage::init() {
   if (!m_session.streetExit) {
     throw std::logic_error("BossStage needs the screen the street left");
   }
-  m_screen = m_session.streetExit->screen;
-  m_buffer = m_session.streetExit->buffer ? *m_session.streetExit->buffer
-                                          : core::DoubleBuffer(m_screen);
+  m_screen = std::move(m_session.streetExit->screen);
+  m_buffer = m_session.streetExit->buffer
+                 ? std::move(*m_session.streetExit->buffer)
+                 : core::DoubleBuffer(m_screen);
+  m_buffer.setSprites(m_sprites);
   m_block.emplace(m_session.streetExit->block);
   m_playerX = m_session.streetExit->playerX;
   m_energyShown = m_session.streetExit->energyShown;
@@ -160,25 +165,33 @@ BossStage::Flow BossStage::init() {
 
   m_host.stopMusic();
   m_images.clear();
-  m_loading.queue([this] { m_host.loadMusic(stage() + 603); });
+  m_loading.queueSteps(musicJob(
+      m_host, [this] { return stage() + 603; }, ui::LoadingQueue::FILE_FRAMES));
   return load(Step::BossMusic);
 }
 
 BossStage::Flow BossStage::bossMusic() {
   playMusic();
-  m_loading.queue(
-      [this] { m_columns = m_host.loadScenery(stage() * 10 + 310); });
-  m_loading.queue([this] { m_images.load(1, m_host.loadSpriteSet(0, 0)); });
+  m_loading.queueSteps(
+      [this, load = std::shared_ptr<StreetHost::FramesLoad>()]() mutable {
+        if (!load) {
+          load = m_host.beginScenery(stage() * 10 + 310);
+        }
+        return load->step(m_columns);
+      });
+  constexpr int STEPS = ui::LoadingQueue::FILE_FRAMES;
+  m_loading.queueSteps(
+      spriteSetJob(m_host, m_images, [] { return 0; }, 0, 1, STEPS));
   const int player = 254 - 5 * global(amal::RQ);
-  m_loading.queue([this, player] {
-    m_images.load(11, m_host.loadSpriteSet(player, PLAYER_SAMPLE_BANK));
-  });
-  m_loading.queue([this, player] {
-    m_images.load(38, m_host.loadSpriteSet(player - stage(), 0));
-  });
-  m_loading.queue([this] {
-    m_images.load(43, m_host.loadSpriteSet(201 - stage(), BOSS_SAMPLE_BANK));
-  });
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [player] { return player; }, PLAYER_SAMPLE_BANK, 11,
+      STEPS));
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [this, player] { return player - stage(); }, 0, 38,
+      STEPS));
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [this] { return 201 - stage(); }, BOSS_SAMPLE_BANK, 43,
+      STEPS));
   return load(Step::BossLoaded);
 }
 
@@ -440,8 +453,8 @@ BossStage::Flow BossStage::fightTop() {
     }
   } else {
     const bool attack = m_host.random(10) == 0;
-    const bool touching = bobCol(BOSS) && col(PLAYER);
-    if (attack && touching && idle() && clear() && facingPlayer()) {
+    if (attack && idle() && clear() && facingPlayer() && bobCol(BOSS, PLAYER) &&
+        col(PLAYER)) {
       snapBoss();
       reg(PLAYER_DAMAGE_CHANNEL, 2) =
           word(32 + 64 * actors::amosBool(global(amal::RC) == 0));
@@ -461,8 +474,8 @@ BossStage::Flow BossStage::fightTop() {
   }
 
   if (global(amal::RD) == 1 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
-    if (bobCol(PLAYER) && col(BOSS) && inFront() &&
-        yBob(BOSS) == yBob(PLAYER)) {
+    if (inFront() && yBob(BOSS) == yBob(PLAYER) && bobCol(PLAYER, BOSS) &&
+        col(BOSS)) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
       reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(amal::RC));
       reg(BOSS_DAMAGE_CHANNEL, 2) = 1;
@@ -470,8 +483,8 @@ BossStage::Flow BossStage::fightTop() {
     }
   }
   if (global(amal::RD) == 2 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
-    if (bobCol(PLAYER) && col(BOSS) && inFront() &&
-        yBob(BOSS) == yBob(PLAYER)) {
+    if (inFront() && yBob(BOSS) == yBob(PLAYER) && bobCol(PLAYER, BOSS) &&
+        col(BOSS)) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
       reg(BOSS_DAMAGE_CHANNEL, 3) =
           word(32 + 64 * actors::amosBool(reg(BOSS_DAMAGE_CHANNEL, 1) == 0));
@@ -482,9 +495,9 @@ BossStage::Flow BossStage::fightTop() {
   }
   if (global(amal::RD) == 4 || global(amal::RD) == 5) {
     const int move = global(amal::RD);
-    if (bobCol(PLAYER) && col(BOSS) && reg(BOSS_WALK_CHANNEL, 1) != 1 &&
-        global(amal::RB) == yBob(BOSS) && reg(BOSS_DAMAGE_CHANNEL, 2) != 1 &&
-        reg(BOSS_WALK_CHANNEL, 3) == 0 && facingBoss()) {
+    if (reg(BOSS_WALK_CHANNEL, 1) != 1 && global(amal::RB) == yBob(BOSS) &&
+        reg(BOSS_DAMAGE_CHANNEL, 2) != 1 && reg(BOSS_WALK_CHANNEL, 3) == 0 &&
+        facingBoss() && bobCol(PLAYER, BOSS) && col(BOSS)) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
       reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(amal::RC));
       reg(BOSS_DAMAGE_CHANNEL, 3) =
@@ -494,10 +507,10 @@ BossStage::Flow BossStage::fightTop() {
     }
   }
   if (global(amal::RD) == 6 && reg(BOSS_WALK_CHANNEL, 8) == 0) {
-    if (bobCol(PLAYER) && reg(BOSS_DAMAGE_CHANNEL, 5) == 0 &&
-        global(amal::RC) != reg(BOSS_WALK_CHANNEL, 2) && col(BOSS) &&
+    if (reg(BOSS_DAMAGE_CHANNEL, 5) == 0 &&
+        global(amal::RC) != reg(BOSS_WALK_CHANNEL, 2) &&
         reg(PLAYER_DAMAGE_CHANNEL, 5) == 0 && yBob(PLAYER) == yBob(BOSS) &&
-        facingBoss()) {
+        facingBoss() && bobCol(PLAYER, BOSS) && col(BOSS)) {
       m_machine.freeze(BOSS_WALK_CHANNEL);
       m_machine.freeze(PLAYER_WALK_CHANNEL);
       reg(BOSS_DAMAGE_CHANNEL, 1) = word(0x8000 - global(amal::RC));

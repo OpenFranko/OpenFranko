@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <memory>
 #include <utility>
 
 namespace openfranko::src::engine::street::scenes {
@@ -101,23 +102,35 @@ StreetStage::Flow StreetStage::stageInit() {
   m_columnInChunk = COLUMNS_PER_CHUNK;
   m_chunk = 1;
   m_screenOffsetX = stage() == 2 ? 16 : 0;
-  m_loading.queue([this] { m_host.loadMusic(stage() + 600); });
+  m_loading.queueSteps(musicJob(
+      m_host, [this] { return stage() + 600; }, ui::LoadingQueue::FILE_FRAMES));
   return load(Step::StageMusic);
 }
 
 StreetStage::Flow StreetStage::stageMusic() {
   playMusic();
-  m_loading.queue([this] { m_images.load(1, m_host.loadSpriteSet(0, 0)); });
-  m_loading.queue([this] {
-    m_images.load(11, m_host.loadSpriteSet(255 - 5 * global(amal::RQ), 2));
-  });
-  m_loading.queue([this] { m_opening = m_host.loadPicture(stage() + 903); });
-  m_loading.queue([this] {
-    m_script = m_host.loadLevelScript(stage() + 900);
-    if (m_session.shortLevels) {
-      m_script.length = SHORT_LEVEL_LENGTH;
-    }
-  });
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [] { return 0; }, 0, 1, ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [this] { return 255 - 5 * global(amal::RQ); }, 2, 11,
+      ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps(
+      pictureJob(m_host, [this] { return stage() + 903; }, m_opening, nullptr));
+  m_loading.queueSteps(
+      [this, script = core::LevelScript{},
+       load = std::shared_ptr<StreetHost::LevelScriptLoad>()]() mutable {
+        if (!load) {
+          load = m_host.beginLevelScript(stage() + 900);
+        }
+        if (!load->step(script)) {
+          return false;
+        }
+        m_script = std::move(script);
+        if (m_session.shortLevels) {
+          m_script.length = SHORT_LEVEL_LENGTH;
+        }
+        return true;
+      });
   return load(Step::StageScreen);
 }
 
@@ -286,15 +299,15 @@ StreetStage::Flow StreetStage::refereeMoves() {
   };
 
   if (global(amal::RD) == 2) {
-    bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && reg(i * 2 + 1, 4) == 1 && yBob(PLAYER) < yBob(i) + 6 &&
+      if (reg(i * 2 + 1, 4) == 1 && yBob(PLAYER) < yBob(i) + 6 &&
           yBob(PLAYER) > yBob(i) - 6 && xBob(PLAYER) < 240 &&
           xBob(PLAYER) > 42 && global(amal::RC) != reg(i * 2, 2) &&
           xBob(PLAYER) <
               xBob(i) - 25 * actors::amosBool(global(amal::RC) == 0) &&
           xBob(PLAYER) >
-              xBob(i) + 25 * actors::amosBool(global(amal::RC) != 0)) {
+              xBob(i) + 25 * actors::amosBool(global(amal::RC) != 0) &&
+          bobCol(PLAYER, i, i) && col(i)) {
         const int p = i * 2 + 1;
         m_bobs.setPosition(
             i, xBob(PLAYER) + 24 + 48 * actors::amosBool(global(amal::RC) == 0),
@@ -310,9 +323,9 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 1 || global(amal::RD) == 2) {
-    bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && inFront(i) && yBob(i) == yBob(PLAYER)) {
+      if (inFront(i) && yBob(i) == yBob(PLAYER) && bobCol(PLAYER, i, i) &&
+          col(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         reg(p, 1) = word(0x8000 - global(amal::RC));
@@ -324,9 +337,8 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 3) {
-    bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && yBob(i) == yBob(PLAYER)) {
+      if (yBob(i) == yBob(PLAYER) && bobCol(PLAYER, i, i) && col(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         reg(i * 2, 9) = 0;
@@ -338,10 +350,9 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 4) {
-    bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1 &&
-          reg(i * 2, 3) == 0 && inFront(i)) {
+      if (global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1 &&
+          reg(i * 2, 3) == 0 && inFront(i) && bobCol(PLAYER, i, i) && col(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         reg(p, 1) = word(0x8000 - global(amal::RC));
@@ -353,9 +364,9 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 5) {
-    bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
-      if (col(i) && global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1) {
+      if (global(amal::RB) == yBob(i) && reg(i * 2 + 1, 2) != 1 &&
+          bobCol(PLAYER, i, i) && col(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         reg(p, 1) = reg(i * 2, 2);
@@ -367,10 +378,10 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   if (global(amal::RD) == 6) {
-    bobCol(PLAYER);
     for (int i = 2; i <= 4; ++i) {
       if (reg(i * 2 + 1, 5) == 0 && global(amal::RC) != reg(i * 2, 2) &&
-          col(i) && reg(2, 5) == 0 && yBob(PLAYER) == yBob(i) && inFront(i)) {
+          reg(2, 5) == 0 && yBob(PLAYER) == yBob(i) && inFront(i) &&
+          bobCol(PLAYER, i, i) && col(i)) {
         const int p = i * 2 + 1;
         m_machine.freeze(i * 2);
         m_machine.freeze(1);
@@ -388,9 +399,9 @@ StreetStage::Flow StreetStage::refereeMoves() {
   }
 
   for (int i = 2; i <= 4; ++i) {
-    if (bobCol(i) && col(PLAYER) && global(amal::RD) == 0 &&
-        yBob(PLAYER) == yBob(i) && reg(2, 1) == 0 && reg(i * 2, 9) > 0 &&
-        reg(i * 2, 9) < 4 && reg(i * 2 + 1, 0) == 0) {
+    if (global(amal::RD) == 0 && yBob(PLAYER) == yBob(i) && reg(2, 1) == 0 &&
+        reg(i * 2, 9) > 0 && reg(i * 2, 9) < 4 && reg(i * 2 + 1, 0) == 0 &&
+        bobCol(i, PLAYER, PLAYER) && col(PLAYER)) {
       if ((reg(i * 2, 2) == 0 && xBob(PLAYER) > xBob(i)) ||
           (reg(i * 2, 2) != 0 && xBob(PLAYER) < xBob(i))) {
         m_machine.freeze(1);
@@ -433,13 +444,13 @@ StreetStage::Flow StreetStage::refereeMoves() {
       reg(channel, 0) = 4;
       reg(i * 2 + 1, 3) = 0;
     };
-    if ((i == 2 || i == 4) && bobCol(i) && col(3) && sameDepth()) {
+    if ((i == 2 || i == 4) && sameDepth() && bobCol(i, 3, 3) && col(3)) {
       knockDown(7);
     }
-    if ((i == 3 || i == 2) && bobCol(i) && col(4) && sameDepth()) {
+    if ((i == 3 || i == 2) && sameDepth() && bobCol(i, 4, 4) && col(4)) {
       knockDown(9);
     }
-    if ((i == 3 || i == 4) && bobCol(i) && col(2) && sameDepth()) {
+    if ((i == 3 || i == 4) && sameDepth() && bobCol(i, 2, 2) && col(2)) {
       knockDown(5);
     }
   }
@@ -536,9 +547,13 @@ StreetStage::Flow StreetStage::advanceTop(const StreetInput &input) {
     m_machine.freezeAll();
     m_bobs.setPosition(PLAYER, xBob(PLAYER), (global(amal::RB) / 4) * 4);
     m_bobs.setImage(PLAYER, IDLE_IMAGE + m_facing);
-    m_loading.queue([this] {
-      m_columns = m_host.loadScenery(300 + stage() * 10 + m_chunk);
-    });
+    m_loading.queueSteps(
+        [this, load = std::shared_ptr<StreetHost::FramesLoad>()]() mutable {
+          if (!load) {
+            load = m_host.beginScenery(300 + stage() * 10 + m_chunk);
+          }
+          return load->step(m_columns);
+        });
     return load(Step::AdvanceChunkLoaded);
   }
   return advanceWalk(input);
@@ -571,7 +586,8 @@ StreetStage::Flow StreetStage::advanceWalk(const StreetInput &input) {
   reg(1, 1) = word(bias);
   m_scrollPhase = m_scrollPhase + 1 > 1 ? 0 : m_scrollPhase + 1;
   if (m_scrollPhase == 0) {
-    autoback([column = m_columns.at(static_cast<std::size_t>(m_columnInChunk)),
+    autoback([column = std::move(
+                  m_columns.at(static_cast<std::size_t>(m_columnInChunk))),
               x = stage() == 2 ? 0 : 304](core::IndexedSurface &surface) {
       surface.unpack(column, x, 0);
     });
@@ -615,12 +631,20 @@ StreetStage::Flow StreetStage::advanceLeaveFlushed() {
 }
 
 StreetStage::Flow StreetStage::advanceLeavePasted() {
-  m_session.streetExit.emplace(session::StreetExit{
-      m_screen, *m_block, m_playerX, m_energyShown, m_killsShown, m_buffer});
-  m_block.reset();
+  std::vector<core::Picture>().swap(m_columns);
   m_outcome = Outcome::Cleared;
   m_step = Step::Finished;
   return Flow::Yield;
+}
+
+void StreetStage::handOver() {
+  if (m_outcome != Outcome::Cleared || !m_block) {
+    return;
+  }
+  m_session.streetExit.emplace(
+      session::StreetExit{std::move(m_screen), *m_block, m_playerX,
+                          m_energyShown, m_killsShown, std::move(m_buffer)});
+  m_block.reset();
 }
 
 StreetStage::Flow StreetStage::spawnFlushed() {
@@ -641,6 +665,7 @@ StreetStage::Flow StreetStage::spawnPasted() {
                          wave.slots[1].spriteSet == resident ||
                          wave.slots[2].spriteSet == resident);
   }
+  auto programs = std::make_shared<std::vector<amal::Program>>();
   int slot = 0;
   for (const core::EnemySlot &enemy : wave.slots) {
     bool missing = false;
@@ -669,14 +694,40 @@ StreetStage::Flow StreetStage::spawnPasted() {
       }
       const int spriteSet = enemy.spriteSet;
       const int bank = 4 + slot - 1;
-      m_loading.queue([this, base, spriteSet, bank] {
-        m_images.load(base, m_host.loadSpriteSet(spriteSet, bank));
-      });
+      m_loading.queueSteps(
+          [this, base, spriteSet, bank, programs, loaded = false,
+           load = std::shared_ptr<StreetHost::SpriteSetLoad>()]() mutable {
+            if (!loaded) {
+              if (!load) {
+                load = m_host.beginSpriteSet(spriteSet, bank, base,
+                                             StreetHost::FRAME_BY_FRAME);
+              }
+              loaded = load->step(m_images);
+              return loaded && programs->empty();
+            }
+            m_machine.prepare(programs->back());
+            programs->pop_back();
+            return programs->empty();
+          });
       m_resident[static_cast<std::size_t>(slot)] = enemy.spriteSet;
       m_needed[static_cast<std::size_t>(slot)] = -1;
     }
   }
+  for (const core::EnemySlot &enemy : wave.slots) {
+    if (enemy.spriteSet == core::EnemySlot::EMPTY) {
+      continue;
+    }
+    const auto enemyPrograms =
+        actors::compiled::enemy(imageBase(enemy.spriteSet), enemy.type);
+    programs->push_back(enemyPrograms.walk);
+    programs->push_back(enemyPrograms.damage);
+  }
   return load(Step::SpawnLoaded);
+}
+
+int StreetStage::imageBase(int spriteSet) const {
+  return 0 - 25 * actors::amosBool(m_resident[2] == spriteSet) -
+         50 * actors::amosBool(m_resident[3] == spriteSet);
 }
 
 void StreetStage::spawnLoaded() {
@@ -695,10 +746,8 @@ void StreetStage::spawnLoaded() {
     m_energy[static_cast<std::size_t>(j - 1)] = enemy.energy;
     m_aggression[static_cast<std::size_t>(j - 1)] = enemy.aggression;
     m_bobs.set(j, enemy.x, enemy.y, HIDDEN_IMAGE);
-    const int base = 0 -
-                     25 * actors::amosBool(m_resident[2] == enemy.spriteSet) -
-                     50 * actors::amosBool(m_resident[3] == enemy.spriteSet);
-    const auto programs = actors::compiled::enemy(base, enemy.type);
+    const auto programs =
+        actors::compiled::enemy(imageBase(enemy.spriteSet), enemy.type);
     m_machine.create(j * 2, programs.walk);
     m_machine.create(j * 2 + 1, programs.damage);
   }

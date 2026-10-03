@@ -40,10 +40,17 @@ SCENARIO("YieldingFiles lets the program run after each file it loads") {
     WHEN("They are only looked up") {
       const bool found = files.exists("0385.json");
       const auto listed = files.list("0137");
+      const auto walk = files.walk("0137");
+      std::vector<std::string> walked;
+      std::string_view name;
+      while (walk->next(name)) {
+        walked.emplace_back(name);
+      }
 
       THEN("Nothing yields") {
         REQUIRE(found);
         REQUIRE(listed == std::vector<std::string>{"0137/0137_000.bmp"});
+        REQUIRE(walked == std::vector<std::string>{"0137_000.bmp"});
         REQUIRE(yields == 0);
       }
     }

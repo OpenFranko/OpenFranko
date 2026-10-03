@@ -160,3 +160,28 @@ SCENARIO("loadIndexedBitmap names the file it could not read") {
     }
   }
 }
+
+SCENARIO("mirrored turns a picture round its hot spot") {
+  GIVEN("A 3 x 2 picture with its hot spot one pixel in") {
+    const IndexedBitmap picture{3, 2, 1, 1, {1, 2, 3, 4, 5, 6}, {0x123}};
+
+    WHEN("It is mirrored") {
+      const IndexedBitmap flipped = mirrored(picture);
+
+      THEN("Each row reads backwards") {
+        REQUIRE(flipped.pixels == std::vector<uint8_t>{3, 2, 1, 6, 5, 4});
+      }
+
+      THEN("The hot spot is measured from the other side") {
+        REQUIRE(flipped.hotspotX == 2);
+        REQUIRE(flipped.hotspotY == 1);
+      }
+
+      THEN("Its size and colours stay") {
+        REQUIRE(flipped.width == 3);
+        REQUIRE(flipped.height == 2);
+        REQUIRE(flipped.palette == picture.palette);
+      }
+    }
+  }
+}

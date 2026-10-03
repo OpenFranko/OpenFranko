@@ -19,6 +19,7 @@ public:
   StreetStage(StreetHost &host, session::GameSession &session,
               GameOptions &options);
 
+  void handOver() override;
   int columnsWalked() const;
   int wavesSpawned() const;
   bool isFighting() const;
@@ -83,6 +84,7 @@ private:
   Flow advanceLeavePasted();
   Flow spawnFlushed();
   Flow spawnPasted();
+  int imageBase(int spriteSet) const;
   void spawnLoaded();
   void gameOver();
   void runBasic(const StreetInput &input) override;

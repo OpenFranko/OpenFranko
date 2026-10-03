@@ -7,6 +7,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -277,6 +278,65 @@ SCENARIO("The scheduler's budget and loops") {
     THEN("They run in ascending channel order, sharing RA to RZ") {
       REQUIRE(machine.channelRegister(2, 0) == 5);
       REQUIRE(globals[RZ] == 5);
+    }
+  }
+}
+
+SCENARIO("Loops that change nothing stop where the budget runs out") {
+  GIVEN("Loops alternating between two labels without changing anything") {
+    const std::vector<std::pair<std::string, int16_t>> loops = {
+        {"A:IR0=1JX;JB;B:IR0=1JY;JA;X:LR1=1;P;Y:LR1=2;P;", 1},
+        {"JA;A:IR0=1JX;JB;B:IR0=1JY;JA;X:LR1=1;P;Y:LR1=2;P;", 2},
+        {"JS;S:JA;A:IR0=1JX;JB;B:IR0=1JY;JA;X:LR1=1;P;Y:LR1=2;P;", 1}};
+
+    THEN("The next frame resumes at the tenth jump's label") {
+      for (const auto &[source, resumed] : loops) {
+        Registers globals{};
+        Machine machine(globals);
+        machine.create(1, source);
+        machine.start(1);
+        machine.tick();
+        machine.tick();
+        machine.channelRegister(1, 0) = 1;
+        machine.tick();
+        REQUIRE(machine.channelRegister(1, 1) == resumed);
+      }
+    }
+  }
+
+  GIVEN("A loop rewriting the value it already holds") {
+    Registers globals{};
+    Machine machine(globals);
+    machine.create(1, "A:LR1=R1+1;B:LR2=5;IR0=1JX;JB;X:LR3=R1;P;");
+    machine.start(1);
+    machine.tick();
+    machine.channelRegister(1, 0) = 1;
+    machine.tick();
+
+    THEN("It behaves as if every iteration ran") {
+      REQUIRE(machine.channelRegister(1, 1) == 1);
+      REQUIRE(machine.channelRegister(1, 2) == 5);
+      REQUIRE(machine.channelRegister(1, 3) == 1);
+    }
+  }
+
+  GIVEN("The street player's screen clamp") {
+    Registers globals{};
+    Machine machine(globals);
+    Object player{10, 0, 0};
+    machine.bind(3, &player);
+    machine.create(3, actors::streetPlayer(1).clamp);
+    machine.start(3);
+
+    THEN("It still pulls X back inside the street") {
+      machine.tick();
+      REQUIRE(player.x == 32);
+      player.x = 300;
+      machine.tick();
+      REQUIRE(player.x == 272);
+      player.x = 100;
+      machine.tick();
+      REQUIRE(player.x == 100);
     }
   }
 }

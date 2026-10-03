@@ -9,6 +9,7 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -601,6 +602,32 @@ SCENARIO("The break-dance opens two screens and walks the dancer in") {
   }
 }
 
+SCENARIO("The upcoming frame already holds the dancer's screen") {
+  GIVEN("The farewell dismissed") {
+    Ending ending;
+    EndingScene &scene = ending.scene;
+    ending.reachLastWalkFrame();
+    ending.run(1, JOY_FIRE);
+
+    THEN("The frame before screen 1 is shown already holds it upcoming") {
+      bool unhidden = false;
+      for (int frame = 0; frame < 300 && !unhidden; ++frame) {
+        const bool wasShown = scene.isShown(1);
+        const Display upcoming = scene.upcomingOutput();
+        ending.run(1);
+        if (!wasShown && scene.isShown(1)) {
+          unhidden = true;
+          const int rows = scene.screen(1).height();
+          REQUIRE(std::any_of(
+              upcoming.layers.begin(), upcoming.layers.end(),
+              [rows](const Layer &layer) { return layer.rows == rows; }));
+        }
+      }
+      REQUIRE(unhidden);
+    }
+  }
+}
+
 SCENARIO("Each credit page is pasted in glyphs and flashed by BLYSK2") {
   GIVEN("The first page") {
     Ending ending;
@@ -762,6 +789,48 @@ SCENARIO("The credits come from the JSON that frankoExtract writes") {
       REQUIRE(ending.scene.isShown(0));
       REQUIRE_FALSE(ending.scene.isShowingCredits());
       REQUIRE(ending.scene.page() == 0);
+    }
+  }
+}
+
+SCENARIO("Bobs shown as sprites look the same as bobs drawn in the ending") {
+  GIVEN("Two endings, one on a monitor that shows sprites") {
+    Ending drawn;
+    Ending sprited;
+    sprited.scene.showSprites(true);
+
+    WHEN("Both run to the end, with fire pressed now and then") {
+      int stillSprites = 0;
+      int dancerSprites = 0;
+      std::vector<uint32_t> drawnFrame;
+      std::vector<uint32_t> spritedFrame;
+      for (int frame = 0; frame < 12000 && !drawn.scene.isFinished(); ++frame) {
+        const int16_t joystick = frame % 400 == 399 ? JOY_FIRE : 0;
+        drawn.scene.advance(joystick);
+        sprited.scene.advance(joystick);
+        if (frame % 3 != 0) {
+          continue;
+        }
+        drawn.scene.compose(drawnFrame);
+        sprited.scene.compose(spritedFrame);
+        REQUIRE(spritedFrame == drawnFrame);
+        rasterize(drawn.scene.upcomingOutput(), drawnFrame);
+        const Display upcoming = sprited.scene.upcomingOutput();
+        rasterize(upcoming, spritedFrame);
+        REQUIRE(spritedFrame == drawnFrame);
+        for (const Layer &layer : upcoming.layers) {
+          if (layer.carriesSprites && !layer.sprites.empty()) {
+            ++(sprited.scene.isShowingCredits() ? dancerSprites : stillSprites);
+          }
+        }
+      }
+
+      THEN("Both finish, with the still and the dancer shown as sprites") {
+        REQUIRE(drawn.scene.isFinished());
+        REQUIRE(sprited.scene.isFinished());
+        REQUIRE(stillSprites > 100);
+        REQUIRE(dancerSprites > 100);
+      }
     }
   }
 }

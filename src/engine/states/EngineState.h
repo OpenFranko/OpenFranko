@@ -14,6 +14,7 @@ class EngineState {
 public:
   virtual ~EngineState() = default;
   virtual std::optional<EngineStateId> update() = 0;
+  virtual bool isEnteringText() const { return false; }
 };
 
 } // namespace states

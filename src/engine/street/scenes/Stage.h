@@ -14,6 +14,8 @@
 #include "../ui/StatusPanel.h"
 #include "StreetHost.h"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -33,9 +35,12 @@ public:
 
   virtual ~Stage() = default;
 
+  void showSprites(bool on);
   void advance(const StreetInput &input);
+  virtual void handOver();
   void compose(std::vector<uint32_t> &frame) const;
-  systems::graphics::Display output() const;
+  const systems::graphics::Display &output() const;
+  const systems::graphics::Display &upcomingOutput() const;
 
   Outcome outcome() const;
   const core::BobLayer &bobs() const;
@@ -64,6 +69,7 @@ protected:
   Stage(StreetHost &host, session::GameSession &session, GameOptions &options);
 
   virtual void runBasic(const StreetInput &input) = 0;
+  virtual void settleScreen() const;
 
   static int16_t word(int value);
 
@@ -100,7 +106,7 @@ protected:
   amal::Machine m_machine;
   core::ImageBank m_images;
   core::BobLayer m_bobs;
-  core::IndexedSurface m_screen;
+  mutable core::IndexedSurface m_screen;
   core::DoubleBuffer m_buffer;
   std::unique_ptr<ui::StatusPanel> m_panel;
   amal::Object m_screenDisplay;
@@ -122,6 +128,7 @@ protected:
   bool m_mouseButton = false;
   bool m_musicLoaded = true;
   bool m_holdsWhileClosing = false;
+  bool m_sprites = false;
 
 private:
   enum class Closing {
@@ -135,8 +142,33 @@ private:
 
   Flow closePlayScreen();
   Flow closeWait(int frames);
+  struct CachedOutput {
+    const uint8_t *screenPixels = nullptr;
+    uint32_t spriteVersion = 0;
+    int screenWidth = 0;
+    int screenHeight = 0;
+    effects::color::AmigaPalette palette;
+    amal::Object screenDisplay;
+    int offsetX = 0;
+    const uint8_t *panelPixels = nullptr;
+    int panelWidth = 0;
+    int panelY = 0;
+    effects::color::AmigaPalette panelPalette;
+    ui::StageLayout window;
+    systems::graphics::Display display;
+    uint32_t used = 0;
+    bool valid = false;
+  };
+
+  static constexpr std::size_t CACHED_OUTPUTS = 8;
+
+  const systems::graphics::Display &
+  buildOutput(const ui::StageDisplay &copper,
+              const core::DoubleBuffer::View &screen) const;
 
   Closing m_closing = Closing::Wait;
+  mutable std::array<CachedOutput, CACHED_OUTPUTS> m_outputs;
+  mutable uint32_t m_outputUses = 0;
   core::UpdateHold m_hold;
 };
 

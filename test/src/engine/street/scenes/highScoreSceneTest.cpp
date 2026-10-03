@@ -231,10 +231,10 @@ SCENARIO("State 05 resets the run and reloads the menu music first") {
     pal.run(1);
     ntsc.run(1);
 
-    THEN("Tempo 37+5*SYS follows the Wait 2") {
+    THEN("Tempo 37 follows the Wait 2 in both standards") {
       REQUIRE_FALSE(setDuringWait);
       REQUIRE(pal.host.tempos == std::vector<int>{37});
-      REQUIRE(ntsc.host.tempos == std::vector<int>{32});
+      REQUIRE(ntsc.host.tempos == std::vector<int>{37});
     }
   }
 }

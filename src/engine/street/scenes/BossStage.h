@@ -71,7 +71,7 @@ private:
     Finished
   };
 
-  bool bobCol(int number);
+  bool bobCol(int number, int other);
   Flow waitFrames(int frames, Step next);
   void playRequest(int request);
 

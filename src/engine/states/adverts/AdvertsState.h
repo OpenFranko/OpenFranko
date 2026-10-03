@@ -9,7 +9,9 @@
 #include "../../assets/Files.h"
 #include "../../effects/color/PaletteFader.h"
 #include "../EngineState.h"
+#include "../shared/StepLoader.h"
 
+#include <cstddef>
 #include <optional>
 #include <vector>
 
@@ -49,6 +51,8 @@ private:
   systems::graphics::Monitor &m_monitor;
   systems::input::ControllerSystem &m_controllerSystem;
   std::vector<systems::graphics::IndexedBitmap> m_slides;
+  shared::StepLoader m_loads;
+  std::vector<std::size_t> m_slideLoads;
   VisibleRows m_rows;
   systems::graphics::Canvas m_screen;
   effects::color::AmigaPalette m_palette;

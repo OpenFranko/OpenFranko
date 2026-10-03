@@ -19,12 +19,19 @@ public:
   static constexpr int FILE_FRAMES = READ_FRAMES + UNPACK_FRAMES;
 
   void queue(std::function<void()> load);
+  void queueSteps(std::function<bool()> step);
   bool advance(StatusPanel *panel);
 
 private:
   enum class Phase { Idle, Reading, Unpacking };
 
-  std::deque<std::function<void()>> m_files;
+  struct Job {
+    std::function<void()> load;
+    std::function<bool()> step;
+  };
+
+  std::deque<Job> m_files;
+  std::function<bool()> m_running;
   Phase m_phase = Phase::Idle;
   int m_countdown = 0;
 };

@@ -3,7 +3,12 @@ add_library(Input
     ControllerSystem.h)
 target_include_directories(Input PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-if(DJGPP)
+if(JAGUAR)
+    add_library(Platform
+        JaguarPlatform.cpp
+        Platform.h)
+    target_link_libraries(Platform PUBLIC Input PRIVATE JaguarHardware)
+elseif(DJGPP)
     add_library(Platform
         AllegroPlatform.cpp
         Platform.h)

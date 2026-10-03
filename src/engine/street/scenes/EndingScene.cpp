@@ -95,10 +95,18 @@ EndingScene::EndingScene(StreetHost &host, session::GameSession &session,
       m_display(0, 0), m_ntsc(ntsc),
       m_displayLine(pictureLine(DISPLAY_LINE, ntsc)) {}
 
+void EndingScene::showSprites(bool on) {
+  m_sprites = on;
+  if (m_dancerBuffer) {
+    m_dancerBuffer->setSprites(on);
+  }
+}
+
 void EndingScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
     return;
   }
+  stepCredits();
   if (m_stage) {
     stageFrame();
   }
@@ -134,13 +142,22 @@ void EndingScene::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display EndingScene::output() const {
+  return buildOutput(false);
+}
+
+systems::graphics::Display EndingScene::upcomingOutput() const {
+  return buildOutput(m_step != Step::Finished);
+}
+
+systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
   systems::graphics::Display display;
   display.width = SCREEN_WIDTH;
   display.height = SCREEN_HEIGHT;
   display.displayHeight = SCREEN_HEIGHT;
   display.border = m_border;
   if (m_stageShown && m_stage) {
-    const core::IndexedSurface &shown = m_stage->buffer.shown();
+    const core::IndexedSurface &shown =
+        upcoming ? m_stage->buffer.upcoming() : m_stage->buffer.shown();
     const int rowsPerLine = m_stage->laced ? 2 : 1;
     systems::graphics::Layer stage;
     stage.pixels = shown.pixels().data();
@@ -154,6 +171,7 @@ systems::graphics::Display EndingScene::output() const {
     stage.rows = SCREEN_HEIGHT;
     stage.mask = static_cast<uint8_t>(m_stage->palette.size() - 1);
     stage.palette = m_stage->palette;
+    stage.revision = shown.revision();
     display.layers.push_back(std::move(stage));
   }
   if (const core::IndexedSurface *shown = panel()) {
@@ -166,18 +184,32 @@ systems::graphics::Display EndingScene::output() const {
     layer.columns = ui::StatusPanel::WIDTH;
     layer.rows = ui::StatusPanel::VISIBLE_HEIGHT;
     layer.palette = ui::panelPalette();
+    layer.revision = shown->revision();
     display.layers.push_back(std::move(layer));
   }
   for (int number : {1, 0}) {
     const Screen &screen = m_screens[static_cast<std::size_t>(number)];
-    if (!screen.open || screen.hidden) {
+    const bool unhiding = upcoming && number == 1 && m_dancerCopper;
+    if (!screen.open || (screen.hidden && !unhiding)) {
       continue;
     }
-    const core::IndexedSurface &surface =
-        number == 1 && m_dancerBuffer
-            ? m_dancerBuffer->shown()
-            : (number == m_bobScreen ? m_display : screen.surface);
     systems::graphics::Layer layer;
+    const core::IndexedSurface *dancer = nullptr;
+    if (number == 1 && m_dancerBuffer) {
+      const core::DoubleBuffer::View view = upcoming
+                                                ? m_dancerBuffer->upcomingView()
+                                                : m_dancerBuffer->shownView();
+      dancer = &view.pixels;
+      layer.carriesSprites = m_sprites;
+      layer.sprites = view.sprites;
+    } else if (number == m_bobScreen && m_stillSprited) {
+      layer.carriesSprites = true;
+      layer.sprites = m_stillSprites;
+    }
+    const core::IndexedSurface &surface =
+        dancer ? *dancer
+               : (number == m_bobScreen && !m_stillSprited ? m_display.shown()
+                                                           : screen.surface);
     layer.pixels = surface.pixels().data();
     layer.stride = surface.width();
     layer.sourceColumns = surface.width();
@@ -187,6 +219,7 @@ systems::graphics::Display EndingScene::output() const {
     layer.rows = surface.height();
     layer.mask = static_cast<uint8_t>(screen.palette.size() - 1);
     layer.palette = screen.palette;
+    layer.revision = surface.revision();
     display.layers.push_back(std::move(layer));
   }
   return display;
@@ -393,6 +426,7 @@ void EndingScene::runBasic(int16_t joystick) {
       openScreen(1, DANCER_TOP, DANCER_HEIGHT, DANCER_PALETTE);
       m_screens[1].hidden = true;
       m_dancerBuffer.emplace(m_screens[1].surface);
+      m_dancerBuffer->setSprites(m_sprites);
       m_bobScreen = 1;
       flow = hold(DOUBLE_BUFFER_VBLS, Step::Dance);
       break;
@@ -405,6 +439,7 @@ void EndingScene::runBasic(int16_t joystick) {
       textScreen();
       m_page = 0;
       m_count = 0;
+      finishCredits();
       m_step = m_credits.pages.empty() ? Step::FinalKliker : Step::Page;
       break;
     case Step::Page:
@@ -475,30 +510,52 @@ void EndingScene::start() {
   m_border = ui::STAGE_BORDER;
 }
 
+void EndingScene::stepCredits() {
+  if (m_creditsLoad && m_creditsLoad->step(m_credits)) {
+    m_creditsLoad.reset();
+  }
+}
+
+void EndingScene::finishCredits() {
+  while (m_creditsLoad) {
+    stepCredits();
+  }
+}
+
 void EndingScene::era() {
-  m_credits = m_host.loadEndingCredits();
+  m_credits = core::EndingCredits{};
+  m_creditsLoad = m_host.beginEndingCredits();
   m_panel = std::make_unique<ui::StatusPanel>(
       m_host.loadPanelPicture(StreetHost::LOADING_STRIP), core::Picture{},
       m_session.version);
   m_host.stopMusic();
   m_images.clear();
   m_parked.clear();
-  m_loading.queue([this] {
-    m_images.load(core::ImageBank::FIRST_IMAGE,
-                  m_host.loadSpriteSet(DANCE_SET, 0));
+  m_loading.queueSteps([this, load = spriteSetJob(
+                                  m_host, m_images, [] { return DANCE_SET; }, 0,
+                                  core::ImageBank::FIRST_IMAGE,
+                                  ui::LoadingQueue::FILE_FRAMES)]() mutable {
+    if (!load()) {
+      return false;
+    }
     m_parked = std::move(m_images);
     m_images.clear();
+    return true;
   });
-  m_loading.queue([this] {
-    m_images.load(core::ImageBank::FIRST_IMAGE,
-                  m_host.loadSpriteSet(STILL_SET, 0));
-  });
-  m_loading.queue([this] {
-    m_picture = m_host.loadPicture(STILL_PICTURE);
-    m_picturePalette = m_host.loadPalette(STILL_PICTURE);
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [] { return STILL_SET; }, 0,
+      core::ImageBank::FIRST_IMAGE, ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps([this, load = pictureJob(
+                                  m_host, [] { return STILL_PICTURE; },
+                                  m_picture, &m_picturePalette)]() mutable {
+    if (!load()) {
+      return false;
+    }
     m_picturePalette.resize(STILL_COLORS, effects::color::BLACK);
+    return true;
   });
-  m_loading.queue([this] { m_host.loadMusic(ENDING_TUNE); });
+  m_loading.queueSteps(musicJob(
+      m_host, [] { return ENDING_TUNE; }, ui::LoadingQueue::FILE_FRAMES));
   m_step = Step::Loading;
 }
 
@@ -622,11 +679,18 @@ void EndingScene::closeScreen(int number) {
 
 void EndingScene::redraw() {
   const Screen &screen = m_screens[static_cast<std::size_t>(m_bobScreen)];
+  m_stillSprited = false;
   if (!screen.open || (m_bobScreen == 1 && m_dancerBuffer)) {
     return;
   }
-  m_display = screen.surface;
-  m_stillBobs.draw(m_display, m_images);
+  if (m_sprites &&
+      m_stillBobs.sprites(screen.surface, m_images, m_stillSprites)) {
+    m_stillSprited = true;
+    return;
+  }
+  core::IndexedSurface &display = m_display.compose();
+  display = screen.surface;
+  m_stillBobs.draw(display, m_images);
 }
 
 void EndingScene::stillTest() {

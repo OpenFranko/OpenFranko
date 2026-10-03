@@ -9,6 +9,7 @@
 #include "../core/DoubleBuffer.h"
 #include "../core/EndingCredits.h"
 #include "../core/IndexedSurface.h"
+#include "../core/SurfacePair.h"
 #include "../core/UpdateHold.h"
 #include "../session/GameSession.h"
 #include "../ui/LoadingQueue.h"
@@ -39,9 +40,11 @@ public:
   EndingScene(StreetHost &host, session::GameSession &session,
               bool ntsc = false);
 
+  void showSprites(bool on);
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
   systems::graphics::Display output() const;
+  systems::graphics::Display upcomingOutput() const;
 
   bool isLoading() const;
   bool isShowingStill() const;
@@ -108,11 +111,14 @@ private:
 
   Flow wait(int frames, Step next);
   Flow hold(int frames, Step next);
+  systems::graphics::Display buildOutput(bool upcoming) const;
   void stageFrame();
   bool kliker(int16_t joystick, int frames);
   void runBasic(int16_t joystick);
   void start();
   void era();
+  void stepCredits();
+  void finishCredits();
   void fotoWhite();
   void hideStill();
   void farewell();
@@ -136,8 +142,11 @@ private:
   core::ImageBank m_parked;
   core::BobLayer m_bobs;
   std::array<Screen, 2> m_screens;
-  core::IndexedSurface m_display;
+  core::SurfacePair m_display;
   core::BobLayer m_stillBobs;
+  std::vector<core::Sprite> m_stillSprites;
+  bool m_sprites = false;
+  bool m_stillSprited = false;
   bool m_stillVbl = false;
   std::optional<core::DoubleBuffer> m_dancerBuffer;
   int m_bobScreen = 0;
@@ -152,6 +161,7 @@ private:
   effects::color::AmigaColor m_border = ui::STAGE_BORDER;
   bool m_dancerCopper = false;
   core::EndingCredits m_credits;
+  std::unique_ptr<StreetHost::CreditsLoad> m_creditsLoad;
 
   Step m_step = Step::Start;
   int m_frame = 0;

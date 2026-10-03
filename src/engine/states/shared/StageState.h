@@ -44,12 +44,17 @@ StageState<Stage, NEXT>::StageState(
     street::session::GameSession &session)
     : m_monitor(monitor), m_controllerSystem(controllerSystem),
       m_options(options), m_version(session.version),
-      m_stage(host, session, options) {}
+      m_stage(host, session, options) {
+  m_stage.showSprites(monitor.showsSprites());
+}
 
 template <typename Stage, EngineStateId NEXT>
 std::optional<EngineStateId> StageState<Stage, NEXT>::update() {
   m_stage.advance(readStreetInput(m_controllerSystem, m_version));
-  showStageFrame(m_monitor, m_stage.output(), m_options);
+  showStageFrame(m_monitor,
+                 m_monitor.readsBuffersLive() ? m_stage.upcomingOutput()
+                                              : m_stage.output(),
+                 m_options);
 
   switch (m_stage.outcome()) {
   case Stage::Outcome::GameOver:
@@ -57,6 +62,7 @@ std::optional<EngineStateId> StageState<Stage, NEXT>::update() {
   case Stage::Outcome::Quit:
     return EngineStateId::HighScore;
   case Stage::Outcome::Cleared:
+    m_stage.handOver();
     return NEXT;
   case Stage::Outcome::Playing:
     break;

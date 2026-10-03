@@ -5,6 +5,7 @@
 #include "../../GameOptions.h"
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
+#include "../core/Bobs.h"
 #include "../core/IndexedSurface.h"
 #include "StatusPanel.h"
 
@@ -43,6 +44,7 @@ public:
   void hide();
 
   const StageCopper &live() const;
+  StageDisplay upcoming(bool ntsc) const;
   StageLayout window(bool laced) const;
   int panelY(bool laced) const;
 
@@ -64,13 +66,16 @@ void switchStandard(GameOptions &options, amal::Object &screenDisplay,
 const effects::color::AmigaPalette &levelPalette(bool mono);
 const effects::color::AmigaPalette &panelPalette();
 
-systems::graphics::Display
-stageOutput(const core::IndexedSurface *display,
-            const effects::color::AmigaPalette &palette,
-            const amal::Object &screenDisplay, int offsetX,
-            const StatusPanel *panel, int panelY,
-            const effects::color::AmigaPalette &panelColors,
-            const StageLayout &window);
+void stageOutput(systems::graphics::Display &output,
+                 const core::IndexedSurface *display,
+                 const effects::color::AmigaPalette &palette,
+                 const amal::Object &screenDisplay, int offsetX,
+                 const StatusPanel *panel, int panelY,
+                 const effects::color::AmigaPalette &panelColors,
+                 const StageLayout &window,
+                 const std::vector<core::Sprite> *sprites = nullptr);
+bool updateSprites(systems::graphics::Display &output,
+                   const std::vector<core::Sprite> &sprites);
 void composeFrame(std::vector<uint32_t> &frame,
                   const core::IndexedSurface *display,
                   const effects::color::AmigaPalette &palette,

@@ -21,6 +21,8 @@ void VideoSystem::setNtsc(bool enabled) { m_ntsc = enabled; }
 
 bool VideoSystem::isNtsc() const { return m_ntsc; }
 
+bool VideoSystem::readsBuffersLive() const { return false; }
+
 int VideoSystem::refreshRate() const { return m_ntsc ? NTSC_HERTZ : PAL_HERTZ; }
 
 } // namespace openfranko::src::systems::graphics

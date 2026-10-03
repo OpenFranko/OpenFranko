@@ -48,6 +48,13 @@ std::optional<int> BlyskSequence::page() const {
   return m_pasted ? std::optional<int>(m_page) : std::nullopt;
 }
 
+std::optional<int> BlyskSequence::nextPage() const {
+  return !m_finished && m_page + 1 < m_endPage ? std::optional<int>(m_page + 1)
+                                               : std::nullopt;
+}
+
+bool BlyskSequence::isSteady() const { return m_pasted && !m_fader.isFading(); }
+
 const color::AmigaPalette &BlyskSequence::palette() const { return m_palette; }
 
 bool BlyskSequence::isFinished() const { return m_finished; }

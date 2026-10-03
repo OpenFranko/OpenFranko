@@ -12,7 +12,9 @@ option(SKIP_COPY_PROTECTION "Skip the code card checks" OFF)
 include(CheckCXXSymbolExists)
 check_cxx_symbol_exists(__DJGPP__ "" DJGPP)
 
-if(DJGPP)
+if(JAGUAR)
+    enable_language(ASM)
+elseif(DJGPP)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(XMP REQUIRED IMPORTED_TARGET libxmp)
     add_compile_definitions(ALLEGRO_HAVE_STDINT_H)
@@ -34,7 +36,16 @@ else()
     set(XMP_TARGET PkgConfig::XMP)
 endif()
 
+if(JAGUAR)
+    add_subdirectory(src/systems/jaguar)
+endif()
+
 add_subdirectory(src)
+
+if(JAGUAR)
+    add_subdirectory(test/jaguar)
+    return()
+endif()
 
 if(BUILD_TOOLS OR BUILD_TESTS)
     add_subdirectory(lib)

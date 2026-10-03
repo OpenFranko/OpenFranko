@@ -13,7 +13,9 @@
 #include "../../street/session/GameSession.h"
 #include "../EngineState.h"
 
+#include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace openfranko {
@@ -32,12 +34,24 @@ public:
 
   std::optional<EngineStateId> update() override;
 
+  static std::vector<std::string> menuPaths(GameVersion version);
+  static std::vector<std::string> attractPaths(GameVersion version);
+  static std::string tunePath(GameVersion version);
+
 private:
+  enum class AttractLoad { Title, Hiscores, Letters, Done };
+
+  void loadAttractStep();
+  void loadAttract();
+  bool loadAttractPicture(int resource,
+                          systems::graphics::IndexedBitmap &picture);
   void
   advanceAttract(const effects::sequences::MenuSequence::Joystick &joystick);
   void switchStandard();
   void startAttract();
   void drawMenu();
+  bool menuSprites();
+  const systems::graphics::IndexedBitmap &mirroredBob(std::size_t index);
   void drawAttract();
   void drawAttractPicture();
   void drawHiscoreRow(int row);
@@ -46,22 +60,29 @@ private:
   systems::graphics::Monitor &m_monitor;
   systems::audio::Speaker &m_speaker;
   systems::input::ControllerSystem &m_controllerSystem;
+  assets::Files &m_files;
   GameOptions &m_options;
   street::session::GameSession &m_session;
   systems::graphics::IndexedBitmap m_backdrop;
   systems::graphics::IndexedBitmap m_title;
   systems::graphics::IndexedBitmap m_hiscores;
   std::vector<systems::graphics::IndexedBitmap> m_menuBobs;
+  std::vector<systems::graphics::IndexedBitmap> m_mirroredBobs;
+  std::vector<systems::graphics::Sprite> m_sprites;
   std::vector<systems::graphics::IndexedBitmap> m_letters;
   systems::graphics::Canvas m_menuScreen;
   systems::graphics::Canvas m_attractScreen;
   effects::sequences::MenuSequence m_menu;
   effects::color::AmigaPalette m_titlePalette;
   effects::color::AmigaPalette m_hiscorePalette;
+  AttractLoad m_attractLoad = AttractLoad::Title;
+  std::unique_ptr<assets::Files::BitmapLoad> m_pictureLoad;
   std::optional<effects::sequences::AttractSequence> m_attract;
   effects::sequences::AttractSequence::Kind m_nextAttract =
       effects::sequences::AttractSequence::Kind::Title;
+  bool m_backdropShown = false;
   int m_attractTop = 0;
+  int m_rowsDrawn = 0;
   int m_attractClosing = 0;
   int m_musicWait = 0;
 };

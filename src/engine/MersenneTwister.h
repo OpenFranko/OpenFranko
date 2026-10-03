@@ -21,6 +21,7 @@ public:
   explicit MersenneTwister(result_type seed);
 
   result_type operator()();
+  result_type upTo(result_type limit);
 
 private:
   std::array<uint32_t, STATE_SIZE> m_state{};

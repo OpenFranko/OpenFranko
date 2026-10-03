@@ -18,6 +18,7 @@ env:
   LINUX_PACKAGE: OpenFranko-linux-x86_64.tar.gz
   WINDOWS_PACKAGE: OpenFranko-windows-x86_64.zip
   DOS_PACKAGE: OpenFranko-dos.zip
+  JAGUAR_PACKAGE: OpenFranko-jaguar.zip
 
 jobs:
   linux:
@@ -43,8 +44,10 @@ jobs:
         run: |
           mkdir -p package/OpenFranko
           cp build/src/OpenFranko build/tools/converter/frankoExtract \
-            README.md LICENSE package/OpenFranko/
-          strip package/OpenFranko/OpenFranko package/OpenFranko/frankoExtract
+            build/tools/converter/makeCartridge README.md LICENSE \
+            package/OpenFranko/
+          strip package/OpenFranko/OpenFranko package/OpenFranko/frankoExtract \
+            package/OpenFranko/makeCartridge
           tar -czf "$LINUX_PACKAGE" -C package OpenFranko
       - uses: actions/upload-artifact@v7
         with:
@@ -86,7 +89,8 @@ jobs:
         run: |
           mkdir -p package/OpenFranko
           cp build/src/OpenFranko.exe build/tools/converter/frankoExtract.exe \
-            README.md LICENSE package/OpenFranko/
+            build/tools/converter/makeCartridge.exe README.md LICENSE \
+            package/OpenFranko/
           strip package/OpenFranko/*.exe
           dlls=$(objdump -p package/OpenFranko/*.exe | grep 'DLL Name')
           echo "$dlls"
@@ -137,10 +141,42 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
+  jaguar:
+    name: Atari Jaguar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: |
+            build-jaguar/deps
+            build-jaguar/jaguar-sdk/tools/bin
+          key: jaguar-${{ hashFiles('build-jaguar.sh') }}
+      - name: Build
+        run: ./build-jaguar.sh
+      - name: Build the on-target tests
+        run: >-
+          cmake --build build-jaguar/m68k -j "$(nproc)"
+          --target jaguarSelfTest jaguarProfileGame
+      - name: Package
+        run: |
+          mkdir -p package/OpenFranko
+          cp build-jaguar/game/franko-jaguar.bin build-jaguar/m68k/src/franko.elf \
+            README.md LICENSE package/OpenFranko/
+          cd package
+          zip -r "../$JAGUAR_PACKAGE" OpenFranko
+      - uses: actions/upload-artifact@v7
+        with:
+          path: ${{ env.JAGUAR_PACKAGE }}
+          archive: false
+          if-no-files-found: error
+          overwrite: true
+
   release:
     name: Release
     if: github.ref_type == 'tag'
-    needs: [linux, windows, dos]
+    needs: [linux, windows, dos, jaguar]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -158,7 +194,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           packages=("dist/$LINUX_PACKAGE" "dist/$WINDOWS_PACKAGE"
-            "dist/$DOS_PACKAGE")
+            "dist/$DOS_PACKAGE" "dist/$JAGUAR_PACKAGE")
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" "${packages[@]}" --clobber
           else

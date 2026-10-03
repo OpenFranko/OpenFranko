@@ -139,34 +139,42 @@ void GameOverScene::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display GameOverScene::output() const {
+  return buildOutput(m_shown, m_border, m_shownOffset,
+                     m_buffer ? &m_buffer->shown() : nullptr);
+}
+
+systems::graphics::Display GameOverScene::upcomingOutput() const {
+  if (m_step == Step::Finished) {
+    return output();
+  }
+  return buildOutput(m_copperShown, m_copperBorder, m_copperOffset,
+                     m_buffer ? &m_buffer->upcoming() : nullptr);
+}
+
+systems::graphics::Display
+GameOverScene::buildOutput(bool shown, effects::color::AmigaColor border,
+                           int offset,
+                           const core::IndexedSurface *screen) const {
   systems::graphics::Display display;
   display.width = SCREEN_WIDTH;
   display.height = SCREEN_HEIGHT;
   display.displayHeight = SCREEN_HEIGHT;
-  display.border = m_border;
-  if (!m_shown || !m_buffer) {
+  display.border = border;
+  if (!shown || !screen) {
     return display;
   }
-  const core::IndexedSurface &shown = m_buffer->shown();
   systems::graphics::Layer layer;
-  layer.pixels = shown.pixels().data();
-  layer.stride = shown.width();
+  layer.pixels = screen->pixels().data();
+  layer.stride = screen->width();
   layer.sourceColumns = PICTURE_WIDTH;
   layer.sourceRows = PICTURE_HEIGHT;
-  layer.sourceX = m_shownOffset;
+  layer.sourceX = offset;
   layer.wrap = true;
   layer.columns = SCREEN_WIDTH;
   layer.rows = SCREEN_HEIGHT;
   layer.palette = m_palette;
-  const int top = std::max(RAINBOW_Y, FIRST_RAINBOW_LINE);
-  const int size = static_cast<int>(m_rainbow.size());
-  for (int row = 0; m_rainbowShown && size > 0 && row < SCREEN_HEIGHT; ++row) {
-    const int line = SCREEN_TOP + row;
-    if (line >= top && line < top + RAINBOW_LINES) {
-      layer.rowColors.push_back({row, 0,
-                                 m_rainbow[static_cast<std::size_t>(
-                                     (RAINBOW_BASE + line - top) % size)]});
-    }
+  if (m_rainbowShown) {
+    layer.rowColors = m_rainbowRows;
   }
   display.layers.push_back(std::move(layer));
   return display;
@@ -191,10 +199,13 @@ void GameOverScene::close() {
   m_images.clear();
   m_shown = false;
   m_copperShown = false;
-  m_loading.queue(
-      [this] { m_images.load(1, m_host.loadSpriteSet(OBJECTS, 0)); });
-  m_loading.queue([this] { m_picture = m_host.loadPicture(GRAVEYARD); });
-  m_loading.queue([this] { m_host.loadMusic(GAME_OVER_TUNE); });
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [] { return OBJECTS; }, 0, 1,
+      ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps(
+      pictureJob(m_host, [] { return GRAVEYARD; }, m_picture, nullptr));
+  m_loading.queueSteps(musicJob(
+      m_host, [] { return GAME_OVER_TUNE; }, ui::LoadingQueue::FILE_FRAMES));
 }
 
 GameOverScene::Flow GameOverScene::wait(int frames, Step next) {
@@ -213,8 +224,19 @@ void GameOverScene::unpack() {
 
 void GameOverScene::open() {
   m_palette = graveyardPalette();
-  m_rainbow = effects::color::rainbowTable(
+  const effects::color::AmigaPalette rainbow = effects::color::rainbowTable(
       RAINBOW_ENTRIES, "(8,-1,15)(16,1,15)", "", "(8,1,15)(16,-1,15)");
+  m_rainbowRows.clear();
+  const int top = std::max(RAINBOW_Y, FIRST_RAINBOW_LINE);
+  const int size = static_cast<int>(rainbow.size());
+  for (int row = 0; size > 0 && row < SCREEN_HEIGHT; ++row) {
+    const int line = SCREEN_TOP + row;
+    if (line >= top && line < top + RAINBOW_LINES) {
+      m_rainbowRows.push_back({row, 0,
+                               rainbow[static_cast<std::size_t>(
+                                   (RAINBOW_BASE + line - top) % size)]});
+    }
+  }
   m_rainbowShown = true;
   m_bobs.set(HAND, HAND_X, HAND_Y, HAND_IMAGE);
   m_bobs.set(TITLE, PINNED_X, TITLE_Y, TITLE_IMAGE);

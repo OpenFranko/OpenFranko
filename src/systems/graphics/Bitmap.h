@@ -23,6 +23,7 @@ struct IndexedBitmap {
 IndexedBitmap readIndexedBitmap(const uint8_t *data, std::size_t size);
 IndexedBitmap readIndexedBitmap(const std::vector<uint8_t> &file);
 IndexedBitmap loadIndexedBitmap(const std::string &path);
+IndexedBitmap mirrored(const IndexedBitmap &image);
 
 } // namespace graphics
 } // namespace systems

@@ -79,12 +79,20 @@ SCENARIO("Asset paths follow the extractor's layout") {
   GIVEN("A directory with a bank's samples") {
     const TemporaryPath directory("openFrankoAssetsSamples");
     touch(directory.path() / "s50/s50_sam2_13160Hz.wav");
+    touch(directory.path() / "s50/s50_sam20_8000Hz.wav");
+    touch(directory.path() / "s50/s50_sam2_notes.txt");
     touch(directory.path() / "s50/s50_002.bmp");
     const std::string root = directory.path().string();
 
     THEN("Pictures, images, parts and tunes have fixed names") {
       REQUIRE(assets::picturePath("p54", root) == root + "/p54.bmp");
       REQUIRE(assets::imagePath("s50", 7, root) == root + "/s50/s50_007.bmp");
+      REQUIRE(assets::imagePath("s50", 0, root) == root + "/s50/s50_000.bmp");
+      REQUIRE(assets::imagePath("s50", 42, root) == root + "/s50/s50_042.bmp");
+      REQUIRE(assets::imagePath("s50", 999, root) == root + "/s50/s50_999.bmp");
+      REQUIRE(assets::imagePath("s50", 1000, root) ==
+              root + "/s50/s50_1000.bmp");
+      REQUIRE(assets::imagePath("s50", -1, root) == root + "/s50/s50_-01.bmp");
       REQUIRE(assets::partPath("p51", 0, root) == root + "/p51/p51.bmp");
       REQUIRE(assets::partPath("p51", 2, root) == root + "/p51/p51_2.bmp");
       REQUIRE(assets::musicPath("m11", root) == root + "/m11.s3m");

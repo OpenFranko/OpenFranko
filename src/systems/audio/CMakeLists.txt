@@ -1,7 +1,29 @@
+if(JAGUAR)
+    add_library(Audio
+        Mixer.h
+        S3m.cpp
+        S3m.h
+        Speaker.h
+        Tracker.cpp
+        Tracker.h
+        Wave.cpp
+        Wave.h)
+    target_include_directories(Audio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
+    add_library(AudioSystem
+        AudioSystem.h
+        JaguarAudioSystem.cpp)
+    target_link_libraries(AudioSystem PUBLIC Audio PRIVATE JaguarHardware)
+    return()
+endif()
+
 add_library(Audio
     Mixer.cpp
     Mixer.h
+    S3m.cpp
+    S3m.h
     Speaker.h
+    Tracker.cpp
+    Tracker.h
     Wave.cpp
     Wave.h)
 target_include_directories(Audio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)

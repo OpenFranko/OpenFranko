@@ -2,7 +2,6 @@
 
 #include "../../../../../src/engine/AmigaDisplay.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
-#include "../../../../../src/systems/audio/Mixer.h"
 #include "../../../../../src/systems/input/ControllerSystem.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
@@ -18,7 +17,6 @@ using namespace openfranko::src::engine::street::scenes;
 using namespace openfranko::src::engine::street::session;
 using namespace openfranko::src::engine::street::core;
 using namespace openfranko::src::engine::amal;
-using namespace openfranko::src::systems::audio;
 using namespace openfranko::src::systems::input;
 using namespace openfranko::test::src::engine::street::scenes;
 using namespace openfranko::test::src::engine::street::core;
@@ -26,7 +24,7 @@ using namespace openfranko::test::src::engine::street::core;
 namespace {
 
 constexpr int MACH_WAIT = 40;
-constexpr int VOICE_BANK = 10;
+constexpr int NO_SAMPLES = 0;
 constexpr uint8_t HAND_INK = 18;
 constexpr uint8_t QUESTION_INK = 31;
 constexpr uint32_t PURPLE = 0xFF770077u;
@@ -76,9 +74,9 @@ SCENARIO("The continue screen is drawn on the cleared hiscore screen") {
     Choice choice;
     choice.run(1);
 
-    THEN("The letter set is loaded again, with its voices") {
+    THEN("The letter set is loaded again, without its voices") {
       REQUIRE(choice.host.spriteSets ==
-              std::vector<std::pair<int, int>>{{0x35, VOICE_BANK}});
+              std::vector<std::pair<int, int>>{{0x35, NO_SAMPLES}});
     }
 
     THEN("Colour 0 is purple and only the text and hand colours are lit") {
@@ -164,9 +162,9 @@ SCENARIO("Fire waggles the hand through MACH, then the choice is taken") {
         REQUIRE(choice.scene.isContinueChosen());
       }
 
-      THEN("After Wait 40, the chosen character's voice plays, Screen Close 1 "
-           "drops the screen two VBLs later and holds BASIC four, then the "
-           "run starts again from the first stage") {
+      THEN("After Wait 40, Screen Close 1 drops the screen two VBLs later "
+           "without a voice and holds BASIC four, then the run starts again "
+           "from the first stage") {
         choice.run(MACH_WAIT - 22);
         REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::Choosing);
         REQUIRE(choice.scene.isShown());
@@ -176,7 +174,7 @@ SCENARIO("Fire waggles the hand through MACH, then the choice is taken") {
         choice.run(1);
         REQUIRE_FALSE(choice.scene.isShown());
         REQUIRE_FALSE(choice.scene.bobs().isActive(ContinueScene::HAND));
-        REQUIRE(choice.host.played(VOICE_BANK, 1, Mixer::ALL_VOICES));
+        REQUIRE(choice.host.samples.empty());
         REQUIRE(choice.pixel(48, 124) == PURPLE);
         REQUIRE(choice.session.border == 0x707);
         choice.run(1);
@@ -192,9 +190,9 @@ SCENARIO("Fire waggles the hand through MACH, then the choice is taken") {
       choice.run(1, JOY_FIRE);
       choice.run(MACH_WAIT + SCREEN_CLOSE_VBLS);
 
-      THEN("The voice plays as well, and it is back to the menu with the "
+      THEN("No voice plays either, and it is back to the menu with the "
            "stage left alone") {
-        REQUIRE(choice.host.played(VOICE_BANK, 1, Mixer::ALL_VOICES));
+        REQUIRE(choice.host.samples.empty());
         REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::NewGame);
         REQUIRE(choice.session.registers[RO] == -1);
       }

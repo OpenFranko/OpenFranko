@@ -48,6 +48,7 @@ public:
   const color::AmigaPalette &palette() const;
   const std::string &keysRead() const;
   bool isAttractDue() const;
+  int idleFrames() const;
   bool isScreenShown() const;
   bool isFinished() const;
 

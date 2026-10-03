@@ -194,6 +194,10 @@ void ProtectionCheckState::draw() {
 
 void ProtectionCheckState::show() { m_monitor.show(m_screen.output()); }
 
+bool ProtectionCheckState::isEnteringText() const {
+  return m_step == Step::Ask;
+}
+
 const effects::protection::CodeCardCheck &ProtectionCheckState::check() const {
   return m_check;
 }

@@ -274,6 +274,36 @@ SCENARIO("The picture pans 5 px every 4 frames under the pinned title") {
   }
 }
 
+SCENARIO("The upcoming frame is the next one and keeps the title pinned") {
+  GIVEN("The graveyard panning under its title") {
+    Graveyard graveyard;
+    graveyard.run(OPENED_FRAME + 1);
+
+    THEN("Each upcoming frame is shown after the next update, title at 104") {
+      for (int frame = 0; frame < 40; ++frame) {
+        const openfranko::src::systems::graphics::Display upcoming =
+            graveyard.scene.upcomingOutput();
+        std::vector<uint32_t> pixels;
+        openfranko::src::systems::graphics::rasterize(upcoming, pixels);
+        int left = -1;
+        for (int x = 0; x < GameOverScene::SCREEN_WIDTH && left < 0; ++x) {
+          if (pixels[static_cast<std::size_t>(80 * GameOverScene::SCREEN_WIDTH +
+                                              x)] == RED) {
+            left = x;
+          }
+        }
+        REQUIRE(left == 104);
+        graveyard.run(1);
+        const openfranko::src::systems::graphics::Display shown =
+            graveyard.scene.output();
+        REQUIRE(upcoming.layers.size() == shown.layers.size());
+        REQUIRE(upcoming.layers[0].pixels == shown.layers[0].pixels);
+        REQUIRE(upcoming.layers[0].sourceX == shown.layers[0].sourceX);
+      }
+    }
+  }
+}
+
 SCENARIO("KLIKER, Fade 5 and SCICH close the scene") {
   GIVEN("The pan has ended") {
     Graveyard graveyard;

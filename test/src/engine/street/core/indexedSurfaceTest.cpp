@@ -202,3 +202,45 @@ SCENARIO("Draw handles wide pictures four pixels at a time") {
     }
   }
 }
+
+SCENARIO("A surface gets a new revision whenever its pixels may change") {
+  GIVEN("A surface") {
+    IndexedSurface surface(16, 8);
+    const IndexedSurface other(16, 8);
+
+    THEN("Reading it keeps the revision") {
+      const uint32_t revision = surface.revision();
+      REQUIRE(surface.pixel(1, 1) == 0);
+      REQUIRE(surface.pixels().size() == 16 * 8);
+      REQUIRE(surface.revision() == revision);
+    }
+
+    THEN("Every kind of drawing changes it") {
+      uint32_t revision = surface.revision();
+      const auto changed = [&] {
+        const bool fresh = surface.revision() != revision;
+        revision = surface.revision();
+        return fresh;
+      };
+      surface.fill(3);
+      REQUIRE(changed());
+      surface.clear(1, 0, 0, 4, 4);
+      REQUIRE(changed());
+      surface.copy(other, 0, 0, 8, 8, 2, 2);
+      REQUIRE(changed());
+      surface.unpack(solid(8, 2, 5), 0, 0);
+      REQUIRE(changed());
+      surface.draw(solid(4, 4, 6), 3, 3, false, false);
+      REQUIRE(changed());
+      surface.reshape(8, 8);
+      REQUIRE(changed());
+      surface = other;
+      REQUIRE(changed());
+    }
+
+    THEN("A copy of it has its own revision") {
+      const IndexedSurface copy = surface;
+      REQUIRE(copy.revision() != surface.revision());
+    }
+  }
+}

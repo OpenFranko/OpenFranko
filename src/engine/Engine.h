@@ -7,8 +7,9 @@
 #include "../systems/input/Platform.h"
 #include "GameOptions.h"
 #include "MersenneTwister.h"
-#include "assets/Files.h"
+#include "assets/PrefetchingFiles.h"
 #include "states/EngineState.h"
+#include "states/menu/MenuPrefetch.h"
 #include "states/shared/EngineStreetHost.h"
 #include "street/session/GameSession.h"
 
@@ -40,7 +41,8 @@ private:
 
   systems::input::Platform m_platform;
   systems::audio::AudioSystem m_audioSystem;
-  std::unique_ptr<assets::Files> m_files;
+  std::unique_ptr<assets::PrefetchingFiles> m_files;
+  states::menu::MenuPrefetch m_menuPrefetch;
   systems::graphics::VideoSystem m_videoSystem;
   systems::input::ControllerSystem m_controllerSystem;
   GameOptions m_options;

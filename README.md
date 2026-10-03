@@ -170,13 +170,82 @@ DOSBox Staging (in DOSBox-X, set `cputype=pentium_ii`). The game's own code and
 libxmp avoid Pentium Pro instructions (`-march=i586`), as DOSBox-X's fast CPU
 core mis-emulates the Pentium Pro floating point comparisons.
 
+## Atari Jaguar
+
+The Jaguar version runs the game on the console's 68000. TOM draws the
+picture: its Object Processor shows the screen layers, its blitter draws the
+sprites and scenery, and its GPU changes the palette between lines like the
+Amiga's copper. JERRY's DSP mixes the music and the sound effects at about
+22 kHz, with the Amiga's low-pass filter; the 68000 reads the S3M modules and
+tells the DSP what each voice plays.
+
+It needs CMake, curl, git, make and a C++ compiler for the computer you build
+on. `build-jaguar.sh` downloads an `m68k-elf` GCC 15.2 with C++ support and
+newlib from [toolchain68k](https://github.com/haarer/toolchain68k) into
+`build-jaguar/toolchain` (about 320 MB, checked against its SHA-256). It runs
+on x86-64 Linux and uses the GMP, MPFR, MPC, isl and zstd libraries that a
+native GCC needs too. To use an installed toolchain instead, set
+`JAGUAR_TOOLCHAIN_PREFIX`, e.g. `JAGUAR_TOOLCHAIN_PREFIX=m68k-elf-` with the
+AUR packages `m68k-elf-gcc` and `m68k-elf-newlib` on Arch. It also fetches the
+[Jaguar SDK](https://github.com/cubanismo/jaguar-sdk) at a fixed commit into
+`build-jaguar/jaguar-sdk` and builds its `rmac` assembler and `jagcrypt`. The
+script then builds the game into `build-jaguar`, packs the extracted game
+data with it and writes a 4 MB cartridge image,
+`build-jaguar/game/franko.j64`:
+
+```
+./build-jaguar.sh --assets <assets_dir>
+```
+
+To use an SDK whose `maketools.sh` has already built its tools, pass
+`--sdk <jaguar_sdk_dir>`; nothing is fetched either when `rmac` is on the
+`PATH`. Options starting with `-D` are passed to CMake, e.g.
+`-DSKIP_COPY_PROTECTION=ON`. The image plays the version of the game that was
+extracted into `<assets_dir>`, 1.0 or 1.2. When the SDK's `jagcrypt` is found,
+the image gets the encrypted boot block that a console checks before it starts
+a cartridge, so it runs on a console from a flash cartridge as well as in
+emulators like BigPEmu; without `jagcrypt` it only runs in emulators.
+
+The script always writes the Jaguar program as
+`build-jaguar/game/franko-jaguar.bin`. With `--assets` it hands it to
+`makeCartridge`, a tool built with `-DBUILD_TOOLS=ON`, which packs the game
+data behind it and writes the cartridge image; the release packages use the
+same tool, see [Releases](#releases).
+
+The joypad plays like the Amiga joystick: the pad moves Franko and A, B and C
+are fire (Space). The keypad stands in for the keyboard: 1 to 4 are F1 to F4, 9
+is F9, `*` and Pause are Esc, `#` is Del, and Option is the mouse button. When
+the game asks for a name for the high score table or for a letter from the code
+card, a keyboard opens at the top of the screen: left and right move to the
+next letter, up and down jump five, A types the letter, B deletes one, and C is
+Return. For the code card a smaller keyboard opens over the "Podaj kod!"
+button, so the grid and the colours stay visible, and it starts on the blank,
+so pressing fire does not answer by accident. Outside the game itself, 0 shows
+or hides that keyboard. Option and 0 together show how many frames the game
+keeps up with and how much memory it uses; building with
+`-DJAGUAR_DEBUG_OVERLAY=ON` shows that from the start.
+
+The console sets the frame rate: 50 Hz on a PAL console, like a PAL Amiga, and
+60 Hz on an NTSC console, where the game starts in its NTSC mode and runs
+faster, as it did on an NTSC Amiga. The game's PAL and NTSC keys switch its
+screen layout, not the console's video standard; an NTSC TV shows 241 of the
+256 lines of the PAL layout. The high score table is kept in the cartridge's
+EEPROM; with an empty or damaged EEPROM the game starts with its usual table.
+
+The 68000 keeps up with the game. In BigPEmu on an NTSC console, where a frame
+is shortest, fights update 59 or 60 of the 60 frames each second; a PAL
+console has 20% more time per frame. When the game changes screens, loading
+can hold a black or still picture for a few more frames, at most about a
+third of a second. The music keeps its tempo even when a frame is missed.
+
 # Releases
 
 GitHub Actions (`.github/workflows/ci-cd.yml`) builds OpenFranko for Linux,
-Windows and DOS and runs the tests on Linux and Windows for every pull request
-and every push to `main`, and keeps the packages it makes on the run's summary
-page. Pushing a tag that starts with `v` builds them the same way and
-publishes them as a GitHub release:
+Windows, DOS and the Atari Jaguar, runs the tests on Linux and Windows and
+compiles the Jaguar's on-target test programs for every pull request and
+every push to `main`, and keeps the packages it makes on the run's summary
+page. Pushing a tag that starts with `v` builds them the
+same way and publishes them as a GitHub release:
 
 ```
 git tag v1.0
@@ -191,18 +260,35 @@ The packages hold no game data. Extract it with their `frankoExtract` as
 described below, and run the game from the directory that holds `assets` or
 `assets.tar`:
 
-- `OpenFranko-linux-x86_64.tar.gz` holds `OpenFranko` and `frankoExtract`.
+- `OpenFranko-linux-x86_64.tar.gz` holds `OpenFranko`, `frankoExtract` and
+  `makeCartridge`.
   They are built on Ubuntu 24.04, so they need it or a newer distribution, and
   the SDL2 and libxmp libraries (`libsdl2-2.0-0` and `libxmp4` on Debian and
   Ubuntu).
-- `OpenFranko-windows-x86_64.zip` holds `OpenFranko.exe` and
-  `frankoExtract.exe`, which need no DLLs.
+- `OpenFranko-windows-x86_64.zip` holds `OpenFranko.exe`, `frankoExtract.exe`
+  and `makeCartridge.exe`, which need no DLLs.
 - `OpenFranko-dos.zip` holds `franko.exe` and `CWSDPMI.EXE`. Extract the game
   data with the Linux or Windows package, pack the `assets` directory with
   `tar --format=ustar -cf assets.tar assets` (Windows 10 and newer have `tar`
   too) and put `assets.tar` next to `franko.exe`. CWSDPMI is by Charles W
   Sandmann, see `cwsdpmi.doc`; its source code is at
   <https://www.delorie.com/pub/djgpp/current/v2misc/csdpmi7s.zip>.
+
+- `OpenFranko-jaguar.zip` holds `franko-jaguar.bin`, the Atari Jaguar
+  program, and `franko.elf`, its symbols for reading the address on a crash
+  screen. Extract the game data with the Linux or Windows package and make
+  a cartridge image with its `makeCartridge`:
+
+  ```
+  makeCartridge -p franko-jaguar.bin -i assets -o franko.j64
+  ```
+
+  The image plays the version that was extracted, 1.0 or 1.2, and runs in
+  emulators like BigPEmu. A console only starts a cartridge with a signed
+  boot block: add `-j <jagcrypt>` to sign it with `jagcrypt` from the
+  [Jaguar SDK](https://github.com/cubanismo/jaguar-sdk), whose `maketools.sh`
+  builds it. `jagcrypt` is not in the packages because it comes with no
+  license that allows passing it on.
 
 # FrankoExtract
 

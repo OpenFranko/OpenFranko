@@ -8,6 +8,7 @@
 #include "../core/Bobs.h"
 #include "../core/HighScoreTable.h"
 #include "../core/IndexedSurface.h"
+#include "../core/SurfacePair.h"
 #include "../session/GameSession.h"
 #include "../ui/LoadingQueue.h"
 #include "StreetHost.h"
@@ -103,7 +104,7 @@ private:
   effects::color::AmigaPalette m_picturePalette;
   core::IndexedSurface m_screen;
   core::IndexedSurface m_scratch;
-  core::IndexedSurface m_display;
+  core::SurfacePair m_display;
   effects::color::AmigaPalette m_palette;
   effects::color::PaletteFader m_fader;
 

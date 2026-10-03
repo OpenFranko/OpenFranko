@@ -8,11 +8,24 @@ add_library(Graphics
     IndexedRasterizer.cpp
     IndexedRasterizer.h
     Monitor.h
+    PixelOps.h
     ScreenMode.cpp
     ScreenMode.h)
 target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-if(DJGPP)
+if(JAGUAR)
+    target_sources(Graphics PRIVATE JaguarPixelOps.cpp)
+    target_link_libraries(Graphics PRIVATE JaguarHardware)
+else()
+    target_sources(Graphics PRIVATE PixelOps.cpp)
+endif()
+
+if(JAGUAR)
+    add_library(VideoSystem
+        JaguarVideoSystem.cpp
+        VideoSystem.h)
+    target_link_libraries(VideoSystem PUBLIC Graphics PRIVATE JaguarHardware)
+elseif(DJGPP)
     add_library(VideoSystem
         AllegroVideoSystem.cpp
         VideoSystem.cpp

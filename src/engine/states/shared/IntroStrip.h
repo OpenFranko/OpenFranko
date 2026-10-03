@@ -33,6 +33,7 @@ public:
 
 private:
   void paste(int page);
+  void preload(int page);
   void pasteGlyph(int x, int y, int image);
   const systems::graphics::IndexedBitmap *glyph(int image);
 
@@ -45,6 +46,9 @@ private:
   systems::graphics::Canvas m_frame;
   systems::graphics::IndexedBitmap m_strip;
   std::optional<int> m_pasted;
+  bool m_stripDrawn = false;
+  std::optional<int> m_preloading;
+  std::vector<int> m_waiting;
 };
 
 } // namespace shared

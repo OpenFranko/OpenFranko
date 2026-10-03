@@ -21,3 +21,12 @@ target_link_libraries(${STREET_CONTROLS_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain StatesShared)
 add_test(NAME ${STREET_CONTROLS_TEST_TARGET}
     COMMAND ${STREET_CONTROLS_TEST_TARGET})
+
+set(ENGINE_STREET_HOST_TEST_TARGET engineStreetHostTest)
+add_executable(${ENGINE_STREET_HOST_TEST_TARGET}
+    engineStreetHostTest.cpp)
+target_link_libraries(${ENGINE_STREET_HOST_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets StatesShared StreetCore
+            packedArchive)
+add_test(NAME ${ENGINE_STREET_HOST_TEST_TARGET}
+    COMMAND ${ENGINE_STREET_HOST_TEST_TARGET})
