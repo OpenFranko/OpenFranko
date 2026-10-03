@@ -46,6 +46,8 @@ public:
   bool intersects(int left, int top, int width, int height) const;
   void draw(const Picture &picture, int left, int top, bool flipX, bool flipY,
             bool opaque = false);
+  void draw(const uint8_t *pixels, int width, int height, int left, int top,
+            bool opaque);
 
 private:
   int m_width;

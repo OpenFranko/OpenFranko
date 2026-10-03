@@ -44,7 +44,9 @@ StageState<Stage, NEXT>::StageState(
     street::session::GameSession &session)
     : m_monitor(monitor), m_controllerSystem(controllerSystem),
       m_options(options), m_version(session.version),
-      m_stage(host, session, options) {}
+      m_stage(host, session, options) {
+  m_stage.showSprites(monitor.showsSprites());
+}
 
 template <typename Stage, EngineStateId NEXT>
 std::optional<EngineStateId> StageState<Stage, NEXT>::update() {

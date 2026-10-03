@@ -16,6 +16,7 @@ public:
   virtual void setNtsc(bool enabled) = 0;
   virtual bool isNtsc() const = 0;
   virtual bool readsBuffersLive() const { return false; }
+  virtual bool showsSprites() const { return false; }
 };
 
 } // namespace graphics

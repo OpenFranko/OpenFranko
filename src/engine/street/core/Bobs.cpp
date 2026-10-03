@@ -14,6 +14,8 @@ namespace {
 
 constexpr int SIGN_BIT = 0x8000;
 constexpr std::size_t MIRROR_BYTES = 131072;
+constexpr int16_t NO_MIRROR = -1;
+constexpr int SPRITE_ALIGNMENT = 8;
 
 struct Shape {
   ImageBank::Mask mask;
@@ -348,10 +350,17 @@ uint32_t rangeBits(int from, int to) {
 
 void ImageBank::clear() {
   systems::graphics::pixels::finish();
+  for (Entry &entry : m_entries) {
+    retire(std::move(entry.picture.pixels));
+  }
+  for (Mirror &mirror : m_mirrors) {
+    retire(std::move(mirror.picture.pixels));
+  }
   m_entries.clear();
   m_outlines.clear();
   m_boxes.clear();
   m_mirrors.clear();
+  m_mirrorSlots.clear();
   m_mirrorBytes = 0;
 }
 
@@ -374,6 +383,7 @@ void ImageBank::grow(std::size_t end) {
     m_entries.resize(end);
     m_outlines.resize(end);
     m_boxes.resize(end);
+    m_mirrorSlots.resize(end, NO_MIRROR);
   }
 }
 
@@ -397,6 +407,7 @@ void ImageBank::store(std::size_t number, Picture &&picture) {
     outline.box = maskBox(rows, height);
   }
   entry.loaded = picture.width > 0 && picture.height > 0;
+  retire(std::move(entry.picture.pixels));
   entry.picture = std::move(picture);
   entry.orientation = 0;
   entry.masked = true;
@@ -471,31 +482,40 @@ const Picture *ImageBank::mirrored(int number) {
     return nullptr;
   }
   ++m_mirrorUses;
-  for (Mirror &mirror : m_mirrors) {
-    if (mirror.number == number) {
-      mirror.used = m_mirrorUses;
-      return &mirror.picture;
-    }
+  const int16_t found = m_mirrorSlots[static_cast<std::size_t>(number)];
+  if (found != NO_MIRROR) {
+    Mirror &mirror = m_mirrors[static_cast<std::size_t>(found)];
+    mirror.used = m_mirrorUses;
+    mirror.pass = m_pass;
+    return &mirror.picture;
   }
   const std::size_t bytes = original->pixels.size();
   if (bytes == 0 || bytes > MIRROR_BYTES) {
     return nullptr;
   }
   if (m_mirrorBytes + bytes > MIRROR_BYTES) {
-    systems::graphics::pixels::finish();
+    if (!m_beforeRetire) {
+      systems::graphics::pixels::finish();
+    }
     while (m_mirrorBytes + bytes > MIRROR_BYTES) {
-      const auto oldest =
-          std::min_element(m_mirrors.begin(), m_mirrors.end(),
-                           [](const Mirror &left, const Mirror &right) {
-                             return left.used < right.used;
-                           });
-      m_mirrorBytes -= oldest->picture.pixels.size();
-      m_mirrors.erase(oldest);
+      std::size_t oldest = m_mirrors.size();
+      for (std::size_t slot = 0; slot < m_mirrors.size(); ++slot) {
+        const Mirror &mirror = m_mirrors[slot];
+        if (mirror.pass != m_pass && (oldest == m_mirrors.size() ||
+                                      mirror.used < m_mirrors[oldest].used)) {
+          oldest = slot;
+        }
+      }
+      if (oldest == m_mirrors.size()) {
+        return nullptr;
+      }
+      dropMirror(oldest);
     }
   }
   Mirror mirror;
   mirror.number = number;
   mirror.used = m_mirrorUses;
+  mirror.pass = m_pass;
   mirror.picture.width = original->width;
   mirror.picture.height = original->height;
   mirror.picture.hotX = original->hotX;
@@ -506,17 +526,65 @@ const Picture *ImageBank::mirrored(int number) {
       {mirror.picture.pixels.data(), original->width}, original->width,
       original->height, false, true);
   m_mirrorBytes += bytes;
+  m_mirrorSlots[static_cast<std::size_t>(number)] =
+      static_cast<int16_t>(m_mirrors.size());
   m_mirrors.push_back(std::move(mirror));
   return &m_mirrors.back().picture;
 }
 
+const Picture *ImageBank::spriteImage(int number, uint16_t flags) {
+  if (number <= 0 || static_cast<std::size_t>(number) >= m_entries.size()) {
+    return nullptr;
+  }
+  Entry &entry = m_entries[static_cast<std::size_t>(number)];
+  if (!entry.loaded) {
+    return nullptr;
+  }
+  const uint16_t wanted = flags & (FLIP_X | FLIP_Y);
+  if (entry.orientation != wanted) {
+    entry.orientation = wanted;
+    refreshBox(static_cast<std::size_t>(number));
+  }
+  if ((flags & FLIP_Y) || !entry.masked) {
+    return nullptr;
+  }
+  return (flags & FLIP_X) ? mirrored(number) : &entry.picture;
+}
+
 void ImageBank::forgetMirror(int number) {
-  for (auto mirror = m_mirrors.begin(); mirror != m_mirrors.end(); ++mirror) {
-    if (mirror->number == number) {
-      m_mirrorBytes -= mirror->picture.pixels.size();
-      m_mirrors.erase(mirror);
-      return;
-    }
+  if (static_cast<std::size_t>(number) >= m_mirrorSlots.size()) {
+    return;
+  }
+  const int16_t slot = m_mirrorSlots[static_cast<std::size_t>(number)];
+  if (slot != NO_MIRROR) {
+    dropMirror(static_cast<std::size_t>(slot));
+  }
+}
+
+void ImageBank::dropMirror(std::size_t slot) {
+  Mirror &mirror = m_mirrors[slot];
+  m_mirrorBytes -= mirror.picture.pixels.size();
+  retire(std::move(mirror.picture.pixels));
+  m_mirrorSlots[static_cast<std::size_t>(mirror.number)] = NO_MIRROR;
+  m_mirrors.erase(m_mirrors.begin() + static_cast<std::ptrdiff_t>(slot));
+  for (std::size_t later = slot; later < m_mirrors.size(); ++later) {
+    m_mirrorSlots[static_cast<std::size_t>(m_mirrors[later].number)] =
+        static_cast<int16_t>(later);
+  }
+}
+
+void ImageBank::setBeforeRetire(std::function<void(const uint8_t *)> hook) {
+  m_beforeRetire = std::move(hook);
+}
+
+void ImageBank::beginPass() { ++m_pass; }
+
+void ImageBank::releaseRetired() { m_retired.clear(); }
+
+void ImageBank::retire(std::vector<uint8_t> &&pixels) {
+  if (m_beforeRetire && !pixels.empty()) {
+    m_beforeRetire(pixels.data());
+    m_retired.push_back(std::move(pixels));
   }
 }
 
@@ -667,35 +735,50 @@ bool BobLayer::collided(int number) const {
 const std::vector<BobLayer::Placement> &
 BobLayer::placements(const IndexedSurface &surface,
                      const ImageBank &images) const {
-  m_order.clear();
-  std::array<uint32_t, BOBS> keys;
-  for (int word = 0; word < MASK_WORDS; ++word) {
-    int number = word * MASK_BITS;
-    for (uint32_t bits = m_active[static_cast<std::size_t>(word)]; bits != 0;
-         bits >>= 1, ++number) {
-      const Bob &bob = m_bobs[static_cast<std::size_t>(number)];
-      if ((bits & 1u) == 0 || !bob.active) {
-        continue;
+  if (m_ordered != m_active) {
+    m_order.clear();
+    for (int word = 0; word < MASK_WORDS; ++word) {
+      int number = word * MASK_BITS;
+      for (uint32_t bits = m_active[static_cast<std::size_t>(word)]; bits != 0;
+           bits >>= 1, ++number) {
+        if ((bits & 1u) != 0) {
+          m_order.push_back(number);
+        }
       }
-      const uint32_t key =
-          static_cast<uint32_t>(static_cast<uint16_t>(bob.object.y ^ SIGN_BIT))
-              << 16 |
-          static_cast<uint16_t>(bob.object.x ^ SIGN_BIT);
-      std::size_t at = m_order.size();
-      m_order.push_back(number);
-      while (at > 0 && keys[at - 1] > key) {
-        m_order[at] = m_order[at - 1];
-        keys[at] = keys[at - 1];
-        --at;
-      }
-      m_order[at] = number;
-      keys[at] = key;
     }
+    m_ordered = m_active;
+  }
+  int *const order = m_order.data();
+  int *const orderEnd = order + m_order.size();
+  uint32_t *keys = m_keys.data();
+  for (const int *number = order; number != orderEnd; ++number) {
+    const amal::Object &object =
+        m_bobs[static_cast<std::size_t>(*number)].object;
+    *keys++ = static_cast<uint32_t>(static_cast<uint16_t>(object.y ^ SIGN_BIT))
+                  << 16 |
+              static_cast<uint16_t>(object.x ^ SIGN_BIT);
+  }
+  keys = m_keys.data();
+  for (int *next = order + 1; next < orderEnd; ++next) {
+    const int number = *next;
+    uint32_t *const nextKey = keys + (next - order);
+    const uint32_t key = *nextKey;
+    int *to = next;
+    uint32_t *toKey = nextKey;
+    while (to != order &&
+           (toKey[-1] > key || (toKey[-1] == key && to[-1] > number))) {
+      *to = to[-1];
+      *toKey = toKey[-1];
+      --to;
+      --toKey;
+    }
+    *to = number;
+    *toKey = key;
   }
 
   m_placed.clear();
-  for (int number : m_order) {
-    const amal::Object &bob = m_bobs[static_cast<std::size_t>(number)].object;
+  for (const int *number = order; number != orderEnd; ++number) {
+    const amal::Object &bob = m_bobs[static_cast<std::size_t>(*number)].object;
     const uint16_t image = static_cast<uint16_t>(bob.image);
     const Picture *picture = images.find(image & ImageBank::NUMBER_MASK);
     if (!picture) {
@@ -705,13 +788,15 @@ BobLayer::placements(const IndexedSurface &surface,
     const int left = bob.x - hotX(*picture, flags);
     const int top = bob.y - hotY(*picture, flags);
     if (surface.intersects(left, top, picture->width, picture->height)) {
-      m_placed.push_back({number, picture, flags, left, top});
+      m_placed.push_back(
+          {picture, left, top, static_cast<int16_t>(*number), flags});
     }
   }
   return m_placed;
 }
 
 void BobLayer::draw(IndexedSurface &surface, ImageBank &images) const {
+  images.beginPass();
   drawPlaced(surface, images, placements(surface, images));
 }
 
@@ -738,6 +823,7 @@ void BobLayer::drawPlaced(IndexedSurface &surface, ImageBank &images,
 
 std::size_t BobLayer::drawSaving(IndexedSurface &surface, ImageBank &images,
                                  std::vector<SavedArea> &saved) const {
+  images.beginPass();
   std::size_t count = 0;
   const std::vector<Placement> &placedBobs = placements(surface, images);
   for (const Placement &placed : placedBobs) {
@@ -776,6 +862,77 @@ void BobLayer::restore(IndexedSurface &surface,
     const SavedArea &area = saved[index];
     surface.copy(area.pixels, 0, 0, area.pixels.width(), area.pixels.height(),
                  area.left, area.top);
+  }
+}
+
+bool BobLayer::sprites(const IndexedSurface &surface, ImageBank &images,
+                       std::vector<Sprite> &out) const {
+  out.clear();
+  images.beginPass();
+  const std::vector<Placement> &placedBobs = placements(surface, images);
+  if (placedBobs.size() > systems::graphics::SPRITE_SLOTS) {
+    return false;
+  }
+  for (const Placement &placed : placedBobs) {
+    const int index =
+        static_cast<uint16_t>(
+            m_bobs[static_cast<std::size_t>(placed.number)].object.image) &
+        ImageBank::NUMBER_MASK;
+    const Picture *picture = images.spriteImage(index, placed.flags);
+    if (!picture) {
+      return false;
+    }
+    if (picture->width % SPRITE_ALIGNMENT != 0 || picture->pixels.empty() ||
+        reinterpret_cast<uintptr_t>(picture->pixels.data()) %
+                SPRITE_ALIGNMENT !=
+            0) {
+      return false;
+    }
+    out.push_back({picture->pixels.data(), static_cast<int16_t>(picture->width),
+                   static_cast<int16_t>(picture->height), placed.left,
+                   placed.top});
+  }
+  return true;
+}
+
+std::size_t BobLayer::bake(IndexedSurface &surface,
+                           const std::vector<Sprite> &sprites,
+                           std::vector<SavedArea> &saved) {
+  std::size_t count = 0;
+  for (const Sprite &sprite : sprites) {
+    const int words = (sprite.width + WORD_PIXELS - 1) / WORD_PIXELS +
+                      ((sprite.left & (WORD_PIXELS - 1)) != 0 ? 1 : 0);
+    const int start = wordStart(sprite.left);
+    const int x1 = std::max(start, 0);
+    const int x2 = std::min(start + words * WORD_PIXELS, surface.width());
+    const int y1 = std::max(sprite.top, 0);
+    const int y2 = std::min(sprite.top + sprite.height, surface.height());
+    if (x1 >= x2 || y1 >= y2) {
+      continue;
+    }
+    if (count == saved.size()) {
+      saved.emplace_back();
+    }
+    SavedArea &area = saved[count++];
+    area.left = x1;
+    area.top = y1;
+    area.pixels.reshape(x2 - x1, y2 - y1);
+  }
+  for (std::size_t index = 0; index < count; ++index) {
+    SavedArea &area = saved[index];
+    area.pixels.copy(surface, area.left, area.top,
+                     area.left + area.pixels.width(),
+                     area.top + area.pixels.height(), 0, 0);
+  }
+  stamp(surface, sprites);
+  return count;
+}
+
+void BobLayer::stamp(IndexedSurface &surface,
+                     const std::vector<Sprite> &sprites) {
+  for (const Sprite &sprite : sprites) {
+    surface.draw(sprite.pixels, sprite.width, sprite.height, sprite.left,
+                 sprite.top, false);
   }
 }
 

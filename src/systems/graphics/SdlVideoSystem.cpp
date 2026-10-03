@@ -141,6 +141,8 @@ VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
 
 VideoSystem::~VideoSystem() = default;
 
+bool VideoSystem::showsSprites() const { return true; }
+
 void VideoSystem::present() {
   if (m_window->toggleWanted.exchange(false)) {
     m_window->toggleFullscreen(refreshRate());

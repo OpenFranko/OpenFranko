@@ -80,6 +80,8 @@ uint64_t stopPhrase();
 uint64_t gpuPhrase(int halfLine, uint32_t data);
 void bitmapPhrases(const BitmapObject &object, uint32_t link, uint64_t *out);
 void rewriteBitmap(const BitmapObject &object, uint64_t *phrases);
+void rewriteSprite(uint64_t *phrases, uint32_t data, int x, int y, int height,
+                   int dataWidth, int imageWidth, int firstPixel);
 bool isScaledBitmap(uint64_t phrase);
 
 } // namespace jaguar

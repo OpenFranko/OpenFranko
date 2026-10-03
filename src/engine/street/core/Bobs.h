@@ -1,6 +1,7 @@
 #ifndef ENGINE_STREET_CORE_BOBS_H_
 #define ENGINE_STREET_CORE_BOBS_H_
 
+#include "../../../systems/graphics/Display.h"
 #include "../../../systems/graphics/PixelOps.h"
 #include "../../amal/Machine.h"
 #include "IndexedSurface.h"
@@ -22,6 +23,8 @@ using Paste = std::function<void(int x, int y, int image)>;
 using RowSpan = systems::graphics::pixels::Span;
 
 using MaskBox = systems::graphics::pixels::Bounds;
+
+using Sprite = systems::graphics::Sprite;
 
 class ImageBank {
 public:
@@ -57,6 +60,10 @@ public:
   void noMask(int number);
   bool isMasked(int number) const;
   const Picture *mirrored(int number);
+  const Picture *spriteImage(int number, uint16_t flags);
+  void setBeforeRetire(std::function<void(const uint8_t *)> hook);
+  void beginPass();
+  void releaseRetired();
   const Box *box(int number) const {
     if (number <= 0 || static_cast<std::size_t>(number) >= m_boxes.size()) {
       return nullptr;
@@ -84,6 +91,7 @@ private:
   struct Mirror {
     int number = 0;
     uint32_t used = 0;
+    uint32_t pass = 0;
     Picture picture;
   };
 
@@ -91,13 +99,19 @@ private:
   void store(std::size_t number, Picture &&picture);
   void refreshBox(std::size_t number);
   void forgetMirror(int number);
+  void dropMirror(std::size_t slot);
+  void retire(std::vector<uint8_t> &&pixels);
 
   std::vector<Entry> m_entries;
   std::vector<Outline> m_outlines;
   std::vector<Box> m_boxes;
   std::vector<Mirror> m_mirrors;
+  std::vector<int16_t> m_mirrorSlots;
   std::size_t m_mirrorBytes = 0;
   uint32_t m_mirrorUses = 0;
+  uint32_t m_pass = 0;
+  std::function<void(const uint8_t *)> m_beforeRetire;
+  std::vector<std::vector<uint8_t>> m_retired;
 };
 
 struct SavedArea {
@@ -135,6 +149,9 @@ public:
   uint32_t activeBits(int word) const {
     return m_active[static_cast<std::size_t>(word)];
   }
+  const amal::Object &placedObject(int number) const {
+    return m_bobs[static_cast<std::size_t>(number)].object;
+  }
 
   bool collide(int number, const ImageBank &images, int first = 0,
                int last = BOBS - 1);
@@ -145,16 +162,23 @@ public:
                          std::vector<SavedArea> &saved) const;
   static void restore(IndexedSurface &surface,
                       const std::vector<SavedArea> &saved, std::size_t count);
+  bool sprites(const IndexedSurface &surface, ImageBank &images,
+               std::vector<Sprite> &out) const;
+  static std::size_t bake(IndexedSurface &surface,
+                          const std::vector<Sprite> &sprites,
+                          std::vector<SavedArea> &saved);
+  static void stamp(IndexedSurface &surface,
+                    const std::vector<Sprite> &sprites);
   static bool paste(IndexedSurface &surface, ImageBank &images, int x, int y,
                     int image);
 
 private:
   struct Placement {
-    int number = 0;
     const Picture *picture = nullptr;
-    uint16_t flags = 0;
     int left = 0;
     int top = 0;
+    int16_t number = 0;
+    uint16_t flags = 0;
   };
 
   const std::vector<Placement> &placements(const IndexedSurface &surface,
@@ -173,6 +197,8 @@ private:
   std::array<uint32_t, MASK_WORDS> m_active{};
   std::array<uint32_t, MASK_WORDS> m_hits{};
   mutable std::vector<int> m_order;
+  mutable std::array<uint32_t, BOBS> m_keys{};
+  mutable std::array<uint32_t, MASK_WORDS> m_ordered{};
   mutable std::vector<Placement> m_placed;
 };
 

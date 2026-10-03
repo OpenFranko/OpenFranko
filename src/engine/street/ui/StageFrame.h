@@ -5,6 +5,7 @@
 #include "../../GameOptions.h"
 #include "../../amal/Machine.h"
 #include "../../effects/color/AmigaPalette.h"
+#include "../core/Bobs.h"
 #include "../core/IndexedSurface.h"
 #include "StatusPanel.h"
 
@@ -71,7 +72,10 @@ void stageOutput(systems::graphics::Display &output,
                  const amal::Object &screenDisplay, int offsetX,
                  const StatusPanel *panel, int panelY,
                  const effects::color::AmigaPalette &panelColors,
-                 const StageLayout &window);
+                 const StageLayout &window,
+                 const std::vector<core::Sprite> *sprites = nullptr);
+bool updateSprites(systems::graphics::Display &output,
+                   const std::vector<core::Sprite> &sprites);
 void composeFrame(std::vector<uint32_t> &frame,
                   const core::IndexedSurface *display,
                   const effects::color::AmigaPalette &palette,

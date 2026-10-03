@@ -53,6 +53,14 @@ struct FrameMemory {
   TranslationBuffers *buffers = nullptr;
   uint8_t *linePhrases = nullptr;
   int lineCapacity = 0;
+  uint8_t *maskPhrase = nullptr;
+};
+
+using SpriteLists = std::vector<std::vector<graphics::Sprite>>;
+
+struct SpriteSlots {
+  std::size_t layer = 0;
+  std::array<int, graphics::SPRITE_SLOTS> objects{};
 };
 
 struct BuiltFrame {
@@ -75,6 +83,7 @@ struct BuiltFrame {
   std::vector<int> layerTranslations;
   int lineObject = -1;
   int lineLayer = -1;
+  std::vector<SpriteSlots> spriteSlots;
 };
 
 Placement placeDisplay(const graphics::Display &display,
@@ -91,6 +100,9 @@ struct Overlay {
 };
 
 bool sameLayout(const graphics::Display &left, const graphics::Display &right);
+bool sameLayers(const graphics::Display &left, const graphics::Display &right);
+bool sameSprites(const graphics::Display &left, const graphics::Display &right);
+bool sameSprites(const graphics::Display &display, const SpriteLists &sprites);
 void allowCopper(bool allowed);
 void buildFrame(const graphics::Display &display, const Geometry &geometry,
                 const FrameMemory &memory, const Overlay *overlays,
@@ -98,6 +110,12 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
 bool scrollFrame(const graphics::Display &display,
                  const graphics::Display &built, const Geometry &geometry,
                  const FrameMemory &memory, BuiltFrame &frame);
+bool moveSprites(const graphics::Display &display,
+                 const graphics::Display &built, const Geometry &geometry,
+                 const FrameMemory &memory, BuiltFrame &frame);
+bool moveSprites(const graphics::Display &built, const SpriteLists &sprites,
+                 const Geometry &geometry, const FrameMemory &memory,
+                 BuiltFrame &frame);
 void translateOnCpu(const Translation &translation);
 
 } // namespace jaguar

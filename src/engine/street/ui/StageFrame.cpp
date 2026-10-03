@@ -128,7 +128,8 @@ void stageOutput(systems::graphics::Display &output,
                  const amal::Object &screenDisplay, int offsetX,
                  const StatusPanel *panel, int panelY,
                  const effects::color::AmigaPalette &panelColors,
-                 const StageLayout &window) {
+                 const StageLayout &window,
+                 const std::vector<core::Sprite> *sprites) {
   const int rows = frameRows(window);
   const int perLine = rowsPerLine(window);
   const int top = frameTop(window);
@@ -153,6 +154,10 @@ void stageOutput(systems::graphics::Display &output,
     screen.columns = FRAME_WIDTH;
     screen.rows = rows;
     screen.palette.assign(palette.begin(), palette.end());
+    if (sprites) {
+      screen.carriesSprites = true;
+      screen.sprites.assign(sprites->begin(), sprites->end());
+    }
   }
   const core::IndexedSurface &panelSurface = panel->surface();
   systems::graphics::Layer &panelLayer = freshLayer(output, index++);
@@ -170,6 +175,15 @@ void stageOutput(systems::graphics::Display &output,
   border.rows = scaled(FIRST_VISIBLE_LINE - top, perLine);
   border.columns = FRAME_WIDTH;
   border.palette.assign(1, BORDER_COLOR);
+}
+
+bool updateSprites(systems::graphics::Display &output,
+                   const std::vector<core::Sprite> &sprites) {
+  if (output.layers.empty() || !output.layers.front().carriesSprites) {
+    return false;
+  }
+  output.layers.front().sprites.assign(sprites.begin(), sprites.end());
+  return true;
 }
 
 void composeFrame(std::vector<uint32_t> &frame,

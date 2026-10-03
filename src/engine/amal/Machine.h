@@ -81,6 +81,8 @@ public:
 private:
   enum class Form : uint8_t {
     Generic,
+    Pause,
+    Jump,
     LetValue,
     Let,
     IfEqual,

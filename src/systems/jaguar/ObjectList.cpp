@@ -19,6 +19,14 @@ uint64_t field(uint64_t value, int bits, int shift) {
 
 uint64_t linkField(uint32_t link) { return field(link >> 3, 19, LINK_SHIFT); }
 
+uint64_t phrase(uint32_t high, uint32_t low) {
+  return static_cast<uint64_t>(high) << 32 | low;
+}
+
+uint32_t bits(int value, int count, int shift) {
+  return (static_cast<uint32_t>(value) & ((1u << count) - 1)) << shift;
+}
+
 } // namespace
 
 uint64_t branchPhrase(int halfLine, Branch condition, uint32_t link) {
@@ -34,24 +42,24 @@ uint64_t gpuPhrase(int halfLine, uint32_t data) {
 }
 
 void bitmapPhrases(const BitmapObject &object, uint32_t link, uint64_t *out) {
-  out[0] = (object.scaled ? SCALED_TYPE : BITMAP_TYPE) |
-           field(static_cast<uint64_t>(object.y), 11, 3) |
-           field(static_cast<uint64_t>(object.height), 10, 14) |
-           linkField(link) | field(object.data >> 3, 21, 43);
-  out[1] = field(static_cast<uint64_t>(object.x), 12, 0) |
-           field(static_cast<uint64_t>(object.depth), 3, 12) |
-           field(static_cast<uint64_t>(object.pitch), 3, 15) |
-           field(static_cast<uint64_t>(object.dataWidth), 10, 18) |
-           field(static_cast<uint64_t>(object.imageWidth), 10, 28) |
-           field(static_cast<uint64_t>(object.index), 7, 38) |
-           field(object.reflected ? 1 : 0, 1, 45) |
-           field(object.transparent ? 1 : 0, 1, 47) |
-           field(object.released ? 1 : 0, 1, 48) |
-           field(static_cast<uint64_t>(object.firstPixel), 6, 49);
+  const uint32_t next = (link >> 3) & 0x7FFFF;
+  const uint32_t type = object.scaled ? SCALED_TYPE : BITMAP_TYPE;
+  out[0] = phrase((object.data >> 3) << 11 | next >> 8,
+                  type | bits(object.y, 11, 3) | bits(object.height, 10, 14) |
+                      (next & 0xFF) << 24);
+  const int imageWidth = object.imageWidth & 0x3FF;
+  out[1] = phrase(
+      bits(imageWidth >> 4, 6, 0) | bits(object.index, 7, 6) |
+          bits(object.reflected ? 1 : 0, 1, 13) |
+          bits(object.transparent ? 1 : 0, 1, 15) |
+          bits(object.released ? 1 : 0, 1, 16) | bits(object.firstPixel, 6, 17),
+      bits(object.x, 12, 0) | bits(static_cast<int>(object.depth), 3, 12) |
+          bits(object.pitch, 3, 15) | bits(object.dataWidth, 10, 18) |
+          bits(imageWidth, 4, 28));
   if (object.scaled) {
-    out[2] = field(object.horizontalScale, 8, 0) |
-             field(object.verticalScale, 8, 8) |
-             field(object.verticalScale, 8, 16);
+    out[2] = phrase(0, bits(object.horizontalScale, 8, 0) |
+                           bits(object.verticalScale, 8, 8) |
+                           bits(object.verticalScale, 8, 16));
   }
 }
 
@@ -124,6 +132,18 @@ void rewriteBitmap(const BitmapObject &object, uint64_t *phrases) {
   if (object.scaled) {
     phrases[2] = fresh[2];
   }
+}
+
+void rewriteSprite(uint64_t *phrases, uint32_t data, int x, int y, int height,
+                   int dataWidth, int imageWidth, int firstPixel) {
+  const int width = imageWidth & 0x3FF;
+  phrases[0] = (phrases[0] & LINK_MASK) |
+               phrase((data >> 3) << 11,
+                      BITMAP_TYPE | bits(y, 11, 3) | bits(height, 10, 14));
+  phrases[1] =
+      phrase(bits(width >> 4, 6, 0) | bits(1, 1, 15) | bits(firstPixel, 6, 17),
+             bits(x, 12, 0) | bits(static_cast<int>(Depth::Bits8), 3, 12) |
+                 bits(1, 3, 15) | bits(dataWidth, 10, 18) | bits(width, 4, 28));
 }
 
 bool isScaledBitmap(uint64_t phrase) {

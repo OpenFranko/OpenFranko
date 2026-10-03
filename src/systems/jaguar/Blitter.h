@@ -23,6 +23,8 @@ struct Source {
 enum class Mode : uint8_t { Copy, Masked, Mirrored, MirroredMasked };
 
 void wait();
+uint32_t mark();
+bool reached(uint32_t mark);
 void useQueue(uint32_t control);
 void resumeQueue(uint32_t control);
 void stopQueue();

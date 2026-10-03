@@ -31,6 +31,7 @@ public:
   std::vector<StreetInput> inputs;
   Display frame;
   Display upcomingFrame;
+  bool sprites = false;
 };
 
 class ScriptedStage {
@@ -39,6 +40,8 @@ public:
 
   ScriptedStage(StreetHost &host, GameSession &, GameOptions &)
       : m_script(static_cast<Script &>(host)) {}
+
+  void showSprites(bool on) { m_script.sprites = on; }
 
   void advance(const StreetInput &input) { m_script.inputs.push_back(input); }
 
@@ -107,6 +110,27 @@ SCENARIO("A stage's outcome picks the next state") {
     THEN("Clearing it goes to the next stage") {
       stage.script.outcome = StageOutcome::Cleared;
       REQUIRE(stage.state->update() == EngineStateId::Level2Car);
+    }
+  }
+}
+
+SCENARIO("Bobs become sprites only on monitors that show sprites") {
+  GIVEN("A monitor without sprites") {
+    Stage stage;
+
+    THEN("The stage draws its bobs into the screen") {
+      REQUIRE_FALSE(stage.script.sprites);
+    }
+  }
+
+  GIVEN("A monitor that shows sprites") {
+    Stage stage;
+    stage.monitor.sprites = true;
+    stage.state.emplace(stage.monitor, stage.script, stage.controller,
+                        stage.options, stage.session);
+
+    THEN("The stage hands its bobs over as sprites") {
+      REQUIRE(stage.script.sprites);
     }
   }
 }

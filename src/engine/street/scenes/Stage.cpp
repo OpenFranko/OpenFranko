@@ -40,7 +40,19 @@ Stage::Stage(StreetHost &host, session::GameSession &session,
   m_session.border = ui::STAGE_BORDER;
 }
 
+void Stage::showSprites(bool on) {
+  m_sprites = on;
+  m_buffer.setSprites(on);
+  if (on) {
+    m_images.setBeforeRetire(
+        [this](const uint8_t *pixels) { m_buffer.bakeUsing(pixels); });
+  } else {
+    m_images.setBeforeRetire(nullptr);
+  }
+}
+
 void Stage::advance(const StreetInput &input) {
+  m_images.releaseRetired();
   if (m_outcome != Outcome::Playing) {
     return;
   }
@@ -69,21 +81,24 @@ void Stage::compose(std::vector<uint32_t> &frame) const {
 }
 
 const systems::graphics::Display &Stage::output() const {
-  return buildOutput(m_copper, m_buffer.shown());
+  return buildOutput(m_copper, m_buffer.shownView());
 }
 
 const systems::graphics::Display &Stage::upcomingOutput() const {
   if (m_outcome != Outcome::Playing) {
     return output();
   }
-  return buildOutput(m_copper.upcoming(m_options.ntsc), m_buffer.upcoming());
+  return buildOutput(m_copper.upcoming(m_options.ntsc),
+                     m_buffer.upcomingView());
 }
 
 const systems::graphics::Display &
 Stage::buildOutput(const ui::StageDisplay &copper,
-                   const core::IndexedSurface &screen) const {
+                   const core::DoubleBuffer::View &screen) const {
   const ui::StageCopper &live = copper.live();
-  const core::IndexedSurface *display = live.screenShown ? &screen : nullptr;
+  const core::IndexedSurface *display =
+      live.screenShown ? &screen.pixels : nullptr;
+  const uint32_t spriteVersion = display ? screen.version : 0;
   const ui::StatusPanel *panel = m_panelShown ? m_panel.get() : nullptr;
   const uint8_t *screenPixels = display ? display->pixels().data() : nullptr;
   const int screenWidth = display ? display->width() : 0;
@@ -107,6 +122,12 @@ Stage::buildOutput(const ui::StageDisplay &copper,
         cached.panelY == panelY && cached.window.ntsc == window.ntsc &&
         cached.window.laced == window.laced && cached.palette == m_palette &&
         cached.panelPalette == m_panelPalette) {
+      if (cached.spriteVersion != spriteVersion) {
+        if (!ui::updateSprites(cached.display, screen.sprites)) {
+          continue;
+        }
+        cached.spriteVersion = spriteVersion;
+      }
       cached.used = m_outputUses;
       markPanel(cached.display, panelPixels, panel);
       return cached.display;
@@ -117,6 +138,7 @@ Stage::buildOutput(const ui::StageDisplay &copper,
   }
   CachedOutput &cached = *oldest;
   cached.screenPixels = screenPixels;
+  cached.spriteVersion = spriteVersion;
   cached.screenWidth = screenWidth;
   cached.screenHeight = screenHeight;
   cached.palette = m_palette;
@@ -128,7 +150,8 @@ Stage::buildOutput(const ui::StageDisplay &copper,
   cached.panelPalette = m_panelPalette;
   cached.window = window;
   ui::stageOutput(cached.display, display, m_palette, live.screenDisplay,
-                  m_screenOffsetX, panel, panelY, m_panelPalette, window);
+                  m_screenOffsetX, panel, panelY, m_panelPalette, window,
+                  display ? &screen.sprites : nullptr);
   cached.display.revision = systems::graphics::newRevision();
   cached.used = m_outputUses;
   cached.valid = true;
@@ -278,6 +301,7 @@ void Stage::openBlankScreens() {
   settleScreen();
   m_screen = core::IndexedSurface(SCREEN_WIDTH, SCREEN_HEIGHT);
   m_buffer = core::DoubleBuffer(SCREEN_WIDTH, SCREEN_HEIGHT);
+  m_buffer.setSprites(m_sprites);
 }
 
 void Stage::gameOver() {

@@ -39,6 +39,7 @@ alignas(jaguar::SCALED_ALIGNMENT) uint64_t liveList[LIVE_PHRASES];
 constexpr uint64_t BYTE_COPIES = 0x0101010101010101ull;
 
 alignas(jaguar::PHRASE_BYTES) uint64_t solidPhrases[jaguar::SOLID_PHRASES];
+alignas(jaguar::PHRASE_BYTES) uint64_t maskPhrases[FRAMES];
 
 struct VblankTarget {
   virtual ~VblankTarget() = default;
@@ -46,6 +47,27 @@ struct VblankTarget {
 };
 
 VblankTarget *activeTarget = nullptr;
+
+void takeSprites(Display &target, const Display &source) {
+  target.revision = source.revision;
+  const Layer *from = source.layers.data();
+  for (Layer &layer : target.layers) {
+    if (layer.carriesSprites) {
+      layer.sprites = from->sprites;
+    }
+    ++from;
+  }
+}
+
+void takeSprites(Display &target, const jaguar::SpriteLists &sprites) {
+  const std::vector<Sprite> *from = sprites.data();
+  for (Layer &layer : target.layers) {
+    if (layer.carriesSprites) {
+      layer.sprites = *from;
+    }
+    ++from;
+  }
+}
 bool gpuRunning = false;
 
 void onVblank() {
@@ -76,8 +98,11 @@ struct VideoSystem::Window : VblankTarget, jaguar::TranslationBuffers {
   std::array<bool, FRAMES> built{};
   std::array<uint32_t, FRAMES> used{};
   uint32_t uses = 0;
+  jaguar::SpriteLists wanted;
   volatile int current = NO_FRAME;
   volatile int pending = NO_FRAME;
+  volatile bool marked = true;
+  volatile uint32_t frameMark = 0;
   volatile uint32_t vbls = 0;
   int appliedClut = NO_FRAME;
   uint32_t copperNext = 0;
@@ -102,18 +127,23 @@ struct VideoSystem::Window : VblankTarget, jaguar::TranslationBuffers {
   int lineCapacity() const { return geometry.rows + 2; }
   jaguar::FrameMemory memory(std::size_t slot) {
     return {reinterpret_cast<uint32_t>(liveList),
-            reinterpret_cast<uint32_t>(solidPhrases), this,
+            reinterpret_cast<uint32_t>(solidPhrases),
+            this,
             reinterpret_cast<uint8_t *>(lines[slot].get()),
-            lines[slot] ? lineCapacity() : 0};
+            lines[slot] ? lineCapacity() : 0,
+            reinterpret_cast<uint8_t *>(&maskPhrases[slot])};
   }
   int backFrame() const;
+  void want(const Display &display);
+  int recentFrame(unsigned overlay) const;
+  void build(int slot, const Display &shown, unsigned overlay);
   void choose(int slot);
   void measure();
 };
 
 void VideoSystem::Window::vblank() {
   const int next = pending;
-  if (next != NO_FRAME) {
+  if (next != NO_FRAME && marked && jaguar::blitter::reached(frameMark)) {
     current = next;
     pending = NO_FRAME;
   }
@@ -300,7 +330,68 @@ int VideoSystem::Window::backFrame() const {
   return oldest == NO_FRAME ? 0 : oldest;
 }
 
+void VideoSystem::Window::build(int slot, const Display &shown,
+                                unsigned overlay) {
+  const std::size_t index = static_cast<std::size_t>(slot);
+  std::array<jaguar::Overlay, 2> panels;
+  std::size_t count = 0;
+  if (overlay & DEBUG_PANEL) {
+    panels[count++] = {reinterpret_cast<uint32_t>(jaguar::overlay::pixels()),
+                       jaguar::overlay::WIDTH, jaguar::overlay::HEIGHT,
+                       PANEL_MARGIN,
+                       geometry.rows - jaguar::overlay::HEIGHT - PANEL_MARGIN};
+  }
+  if (overlay & KEYBOARD_PANEL) {
+    const int width = jaguar::keyboard::width();
+    int column = (geometry.columns - width) / 2;
+    int row = PANEL_MARGIN;
+    if (overlay & COMPACT_KEYBOARD) {
+      const jaguar::Placement placement = jaguar::placeDisplay(shown, geometry);
+      column = placement.left + COMPACT_PANEL_LEFT / placement.halfWidth;
+      row = placement.top + shown.height / placement.rowsPerLine -
+            jaguar::keyboard::HEIGHT - COMPACT_PANEL_BOTTOM;
+    }
+    panels[count++] = {reinterpret_cast<uint32_t>(jaguar::keyboard::pixels()),
+                       width, jaguar::keyboard::HEIGHT, column, row};
+  }
+  prepareLines(index, shown);
+  jaguar::buildFrame(shown, geometry, memory(index), panels.data(), count,
+                     frames[index]);
+}
+
+void VideoSystem::Window::want(const Display &display) {
+  if (wanted.size() != display.layers.size()) {
+    wanted.resize(display.layers.size());
+  }
+  std::vector<Sprite> *to = wanted.data();
+  for (const Layer &layer : display.layers) {
+    if (layer.carriesSprites) {
+      *to = layer.sprites;
+    } else {
+      to->clear();
+    }
+    ++to;
+  }
+}
+
+int VideoSystem::Window::recentFrame(unsigned overlay) const {
+  int recent = NO_FRAME;
+  for (int index = 0; index < FRAMES; ++index) {
+    const std::size_t slot = static_cast<std::size_t>(index);
+    if (index == current || index == pending || !built[slot] ||
+        sourceOverlays[slot] != overlay) {
+      continue;
+    }
+    if (recent == NO_FRAME ||
+        used[slot] > used[static_cast<std::size_t>(recent)]) {
+      recent = index;
+    }
+  }
+  return recent;
+}
+
 void VideoSystem::Window::choose(int slot) {
+  marked = false;
   used[static_cast<std::size_t>(slot)] = ++uses;
   pending = slot == current ? NO_FRAME : slot;
 }
@@ -352,6 +443,15 @@ void VideoSystem::show(const Display &display) {
   window.noteRevisions(display);
   if (display.revision != 0) {
     if (display.revision == m_shownRevision) {
+      if (m_shownSlot != NO_FRAME) {
+        if (!jaguar::sameSprites(display, window.wanted)) {
+          window.want(display);
+          m_frameChanged = true;
+        }
+      } else if (!jaguar::sameSprites(display, m_shown)) {
+        takeSprites(m_shown, display);
+        m_frameChanged = true;
+      }
       return;
     }
     for (int slot = 0; slot < FRAMES; ++slot) {
@@ -360,6 +460,7 @@ void VideoSystem::show(const Display &display) {
           window.sources[index].revision == display.revision) {
         m_shownRevision = display.revision;
         m_shownSlot = slot;
+        window.want(display);
         m_frameChanged = true;
         return;
       }
@@ -369,7 +470,7 @@ void VideoSystem::show(const Display &display) {
       jaguar::sameLayout(display, m_shown)) {
     return;
   }
-  m_shown = display;
+  assign(m_shown, display);
   m_shownRevision = display.revision;
   m_shownSlot = NO_FRAME;
   m_frameChanged = true;
@@ -392,6 +493,7 @@ void VideoSystem::sync() {
   window.longestUpdate = std::max<uint32_t>(window.longestUpdate, busy);
   waitVbl();
   window.updateStart = jaguar::profiler::now();
+  jaguar::blitter::wait();
   window.measure();
 }
 
@@ -401,14 +503,19 @@ bool VideoSystem::isNtsc() const { return m_ntsc; }
 
 bool VideoSystem::readsBuffersLive() const { return true; }
 
+bool VideoSystem::showsSprites() const { return true; }
+
 int VideoSystem::refreshRate() const { return m_window->geometry.hertz; }
 
 void VideoSystem::present() {
-  jaguar::blitter::wait();
   Window &window = *m_window;
   struct Refresh {
     Window &window;
-    ~Refresh() { window.refreshTranslations(); }
+    ~Refresh() {
+      window.refreshTranslations();
+      window.frameMark = jaguar::blitter::mark();
+      window.marked = true;
+    }
   } refresh{window};
   const unsigned keyboardPanel = jaguar::keyboard::isCompact()
                                      ? KEYBOARD_PANEL | COMPACT_KEYBOARD
@@ -420,65 +527,82 @@ void VideoSystem::present() {
   }
   m_frameChanged = false;
   window.overlayShown = overlay;
+  window.pending = NO_FRAME;
   if (m_shownSlot != NO_FRAME) {
-    const std::size_t index = static_cast<std::size_t>(m_shownSlot);
-    if (window.built[index] && window.sourceOverlays[index] == overlay &&
-        window.sources[index].revision == m_shownRevision) {
-      window.choose(m_shownSlot);
-      return;
-    }
-    m_shown = window.sources[index];
-    m_shownSlot = NO_FRAME;
-  }
-  for (int slot = 0; slot < FRAMES; ++slot) {
+    const int slot = m_shownSlot;
     const std::size_t index = static_cast<std::size_t>(slot);
     if (window.built[index] && window.sourceOverlays[index] == overlay &&
-        jaguar::sameLayout(window.sources[index], m_shown)) {
+        window.sources[index].revision == m_shownRevision) {
+      if (jaguar::sameSprites(window.sources[index], window.wanted)) {
+        window.choose(slot);
+        return;
+      }
+      if (slot != window.current && slot != window.pending) {
+        if (jaguar::moveSprites(window.sources[index], window.wanted,
+                                window.geometry, window.memory(index),
+                                window.frames[index])) {
+          takeSprites(window.sources[index], window.wanted);
+          window.choose(slot);
+          return;
+        }
+        window.built[index] = false;
+      }
+    }
+    assign(m_shown, window.sources[index]);
+    takeSprites(m_shown, window.wanted);
+    m_shownSlot = NO_FRAME;
+  }
+  int restage = NO_FRAME;
+  for (int slot = 0; slot < FRAMES; ++slot) {
+    const std::size_t index = static_cast<std::size_t>(slot);
+    if (!window.built[index] || window.sourceOverlays[index] != overlay ||
+        !jaguar::sameLayers(window.sources[index], m_shown)) {
+      continue;
+    }
+    if (jaguar::sameSprites(window.sources[index], m_shown)) {
       window.sources[index].revision = m_shown.revision;
       window.choose(slot);
       return;
     }
-  }
-  const int back = window.backFrame();
-  const std::size_t index = static_cast<std::size_t>(back);
-  std::array<jaguar::Overlay, 2> panels;
-  std::size_t count = 0;
-  if (overlay & DEBUG_PANEL) {
-    panels[count++] = {
-        reinterpret_cast<uint32_t>(jaguar::overlay::pixels()),
-        jaguar::overlay::WIDTH, jaguar::overlay::HEIGHT, PANEL_MARGIN,
-        window.geometry.rows - jaguar::overlay::HEIGHT - PANEL_MARGIN};
-  }
-  if (overlay & KEYBOARD_PANEL) {
-    const int width = jaguar::keyboard::width();
-    int column = (window.geometry.columns - width) / 2;
-    int row = PANEL_MARGIN;
-    if (overlay & COMPACT_KEYBOARD) {
-      const jaguar::Placement placement =
-          jaguar::placeDisplay(m_shown, window.geometry);
-      column = placement.left + COMPACT_PANEL_LEFT / placement.halfWidth;
-      row = placement.top + m_shown.height / placement.rowsPerLine -
-            jaguar::keyboard::HEIGHT - COMPACT_PANEL_BOTTOM;
+    if (restage == NO_FRAME && slot != window.current &&
+        slot != window.pending) {
+      restage = slot;
     }
-    panels[count++] = {reinterpret_cast<uint32_t>(jaguar::keyboard::pixels()),
-                       width, jaguar::keyboard::HEIGHT, column, row};
   }
-  window.prepareLines(index, m_shown);
-  const bool scrolled =
-      window.built[index] && window.sourceOverlays[index] == overlay &&
-      jaguar::scrollFrame(m_shown, window.sources[index], window.geometry,
-                          window.memory(index), window.frames[index]);
+  if (restage != NO_FRAME) {
+    const std::size_t index = static_cast<std::size_t>(restage);
+    if (jaguar::moveSprites(m_shown, window.sources[index], window.geometry,
+                            window.memory(index), window.frames[index])) {
+      takeSprites(window.sources[index], m_shown);
+      window.choose(restage);
+      return;
+    }
+    window.built[index] = false;
+  }
+  int target = window.recentFrame(overlay);
+  bool scrolled = false;
+  if (target != NO_FRAME) {
+    const std::size_t recent = static_cast<std::size_t>(target);
+    window.prepareLines(recent, m_shown);
+    scrolled =
+        jaguar::scrollFrame(m_shown, window.sources[recent], window.geometry,
+                            window.memory(recent), window.frames[recent]);
+    if (!scrolled) {
+      window.built[recent] = false;
+    }
+  }
   if (!scrolled) {
-    jaguar::buildFrame(m_shown, window.geometry, window.memory(index),
-                       panels.data(), count, window.frames[index]);
+    target = window.backFrame();
+    window.build(target, m_shown, overlay);
   }
+  const std::size_t index = static_cast<std::size_t>(target);
   if (window.frames[index].phrases.size() > LIVE_PHRASES) {
     throw std::runtime_error("Video system error: too many display layers");
   }
-  window.sources[index] = m_shown;
+  assign(window.sources[index], m_shown);
   window.sourceOverlays[index] = overlay;
   window.built[index] = true;
-  window.choose(back);
+  window.choose(target);
 }
 
 void VideoSystem::waitVbl() {

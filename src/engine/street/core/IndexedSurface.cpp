@@ -200,6 +200,25 @@ void IndexedSurface::draw(const Picture &picture, int left, int top, bool flipX,
                flipX);
 }
 
+void IndexedSurface::draw(const uint8_t *pixels, int width, int height,
+                          int left, int top, bool opaque) {
+  m_revision = systems::graphics::newRevision();
+  const int firstColumn = std::max(0, -left);
+  const int lastColumn = std::min(width, m_width - left);
+  const int firstRow = std::max(0, -top);
+  const int lastRow = std::min(height, m_height - top);
+  if (firstColumn >= lastColumn || firstRow >= lastRow) {
+    return;
+  }
+  const pixels::Source from{pixels + rowOffset(firstRow, width) + firstColumn,
+                            width};
+  const pixels::Target to{m_pixels.data() + rowOffset(top + firstRow, m_width) +
+                              left + firstColumn,
+                          m_width};
+  pixels::draw(from, to, lastColumn - firstColumn, lastRow - firstRow, !opaque,
+               false);
+}
+
 ScreenBlock::ScreenBlock(const IndexedSurface &source, int x, int y, int width,
                          int height)
     : m_pixels(width, height), m_x(x), m_y(y) {

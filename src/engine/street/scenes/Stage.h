@@ -35,6 +35,7 @@ public:
 
   virtual ~Stage() = default;
 
+  void showSprites(bool on);
   void advance(const StreetInput &input);
   void compose(std::vector<uint32_t> &frame) const;
   const systems::graphics::Display &output() const;
@@ -126,6 +127,7 @@ protected:
   bool m_mouseButton = false;
   bool m_musicLoaded = true;
   bool m_holdsWhileClosing = false;
+  bool m_sprites = false;
 
 private:
   enum class Closing {
@@ -141,6 +143,7 @@ private:
   Flow closeWait(int frames);
   struct CachedOutput {
     const uint8_t *screenPixels = nullptr;
+    uint32_t spriteVersion = 0;
     int screenWidth = 0;
     int screenHeight = 0;
     effects::color::AmigaPalette palette;
@@ -160,7 +163,7 @@ private:
 
   const systems::graphics::Display &
   buildOutput(const ui::StageDisplay &copper,
-              const core::IndexedSurface &screen) const;
+              const core::DoubleBuffer::View &screen) const;
 
   Closing m_closing = Closing::Wait;
   mutable std::array<CachedOutput, CACHED_OUTPUTS> m_outputs;

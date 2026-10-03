@@ -325,3 +325,30 @@ SCENARIO("The upcoming buffer is the one the next VBL shows and leaves alone") {
     }
   }
 }
+
+SCENARIO("A recorded sprite is baked only when its image is retired") {
+  GIVEN("A bob recorded as a sprite and shown") {
+    Screen screen;
+    screen.buffer.setSprites(true);
+    screen.images.setBeforeRetire(
+        [&screen](const uint8_t *pixels) { screen.buffer.bakeUsing(pixels); });
+    screen.bobs.set(1, 10, 10, 1);
+    screen.frame();
+    screen.frame();
+    REQUIRE(screen.buffer.shownView().sprites.size() == 1);
+    REQUIRE(screen.buffer.shownView().pixels.pixel(12, 12) == PAPER);
+
+    THEN("Replacing another image keeps it a sprite") {
+      screen.images.load(2, box(8, 8, COPIED));
+      REQUIRE(screen.buffer.shownView().sprites.size() == 1);
+      REQUIRE(screen.buffer.shownView().pixels.pixel(12, 12) == PAPER);
+    }
+
+    THEN("Replacing its image stamps the old pixels into the screen") {
+      screen.images.load(1, box(16, 8, COPIED));
+      REQUIRE(screen.buffer.shownView().sprites.empty());
+      REQUIRE(screen.buffer.shownView().pixels.pixel(12, 12) == INK);
+      REQUIRE(screen.shown(12, 12) == INK);
+    }
+  }
+}

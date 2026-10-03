@@ -151,6 +151,7 @@ BossStage::Flow BossStage::init() {
   m_screen = m_session.streetExit->screen;
   m_buffer = m_session.streetExit->buffer ? *m_session.streetExit->buffer
                                           : core::DoubleBuffer(m_screen);
+  m_buffer.setSprites(m_sprites);
   m_block.emplace(m_session.streetExit->block);
   m_playerX = m_session.streetExit->playerX;
   m_energyShown = m_session.streetExit->energyShown;

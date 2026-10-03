@@ -216,6 +216,14 @@ Machine::Step Machine::compile(const Program &program, int pc) {
   step.instruction = &instruction;
   step.target = instruction.reg;
   step.jump = instruction.jump;
+  if (instruction.opcode == Opcode::Pause) {
+    step.form = Form::Pause;
+    return step;
+  }
+  if (instruction.opcode == Opcode::Jump) {
+    step.form = Form::Jump;
+    return step;
+  }
   const bool let = instruction.opcode == Opcode::Let;
   if (!let && instruction.opcode != Opcode::IfJump) {
     return step;
@@ -430,6 +438,12 @@ void Machine::run(Channel &channel) {
       pc = channel.pc;
       continue;
     }
+    case Form::Pause:
+      channel.pc = pc + 1;
+      return;
+    case Form::Jump:
+      taken = true;
+      break;
     case Form::LetValue:
       write(channel, step.target, left(step));
       ++pc;

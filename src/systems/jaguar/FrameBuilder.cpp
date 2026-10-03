@@ -28,6 +28,7 @@ constexpr int SHORT_LIMIT = 0x7FFF;
 constexpr int MAX_SCALE = 255;
 constexpr std::size_t HEADER_STOP = 3;
 constexpr std::size_t FIRST_OBJECT = 4;
+constexpr int MASK_PIXELS = 8;
 
 bool copperAllowed = true;
 
@@ -597,6 +598,140 @@ bool makeObject(const graphics::Layer &layer, const uint8_t *pixels,
   return true;
 }
 
+BitmapObject parkedObject(const Geometry &geometry, uint32_t solidPhrase,
+                          const Placement &placement) {
+  BitmapObject object;
+  object.y = geometry.lastHalfLine + 2;
+  object.data = solidPhrase;
+  object.imageWidth = 1;
+  object.height = 1;
+  object.transparent = true;
+  object.scaled = placement.halfWidth > 1;
+  if (object.scaled) {
+    object.horizontalScale = HALF_SCALE;
+  }
+  return object;
+}
+
+BitmapObject generalSpriteObject(const graphics::Layer &layer,
+                                 const graphics::Sprite &sprite,
+                                 const LayerArea &owner,
+                                 const Placement &placement,
+                                 const Geometry &geometry,
+                                 uint32_t solidPhrase) {
+  static graphics::Layer view;
+  view.pixels = sprite.pixels;
+  view.stride = sprite.width;
+  view.sourceColumns = sprite.width;
+  view.sourceRows = sprite.height;
+  view.sourceX = layer.sourceX - sprite.left;
+  view.sourceY = layer.sourceY - sprite.top;
+  view.sourceStep = layer.sourceStep;
+  view.repeat = layer.repeat;
+  view.left = layer.left;
+  view.top = layer.top;
+  view.columns = layer.columns;
+  view.rows = layer.rows;
+  const Rows rows = sourceRows(view);
+  const Rows columns = sourceColumns(view);
+  const int perLine = placement.rowsPerLine;
+  LayerArea area;
+  area.firstRow = std::max(alignUp(rows.first, perLine), owner.firstRow);
+  area.lastRow = std::min(alignUp(rows.last, perLine), owner.lastRow);
+  area.firstColumn = std::max(columns.first, owner.firstColumn);
+  area.lastColumn = std::min(columns.last, owner.lastColumn);
+  BitmapObject object;
+  if (!makeObject(view, view.pixels, area, placement, geometry, solidPhrase,
+                  true, object)) {
+    return parkedObject(geometry, solidPhrase, placement);
+  }
+  return object;
+}
+
+struct SpriteFields {
+  uint32_t data = 0;
+  int x = 0;
+  int y = 0;
+  int height = 0;
+  int dataWidth = 0;
+  int imageWidth = 0;
+  int firstPixel = 0;
+};
+
+bool isPlainSprite(const graphics::Sprite &sprite) {
+  return sprite.pixels && sprite.width % PHRASE_BYTES == 0;
+}
+
+bool hasFastSprites(const graphics::Layer &layer, const Placement &placement) {
+  return layer.repeat == 1 && layer.sourceStep == 1 && !layer.wrap &&
+         placement.halfWidth == 1;
+}
+
+bool fastSprite(const graphics::Layer &layer, const graphics::Sprite &sprite,
+                const LayerArea &owner, const Placement &placement,
+                const Geometry &geometry, SpriteFields &fields) {
+  const int left = layer.left + sprite.left - layer.sourceX;
+  const int top = layer.top + sprite.top - layer.sourceY;
+  const int firstColumn = std::max(left, owner.firstColumn);
+  const int lastColumn = std::min(left + sprite.width, owner.lastColumn);
+  int firstRow = std::max(top, owner.firstRow);
+  int lastRow = std::min(top + sprite.height, owner.lastRow);
+  const int lineShift = placement.rowsPerLine == 2 ? 1 : 0;
+  firstRow += firstRow & lineShift;
+  lastRow += lastRow & lineShift;
+  if (firstColumn >= lastColumn || firstRow >= lastRow) {
+    return false;
+  }
+  const uint32_t address =
+      static_cast<uint32_t>(reinterpret_cast<uintptr_t>(sprite.pixels)) +
+      static_cast<uint32_t>(
+          systems::multiplySigned16(static_cast<int16_t>(firstRow - top),
+                                    sprite.width) +
+          (firstColumn - left));
+  int offset = static_cast<int>(address % PHRASE_BYTES);
+  fields.data = address - static_cast<uint32_t>(offset);
+  fields.imageWidth =
+      (offset + lastColumn - firstColumn + PHRASE_BYTES - 1) / PHRASE_BYTES;
+  fields.x = placement.left + firstColumn;
+  if (offset % 2 != 0) {
+    --offset;
+    --fields.x;
+  }
+  fields.firstPixel = offset * PIXEL_BITS;
+  fields.y =
+      geometry.firstHalfLine + 2 * (placement.top + (firstRow >> lineShift));
+  fields.height = (lastRow - firstRow) >> lineShift;
+  fields.dataWidth = (sprite.width << lineShift) / PHRASE_BYTES;
+  return true;
+}
+
+BitmapObject spriteObject(const graphics::Layer &layer,
+                          const graphics::Sprite &sprite,
+                          const LayerArea &owner, const Placement &placement,
+                          const Geometry &geometry, uint32_t solidPhrase) {
+  if (!isPlainSprite(sprite)) {
+    return parkedObject(geometry, solidPhrase, placement);
+  }
+  if (!hasFastSprites(layer, placement)) {
+    return generalSpriteObject(layer, sprite, owner, placement, geometry,
+                               solidPhrase);
+  }
+  SpriteFields fields;
+  if (!fastSprite(layer, sprite, owner, placement, geometry, fields)) {
+    return parkedObject(geometry, solidPhrase, placement);
+  }
+  BitmapObject object;
+  object.data = fields.data;
+  object.x = fields.x;
+  object.y = fields.y;
+  object.height = fields.height;
+  object.dataWidth = fields.dataWidth;
+  object.imageWidth = fields.imageWidth;
+  object.firstPixel = fields.firstPixel;
+  object.transparent = true;
+  return object;
+}
+
 int addObject(const graphics::Layer &layer, const uint8_t *pixels,
               const LayerArea &area, const Placement &placement,
               const Geometry &geometry, uint32_t solidPhrase, bool transparent,
@@ -795,15 +930,19 @@ std::size_t baseLayer(const graphics::Display &display,
                       const std::vector<LayerArea> &areas) {
   std::size_t base = areas.size();
   int baseRows = 0;
+  bool baseSprites = false;
   for (std::size_t index = 0; index < areas.size(); ++index) {
+    const graphics::Layer &layer = display.layers[index];
     const LayerArea &area = areas[index];
-    if (!display.layers[index].pixels || isEmpty(area)) {
+    if (!layer.pixels || isEmpty(area)) {
       continue;
     }
     const int rows = area.lastRow - area.firstRow;
-    if (rows > baseRows) {
+    if (layer.carriesSprites != baseSprites ? layer.carriesSprites
+                                            : rows > baseRows) {
       base = index;
       baseRows = rows;
+      baseSprites = layer.carriesSprites;
     }
   }
   return base;
@@ -1020,6 +1159,37 @@ LayerArea visibleArea(const graphics::Display &display,
 }
 
 bool sameLayout(const graphics::Display &left, const graphics::Display &right) {
+  return sameLayers(left, right) && sameSprites(left, right);
+}
+
+bool sameSprites(const graphics::Display &left,
+                 const graphics::Display &right) {
+  if (left.layers.size() != right.layers.size()) {
+    return false;
+  }
+  const graphics::Layer *other = right.layers.data();
+  for (const graphics::Layer &a : left.layers) {
+    if (a.sprites != (*other++).sprites) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool sameSprites(const graphics::Display &display, const SpriteLists &sprites) {
+  if (display.layers.size() != sprites.size()) {
+    return false;
+  }
+  const std::vector<graphics::Sprite> *other = sprites.data();
+  for (const graphics::Layer &layer : display.layers) {
+    if (layer.sprites != *other++) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool sameLayers(const graphics::Display &left, const graphics::Display &right) {
   if (left.width != right.width || left.height != right.height ||
       left.displayHeight != right.displayHeight ||
       left.border != right.border ||
@@ -1035,7 +1205,14 @@ bool sameLayout(const graphics::Display &left, const graphics::Display &right) {
         a.sourceStep != b.sourceStep || a.repeat != b.repeat ||
         a.wrap != b.wrap || a.left != b.left || a.top != b.top ||
         a.columns != b.columns || a.rows != b.rows || a.mask != b.mask ||
-        a.palette != b.palette || !sameRowColors(a.rowColors, b.rowColors)) {
+        a.carriesSprites != b.carriesSprites) {
+      return false;
+    }
+  }
+  other = right.layers.data();
+  for (const graphics::Layer &a : left.layers) {
+    const graphics::Layer &b = *other++;
+    if (a.palette != b.palette || !sameRowColors(a.rowColors, b.rowColors)) {
       return false;
     }
   }
@@ -1043,6 +1220,52 @@ bool sameLayout(const graphics::Display &left, const graphics::Display &right) {
 }
 
 void allowCopper(bool allowed) { copperAllowed = allowed; }
+
+namespace {
+
+void addMasks(const graphics::Display &display, const Placement &placement,
+              const Geometry &geometry, uint8_t *phrase, uint16_t color,
+              ObjectList &list) {
+  fillPhrase(phrase, color);
+  const int firstLine = std::max(placement.top, 0);
+  const int lastLine =
+      std::min(geometry.rows,
+               placement.top + divided(display.height, placement.rowsPerLine));
+  if (firstLine >= lastLine) {
+    return;
+  }
+  BitmapObject mask;
+  mask.data = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(phrase));
+  mask.depth = Depth::Bits16;
+  mask.pitch = 0;
+  mask.dataWidth = 0;
+  mask.imageWidth = MASK_PIXELS / PIXELS_PER_PHRASE_16;
+  mask.y = geometry.firstHalfLine + 2 * firstLine;
+  mask.height = lastLine - firstLine;
+  mask.x = placement.left - MASK_PIXELS;
+  list.addBitmap(mask);
+  mask.x = placement.left + divided(display.width, placement.halfWidth);
+  list.addBitmap(mask);
+}
+
+void addSprites(const graphics::Layer &layer, std::size_t index,
+                const LayerArea &area, const Placement &placement,
+                const Geometry &geometry, uint32_t solidPhrase,
+                ObjectList &list, BuiltFrame &frame) {
+  SpriteSlots slots;
+  slots.layer = index;
+  for (std::size_t slot = 0; slot < graphics::SPRITE_SLOTS; ++slot) {
+    const BitmapObject object =
+        slot < layer.sprites.size()
+            ? spriteObject(layer, layer.sprites[slot], area, placement,
+                           geometry, solidPhrase)
+            : parkedObject(geometry, solidPhrase, placement);
+    slots.objects[slot] = static_cast<int>(list.addBitmap(object));
+  }
+  frame.spriteSlots.push_back(slots);
+}
+
+} // namespace
 
 void buildFrame(const graphics::Display &display, const Geometry &geometry,
                 const FrameMemory &memory, const Overlay *overlays,
@@ -1147,6 +1370,7 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
   frame.objects.assign(count, NO_OBJECT);
   frame.lineObject = NO_OBJECT;
   frame.lineLayer = NO_OBJECT;
+  frame.spriteSlots.clear();
   for (std::size_t index = 0; index < count; ++index) {
     if (index == lineLayer) {
       frame.lineObject = static_cast<int>(
@@ -1159,6 +1383,14 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
         display.layers[index], pixels[index], areas[index], placement, geometry,
         memory.solidPhrases + static_cast<uint32_t>(slot) * PHRASE_BYTES,
         index == lineLayer, list);
+    if (display.layers[index].carriesSprites && !plans[index].translated) {
+      addSprites(display.layers[index], index, areas[index], placement,
+                 geometry, memory.solidPhrases, list, frame);
+    }
+  }
+  if (!frame.spriteSlots.empty() && memory.maskPhrase) {
+    addMasks(display, placement, geometry, memory.maskPhrase, frame.background,
+             list);
   }
   for (std::size_t index = 0; index < overlayCount; ++index) {
     const Overlay &overlay = overlays[index];
@@ -1194,9 +1426,58 @@ bool scrollsOnly(const graphics::Display &left,
         a.sourceRows != b.sourceRows || a.sourceStep != b.sourceStep ||
         a.repeat != b.repeat || a.wrap != b.wrap || a.left != b.left ||
         a.top != b.top || a.columns != b.columns || a.rows != b.rows ||
-        a.mask != b.mask || a.palette != b.palette ||
-        !sameRowColors(a.rowColors, b.rowColors)) {
+        a.mask != b.mask || a.carriesSprites != b.carriesSprites ||
+        a.palette != b.palette || !sameRowColors(a.rowColors, b.rowColors)) {
       return false;
+    }
+  }
+  return true;
+}
+
+bool patchSprites(const graphics::Display &display,
+                  const graphics::Display &built, const SpriteLists *wanted,
+                  const std::vector<LayerArea> &areas,
+                  const Placement &placement, const Geometry &geometry,
+                  uint32_t solidPhrase, BuiltFrame &frame) {
+  for (const SpriteSlots &slots : frame.spriteSlots) {
+    const graphics::Layer &layer = display.layers[slots.layer];
+    const graphics::Layer &old = built.layers[slots.layer];
+    const std::vector<graphics::Sprite> &sprites =
+        wanted ? (*wanted)[slots.layer] : layer.sprites;
+    const LayerArea &area = areas[slots.layer];
+    const bool moved = layer.sourceX != old.sourceX ||
+                       layer.sourceY != old.sourceY ||
+                       !sameArea(area, frame.areas[slots.layer]);
+    const std::size_t count = sprites.size();
+    const std::size_t oldCount = old.sprites.size();
+    const bool fast = hasFastSprites(layer, placement);
+    for (std::size_t slot = 0; slot < graphics::SPRITE_SLOTS; ++slot) {
+      const bool shown = slot < count;
+      const bool wasShown = slot < oldCount;
+      if (!shown && !wasShown) {
+        continue;
+      }
+      if (!moved && shown && wasShown && sprites[slot] == old.sprites[slot]) {
+        continue;
+      }
+      uint64_t *phrases =
+          frame.phrases.data() + static_cast<std::size_t>(slots.objects[slot]);
+      SpriteFields fields;
+      if (shown && fast && !isScaledBitmap(phrases[0]) &&
+          isPlainSprite(sprites[slot]) &&
+          fastSprite(layer, sprites[slot], area, placement, geometry, fields)) {
+        rewriteSprite(phrases, fields.data, fields.x, fields.y, fields.height,
+                      fields.dataWidth, fields.imageWidth, fields.firstPixel);
+        continue;
+      }
+      const BitmapObject object =
+          shown ? spriteObject(layer, sprites[slot], area, placement, geometry,
+                               solidPhrase)
+                : parkedObject(geometry, solidPhrase, placement);
+      if (isScaledBitmap(phrases[0]) != object.scaled) {
+        return false;
+      }
+      rewriteBitmap(object, phrases);
     }
   }
   return true;
@@ -1222,21 +1503,34 @@ bool scrollFrame(const graphics::Display &display,
   if (!samePlacement(placement, frame.placement)) {
     return false;
   }
-  static std::vector<LayerArea> areas;
-  areas.clear();
-  for (const graphics::Layer &layer : display.layers) {
-    areas.push_back(visibleArea(display, layer, placement, geometry));
-  }
-  if (areas.size() != count) {
+  if (display.layers.size() != count) {
     return false;
   }
-  for (std::size_t index = 0; index < count; ++index) {
-    const LayerArea &now = areas[index];
-    const LayerArea &before = frame.areas[index];
-    if (now.firstRow != before.firstRow || now.lastRow != before.lastRow ||
-        isEmpty(now) != isEmpty(before)) {
+  static std::vector<LayerArea> areas;
+  areas.clear();
+  const graphics::Layer *previous = built.layers.data();
+  bool rowsMoved = false;
+  for (const graphics::Layer &layer : display.layers) {
+    const graphics::Layer &before = *previous++;
+    const LayerArea &old = frame.areas[areas.size()];
+    if (layer.sourceX == before.sourceX && layer.sourceY == before.sourceY &&
+        layer.sourceColumns == before.sourceColumns &&
+        layer.sourceRows == before.sourceRows) {
+      areas.push_back(old);
+      continue;
+    }
+    areas.push_back(visibleArea(display, layer, placement, geometry));
+    const LayerArea &now = areas.back();
+    if (isEmpty(now) != isEmpty(old)) {
       return false;
     }
+    rowsMoved =
+        rowsMoved || now.firstRow != old.firstRow || now.lastRow != old.lastRow;
+  }
+  if (rowsMoved &&
+      (frame.clutVersion == 0 || frame.lineLayer != NO_OBJECT ||
+       baseLayer(display, areas) != baseLayer(built, frame.areas))) {
+    return false;
   }
   const graphics::Layer *old = built.layers.data();
   for (std::size_t index = 0; index < count; ++index, ++old) {
@@ -1293,8 +1587,29 @@ bool scrollFrame(const graphics::Display &display,
                   frame.phrases.data() +
                       static_cast<std::size_t>(frame.lineObject));
   }
+  if (!patchSprites(display, built, nullptr, areas, placement, geometry,
+                    memory.solidPhrases, frame)) {
+    return false;
+  }
   frame.areas.assign(areas.begin(), areas.end());
   return true;
+}
+
+bool moveSprites(const graphics::Display &display,
+                 const graphics::Display &built, const Geometry &geometry,
+                 const FrameMemory &memory, BuiltFrame &frame) {
+  return frame.areas.size() == display.layers.size() &&
+         patchSprites(display, built, nullptr, frame.areas, frame.placement,
+                      geometry, memory.solidPhrases, frame);
+}
+
+bool moveSprites(const graphics::Display &built, const SpriteLists &sprites,
+                 const Geometry &geometry, const FrameMemory &memory,
+                 BuiltFrame &frame) {
+  return frame.areas.size() == built.layers.size() &&
+         sprites.size() == built.layers.size() &&
+         patchSprites(built, built, &sprites, frame.areas, frame.placement,
+                      geometry, memory.solidPhrases, frame);
 }
 
 void translateOnCpu(const Translation &translation) {

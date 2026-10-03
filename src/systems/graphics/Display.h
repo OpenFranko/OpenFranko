@@ -44,6 +44,26 @@ private:
   std::shared_ptr<std::vector<RowColor>> m_rows;
 };
 
+struct Sprite {
+  const uint8_t *pixels = nullptr;
+  int16_t width = 0;
+  int16_t height = 0;
+  int left = 0;
+  int top = 0;
+};
+
+inline bool operator==(const Sprite &left, const Sprite &right) {
+  return left.pixels == right.pixels && left.width == right.width &&
+         left.height == right.height && left.left == right.left &&
+         left.top == right.top;
+}
+
+inline bool operator!=(const Sprite &left, const Sprite &right) {
+  return !(left == right);
+}
+
+inline constexpr std::size_t SPRITE_SLOTS = 16;
+
 struct Layer {
   const uint8_t *pixels = nullptr;
   int stride = 0;
@@ -62,6 +82,8 @@ struct Layer {
   std::vector<uint16_t> palette;
   RowColors rowColors;
   uint32_t revision = 0;
+  bool carriesSprites = false;
+  std::vector<Sprite> sprites;
 };
 
 struct Display {
@@ -76,6 +98,7 @@ struct Display {
 uint32_t newRevision();
 Layer solidLayer(uint16_t color, int top, int rows, int columns);
 void cropRows(Display &display, int first, int count);
+void assign(Display &target, const Display &source);
 uint32_t toArgb(uint16_t color);
 void rasterize(const Display &display, std::vector<uint32_t> &argb);
 

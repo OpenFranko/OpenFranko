@@ -394,6 +394,16 @@ void wait() {
   asm volatile("" ::: "memory");
 }
 
+uint32_t mark() { return written; }
+
+bool reached(uint32_t mark) {
+  if (queueWrite && ((written - (*queueRead & INDEX_MASK)) & INDEX_MASK) >
+                        ((written - mark) & INDEX_MASK)) {
+    return false;
+  }
+  return (longWord(B_CMD) & BLIT_IDLE) != 0;
+}
+
 void useQueue(uint32_t control) {
   wait();
   written = 0;

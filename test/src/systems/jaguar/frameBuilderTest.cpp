@@ -230,8 +230,13 @@ FrameMemory frameMemory(Arena &arena, ArenaBuffers &buffers) {
   }
   uint8_t *live = arena.allocate(LIVE_PHRASES * 8);
   uint8_t *lines = arena.allocate(LINE_PHRASES * 8, 4);
-  return {arena.address(live), arena.address(solid), &buffers, lines,
-          LINE_PHRASES};
+  uint8_t *mask = arena.allocate(8);
+  return {arena.address(live),
+          arena.address(solid),
+          &buffers,
+          lines,
+          LINE_PHRASES,
+          mask};
 }
 
 BuiltFrame build(Arena &arena, const graphics::Display &display,
@@ -250,6 +255,14 @@ BuiltFrame build(Arena &arena, const graphics::Display &display,
 graphics::Display inArena(Arena &arena, const graphics::Display &original) {
   graphics::Display display = original;
   for (graphics::Layer &layer : display.layers) {
+    for (graphics::Sprite &sprite : layer.sprites) {
+      const std::size_t size =
+          static_cast<std::size_t>(sprite.width * sprite.height);
+      uint8_t *copy =
+          arena.allocate(size, reinterpret_cast<uintptr_t>(sprite.pixels) % 8);
+      std::memcpy(copy, sprite.pixels, size);
+      sprite.pixels = copy;
+    }
     if (!layer.pixels) {
       continue;
     }
@@ -922,6 +935,107 @@ SCENARIO("Scrolled frames are patched instead of rebuilt") {
     }
   }
 
+  GIVEN("A play screen that shakes over a panel") {
+    graphics::Display stage;
+    stage.width = 304;
+    stage.height = 255;
+    stage.displayHeight = 255;
+    graphics::Layer play = layer(320, 222, 16, 17);
+    play.columns = 304;
+    play.rows = 255;
+    play.sourceX = 16;
+    graphics::Layer panel = layer(304, 32, 8, 18);
+    panel.top = 223;
+    stage.layers = {play, panel};
+
+    THEN("Moving it up and down is patched") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        ArenaBuffers buffers(arena);
+        const FrameMemory memory = frameMemory(arena, buffers);
+        const graphics::Display built = inArena(arena, stage);
+        BuiltFrame frame;
+        buildFrame(built, geometry, memory, nullptr, 0, frame);
+        for (const Translation &translation : frame.translations) {
+          translateOnCpu(translation);
+        }
+        for (const int shake : {-3, 2, -8, 5}) {
+          graphics::Display next = built;
+          next.layers[0].sourceY = shake;
+          bool patched = false;
+          REQUIRE(scrolledMismatches(arena, memory, built, frame, next,
+                                     geometry, patched) == 0);
+          REQUIRE(patched);
+        }
+      }
+    }
+  }
+
+  GIVEN("Two pictures where the taller one owns the colours") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer upper = layer(320, 120, 64, 5);
+    upper.rows = 120;
+    graphics::Layer lower = layer(320, 130, 64, 9);
+    lower.top = 120;
+    lower.rows = 136;
+    display.layers = {upper, lower};
+
+    THEN("A move that keeps it taller is patched, one that does not is "
+         "rebuilt") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display built = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(built, geometry, memory, nullptr, 0, frame);
+      for (const Translation &translation : frame.translations) {
+        translateOnCpu(translation);
+      }
+      graphics::Display next = built;
+      next.layers[1].sourceY = 5;
+      bool patched = false;
+      REQUIRE(scrolledMismatches(arena, memory, built, frame, next, geometry,
+                                 patched) == 0);
+      REQUIRE(patched);
+      next.layers[1].sourceY = 20;
+      BuiltFrame copy = frame;
+      REQUIRE_FALSE(scrollFrame(next, built, geometry, memory, copy));
+    }
+  }
+
+  GIVEN("A picture with background line colours") {
+    graphics::Display display;
+    display.width = 368;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer picture = layer(368, 200, 32, 16);
+    picture.rows = 256;
+    for (int row = 0; row < 200; ++row) {
+      picture.rowColors.push_back(
+          {row, 0, static_cast<uint16_t>((row * 0x13) & 0xFFF)});
+    }
+    display.layers = {picture};
+
+    THEN("Moving it up or down is rebuilt") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display built = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(built, geometry, memory, nullptr, 0, frame);
+      REQUIRE(frame.lineLayer == 0);
+      graphics::Display next = built;
+      next.layers[0].sourceY = -10;
+      BuiltFrame copy = frame;
+      REQUIRE_FALSE(scrollFrame(next, built, geometry, memory, copy));
+    }
+  }
+
   GIVEN("A level whose play screen flips buffers and whose panel moves") {
     graphics::Display stage;
     stage.width = 304;
@@ -1029,6 +1143,391 @@ SCENARIO("Scrolled frames are patched instead of rebuilt") {
       REQUIRE(scrolledMismatches(arena, memory, built, frame, next, geometry,
                                  patched) == 0);
       REQUIRE(patched);
+    }
+  }
+}
+
+namespace {
+
+struct Bob {
+  int width = 0;
+  int height = 0;
+  std::vector<uint8_t> pixels;
+};
+
+Bob bob(int width, int height, int seed) {
+  Bob made;
+  made.width = width;
+  made.height = height;
+  made.pixels.assign(static_cast<std::size_t>(width * height), 0);
+  for (int at = 0; at < width * height; ++at) {
+    const int value = at * 5 + seed;
+    made.pixels[static_cast<std::size_t>(at)] =
+        static_cast<uint8_t>(value % 4 == 0 ? 0 : 1 + value % 15);
+  }
+  return made;
+}
+
+using Places = std::vector<std::pair<int, int>>;
+
+int borderLeaks(const Arena &arena, const BuiltFrame &frame,
+                const FrameMemory &memory, const graphics::Display &display,
+                const Geometry &geometry) {
+  const Screen screen = simulate(arena, frame, memory.liveAddress, geometry);
+  const Placement placement = placeDisplay(display, geometry);
+  const int right = placement.left + display.width / placement.halfWidth;
+  int leaks = 0;
+  for (int row = 0; row < display.height; row += placement.rowsPerLine) {
+    const int screenRow = row / placement.rowsPerLine + placement.top;
+    if (screenRow < 0 || screenRow >= geometry.rows) {
+      continue;
+    }
+    for (int column = 0; column < geometry.columns; ++column) {
+      if ((column < placement.left || column >= right) &&
+          screen[static_cast<std::size_t>(screenRow)]
+                [static_cast<std::size_t>(column)] != frame.background) {
+        ++leaks;
+      }
+    }
+  }
+  return leaks;
+}
+
+graphics::Display withBobs(graphics::Display display,
+                           const std::vector<const Bob *> &shapes,
+                           const Places &places) {
+  graphics::Layer &screen = display.layers.front();
+  screen.carriesSprites = true;
+  screen.sprites.clear();
+  for (std::size_t index = 0; index < shapes.size(); ++index) {
+    const Bob &shape = *shapes[index];
+    screen.sprites.push_back({shape.pixels.data(),
+                              static_cast<int16_t>(shape.width),
+                              static_cast<int16_t>(shape.height),
+                              places[index].first, places[index].second});
+  }
+  return display;
+}
+
+graphics::Display stageDisplay(bool laced) {
+  const int perLine = laced ? 2 : 1;
+  graphics::Display display;
+  display.width = 304;
+  display.height = 255 * perLine;
+  display.displayHeight = 255;
+  graphics::Layer screen = layer(320, 222 * perLine, 16, 17);
+  screen.columns = 304;
+  screen.rows = 255 * perLine;
+  screen.sourceX = 16;
+  screen.sourceY = -3 * perLine;
+  graphics::Layer panel = layer(304, 32, 8, 18);
+  panel.top = 223 * perLine;
+  panel.rows = 32 * perLine;
+  panel.repeat = perLine;
+  display.layers = {screen, panel};
+  return display;
+}
+
+graphics::Display hiresDisplay() {
+  graphics::Display display;
+  display.width = 640;
+  display.height = 200;
+  display.displayHeight = 200;
+  graphics::Layer picture = layer(800, 200, 16, 21);
+  picture.columns = 640;
+  picture.sourceX = 40;
+  display.layers = {picture};
+  return display;
+}
+
+} // namespace
+
+SCENARIO("Bitmap objects are packed into the object processor's layout") {
+  GIVEN("Objects with every field set") {
+    std::vector<BitmapObject> objects;
+    for (int seed = 0; seed < 64; ++seed) {
+      BitmapObject object;
+      object.data = static_cast<uint32_t>(0x1234568u * (seed + 3)) & 0xFFFFF8u;
+      object.firstPixel = (seed * 5) & 0x3F;
+      object.x = (seed * 37 - 200) & 0xFFF;
+      object.y = (seed * 91 + 7) & 0x7FF;
+      object.height = (seed * 13 + 1) & 0x3FF;
+      object.dataWidth = (seed * 29 + 3) & 0x3FF;
+      object.imageWidth = (seed * 41 + 5) & 0x3FF;
+      object.pitch = seed & 7;
+      object.depth = static_cast<Depth>(seed % 5);
+      object.index = (seed * 3) & 0x7F;
+      object.transparent = (seed & 1) != 0;
+      object.reflected = (seed & 2) != 0;
+      object.released = (seed & 4) != 0;
+      object.scaled = (seed & 8) != 0;
+      object.horizontalScale = static_cast<uint8_t>(seed * 7 + 1);
+      object.verticalScale = static_cast<uint8_t>(seed * 11 + 2);
+      objects.push_back(object);
+    }
+
+    THEN("Each field lands in its bits") {
+      for (std::size_t at = 0; at < objects.size(); ++at) {
+        const BitmapObject &object = objects[at];
+        const uint32_t link = static_cast<uint32_t>(0x7654320u + at * 0x88u);
+        uint64_t out[3] = {};
+        bitmapPhrases(object, link, out);
+        REQUIRE(bits(out[0], 0, 3) == (object.scaled ? 1u : 0u));
+        REQUIRE(bits(out[0], 3, 11) == static_cast<uint64_t>(object.y));
+        REQUIRE(bits(out[0], 14, 10) == static_cast<uint64_t>(object.height));
+        REQUIRE(bits(out[0], 24, 19) == ((link >> 3) & 0x7FFFF));
+        REQUIRE(bits(out[0], 43, 21) == object.data >> 3);
+        REQUIRE(bits(out[1], 0, 12) == static_cast<uint64_t>(object.x));
+        REQUIRE(bits(out[1], 12, 3) == static_cast<uint64_t>(object.depth));
+        REQUIRE(bits(out[1], 15, 3) == static_cast<uint64_t>(object.pitch));
+        REQUIRE(bits(out[1], 18, 10) ==
+                static_cast<uint64_t>(object.dataWidth));
+        REQUIRE(bits(out[1], 28, 10) ==
+                static_cast<uint64_t>(object.imageWidth));
+        REQUIRE(bits(out[1], 38, 7) == static_cast<uint64_t>(object.index));
+        REQUIRE(bits(out[1], 45, 1) == (object.reflected ? 1u : 0u));
+        REQUIRE(bits(out[1], 46, 1) == 0);
+        REQUIRE(bits(out[1], 47, 1) == (object.transparent ? 1u : 0u));
+        REQUIRE(bits(out[1], 48, 1) == (object.released ? 1u : 0u));
+        REQUIRE(bits(out[1], 49, 6) ==
+                static_cast<uint64_t>(object.firstPixel));
+        REQUIRE(bits(out[1], 55, 9) == 0);
+        if (object.scaled) {
+          REQUIRE(bits(out[2], 0, 8) == object.horizontalScale);
+          REQUIRE(bits(out[2], 8, 8) == object.verticalScale);
+          REQUIRE(bits(out[2], 16, 8) == object.verticalScale);
+          REQUIRE(bits(out[2], 24, 40) == 0);
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("A sprite object can be rewritten without a bitmap object") {
+  GIVEN("Unscaled transparent objects already linked into a list") {
+    THEN("The direct rewrite matches the general one and keeps the link") {
+      for (int seed = 0; seed < 64; ++seed) {
+        BitmapObject object;
+        object.data = static_cast<uint32_t>(0x123458u * (seed + 1)) & 0x3FFFF8u;
+        object.x = (seed * 37 - 100) & 0xFFF;
+        object.y = (seed * 91 + 3) & 0x7FF;
+        object.height = (seed * 13 + 1) & 0x3FF;
+        object.dataWidth = (seed * 7 + 2) & 0x3FF;
+        object.imageWidth = (seed * 41 + 5) & 0x3FF;
+        object.firstPixel = (seed * 8) & 0x38;
+        object.transparent = true;
+        const uint32_t link = static_cast<uint32_t>(0x654320u + seed * 0x40u);
+        uint64_t general[2] = {};
+        bitmapPhrases(BitmapObject{}, link, general);
+        uint64_t direct[2] = {general[0], general[1]};
+        rewriteBitmap(object, general);
+        rewriteSprite(direct, object.data, object.x, object.y, object.height,
+                      object.dataWidth, object.imageWidth, object.firstPixel);
+        REQUIRE(direct[0] == general[0]);
+        REQUIRE(direct[1] == general[1]);
+      }
+    }
+  }
+}
+
+SCENARIO("Sprites are shown as objects over the layer that carries them") {
+  const Bob small = bob(16, 12, 1);
+  const Bob wide = bob(48, 40, 2);
+  const Bob tall = bob(32, 81, 3);
+  const std::vector<const Bob *> shapes = {&wide, &small, &tall,
+                                           &wide, &small, &tall};
+  const Places places = {{100, 50},  {-5, 100}, {300, 180},
+                         {150, -21}, {2000, 0}, {61, 211}};
+  const std::vector<Places> moves = {
+      {{101, 53}, {-3, 100}, {290, 185}, {150, -18}, {3000, 0}, {61, 200}},
+      {{-60, 52}, {20, 21}, {290, 301}, {150, 10}, {40, 40}, {61, 200}},
+      {{-60, 52}, {20, 21}, {120, 120}, {151, 11}, {40, 40}, {-80, 5}},
+      {{10, 10}, {311, 213}, {120, 121}, {0, 0}, {41, 40}, {-30, 5}}};
+
+  GIVEN("A stage screen, a panel and bobs on every edge") {
+    THEN("The built frame matches the bobs drawn into the screen") {
+      for (const bool laced : {false, true}) {
+        const graphics::Display stage =
+            withBobs(stageDisplay(laced), shapes, places);
+        for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+          REQUIRE(mismatches(stage, geometry) == 0);
+          Arena arena;
+          const graphics::Display display = inArena(arena, stage);
+          FrameMemory memory;
+          const BuiltFrame frame = build(arena, display, geometry, memory);
+          REQUIRE(borderLeaks(arena, frame, memory, display, geometry) == 0);
+        }
+      }
+    }
+
+    THEN("Moving, adding, removing and scrolling them only patches") {
+      for (const bool laced : {false, true}) {
+        const graphics::Display stage =
+            withBobs(stageDisplay(laced), shapes, places);
+        for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+          Arena arena;
+          ArenaBuffers buffers(arena);
+          const FrameMemory memory = frameMemory(arena, buffers);
+          graphics::Display shown = inArena(arena, stage);
+          BuiltFrame frame;
+          buildFrame(shown, geometry, memory, nullptr, 0, frame);
+          for (const Translation &translation : frame.translations) {
+            translateOnCpu(translation);
+          }
+          REQUIRE(frame.spriteSlots.size() == 1);
+          std::vector<const Bob *> swapped = shapes;
+          std::size_t count = shapes.size();
+          for (const Places &move : moves) {
+            std::rotate(swapped.begin(), swapped.begin() + 1, swapped.end());
+            count = count == shapes.size() ? 2 : count + 2;
+            const std::vector<const Bob *> some(swapped.begin(),
+                                                swapped.begin() + count);
+            graphics::Display next =
+                inArena(arena, withBobs(stage, some, move));
+            next.layers.front().pixels = shown.layers.front().pixels;
+            next.layers.back().pixels = shown.layers.back().pixels;
+            REQUIRE(scrollFrame(next, shown, geometry, memory, frame));
+            REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+            REQUIRE(borderLeaks(arena, frame, memory, next, geometry) == 0);
+            shown = next;
+            next.layers.front().sourceX -= 3;
+            REQUIRE(scrollFrame(next, shown, geometry, memory, frame));
+            REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+            REQUIRE(borderLeaks(arena, frame, memory, next, geometry) == 0);
+            shown = next;
+          }
+        }
+      }
+    }
+  }
+
+  GIVEN("A built frame whose screen keeps still while its bobs move") {
+    THEN("Only the sprite objects are rewritten") {
+      for (const bool laced : {false, true}) {
+        const graphics::Display stage =
+            withBobs(stageDisplay(laced), shapes, places);
+        const Geometry geometry = palGeometry();
+        Arena arena;
+        ArenaBuffers buffers(arena);
+        const FrameMemory memory = frameMemory(arena, buffers);
+        graphics::Display shown = inArena(arena, stage);
+        BuiltFrame frame;
+        buildFrame(shown, geometry, memory, nullptr, 0, frame);
+        for (const Translation &translation : frame.translations) {
+          translateOnCpu(translation);
+        }
+        const std::vector<uint64_t> before = frame.phrases;
+        for (const Places &move : moves) {
+          graphics::Display next =
+              inArena(arena, withBobs(stage, shapes, move));
+          next.layers.front().pixels = shown.layers.front().pixels;
+          next.layers.back().pixels = shown.layers.back().pixels;
+          REQUIRE(sameLayers(next, shown));
+          REQUIRE_FALSE(sameSprites(next, shown));
+          SpriteLists wanted;
+          for (const graphics::Layer &layer : next.layers) {
+            wanted.push_back(layer.sprites);
+          }
+          REQUIRE(sameSprites(next, wanted));
+          REQUIRE_FALSE(sameSprites(shown, wanted));
+          if (&move == &moves.front() || &move == &moves.back()) {
+            REQUIRE(moveSprites(next, shown, geometry, memory, frame));
+          } else {
+            REQUIRE(moveSprites(shown, wanted, geometry, memory, frame));
+          }
+          REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+          REQUIRE(borderLeaks(arena, frame, memory, next, geometry) == 0);
+          shown = next;
+        }
+        for (std::size_t at = 0; at < before.size(); ++at) {
+          bool sprite = false;
+          for (const int object : frame.spriteSlots.front().objects) {
+            const std::size_t first = static_cast<std::size_t>(object);
+            sprite = sprite || (at >= first && at < first + 2);
+          }
+          if (!sprite) {
+            REQUIRE(frame.phrases[at] == before[at]);
+          }
+        }
+      }
+    }
+  }
+
+  GIVEN("A hires picture carrying bobs") {
+    const graphics::Display picture = withBobs(
+        hiresDisplay(), shapes,
+        {{100, 50}, {-6, 100}, {790, 180}, {150, -20}, {42, 7}, {600, 150}});
+
+    THEN("Scaled sprite objects are built and patched") {
+      const Geometry geometry = palGeometry();
+      REQUIRE(mismatches(picture, geometry) == 0);
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display shown = inArena(arena, picture);
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      graphics::Display next = shown;
+      next.layers.front().sprites[0].left += 10;
+      next.layers.front().sprites[3].top += 5;
+      next.layers.front().sprites.pop_back();
+      REQUIRE(scrollFrame(next, shown, geometry, memory, frame));
+      REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+    }
+  }
+
+  GIVEN("A taller backdrop under a smaller layer carrying bobs") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer screen = layer(320, 120, 64, 9);
+    screen.top = 60;
+    screen.carriesSprites = true;
+    screen.sprites = {{wide.pixels.data(), static_cast<int16_t>(wide.width),
+                       static_cast<int16_t>(wide.height), 100, 30},
+                      {small.pixels.data(), static_cast<int16_t>(small.width),
+                       static_cast<int16_t>(small.height), 200, 90}};
+    display.layers = {layer(320, 256, 64, 5), screen};
+
+    THEN("The carrying layer keeps its colours native for the bobs") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+  }
+
+  GIVEN("A layer whose pixels end inside the display") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer screen = layer(200, 100, 16, 7);
+    screen.columns = 320;
+    screen.rows = 256;
+    screen.carriesSprites = true;
+    screen.sprites = {{wide.pixels.data(), static_cast<int16_t>(wide.width),
+                       static_cast<int16_t>(wide.height), 184, 20},
+                      {tall.pixels.data(), static_cast<int16_t>(tall.width),
+                       static_cast<int16_t>(tall.height), 40, 60}};
+    display.layers = {screen};
+
+    THEN("Bobs are cut where the pixels end") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+  }
+
+  GIVEN("Two displays that differ only in their sprites") {
+    const graphics::Display first =
+        withBobs(stageDisplay(false), shapes, places);
+    graphics::Display second = first;
+    second.layers.front().sprites[2].left += 1;
+
+    THEN("Their layouts differ") {
+      REQUIRE(sameLayout(first, first));
+      REQUIRE_FALSE(sameLayout(first, second));
     }
   }
 }

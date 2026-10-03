@@ -21,6 +21,22 @@ void mapPalette(const Layer &layer, int row, std::vector<uint32_t> &colors) {
   }
 }
 
+uint8_t withSprites(const Layer &layer, int column, int row, uint8_t value) {
+  for (const Sprite &sprite : layer.sprites) {
+    const int x = column - sprite.left;
+    const int y = row - sprite.top;
+    if (x < 0 || x >= sprite.width || y < 0 || y >= sprite.height) {
+      continue;
+    }
+    const uint8_t pixel =
+        sprite.pixels[static_cast<std::ptrdiff_t>(y) * sprite.width + x];
+    if (pixel != 0) {
+      value = pixel;
+    }
+  }
+  return value;
+}
+
 } // namespace
 
 RowColors::RowColors(std::initializer_list<RowColor> rows) {
@@ -83,6 +99,47 @@ Layer solidLayer(uint16_t color, int top, int rows, int columns) {
   return layer;
 }
 
+void assign(Display &target, const Display &source) {
+  target.width = source.width;
+  target.height = source.height;
+  target.displayHeight = source.displayHeight;
+  target.border = source.border;
+  target.revision = source.revision;
+  if (target.layers.size() != source.layers.size()) {
+    target.layers = source.layers;
+    return;
+  }
+  Layer *to = target.layers.data();
+  for (const Layer &from : source.layers) {
+    Layer &layer = *to++;
+    layer.pixels = from.pixels;
+    layer.stride = from.stride;
+    layer.sourceColumns = from.sourceColumns;
+    layer.sourceRows = from.sourceRows;
+    layer.sourceX = from.sourceX;
+    layer.sourceY = from.sourceY;
+    layer.sourceStep = from.sourceStep;
+    layer.repeat = from.repeat;
+    layer.wrap = from.wrap;
+    layer.left = from.left;
+    layer.top = from.top;
+    layer.columns = from.columns;
+    layer.rows = from.rows;
+    layer.mask = from.mask;
+    layer.revision = from.revision;
+    layer.carriesSprites = from.carriesSprites;
+    if (!layer.sprites.empty() || !from.sprites.empty()) {
+      layer.sprites = from.sprites;
+    }
+    if (!layer.palette.empty() || !from.palette.empty()) {
+      layer.palette = from.palette;
+    }
+    if (!layer.rowColors.shares(from.rowColors)) {
+      layer.rowColors = from.rowColors;
+    }
+  }
+}
+
 void cropRows(Display &display, int first, int count) {
   display.height = count;
   display.displayHeight = count;
@@ -136,11 +193,14 @@ void rasterize(const Display &display, std::vector<uint32_t> &argb) {
         if (!inside && !layer.wrap) {
           continue;
         }
-        const uint8_t index =
+        uint8_t index =
             inside
                 ? layer.pixels[static_cast<std::ptrdiff_t>(y) * layer.stride +
                                column]
                 : 0;
+        if (inside && !layer.sprites.empty()) {
+          index = withSprites(layer, column, y, index);
+        }
         out[x] = colors[index & layer.mask];
       }
     }
