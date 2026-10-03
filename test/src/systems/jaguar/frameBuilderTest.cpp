@@ -1598,7 +1598,33 @@ SCENARIO("Frames whose colours change are recoloured instead of rebuilt") {
     panel.top = 223;
     stage.layers.push_back(panel);
 
-    THEN("New colours are left to a rebuild") {
+    THEN("New colours that keep the banks only change the colour table") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        ArenaBuffers buffers(arena);
+        const FrameMemory memory = frameMemory(arena, buffers);
+        const graphics::Display built = inArena(arena, stage);
+        BuiltFrame frame;
+        buildFrame(built, geometry, memory, nullptr, 0, frame);
+        for (const Translation &translation : frame.translations) {
+          translateOnCpu(translation);
+        }
+        REQUIRE_FALSE(frame.translations.empty());
+        const std::vector<uint64_t> phrases = frame.phrases;
+        graphics::Display faded = built;
+        for (graphics::Layer &layer : faded.layers) {
+          for (uint16_t &color : layer.palette) {
+            color = static_cast<uint16_t>((color >> 1) & 0x777);
+          }
+        }
+        REQUIRE(recolorFrame(faded, built, geometry, memory, frame));
+        REQUIRE(frame.phrases == phrases);
+        REQUIRE(wrongPixels(arena, frame, memory, faded, geometry) == 0);
+      }
+    }
+
+    THEN("Colours that let the panel share the first bank are left to a "
+         "rebuild") {
       Arena arena;
       ArenaBuffers buffers(arena);
       const FrameMemory memory = frameMemory(arena, buffers);
@@ -1606,9 +1632,11 @@ SCENARIO("Frames whose colours change are recoloured instead of rebuilt") {
       BuiltFrame frame;
       buildFrame(built, palGeometry(), memory, nullptr, 0, frame);
       REQUIRE_FALSE(frame.translations.empty());
-      graphics::Display faded = built;
-      faded.layers[0].palette[1] = 0x000;
-      REQUIRE_FALSE(recolorFrame(faded, built, palGeometry(), memory, frame));
+      graphics::Display shared = built;
+      std::copy_n(shared.layers[0].palette.begin(),
+                  shared.layers[1].palette.size(),
+                  shared.layers[1].palette.begin());
+      REQUIRE_FALSE(recolorFrame(shared, built, palGeometry(), memory, frame));
     }
   }
 }

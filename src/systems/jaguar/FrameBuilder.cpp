@@ -1620,7 +1620,8 @@ bool scrollFrame(const graphics::Display &display,
 bool recolorFrame(const graphics::Display &display,
                   const graphics::Display &built, const Geometry &geometry,
                   const FrameMemory &memory, BuiltFrame &frame) {
-  if (frame.clutVersion == 0 || !frame.translations.empty() ||
+  if (frame.clutVersion == 0 ||
+      frame.layerTranslations.size() != display.layers.size() ||
       !samePlacing(display, built)) {
     return false;
   }
@@ -1647,9 +1648,28 @@ bool recolorFrame(const graphics::Display &display,
   }
   for (std::size_t index = 0; index < areas.size(); ++index) {
     const LayerPlan &plan = plans[index];
-    if (!isEmpty(areas[index]) &&
-        (!display.layers[index].pixels || !plan.merged || plan.translated ||
-         plan.bank != 0)) {
+    const int used = frame.layerTranslations[index];
+    if (isEmpty(areas[index])) {
+      continue;
+    }
+    if (!display.layers[index].pixels || !plan.merged) {
+      return false;
+    }
+    if (!plan.translated) {
+      if (used != NO_OBJECT || plan.bank != 0) {
+        return false;
+      }
+      continue;
+    }
+    if (used == NO_OBJECT) {
+      return false;
+    }
+    const graphics::Layer &layer = display.layers[index];
+    const Translation &translation =
+        frame.translations[static_cast<std::size_t>(used)];
+    if (translation.source != layer.pixels ||
+        translation.keep != everyByte(layer.mask) ||
+        translation.flip != everyByte(plan.bank)) {
       return false;
     }
   }

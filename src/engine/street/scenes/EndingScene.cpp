@@ -95,6 +95,13 @@ EndingScene::EndingScene(StreetHost &host, session::GameSession &session,
       m_display(0, 0), m_ntsc(ntsc),
       m_displayLine(pictureLine(DISPLAY_LINE, ntsc)) {}
 
+void EndingScene::showSprites(bool on) {
+  m_sprites = on;
+  if (m_dancerBuffer) {
+    m_dancerBuffer->setSprites(on);
+  }
+}
+
 void EndingScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
     return;
@@ -186,15 +193,23 @@ systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
     if (!screen.open || (screen.hidden && !unhiding)) {
       continue;
     }
+    systems::graphics::Layer layer;
     const core::IndexedSurface *dancer = nullptr;
     if (number == 1 && m_dancerBuffer) {
-      dancer =
-          upcoming ? &m_dancerBuffer->upcoming() : &m_dancerBuffer->shown();
+      const core::DoubleBuffer::View view = upcoming
+                                                ? m_dancerBuffer->upcomingView()
+                                                : m_dancerBuffer->shownView();
+      dancer = &view.pixels;
+      layer.carriesSprites = m_sprites;
+      layer.sprites = view.sprites;
+    } else if (number == m_bobScreen && m_stillSprited) {
+      layer.carriesSprites = true;
+      layer.sprites = m_stillSprites;
     }
     const core::IndexedSurface &surface =
         dancer ? *dancer
-               : (number == m_bobScreen ? m_display.shown() : screen.surface);
-    systems::graphics::Layer layer;
+               : (number == m_bobScreen && !m_stillSprited ? m_display.shown()
+                                                           : screen.surface);
     layer.pixels = surface.pixels().data();
     layer.stride = surface.width();
     layer.sourceColumns = surface.width();
@@ -411,6 +426,7 @@ void EndingScene::runBasic(int16_t joystick) {
       openScreen(1, DANCER_TOP, DANCER_HEIGHT, DANCER_PALETTE);
       m_screens[1].hidden = true;
       m_dancerBuffer.emplace(m_screens[1].surface);
+      m_dancerBuffer->setSprites(m_sprites);
       m_bobScreen = 1;
       flow = hold(DOUBLE_BUFFER_VBLS, Step::Dance);
       break;
@@ -663,7 +679,13 @@ void EndingScene::closeScreen(int number) {
 
 void EndingScene::redraw() {
   const Screen &screen = m_screens[static_cast<std::size_t>(m_bobScreen)];
+  m_stillSprited = false;
   if (!screen.open || (m_bobScreen == 1 && m_dancerBuffer)) {
+    return;
+  }
+  if (m_sprites &&
+      m_stillBobs.sprites(screen.surface, m_images, m_stillSprites)) {
+    m_stillSprited = true;
     return;
   }
   core::IndexedSurface &display = m_display.compose();

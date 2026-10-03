@@ -15,6 +15,7 @@ EndingState::EndingState(systems::graphics::Monitor &monitor,
                          street::scenes::EndingScene::SCREEN_HEIGHT,
                          options.ntsc)) {
   m_monitor.setNtsc(options.ntsc);
+  m_scene.showSprites(monitor.showsSprites());
 }
 
 std::optional<EngineStateId> EndingState::update() {

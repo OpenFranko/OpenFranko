@@ -792,3 +792,45 @@ SCENARIO("The credits come from the JSON that frankoExtract writes") {
     }
   }
 }
+
+SCENARIO("Bobs shown as sprites look the same as bobs drawn in the ending") {
+  GIVEN("Two endings, one on a monitor that shows sprites") {
+    Ending drawn;
+    Ending sprited;
+    sprited.scene.showSprites(true);
+
+    WHEN("Both run to the end, with fire pressed now and then") {
+      int stillSprites = 0;
+      int dancerSprites = 0;
+      std::vector<uint32_t> drawnFrame;
+      std::vector<uint32_t> spritedFrame;
+      for (int frame = 0; frame < 12000 && !drawn.scene.isFinished(); ++frame) {
+        const int16_t joystick = frame % 400 == 399 ? JOY_FIRE : 0;
+        drawn.scene.advance(joystick);
+        sprited.scene.advance(joystick);
+        if (frame % 3 != 0) {
+          continue;
+        }
+        drawn.scene.compose(drawnFrame);
+        sprited.scene.compose(spritedFrame);
+        REQUIRE(spritedFrame == drawnFrame);
+        rasterize(drawn.scene.upcomingOutput(), drawnFrame);
+        const Display upcoming = sprited.scene.upcomingOutput();
+        rasterize(upcoming, spritedFrame);
+        REQUIRE(spritedFrame == drawnFrame);
+        for (const Layer &layer : upcoming.layers) {
+          if (layer.carriesSprites && !layer.sprites.empty()) {
+            ++(sprited.scene.isShowingCredits() ? dancerSprites : stillSprites);
+          }
+        }
+      }
+
+      THEN("Both finish, with the still and the dancer shown as sprites") {
+        REQUIRE(drawn.scene.isFinished());
+        REQUIRE(sprited.scene.isFinished());
+        REQUIRE(stillSprites > 100);
+        REQUIRE(dancerSprites > 100);
+      }
+    }
+  }
+}
