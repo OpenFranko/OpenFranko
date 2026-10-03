@@ -148,3 +148,38 @@ SCENARIO("cropRows keeps a band of rows") {
     }
   }
 }
+
+SCENARIO("Row colours are shared until a copy changes them") {
+  GIVEN("Row colours and a copy of them") {
+    RowColors rows = {{1, 0, 0xF00}, {2, 3, 0x0F0}};
+    RowColors copy = rows;
+
+    THEN("The copy shares the same rows") {
+      REQUIRE(copy.shares(rows));
+      REQUIRE(copy.size() == 2);
+    }
+
+    WHEN("The copy is changed") {
+      for (RowColor &row : copy) {
+        row.color = 0x00F;
+      }
+
+      THEN("Only the copy changes") {
+        REQUIRE_FALSE(copy.shares(rows));
+        REQUIRE(rows.begin()->color == 0xF00);
+        REQUIRE(copy.begin()->color == 0x00F);
+      }
+    }
+
+    WHEN("A row is added to the copy and the original is cleared") {
+      copy.push_back({5, 1, 0x123});
+      rows.clear();
+
+      THEN("Each keeps its own rows") {
+        REQUIRE(copy.size() == 3);
+        REQUIRE(rows.empty());
+        REQUIRE(rows.begin() == rows.end());
+      }
+    }
+  }
+}

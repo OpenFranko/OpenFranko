@@ -76,4 +76,6 @@ void StatusPanel::gainEnergy(int energy) {
 
 const core::IndexedSurface &StatusPanel::surface() const { return m_surface; }
 
+uint32_t StatusPanel::revision() const { return m_surface.revision(); }
+
 } // namespace openfranko::src::engine::street::ui

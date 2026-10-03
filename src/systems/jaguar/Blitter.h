@@ -24,6 +24,7 @@ enum class Mode : uint8_t { Copy, Masked, Mirrored, MirroredMasked };
 
 void wait();
 void useQueue(uint32_t control);
+void resumeQueue(uint32_t control);
 void stopQueue();
 bool queue(Source source, Area target, int width, int height, Mode mode);
 bool isQueued();

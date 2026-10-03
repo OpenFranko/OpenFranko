@@ -46,6 +46,7 @@ struct VblankTarget {
 };
 
 VblankTarget *activeTarget = nullptr;
+bool gpuRunning = false;
 
 void onVblank() {
   if (activeTarget) {
@@ -59,6 +60,12 @@ struct TranslationBuffer {
   const uint8_t *source = nullptr;
   std::size_t bytes = 0;
   std::unique_ptr<uint64_t[]> storage;
+  uint32_t revision = 0;
+};
+
+struct SourceRevision {
+  const uint8_t *source = nullptr;
+  uint32_t revision = 0;
 };
 
 struct VideoSystem::Window : VblankTarget, jaguar::TranslationBuffers {
@@ -83,13 +90,16 @@ struct VideoSystem::Window : VblankTarget, jaguar::TranslationBuffers {
   uint32_t longestUpdate = 0;
   std::vector<TranslationBuffer> buffers;
   std::array<std::unique_ptr<uint64_t[]>, FRAMES> lines;
+  std::array<SourceRevision, FRAMES> revisions{};
 
   void vblank() override;
   uint8_t *buffer(const uint8_t *source, std::size_t bytes) override;
   bool isReferenced(const uint64_t *storage) const;
   void refreshTranslations();
+  void noteRevisions(const Display &display);
+  uint32_t revisionOf(const uint8_t *source) const;
   void prepareLines(std::size_t slot, const Display &display);
-  int lineCapacity() const { return geometry.rows + 1; }
+  int lineCapacity() const { return geometry.rows + 2; }
   jaguar::FrameMemory memory(std::size_t slot) {
     return {reinterpret_cast<uint32_t>(liveList),
             reinterpret_cast<uint32_t>(solidPhrases), this,
@@ -204,12 +214,55 @@ void VideoSystem::Window::refreshTranslations() {
   }
   for (const jaguar::Translation &translation :
        frames[static_cast<std::size_t>(slot)].translations) {
+    const uint32_t revision = revisionOf(translation.source);
+    TranslationBuffer *target = nullptr;
+    for (TranslationBuffer &entry : buffers) {
+      if (reinterpret_cast<uint8_t *>(entry.storage.get()) ==
+          translation.target) {
+        target = &entry;
+      }
+    }
+    if (revision != 0 && target && target->revision == revision) {
+      continue;
+    }
     if (!jaguar::blitter::translate(translation.source, translation.target,
                                     translation.bytes, translation.keep,
                                     translation.flip)) {
       jaguar::translateOnCpu(translation);
     }
+    if (target) {
+      target->revision = revision;
+    }
   }
+}
+
+void VideoSystem::Window::noteRevisions(const Display &display) {
+  for (const Layer &layer : display.layers) {
+    if (layer.revision == 0 || !layer.pixels) {
+      continue;
+    }
+    SourceRevision *slot = &revisions[0];
+    for (SourceRevision &entry : revisions) {
+      if (entry.source == layer.pixels) {
+        slot = &entry;
+        break;
+      }
+      if (entry.revision < slot->revision) {
+        slot = &entry;
+      }
+    }
+    slot->source = layer.pixels;
+    slot->revision = layer.revision;
+  }
+}
+
+uint32_t VideoSystem::Window::revisionOf(const uint8_t *source) const {
+  for (const SourceRevision &entry : revisions) {
+    if (entry.source == source) {
+      return entry.revision;
+    }
+  }
+  return 0;
 }
 
 void VideoSystem::Window::prepareLines(std::size_t slot,
@@ -257,12 +310,17 @@ VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
   window.geometry = jaguar::detectGeometry();
   m_ntsc = window.geometry.ntsc;
   const jaguar::RiscProgram gpu = jaguar::gpuProgram();
-  jaguar::longWord(jaguar::GPU_CTRL) = 0;
-  jaguar::loadProgram(gpu);
-  jaguar::blitter::useQueue(gpu.entries[2]);
+  if (gpuRunning) {
+    jaguar::blitter::resumeQueue(gpu.entries[2]);
+  } else {
+    jaguar::longWord(jaguar::GPU_CTRL) = 0;
+    jaguar::loadProgram(gpu);
+    jaguar::blitter::useQueue(gpu.entries[2]);
+    jaguar::longWord(jaguar::GPU_PC) = gpu.entries[0];
+    jaguar::longWord(jaguar::GPU_CTRL) = jaguar::RISC_GO;
+    gpuRunning = true;
+  }
   window.copperNext = gpu.entries[1];
-  jaguar::longWord(jaguar::GPU_PC) = gpu.entries[0];
-  jaguar::longWord(jaguar::GPU_CTRL) = jaguar::RISC_GO;
 
   for (int value = 0; value < jaguar::SOLID_PHRASES; ++value) {
     solidPhrases[value] = static_cast<uint64_t>(value) * BYTE_COPIES;
@@ -291,6 +349,7 @@ VideoSystem::~VideoSystem() {
 
 void VideoSystem::show(const Display &display) {
   Window &window = *m_window;
+  window.noteRevisions(display);
   if (display.revision != 0) {
     if (display.revision == m_shownRevision) {
       return;
@@ -405,8 +464,14 @@ void VideoSystem::present() {
                        width, jaguar::keyboard::HEIGHT, column, row};
   }
   window.prepareLines(index, m_shown);
-  jaguar::buildFrame(m_shown, window.geometry, window.memory(index),
-                     panels.data(), count, window.frames[index]);
+  const bool scrolled =
+      window.built[index] && window.sourceOverlays[index] == overlay &&
+      jaguar::scrollFrame(m_shown, window.sources[index], window.geometry,
+                          window.memory(index), window.frames[index]);
+  if (!scrolled) {
+    jaguar::buildFrame(m_shown, window.geometry, window.memory(index),
+                       panels.data(), count, window.frames[index]);
+  }
   if (window.frames[index].phrases.size() > LIVE_PHRASES) {
     throw std::runtime_error("Video system error: too many display layers");
   }

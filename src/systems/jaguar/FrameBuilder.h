@@ -58,12 +58,23 @@ struct FrameMemory {
 struct BuiltFrame {
   std::vector<uint64_t> phrases;
   std::array<uint16_t, 256> clut{};
+  uint32_t clutVersion = 0;
   std::vector<uint32_t> copper;
   std::vector<Translation> translations;
-  std::vector<uint16_t> lineColors;
+  graphics::RowColors lineRows;
   const uint8_t *lineTarget = nullptr;
+  int lineFirst = 0;
+  int lineCount = 0;
+  int lineShift = 0;
+  uint16_t lineDefault = 0;
   uint16_t background = 0;
   uint32_t border = 0;
+  Placement placement;
+  std::vector<LayerArea> areas;
+  std::vector<int> objects;
+  std::vector<int> layerTranslations;
+  int lineObject = -1;
+  int lineLayer = -1;
 };
 
 Placement placeDisplay(const graphics::Display &display,
@@ -84,6 +95,9 @@ void allowCopper(bool allowed);
 void buildFrame(const graphics::Display &display, const Geometry &geometry,
                 const FrameMemory &memory, const Overlay *overlays,
                 std::size_t overlayCount, BuiltFrame &frame);
+bool scrollFrame(const graphics::Display &display,
+                 const graphics::Display &built, const Geometry &geometry,
+                 const FrameMemory &memory, BuiltFrame &frame);
 void translateOnCpu(const Translation &translation);
 
 } // namespace jaguar

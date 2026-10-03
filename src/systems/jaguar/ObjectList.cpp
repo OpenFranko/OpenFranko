@@ -5,6 +5,7 @@ namespace {
 
 constexpr uint64_t BITMAP_TYPE = 0;
 constexpr uint64_t SCALED_TYPE = 1;
+constexpr uint64_t TYPE_MASK = 7;
 constexpr uint64_t GPU_TYPE = 2;
 constexpr uint64_t BRANCH_TYPE = 3;
 constexpr uint64_t STOP_TYPE = 4;
@@ -45,6 +46,7 @@ void bitmapPhrases(const BitmapObject &object, uint32_t link, uint64_t *out) {
            field(static_cast<uint64_t>(object.index), 7, 38) |
            field(object.reflected ? 1 : 0, 1, 45) |
            field(object.transparent ? 1 : 0, 1, 47) |
+           field(object.released ? 1 : 0, 1, 48) |
            field(static_cast<uint64_t>(object.firstPixel), 6, 49);
   if (object.scaled) {
     out[2] = field(object.horizontalScale, 8, 0) |
@@ -75,7 +77,7 @@ void ObjectList::addGpuObject(int halfLine, uint32_t data) {
   m_phrases.push_back(gpuPhrase(halfLine, data));
 }
 
-void ObjectList::addBitmap(const BitmapObject &object) {
+std::size_t ObjectList::addBitmap(const BitmapObject &object) {
   alignTo(object.scaled ? SCALED_ALIGNMENT : OBJECT_ALIGNMENT);
   linkPrevious(m_phrases.size());
   const std::size_t at = m_phrases.size();
@@ -83,6 +85,7 @@ void ObjectList::addBitmap(const BitmapObject &object) {
   bitmapPhrases(object, 0, phrases);
   m_phrases.insert(m_phrases.end(), phrases, phrases + (object.scaled ? 3 : 2));
   m_unlinked.push_back(at);
+  return at;
 }
 
 std::size_t ObjectList::addStop() {
@@ -111,6 +114,20 @@ void ObjectList::linkPrevious(std::size_t next) {
     m_phrases[at] = (m_phrases[at] & ~LINK_MASK) | linkField(address(next));
   }
   m_unlinked.clear();
+}
+
+void rewriteBitmap(const BitmapObject &object, uint64_t *phrases) {
+  uint64_t fresh[3] = {};
+  bitmapPhrases(object, 0, fresh);
+  phrases[0] = (fresh[0] & ~LINK_MASK) | (phrases[0] & LINK_MASK);
+  phrases[1] = fresh[1];
+  if (object.scaled) {
+    phrases[2] = fresh[2];
+  }
+}
+
+bool isScaledBitmap(uint64_t phrase) {
+  return (phrase & TYPE_MASK) == SCALED_TYPE;
 }
 
 } // namespace openfranko::src::systems::jaguar

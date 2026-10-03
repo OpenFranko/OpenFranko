@@ -35,6 +35,7 @@ public:
   int height() const;
   uint8_t pixel(int x, int y) const;
   const std::vector<uint8_t> &pixels() const;
+  uint32_t revision() const;
 
   void reshape(int width, int height);
   void fill(uint8_t color);
@@ -50,6 +51,7 @@ private:
   int m_width;
   int m_height;
   std::vector<uint8_t> m_pixels;
+  uint32_t m_revision;
 };
 
 class ScreenBlock {

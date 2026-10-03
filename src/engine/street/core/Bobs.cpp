@@ -4,12 +4,16 @@
 #include "../../../systems/graphics/PixelOps.h"
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <stdexcept>
 #include <utility>
 
 namespace openfranko::src::engine::street::core {
 namespace {
+
+constexpr int SIGN_BIT = 0x8000;
+constexpr std::size_t MIRROR_BYTES = 131072;
 
 struct Shape {
   ImageBank::Mask mask;
@@ -347,6 +351,8 @@ void ImageBank::clear() {
   m_entries.clear();
   m_outlines.clear();
   m_boxes.clear();
+  m_mirrors.clear();
+  m_mirrorBytes = 0;
 }
 
 void ImageBank::load(int base, std::vector<Picture> frames) {
@@ -372,6 +378,7 @@ void ImageBank::grow(std::size_t end) {
 }
 
 void ImageBank::store(std::size_t number, Picture &&picture) {
+  forgetMirror(static_cast<int>(number));
   Entry &entry = m_entries[number];
   Outline &outline = m_outlines[number];
   const std::size_t height =
@@ -456,6 +463,61 @@ void ImageBank::refreshBox(std::size_t number) {
   box.width = static_cast<int16_t>((picture.width + WORD_PIXELS - 1) /
                                    WORD_PIXELS * WORD_PIXELS);
   box.height = static_cast<int16_t>(picture.height);
+}
+
+const Picture *ImageBank::mirrored(int number) {
+  const Picture *original = find(number);
+  if (!original) {
+    return nullptr;
+  }
+  ++m_mirrorUses;
+  for (Mirror &mirror : m_mirrors) {
+    if (mirror.number == number) {
+      mirror.used = m_mirrorUses;
+      return &mirror.picture;
+    }
+  }
+  const std::size_t bytes = original->pixels.size();
+  if (bytes == 0 || bytes > MIRROR_BYTES) {
+    return nullptr;
+  }
+  if (m_mirrorBytes + bytes > MIRROR_BYTES) {
+    systems::graphics::pixels::finish();
+    while (m_mirrorBytes + bytes > MIRROR_BYTES) {
+      const auto oldest =
+          std::min_element(m_mirrors.begin(), m_mirrors.end(),
+                           [](const Mirror &left, const Mirror &right) {
+                             return left.used < right.used;
+                           });
+      m_mirrorBytes -= oldest->picture.pixels.size();
+      m_mirrors.erase(oldest);
+    }
+  }
+  Mirror mirror;
+  mirror.number = number;
+  mirror.used = m_mirrorUses;
+  mirror.picture.width = original->width;
+  mirror.picture.height = original->height;
+  mirror.picture.hotX = original->hotX;
+  mirror.picture.hotY = original->hotY;
+  mirror.picture.pixels.resize(bytes);
+  systems::graphics::pixels::draw(
+      {original->pixels.data(), original->width},
+      {mirror.picture.pixels.data(), original->width}, original->width,
+      original->height, false, true);
+  m_mirrorBytes += bytes;
+  m_mirrors.push_back(std::move(mirror));
+  return &m_mirrors.back().picture;
+}
+
+void ImageBank::forgetMirror(int number) {
+  for (auto mirror = m_mirrors.begin(); mirror != m_mirrors.end(); ++mirror) {
+    if (mirror->number == number) {
+      m_mirrorBytes -= mirror->picture.pixels.size();
+      m_mirrors.erase(mirror);
+      return;
+    }
+  }
 }
 
 bool ImageBank::isMasked(int number) const {
@@ -606,29 +668,29 @@ const std::vector<BobLayer::Placement> &
 BobLayer::placements(const IndexedSurface &surface,
                      const ImageBank &images) const {
   m_order.clear();
-  for (int number = 0; number < BOBS; ++number) {
-    if ((m_active[static_cast<std::size_t>(number / MASK_BITS)] >>
-         (number % MASK_BITS)) == 0) {
-      number |= MASK_BITS - 1;
-      continue;
-    }
-    const Bob &bob = m_bobs[static_cast<std::size_t>(number)];
-    if (!bob.active) {
-      continue;
-    }
-    std::size_t at = m_order.size();
-    m_order.push_back(number);
-    while (at > 0) {
-      const amal::Object &before =
-          m_bobs[static_cast<std::size_t>(m_order[at - 1])].object;
-      if (before.y < bob.object.y ||
-          (before.y == bob.object.y && before.x <= bob.object.x)) {
-        break;
+  std::array<uint32_t, BOBS> keys;
+  for (int word = 0; word < MASK_WORDS; ++word) {
+    int number = word * MASK_BITS;
+    for (uint32_t bits = m_active[static_cast<std::size_t>(word)]; bits != 0;
+         bits >>= 1, ++number) {
+      const Bob &bob = m_bobs[static_cast<std::size_t>(number)];
+      if ((bits & 1u) == 0 || !bob.active) {
+        continue;
       }
-      m_order[at] = m_order[at - 1];
-      --at;
+      const uint32_t key =
+          static_cast<uint32_t>(static_cast<uint16_t>(bob.object.y ^ SIGN_BIT))
+              << 16 |
+          static_cast<uint16_t>(bob.object.x ^ SIGN_BIT);
+      std::size_t at = m_order.size();
+      m_order.push_back(number);
+      while (at > 0 && keys[at - 1] > key) {
+        m_order[at] = m_order[at - 1];
+        keys[at] = keys[at - 1];
+        --at;
+      }
+      m_order[at] = number;
+      keys[at] = key;
     }
-    m_order[at] = number;
   }
 
   m_placed.clear();
@@ -661,8 +723,15 @@ void BobLayer::drawPlaced(IndexedSurface &surface, ImageBank &images,
                           m_bobs[static_cast<std::size_t>(bob)].object.image) &
                       ImageBank::NUMBER_MASK;
     images.orient(index, placed.flags);
-    surface.draw(*placed.picture, placed.left, placed.top,
-                 placed.flags & ImageBank::FLIP_X,
+    const Picture *picture = placed.picture;
+    bool flipX = (placed.flags & ImageBank::FLIP_X) != 0;
+    if (flipX) {
+      if (const Picture *mirror = images.mirrored(index)) {
+        picture = mirror;
+        flipX = false;
+      }
+    }
+    surface.draw(*picture, placed.left, placed.top, flipX,
                  placed.flags & ImageBank::FLIP_Y, !images.isMasked(index));
   }
 }

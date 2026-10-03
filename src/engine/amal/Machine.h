@@ -79,7 +79,17 @@ public:
   void tick();
 
 private:
-  enum class Form : uint8_t { Generic, LetValue, Let, If };
+  enum class Form : uint8_t {
+    Generic,
+    LetValue,
+    Let,
+    IfEqual,
+    IfLess,
+    IfGreater,
+    IfNotEqual,
+    IfAnd,
+    If
+  };
 
   struct Step {
     const Instruction *instruction = nullptr;
@@ -116,10 +126,16 @@ private:
     uint16_t animCounter = 0;
   };
 
+  struct Landing {
+    int16_t pc;
+    int16_t jumps;
+    uint32_t changes;
+  };
   struct SourceHash {
     std::size_t operator()(const std::string &source) const;
   };
 
+  static Form ifForm(Operator op);
   static Step compile(const Program &program, int pc);
   const Step *steps(const Program &program);
   Channel &channel(int number);
@@ -143,6 +159,9 @@ private:
   std::unordered_map<std::string, ParsedProgram, SourceHash> m_programs;
   std::unordered_map<const uint16_t *, std::vector<Step>> m_steps;
   int16_t m_joystick = 0;
+  uint32_t m_changes = 0;
+  std::size_t m_activeEnd = 0;
+  bool m_activeDirty = true;
 };
 
 } // namespace amal

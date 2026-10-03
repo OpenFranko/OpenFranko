@@ -224,6 +224,93 @@ SCENARIO("Priority On draws lower bobs in front") {
   }
 }
 
+namespace {
+
+Picture patterned(int width, int height, int seed) {
+  Picture picture = box(width, height, width / 3, height - 1, 0);
+  for (std::size_t at = 0; at < picture.pixels.size(); ++at) {
+    const int value = static_cast<int>(at) * 7 + seed;
+    picture.pixels[at] =
+        static_cast<uint8_t>(value % 5 == 0 ? 0 : 1 + value % 13);
+  }
+  return picture;
+}
+
+int mirroredMismatches(const IndexedSurface &screen, const Picture &picture,
+                       int x, int y) {
+  const int left = x - (picture.width - picture.hotX);
+  const int top = y - picture.hotY;
+  int wrong = 0;
+  for (int row = 0; row < picture.height; ++row) {
+    for (int column = 0; column < picture.width; ++column) {
+      const int screenX = left + picture.width - 1 - column;
+      const int screenY = top + row;
+      if (screenX < 0 || screenX >= screen.width() || screenY < 0 ||
+          screenY >= screen.height()) {
+        continue;
+      }
+      wrong += screen.pixel(screenX, screenY) != picture.at(column, row);
+    }
+  }
+  return wrong;
+}
+
+} // namespace
+
+SCENARIO("Mirrored bobs show their image reversed") {
+  GIVEN("A patterned image") {
+    ImageBank images;
+    const Picture picture = patterned(48, 20, 1);
+    images.load(1, {picture});
+    BobLayer bobs;
+
+    THEN("Every placement, clipped or not, matches the reversed image") {
+      for (int x : {-20, 3, 100, 300, 340}) {
+        IndexedSurface screen(320, 222);
+        bobs.set(1, x, 100, 1 + MIRROR);
+        bobs.draw(screen, images);
+        REQUIRE(mirroredMismatches(screen, picture, x, 100) == 0);
+      }
+    }
+
+    THEN("Loading the image again shows the new one") {
+      IndexedSurface screen(320, 222);
+      bobs.set(1, 100, 100, 1 + MIRROR);
+      bobs.draw(screen, images);
+      const Picture changed = patterned(48, 20, 2);
+      images.load(1, {changed});
+      IndexedSurface fresh(320, 222);
+      bobs.draw(fresh, images);
+      REQUIRE(mirroredMismatches(fresh, changed, 100, 100) == 0);
+    }
+  }
+
+  GIVEN("More mirrored images than fit in the mirror cache") {
+    ImageBank images;
+    std::vector<Picture> pictures;
+    for (int seed = 0; seed < 40; ++seed) {
+      pictures.push_back(patterned(64, 80, seed));
+    }
+    images.load(1, pictures);
+    BobLayer bobs;
+
+    THEN("Each one, and the first again, still draws reversed") {
+      for (int image = 1; image <= 40; ++image) {
+        IndexedSurface screen(320, 222);
+        bobs.set(1, 150, 100, image + MIRROR);
+        bobs.draw(screen, images);
+        REQUIRE(mirroredMismatches(
+                    screen, pictures[static_cast<std::size_t>(image - 1)], 150,
+                    100) == 0);
+      }
+      IndexedSurface screen(320, 222);
+      bobs.set(1, 150, 100, 1 + MIRROR);
+      bobs.draw(screen, images);
+      REQUIRE(mirroredMismatches(screen, pictures[0], 150, 100) == 0);
+    }
+  }
+}
+
 SCENARIO("Paste Bob stamps by the top-left corner") {
   GIVEN("A screen and an image with a hot spot") {
     ImageBank images;

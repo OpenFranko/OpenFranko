@@ -1,7 +1,10 @@
 #ifndef SYSTEMS_GRAPHICS_DISPLAY_H_
 #define SYSTEMS_GRAPHICS_DISPLAY_H_
 
+#include <cstddef>
 #include <cstdint>
+#include <initializer_list>
+#include <memory>
 #include <vector>
 
 namespace openfranko {
@@ -17,6 +20,28 @@ struct RowColor {
   int row = 0;
   uint8_t index = 0;
   uint16_t color = 0;
+};
+
+class RowColors {
+public:
+  RowColors() = default;
+  RowColors(std::initializer_list<RowColor> rows);
+
+  bool empty() const;
+  std::size_t size() const;
+  const RowColor *begin() const;
+  const RowColor *end() const;
+  RowColor *begin();
+  RowColor *end();
+  void push_back(const RowColor &row);
+  void pop_back();
+  void clear();
+  bool shares(const RowColors &other) const;
+
+private:
+  std::vector<RowColor> &owned();
+
+  std::shared_ptr<std::vector<RowColor>> m_rows;
 };
 
 struct Layer {
@@ -35,7 +60,8 @@ struct Layer {
   int rows = 0;
   uint8_t mask = 0xFF;
   std::vector<uint16_t> palette;
-  std::vector<RowColor> rowColors;
+  RowColors rowColors;
+  uint32_t revision = 0;
 };
 
 struct Display {

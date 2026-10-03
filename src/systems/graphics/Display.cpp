@@ -23,6 +23,49 @@ void mapPalette(const Layer &layer, int row, std::vector<uint32_t> &colors) {
 
 } // namespace
 
+RowColors::RowColors(std::initializer_list<RowColor> rows) {
+  if (rows.size() != 0) {
+    m_rows = std::make_shared<std::vector<RowColor>>(rows);
+  }
+}
+
+bool RowColors::empty() const { return !m_rows || m_rows->empty(); }
+
+std::size_t RowColors::size() const { return m_rows ? m_rows->size() : 0; }
+
+const RowColor *RowColors::begin() const {
+  return m_rows ? m_rows->data() : nullptr;
+}
+
+const RowColor *RowColors::end() const {
+  return m_rows ? m_rows->data() + m_rows->size() : nullptr;
+}
+
+RowColor *RowColors::begin() { return m_rows ? owned().data() : nullptr; }
+
+RowColor *RowColors::end() {
+  return m_rows ? owned().data() + m_rows->size() : nullptr;
+}
+
+void RowColors::push_back(const RowColor &row) { owned().push_back(row); }
+
+void RowColors::pop_back() { owned().pop_back(); }
+
+void RowColors::clear() { m_rows.reset(); }
+
+bool RowColors::shares(const RowColors &other) const {
+  return m_rows == other.m_rows;
+}
+
+std::vector<RowColor> &RowColors::owned() {
+  if (!m_rows) {
+    m_rows = std::make_shared<std::vector<RowColor>>();
+  } else if (m_rows.use_count() > 1) {
+    m_rows = std::make_shared<std::vector<RowColor>>(*m_rows);
+  }
+  return *m_rows;
+}
+
 uint32_t newRevision() {
   static uint32_t revision = 0;
   if (++revision == 0) {

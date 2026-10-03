@@ -13,6 +13,18 @@ constexpr int MUSIC_VOLUME = 30;
 constexpr int PLAYER_CHANNEL = 1;
 constexpr int16_t CHEAT_LIVES = 12;
 
+void markPanel(systems::graphics::Display &display, const uint8_t *panelPixels,
+               const ui::StatusPanel *panel) {
+  if (!panel) {
+    return;
+  }
+  for (systems::graphics::Layer &layer : display.layers) {
+    if (layer.pixels == panelPixels) {
+      layer.revision = panel->revision();
+    }
+  }
+}
+
 } // namespace
 
 Stage::Stage(StreetHost &host, session::GameSession &session,
@@ -96,6 +108,7 @@ Stage::buildOutput(const ui::StageDisplay &copper,
         cached.window.laced == window.laced && cached.palette == m_palette &&
         cached.panelPalette == m_panelPalette) {
       cached.used = m_outputUses;
+      markPanel(cached.display, panelPixels, panel);
       return cached.display;
     }
     if (!cached.valid || (oldest->valid && cached.used < oldest->used)) {
@@ -126,7 +139,12 @@ Stage::Outcome Stage::outcome() const { return m_outcome; }
 
 const core::BobLayer &Stage::bobs() const { return m_bobs; }
 
-const core::IndexedSurface &Stage::screen() const { return m_screen; }
+const core::IndexedSurface &Stage::screen() const {
+  settleScreen();
+  return m_screen;
+}
+
+void Stage::settleScreen() const {}
 
 const core::IndexedSurface &Stage::display() const { return m_buffer.shown(); }
 
@@ -197,12 +215,14 @@ void Stage::updatePanel() {
 void Stage::stall() { m_resumeFrame = m_frame + AUTOBACK_VBLS; }
 
 void Stage::autoback(core::DoubleBuffer::Op op) {
+  settleScreen();
   op(m_screen);
   m_buffer.autoback(std::move(op));
   stall();
 }
 
 bool Stage::pasteStalled(int x, int y, int image) {
+  settleScreen();
   if (!core::BobLayer::paste(m_screen, m_images, x, y, image)) {
     return false;
   }
@@ -214,6 +234,7 @@ bool Stage::pasteStalled(int x, int y, int image) {
 }
 
 void Stage::putBlock(const core::ScreenBlock &block) {
+  settleScreen();
   block.put(m_screen);
   block.put(m_buffer.logic());
   m_buffer.swap();
@@ -254,6 +275,7 @@ void Stage::hideScreen() {
 }
 
 void Stage::openBlankScreens() {
+  settleScreen();
   m_screen = core::IndexedSurface(SCREEN_WIDTH, SCREEN_HEIGHT);
   m_buffer = core::DoubleBuffer(SCREEN_WIDTH, SCREEN_HEIGHT);
 }

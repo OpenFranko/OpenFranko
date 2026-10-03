@@ -1,6 +1,9 @@
 #include "FrameBuilder.h"
 
+#include "../Multiply.h"
+
 #include <algorithm>
+#include <cstring>
 
 namespace openfranko::src::systems::jaguar {
 namespace {
@@ -18,9 +21,11 @@ constexpr int TOP_HALF_LINE = 0;
 constexpr uint32_t PAIR_BYTES = 4;
 constexpr std::array<uint32_t, 3> BANK_MASKS = {0x80, 0x40, 0xC0};
 constexpr std::size_t MAX_TRANSLATED_BYTES = 128 * 1024;
-constexpr uint32_t BYTE_COPIES = 0x01010101;
 constexpr uintptr_t LONG_ALIGNMENT = 4;
 constexpr int NO_SLOT = -1;
+constexpr int NO_OBJECT = -1;
+constexpr int SHORT_LIMIT = 0x7FFF;
+constexpr int MAX_SCALE = 255;
 constexpr std::size_t HEADER_STOP = 3;
 constexpr std::size_t FIRST_OBJECT = 4;
 
@@ -37,12 +42,63 @@ const std::array<uint16_t, AMIGA_COLORS> &rgb16Table() {
   return table;
 }
 
+uint32_t everyByte(uint32_t value) {
+  value &= 0xFF;
+  value |= value << 8;
+  return value | value << 16;
+}
+
+int scaled(int value, int factor) {
+  if (factor == 1) {
+    return value;
+  }
+  if (factor == 2) {
+    return value * 2;
+  }
+  return value * factor;
+}
+
+int divided(int value, int divisor) {
+  if (divisor == 1) {
+    return value;
+  }
+  if (divisor == 2) {
+    return value / 2;
+  }
+  return value / divisor;
+}
+
+bool divides(int value, int divisor) {
+  if (divisor == 1) {
+    return true;
+  }
+  if (divisor == 2) {
+    return (value & 1) == 0;
+  }
+  return value % divisor == 0;
+}
+
+int product(int left, int right) {
+  if (left >= -SHORT_LIMIT && left <= SHORT_LIMIT && right >= -SHORT_LIMIT &&
+      right <= SHORT_LIMIT) {
+    return systems::multiplySigned16(static_cast<int16_t>(left),
+                                     static_cast<int16_t>(right));
+  }
+  return left * right;
+}
+
 int ceilDiv(int value, int divisor) {
+  if (divisor == 1) {
+    return value;
+  }
+  if (divisor == 2) {
+    return value >= 0 ? (value + 1) / 2 : -(-value / 2);
+  }
   return value >= 0 ? (value + divisor - 1) / divisor : -(-value / divisor);
 }
 
 int alignUp(int value, int multiple) {
-  return ceilDiv(value, multiple) * multiple;
+  return scaled(ceilDiv(value, multiple), multiple);
 }
 
 struct Rows {
@@ -60,7 +116,7 @@ struct PaletteSource {
   LayerArea area;
   uint8_t mask = FULL_MASK;
   std::vector<uint16_t> palette;
-  std::vector<graphics::RowColor> rowColors;
+  graphics::RowColors rowColors;
 };
 
 struct PaletteCache {
@@ -80,17 +136,20 @@ uint16_t effectiveColor(const graphics::Layer &layer, int value) {
   return index < layer.palette.size() ? layer.palette[index] & COLOR_MASK : 0;
 }
 
-bool sameRowColors(const std::vector<graphics::RowColor> &left,
-                   const std::vector<graphics::RowColor> &right) {
+bool sameRowColors(const graphics::RowColors &left,
+                   const graphics::RowColors &right) {
+  if (left.shares(right)) {
+    return true;
+  }
   if (left.size() != right.size()) {
     return false;
   }
-  for (std::size_t index = 0; index < left.size(); ++index) {
-    const graphics::RowColor &a = left[index];
-    const graphics::RowColor &b = right[index];
-    if (a.row != b.row || a.index != b.index || a.color != b.color) {
+  const graphics::RowColor *b = right.begin();
+  for (const graphics::RowColor &a : left) {
+    if (a.row != b->row || a.index != b->index || a.color != b->color) {
       return false;
     }
+    ++b;
   }
   return true;
 }
@@ -111,8 +170,8 @@ Rows sourceRows(const graphics::Layer &layer) {
   const int firstStep = layer.sourceY >= 0 ? 0 : ceilDiv(-layer.sourceY, step);
   const int lastStep =
       std::max(0, ceilDiv(layer.sourceRows - layer.sourceY, step));
-  rows.first = std::max(rows.first, layer.top + firstStep * repeat);
-  rows.last = std::min(rows.last, layer.top + lastStep * repeat);
+  rows.first = std::max(rows.first, layer.top + product(firstStep, repeat));
+  rows.last = std::min(rows.last, layer.top + product(lastStep, repeat));
   return rows;
 }
 
@@ -339,10 +398,10 @@ bool rowOrder(const graphics::RowColor &left, const graphics::RowColor &right) {
 }
 
 void recolorSpan(Clut &clut, const Span &span,
-                 const std::vector<graphics::RowColor> &changes,
+                 const graphics::RowColors &changes,
                  std::vector<graphics::RowColor> &sorted) {
-  const graphics::RowColor *begin = changes.data();
-  const graphics::RowColor *end = changes.data() + changes.size();
+  const graphics::RowColor *begin = changes.begin();
+  const graphics::RowColor *end = changes.end();
   if (!std::is_sorted(begin, end, rowOrder)) {
     sorted.assign(begin, end);
     std::stable_sort(sorted.begin(), sorted.end(), rowOrder);
@@ -422,7 +481,7 @@ void composePalettes(const graphics::Display &display, const Geometry &geometry,
     if (index > first) {
       clut.change(span.owner, span.first);
     }
-    const std::vector<graphics::RowColor> &changes =
+    const graphics::RowColors &changes =
         display.layers[static_cast<std::size_t>(span.owner)].rowColors;
     if (!changes.empty()) {
       recolorSpan(clut, span, changes, sorted);
@@ -484,40 +543,41 @@ void buildPalettes(const graphics::Display &display, const Geometry &geometry,
   cache.copper = frame.copper;
 }
 
-void addObject(const graphics::Layer &layer, const LayerArea &area,
-               const Placement &placement, const Geometry &geometry,
-               uint32_t solidPhrase, bool transparent, ObjectList &list) {
+bool makeObject(const graphics::Layer &layer, const uint8_t *pixels,
+                const LayerArea &area, const Placement &placement,
+                const Geometry &geometry, uint32_t solidPhrase,
+                bool transparent, BitmapObject &object) {
   if (area.firstRow >= area.lastRow || area.firstColumn >= area.lastColumn) {
-    return;
+    return false;
   }
   const int repeat = std::max(layer.repeat, 1);
   const int step = std::max(layer.sourceStep, 1);
   const int perLine = placement.rowsPerLine;
-  const int lineRepeat = repeat % perLine == 0 ? repeat / perLine : 1;
-  const int lineStep = repeat % perLine == 0 ? step : step * perLine;
-  const int lines = (area.lastRow - area.firstRow) / perLine;
+  const bool whole = divides(repeat, perLine);
+  const int lineRepeat = whole ? divided(repeat, perLine) : 1;
+  const int lineStep = whole ? step : scaled(step, perLine);
+  const int lines = divided(area.lastRow - area.firstRow, perLine);
   const int width = area.lastColumn - area.firstColumn;
-  BitmapObject object;
-  object.y =
-      geometry.firstHalfLine + 2 * (placement.top + area.firstRow / perLine);
-  object.x = placement.left + area.firstColumn / placement.halfWidth;
+  object = BitmapObject{};
+  object.y = geometry.firstHalfLine +
+             2 * (placement.top + divided(area.firstRow, perLine));
+  object.x = placement.left + divided(area.firstColumn, placement.halfWidth);
   object.depth = Depth::Bits8;
-  if (!layer.pixels) {
+  if (!pixels) {
     object.data = solidPhrase;
     object.pitch = 0;
     object.dataWidth = 0;
     object.imageWidth =
-        (width / placement.halfWidth + PHRASE_BYTES - 1) / PHRASE_BYTES;
+        (divided(width, placement.halfWidth) + PHRASE_BYTES - 1) / PHRASE_BYTES;
     object.height = lines;
-    list.addBitmap(object);
-    return;
+    return true;
   }
-  const int firstStep = (area.firstRow - layer.top) / repeat;
-  const int sourceRow = layer.sourceY + firstStep * step;
+  const int firstStep = divided(area.firstRow - layer.top, repeat);
+  const int sourceRow = layer.sourceY + product(firstStep, step);
   const int sourceColumn = layer.sourceX + area.firstColumn - layer.left;
   const uint32_t address =
-      static_cast<uint32_t>(reinterpret_cast<uintptr_t>(layer.pixels)) +
-      static_cast<uint32_t>(sourceRow * layer.stride + sourceColumn);
+      static_cast<uint32_t>(reinterpret_cast<uintptr_t>(pixels)) +
+      static_cast<uint32_t>(product(sourceRow, layer.stride) + sourceColumn);
   int offset = static_cast<int>(address % PHRASE_BYTES);
   object.transparent = transparent;
   object.scaled = lineRepeat > 1 || placement.halfWidth > 1;
@@ -528,64 +588,102 @@ void addObject(const graphics::Layer &layer, const LayerArea &area,
   }
   object.data = address - static_cast<uint32_t>(address % PHRASE_BYTES);
   object.firstPixel = offset * PIXEL_BITS;
-  object.dataWidth = layer.stride * lineStep / PHRASE_BYTES;
+  object.dataWidth = product(layer.stride, lineStep) / PHRASE_BYTES;
   object.height = ceilDiv(lines, lineRepeat);
   if (object.scaled) {
     object.horizontalScale = placement.halfWidth > 1 ? HALF_SCALE : SCALE_ONE;
     object.verticalScale = static_cast<uint8_t>(SCALE_ONE * lineRepeat);
   }
-  list.addBitmap(object);
+  return true;
 }
 
-void addLineColors(const LayerArea &area, const Placement &placement,
-                   const Geometry &geometry, const uint8_t *phrases,
-                   ObjectList &list) {
-  const int perLine = placement.rowsPerLine;
+int addObject(const graphics::Layer &layer, const uint8_t *pixels,
+              const LayerArea &area, const Placement &placement,
+              const Geometry &geometry, uint32_t solidPhrase, bool transparent,
+              ObjectList &list) {
+  BitmapObject object;
+  if (!makeObject(layer, pixels, area, placement, geometry, solidPhrase,
+                  transparent, object)) {
+    return NO_OBJECT;
+  }
+  return static_cast<int>(list.addBitmap(object));
+}
+
+int lineShift(const Placement &placement) {
+  return placement.rowsPerLine == 2 ? 1 : 0;
+}
+
+BitmapObject lineObject(const LayerArea &area, const Placement &placement,
+                        const Geometry &geometry, const uint8_t *phrases) {
+  const int shift = lineShift(placement);
   const int width =
       ceilDiv(area.lastColumn - area.firstColumn, placement.halfWidth);
+  const int wide = ceilDiv(width * SCALE_ONE, PIXELS_PER_PHRASE_16 * MAX_SCALE);
   BitmapObject object;
   object.y =
-      geometry.firstHalfLine + 2 * (placement.top + area.firstRow / perLine);
-  object.x = placement.left + area.firstColumn / placement.halfWidth;
+      geometry.firstHalfLine + 2 * (placement.top + (area.firstRow >> shift));
+  object.x = placement.left + divided(area.firstColumn, placement.halfWidth);
   object.depth = Depth::Bits16;
   object.data = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(phrases));
   object.pitch = 0;
   object.dataWidth = 1;
-  object.imageWidth = ceilDiv(width, PIXELS_PER_PHRASE_16);
-  object.height = (area.lastRow - area.firstRow) / perLine;
-  list.addBitmap(object);
+  object.imageWidth = wide;
+  object.height = (area.lastRow - area.firstRow) >> shift;
+  object.scaled = true;
+  object.released = true;
+  object.horizontalScale = static_cast<uint8_t>(
+      ceilDiv(width * SCALE_ONE, PIXELS_PER_PHRASE_16 * wide));
+  object.verticalScale = SCALE_ONE;
+  return object;
+}
+
+void fillPhrase(uint8_t *phrase, uint16_t color) {
+  const uint8_t high = static_cast<uint8_t>(color >> 8);
+  const uint8_t low = static_cast<uint8_t>(color);
+  const uint8_t bytes[sizeof(uint32_t)] = {high, low, high, low};
+  uint32_t pair;
+  std::memcpy(&pair, bytes, sizeof(pair));
+  uint32_t *longs = reinterpret_cast<uint32_t *>(phrase);
+  longs[0] = pair;
+  longs[1] = pair;
 }
 
 void writeLineColors(const graphics::Layer &layer, const LayerArea &area,
                      const Placement &placement, uint8_t *target,
                      BuiltFrame &frame) {
-  const int perLine = placement.rowsPerLine;
-  const int lines = (area.lastRow - area.firstRow) / perLine;
-  const std::array<uint16_t, AMIGA_COLORS> &table = rgb16Table();
-  static std::vector<uint16_t> colors;
-  colors.assign(static_cast<std::size_t>(lines),
-                table[effectiveColor(layer, 0)]);
-  for (const graphics::RowColor &change : layer.rowColors) {
-    const int offset = change.row - area.firstRow;
-    if (offset >= 0 && offset < lines * perLine && offset % perLine == 0) {
-      colors[static_cast<std::size_t>(offset / perLine)] =
-          table[change.color & COLOR_MASK];
-    }
-  }
-  if (frame.lineTarget == target && frame.lineColors == colors) {
+  const int shift = lineShift(placement);
+  const int lines = (area.lastRow - area.firstRow) >> shift;
+  const uint16_t fallback = effectiveColor(layer, 0);
+  const bool sameLines = sameRowColors(frame.lineRows, layer.rowColors);
+  if (frame.lineTarget == target && frame.lineFirst == area.firstRow &&
+      frame.lineCount == lines && frame.lineShift == shift &&
+      frame.lineDefault == fallback && sameLines) {
     return;
   }
-  for (std::size_t line = 0; line < colors.size(); ++line) {
-    const uint8_t high = static_cast<uint8_t>(colors[line] >> 8);
-    const uint8_t low = static_cast<uint8_t>(colors[line]);
-    uint8_t *phrase = target + line * PHRASE_BYTES;
-    for (int pixel = 0; pixel < PIXELS_PER_PHRASE_16; ++pixel) {
-      phrase[2 * pixel] = high;
-      phrase[2 * pixel + 1] = low;
+  const std::array<uint16_t, AMIGA_COLORS> &table = rgb16Table();
+  for (int line = 0; line < lines; ++line) {
+    fillPhrase(target + line * PHRASE_BYTES, table[fallback]);
+  }
+  const int odd = (1 << shift) - 1;
+  for (const graphics::RowColor &change : layer.rowColors) {
+    const int offset = change.row - area.firstRow;
+    if (offset < 0 || (offset & odd) != 0) {
+      continue;
+    }
+    const int line = offset >> shift;
+    if (line < lines) {
+      fillPhrase(target + line * PHRASE_BYTES,
+                 table[change.color & COLOR_MASK]);
     }
   }
-  frame.lineColors = colors;
+  std::copy_n(target + (lines - 1) * PHRASE_BYTES, PHRASE_BYTES,
+              target + lines * PHRASE_BYTES);
+  frame.lineRows = layer.rowColors;
   frame.lineTarget = target;
+  frame.lineFirst = area.firstRow;
+  frame.lineCount = lines;
+  frame.lineShift = shift;
+  frame.lineDefault = fallback;
 }
 
 uint8_t *linePhrases(const FrameMemory &memory, int lines) {
@@ -600,6 +698,7 @@ uint8_t *linePhrases(const FrameMemory &memory, int lines) {
 
 struct LayerPlan {
   bool merged = false;
+  bool translated = false;
   uint32_t bank = 0;
   int solidSlot = NO_SLOT;
   uint8_t *buffer = nullptr;
@@ -660,7 +759,7 @@ public:
   void palette(const graphics::Layer *base,
                std::vector<uint16_t> &colors) const {
     colors.assign(m_colors.begin(), m_colors.end());
-    if (!base) {
+    if (!base || base->mask == FULL_MASK) {
       return;
     }
     for (int slot = 0; slot < CLUT_SIZE; ++slot) {
@@ -681,8 +780,8 @@ bool isEmpty(const LayerArea &area) {
 }
 
 std::size_t sourceBytes(const graphics::Layer &layer) {
-  return static_cast<std::size_t>(std::max(layer.stride, 0)) *
-         static_cast<std::size_t>(std::max(layer.sourceRows, 0));
+  return static_cast<std::size_t>(
+      product(std::max(layer.stride, 0), std::max(layer.sourceRows, 0)));
 }
 
 bool isTranslatable(const graphics::Layer &layer) {
@@ -694,9 +793,9 @@ bool isTranslatable(const graphics::Layer &layer) {
 
 std::size_t baseLayer(const graphics::Display &display,
                       const std::vector<LayerArea> &areas) {
-  std::size_t base = display.layers.size();
+  std::size_t base = areas.size();
   int baseRows = 0;
-  for (std::size_t index = 0; index < display.layers.size(); ++index) {
+  for (std::size_t index = 0; index < areas.size(); ++index) {
     const LayerArea &area = areas[index];
     if (!display.layers[index].pixels || isEmpty(area)) {
       continue;
@@ -710,30 +809,42 @@ std::size_t baseLayer(const graphics::Display &display,
   return base;
 }
 
+bool onlyBackground(const graphics::RowColors &rows) {
+  static graphics::RowColors checked;
+  static bool background = false;
+  if (rows.shares(checked)) {
+    return background;
+  }
+  background = true;
+  for (const graphics::RowColor &change : rows) {
+    if (change.index != 0) {
+      background = false;
+      break;
+    }
+  }
+  checked = rows;
+  return background;
+}
+
 bool takesLineColors(const graphics::Layer &layer, const LayerPlan &plan) {
   if (layer.rowColors.empty() || !layer.pixels || layer.mask != FULL_MASK ||
       !plan.merged || plan.bank != 0 || plan.buffer) {
     return false;
   }
-  for (const graphics::RowColor &change : layer.rowColors) {
-    if (change.index != 0) {
-      return false;
-    }
-  }
-  return true;
+  return onlyBackground(layer.rowColors);
 }
 
 std::size_t planBanks(const graphics::Display &display,
                       const std::vector<LayerArea> &areas,
                       const FrameMemory &memory, std::vector<LayerPlan> &plans,
                       Banking &banking) {
-  plans.assign(display.layers.size(), LayerPlan{});
+  plans.assign(areas.size(), LayerPlan{});
   const std::size_t base = baseLayer(display, areas);
-  if (base < display.layers.size()) {
+  if (base < areas.size()) {
     banking.claim(display.layers[base], 0);
     plans[base].merged = true;
   }
-  for (std::size_t index = 0; index < display.layers.size(); ++index) {
+  for (std::size_t index = 0; index < areas.size(); ++index) {
     const graphics::Layer &layer = display.layers[index];
     if (index == base || isEmpty(areas[index])) {
       continue;
@@ -762,12 +873,98 @@ std::size_t planBanks(const graphics::Display &display,
       if (plan.buffer) {
         banking.claim(layer, bank);
         plan.merged = true;
+        plan.translated = true;
         plan.bank = bank;
       }
       break;
     }
   }
   return base;
+}
+
+struct BankInput {
+  bool pixels = false;
+  bool empty = false;
+  bool translatable = false;
+  uint8_t mask = FULL_MASK;
+  int rows = 0;
+  std::vector<uint16_t> palette;
+};
+
+struct BankCache {
+  bool valid = false;
+  uint32_t version = 0;
+  bool buffers = false;
+  std::vector<BankInput> inputs;
+  std::vector<LayerPlan> plans;
+  std::vector<uint16_t> merged;
+  std::array<uint16_t, CLUT_SIZE> clut{};
+};
+
+bool sameInput(const BankInput &input, const graphics::Layer &layer,
+               const LayerArea &area) {
+  return input.pixels == (layer.pixels != nullptr) &&
+         input.empty == isEmpty(area) && input.mask == layer.mask &&
+         input.rows == area.lastRow - area.firstRow &&
+         input.translatable == isTranslatable(layer) &&
+         input.palette == layer.palette;
+}
+
+bool reuseBanks(const BankCache &banks, const graphics::Display &display,
+                const std::vector<LayerArea> &areas, const FrameMemory &memory,
+                std::vector<LayerPlan> &plans) {
+  if (!banks.valid || banks.buffers != (memory.buffers != nullptr) ||
+      banks.inputs.size() != areas.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < areas.size(); ++index) {
+    if (!sameInput(banks.inputs[index], display.layers[index], areas[index])) {
+      return false;
+    }
+  }
+  plans = banks.plans;
+  for (std::size_t index = 0; index < areas.size(); ++index) {
+    LayerPlan &plan = plans[index];
+    plan.buffer = nullptr;
+    if (plan.translated) {
+      const graphics::Layer &layer = display.layers[index];
+      plan.buffer = memory.buffers->buffer(layer.pixels, sourceBytes(layer));
+      if (!plan.buffer) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+void rememberBanks(BankCache &banks, const graphics::Display &display,
+                   const std::vector<LayerArea> &areas,
+                   const FrameMemory &memory,
+                   const std::vector<LayerPlan> &plans, const Banking &banking,
+                   std::size_t base) {
+  banks.valid = true;
+  ++banks.version;
+  banks.buffers = memory.buffers != nullptr;
+  banks.inputs.resize(areas.size());
+  for (std::size_t index = 0; index < areas.size(); ++index) {
+    const graphics::Layer &layer = display.layers[index];
+    const LayerArea &area = areas[index];
+    BankInput &input = banks.inputs[index];
+    input.pixels = layer.pixels != nullptr;
+    input.empty = isEmpty(area);
+    input.translatable = isTranslatable(layer);
+    input.mask = layer.mask;
+    input.rows = area.lastRow - area.firstRow;
+    input.palette = layer.palette;
+  }
+  banks.plans = plans;
+  banking.palette(base < areas.size() ? &display.layers[base] : nullptr,
+                  banks.merged);
+  const std::array<uint16_t, AMIGA_COLORS> &table = rgb16Table();
+  for (int value = 0; value < CLUT_SIZE; ++value) {
+    const std::size_t index = static_cast<std::size_t>(value);
+    banks.clut[index] = table[banks.merged[index] & COLOR_MASK];
+  }
 }
 
 uint32_t borderColor(uint16_t color) {
@@ -788,8 +985,10 @@ Placement placeDisplay(const graphics::Display &display,
                                   display.height >= 2 * display.displayHeight
                               ? 2
                               : 1;
-  placement.left = (geometry.columns - display.width / placement.halfWidth) / 2;
-  placement.top = (geometry.rows - display.height / placement.rowsPerLine) / 2;
+  placement.left =
+      (geometry.columns - divided(display.width, placement.halfWidth)) / 2;
+  placement.top =
+      (geometry.rows - divided(display.height, placement.rowsPerLine)) / 2;
   return placement;
 }
 
@@ -800,16 +999,17 @@ LayerArea visibleArea(const graphics::Display &display,
   const Rows columns = sourceColumns(layer);
   const int perLine = placement.rowsPerLine;
   LayerArea area;
-  area.firstRow =
-      alignUp(std::max({0, rows.first, -placement.top * perLine}), perLine);
-  area.lastRow = alignUp(std::min({display.height, rows.last,
-                                   (geometry.rows - placement.top) * perLine}),
-                         perLine);
-  area.firstColumn =
-      std::max({0, columns.first, -placement.left * placement.halfWidth});
-  area.lastColumn =
-      std::min({display.width, columns.last,
-                (geometry.columns - placement.left) * placement.halfWidth});
+  area.firstRow = alignUp(
+      std::max({0, rows.first, scaled(-placement.top, perLine)}), perLine);
+  area.lastRow =
+      alignUp(std::min({display.height, rows.last,
+                        scaled(geometry.rows - placement.top, perLine)}),
+              perLine);
+  area.firstColumn = std::max(
+      {0, columns.first, scaled(-placement.left, placement.halfWidth)});
+  area.lastColumn = std::min(
+      {display.width, columns.last,
+       scaled(geometry.columns - placement.left, placement.halfWidth)});
   if (area.lastRow < area.firstRow) {
     area.lastRow = area.firstRow;
   }
@@ -826,9 +1026,9 @@ bool sameLayout(const graphics::Display &left, const graphics::Display &right) {
       left.layers.size() != right.layers.size()) {
     return false;
   }
-  for (std::size_t index = 0; index < left.layers.size(); ++index) {
-    const graphics::Layer &a = left.layers[index];
-    const graphics::Layer &b = right.layers[index];
+  const graphics::Layer *other = right.layers.data();
+  for (const graphics::Layer &a : left.layers) {
+    const graphics::Layer &b = *other++;
     if (a.pixels != b.pixels || a.stride != b.stride ||
         a.sourceColumns != b.sourceColumns || a.sourceRows != b.sourceRows ||
         a.sourceX != b.sourceX || a.sourceY != b.sourceY ||
@@ -855,52 +1055,81 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
   }
 
   static std::vector<LayerPlan> plans;
-  static std::vector<uint16_t> merged;
-  static graphics::Display adjusted;
-  Banking banking;
-  const std::size_t base = planBanks(display, areas, memory, plans, banking);
-  banking.palette(
-      base < display.layers.size() ? &display.layers[base] : nullptr, merged);
-  adjusted = display;
+  static BankCache banks;
+  if (!reuseBanks(banks, display, areas, memory, plans)) {
+    Banking banking;
+    const std::size_t base = planBanks(display, areas, memory, plans, banking);
+    rememberBanks(banks, display, areas, memory, plans, banking, base);
+  }
+
   frame.translations.clear();
-  const bool combined =
-      std::count_if(plans.begin(), plans.end(),
-                    [](const LayerPlan &plan) { return plan.merged; }) > 1;
-  std::size_t lineLayer = display.layers.size();
+  static std::vector<const uint8_t *> pixels;
+  pixels.clear();
+  const std::size_t count = areas.size();
+  frame.layerTranslations.resize(count);
+  std::size_t lineLayer = count;
   uint8_t *lines = nullptr;
-  for (std::size_t index = 0; index < plans.size(); ++index) {
+  bool complete = true;
+  for (std::size_t index = 0; index < count; ++index) {
     const LayerPlan &plan = plans[index];
-    const graphics::Layer &source = display.layers[index];
-    graphics::Layer &layer = adjusted.layers[index];
-    if (plan.merged) {
-      layer.palette = merged;
-      if (combined) {
-        layer.mask = FULL_MASK;
-      }
-    }
+    const graphics::Layer &layer = display.layers[index];
+    pixels.push_back(plan.buffer ? plan.buffer : layer.pixels);
+    frame.layerTranslations[index] = NO_OBJECT;
     if (plan.buffer) {
-      frame.translations.push_back(
-          {source.pixels, plan.buffer, sourceBytes(source),
-           source.mask * BYTE_COPIES, plan.bank * BYTE_COPIES});
-      layer.pixels = plan.buffer;
+      frame.layerTranslations[index] =
+          static_cast<int>(frame.translations.size());
+      frame.translations.push_back({layer.pixels, plan.buffer,
+                                    sourceBytes(layer), everyByte(layer.mask),
+                                    everyByte(plan.bank)});
     }
-    if (!lines && takesLineColors(source, plan)) {
-      const LayerArea &area = areas[index];
-      lines = linePhrases(memory, (area.lastRow - area.firstRow) /
-                                      placement.rowsPerLine);
+    const LayerArea &area = areas[index];
+    if (!lines && takesLineColors(layer, plan)) {
+      lines = linePhrases(
+          memory, ((area.lastRow - area.firstRow) >> lineShift(placement)) + 1);
       if (lines) {
         lineLayer = index;
-        layer.rowColors.clear();
-        writeLineColors(source, area, placement, lines, frame);
+        writeLineColors(layer, area, placement, lines, frame);
       }
+    }
+    if (!isEmpty(area) &&
+        (!plan.merged || (!layer.rowColors.empty() && index != lineLayer))) {
+      complete = false;
     }
   }
 
   frame.background = rgb16Table()[display.border & COLOR_MASK];
   frame.border = borderColor(display.border);
-  buildPalettes(adjusted, geometry, placement, areas, frame);
-  if (!copperAllowed) {
+  if (complete) {
+    if (frame.clutVersion != banks.version) {
+      frame.clut = banks.clut;
+      frame.clutVersion = banks.version;
+    }
     frame.copper.assign(1, COPPER_END);
+  } else {
+    frame.clutVersion = 0;
+    static graphics::Display adjusted;
+    adjusted = display;
+    const bool combined =
+        std::count_if(plans.begin(), plans.end(),
+                      [](const LayerPlan &plan) { return plan.merged; }) > 1;
+    for (std::size_t index = 0; index < count; ++index) {
+      const LayerPlan &plan = plans[index];
+      graphics::Layer &layer = adjusted.layers[index];
+      if (plan.merged) {
+        layer.palette = banks.merged;
+        if (combined) {
+          layer.mask = FULL_MASK;
+        }
+      }
+      layer.pixels = pixels[index];
+      if (index == lineLayer) {
+        layer.rowColors.clear();
+      }
+    }
+    buildPalettes(adjusted, geometry, placement, areas, frame);
+    if (!copperAllowed) {
+      frame.copper.assign(1, COPPER_END);
+    }
   }
   const bool copper = frame.copper.size() > 1;
 
@@ -913,15 +1142,23 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
   if (copper) {
     list.addGpuObject(ALL_LINES, 0);
   }
-  for (std::size_t index = 0; index < adjusted.layers.size(); ++index) {
+  frame.placement = placement;
+  frame.areas.assign(areas.begin(), areas.end());
+  frame.objects.assign(count, NO_OBJECT);
+  frame.lineObject = NO_OBJECT;
+  frame.lineLayer = NO_OBJECT;
+  for (std::size_t index = 0; index < count; ++index) {
     if (index == lineLayer) {
-      addLineColors(areas[index], placement, geometry, lines, list);
+      frame.lineObject = static_cast<int>(
+          list.addBitmap(lineObject(areas[index], placement, geometry, lines)));
+      frame.lineLayer = static_cast<int>(index);
     }
     const int slot =
         plans[index].solidSlot == NO_SLOT ? 0 : plans[index].solidSlot;
-    addObject(adjusted.layers[index], areas[index], placement, geometry,
-              memory.solidPhrases + static_cast<uint32_t>(slot) * PHRASE_BYTES,
-              index == lineLayer, list);
+    frame.objects[index] = addObject(
+        display.layers[index], pixels[index], areas[index], placement, geometry,
+        memory.solidPhrases + static_cast<uint32_t>(slot) * PHRASE_BYTES,
+        index == lineLayer, list);
   }
   for (std::size_t index = 0; index < overlayCount; ++index) {
     const Overlay &overlay = overlays[index];
@@ -937,6 +1174,127 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
   }
   list.addStop();
   frame.phrases.assign(list.phrases().begin(), list.phrases().end());
+}
+
+namespace {
+
+bool scrollsOnly(const graphics::Display &left,
+                 const graphics::Display &right) {
+  if (left.width != right.width || left.height != right.height ||
+      left.displayHeight != right.displayHeight ||
+      left.border != right.border ||
+      left.layers.size() != right.layers.size()) {
+    return false;
+  }
+  const graphics::Layer *other = right.layers.data();
+  for (const graphics::Layer &a : left.layers) {
+    const graphics::Layer &b = *other++;
+    if ((a.pixels == nullptr) != (b.pixels == nullptr) ||
+        a.stride != b.stride || a.sourceColumns != b.sourceColumns ||
+        a.sourceRows != b.sourceRows || a.sourceStep != b.sourceStep ||
+        a.repeat != b.repeat || a.wrap != b.wrap || a.left != b.left ||
+        a.top != b.top || a.columns != b.columns || a.rows != b.rows ||
+        a.mask != b.mask || a.palette != b.palette ||
+        !sameRowColors(a.rowColors, b.rowColors)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool samePlacement(const Placement &left, const Placement &right) {
+  return left.left == right.left && left.top == right.top &&
+         left.halfWidth == right.halfWidth &&
+         left.rowsPerLine == right.rowsPerLine;
+}
+
+} // namespace
+
+bool scrollFrame(const graphics::Display &display,
+                 const graphics::Display &built, const Geometry &geometry,
+                 const FrameMemory &memory, BuiltFrame &frame) {
+  const std::size_t count = frame.objects.size();
+  if (count != frame.areas.size() || count != frame.layerTranslations.size() ||
+      frame.copper.size() > 1 || !scrollsOnly(display, built)) {
+    return false;
+  }
+  const Placement placement = placeDisplay(display, geometry);
+  if (!samePlacement(placement, frame.placement)) {
+    return false;
+  }
+  static std::vector<LayerArea> areas;
+  areas.clear();
+  for (const graphics::Layer &layer : display.layers) {
+    areas.push_back(visibleArea(display, layer, placement, geometry));
+  }
+  if (areas.size() != count) {
+    return false;
+  }
+  for (std::size_t index = 0; index < count; ++index) {
+    const LayerArea &now = areas[index];
+    const LayerArea &before = frame.areas[index];
+    if (now.firstRow != before.firstRow || now.lastRow != before.lastRow ||
+        isEmpty(now) != isEmpty(before)) {
+      return false;
+    }
+  }
+  const graphics::Layer *old = built.layers.data();
+  for (std::size_t index = 0; index < count; ++index, ++old) {
+    const graphics::Layer &layer = display.layers[index];
+    if (frame.objects[index] == NO_OBJECT || !layer.pixels) {
+      continue;
+    }
+    if (layer.sourceX == old->sourceX && layer.sourceY == old->sourceY &&
+        layer.pixels == old->pixels &&
+        sameArea(areas[index], frame.areas[index])) {
+      continue;
+    }
+    const uint8_t *pixels = layer.pixels;
+    const int translated = frame.layerTranslations[index];
+    if (translated != NO_OBJECT) {
+      Translation &translation =
+          frame.translations[static_cast<std::size_t>(translated)];
+      if (translation.source != layer.pixels) {
+        if (!memory.buffers || !isTranslatable(layer)) {
+          return false;
+        }
+        uint8_t *buffer =
+            memory.buffers->buffer(layer.pixels, translation.bytes);
+        if (!buffer) {
+          return false;
+        }
+        translation.source = layer.pixels;
+        translation.target = buffer;
+      }
+      pixels = translation.target;
+    }
+    BitmapObject object;
+    if (!makeObject(layer, pixels, areas[index], placement, geometry, 0,
+                    static_cast<int>(index) == frame.lineLayer, object)) {
+      return false;
+    }
+    uint64_t *phrases =
+        frame.phrases.data() + static_cast<std::size_t>(frame.objects[index]);
+    if (isScaledBitmap(phrases[0]) != object.scaled) {
+      return false;
+    }
+    rewriteBitmap(object, phrases);
+  }
+  if (frame.lineLayer != NO_OBJECT) {
+    const std::size_t index = static_cast<std::size_t>(frame.lineLayer);
+    const LayerArea &area = areas[index];
+    uint8_t *lines = linePhrases(
+        memory, ((area.lastRow - area.firstRow) >> lineShift(placement)) + 1);
+    if (!lines) {
+      return false;
+    }
+    writeLineColors(display.layers[index], area, placement, lines, frame);
+    rewriteBitmap(lineObject(area, placement, geometry, lines),
+                  frame.phrases.data() +
+                      static_cast<std::size_t>(frame.lineObject));
+  }
+  frame.areas.assign(areas.begin(), areas.end());
+  return true;
 }
 
 void translateOnCpu(const Translation &translation) {

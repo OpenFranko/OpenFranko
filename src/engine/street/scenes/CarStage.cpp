@@ -230,6 +230,7 @@ void CarStage::openStrip() {
 
 void CarStage::startDrive() {
   m_screenShown = true;
+  settleScreen();
   m_screen.copy(m_strip, 0, 0, VISIBLE_WIDTH, SCREEN_HEIGHT, 0, 0);
   m_buffer.logic().copy(m_strip, 0, 0, VISIBLE_WIDTH, SCREEN_HEIGHT, 0, 0);
   for (int channel = 1; channel <= PEDESTRIANS; ++channel) {
@@ -384,16 +385,8 @@ CarStage::Flow CarStage::driveScenery() {
   addWrap(m_pavementBand, m_speed * 4, 0, BAND_END);
   addWrap(m_roadBand, m_speed * 3, 0, BAND_END);
   addWrap(m_fenceBand, m_speed, 0, BAND_END);
-  for (core::IndexedSurface *target : {&m_screen, &m_buffer.logic()}) {
-    target->copy(m_strip, m_trackBand, 93, VISIBLE_WIDTH + m_trackBand, 115, 0,
-                 93);
-    target->copy(m_strip, m_pavementBand, 202, VISIBLE_WIDTH + m_pavementBand,
-                 222, 0, 202);
-    target->copy(m_strip, m_fenceBand, 0, VISIBLE_WIDTH + m_fenceBand, 94, 0,
-                 0);
-    target->copy(m_strip, m_roadBand, 95, VISIBLE_WIDTH + m_roadBand, 201, 0,
-                 95);
-  }
+  copyBands(m_buffer.logic());
+  m_screenBehind = true;
   if (m_x != START_X || m_speed != 0) {
     addWrap(m_clock, 1, 1, CLOCK_CYCLE);
   }
@@ -413,6 +406,22 @@ CarStage::Flow CarStage::driveScenery() {
   m_buffer.drawBobs(m_bobs, m_images);
   m_buffer.swap();
   return wait(1, Step::DriveBottom);
+}
+
+void CarStage::copyBands(core::IndexedSurface &target) const {
+  target.copy(m_strip, m_trackBand, 93, VISIBLE_WIDTH + m_trackBand, 115, 0,
+              93);
+  target.copy(m_strip, m_pavementBand, 202, VISIBLE_WIDTH + m_pavementBand, 222,
+              0, 202);
+  target.copy(m_strip, m_fenceBand, 0, VISIBLE_WIDTH + m_fenceBand, 94, 0, 0);
+  target.copy(m_strip, m_roadBand, 95, VISIBLE_WIDTH + m_roadBand, 201, 0, 95);
+}
+
+void CarStage::settleScreen() const {
+  if (m_screenBehind) {
+    m_screenBehind = false;
+    copyBands(m_screen);
+  }
 }
 
 CarStage::Flow CarStage::driveBottom() {

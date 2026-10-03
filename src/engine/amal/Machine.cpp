@@ -93,6 +93,7 @@ void Machine::create(int channel, const Program &program) {
   created.open = true;
   created.loopLimits = std::move(loopLimits);
   created.object = m_bindings[index];
+  m_activeDirty = true;
 }
 
 void Machine::prepare(const Program &program) { steps(program); }
@@ -109,6 +110,7 @@ void Machine::create(int channel, const std::string &source) {
 void Machine::start(int channel) {
   if (Channel *started = opened(channel)) {
     started->frozen = false;
+    m_activeDirty = true;
   }
 }
 
@@ -116,11 +118,13 @@ void Machine::startAll() {
   for (Channel &each : m_channels) {
     each.frozen = !each.open;
   }
+  m_activeDirty = true;
 }
 
 void Machine::freeze(int channel) {
   if (Channel *frozen = opened(channel)) {
     frozen->frozen = true;
+    m_activeDirty = true;
   }
 }
 
@@ -128,15 +132,20 @@ void Machine::freezeAll() {
   for (Channel &each : m_channels) {
     each.frozen = true;
   }
+  m_activeDirty = true;
 }
 
 void Machine::destroy(int channel) {
   if (isChannel(channel)) {
     m_channels[static_cast<std::size_t>(channel)] = Channel{};
+    m_activeDirty = true;
   }
 }
 
-void Machine::destroyAll() { m_channels.fill(Channel{}); }
+void Machine::destroyAll() {
+  m_channels.fill(Channel{});
+  m_activeDirty = true;
+}
 
 bool Machine::exists(int channel) const { return opened(channel) != nullptr; }
 
@@ -164,12 +173,39 @@ int16_t &Machine::globalRegister(int index) {
 void Machine::setJoystick(int16_t joystick) { m_joystick = joystick; }
 
 void Machine::tick() {
-  for (Channel &current : m_channels) {
-    if (current.frozen) {
+  if (m_activeDirty) {
+    m_activeEnd = 0;
+    for (std::size_t index = 0; index < m_channels.size(); ++index) {
+      if (!m_channels[index].frozen) {
+        m_activeEnd = index + 1;
+      }
+    }
+    m_activeDirty = false;
+  }
+  Channel *const end = m_channels.data() + m_activeEnd;
+  for (Channel *current = m_channels.data(); current != end; ++current) {
+    if (current->frozen) {
       continue;
     }
-    run(current);
-    stepAnim(current);
+    run(*current);
+    stepAnim(*current);
+  }
+}
+
+Machine::Form Machine::ifForm(Operator op) {
+  switch (op) {
+  case Operator::Equal:
+    return Form::IfEqual;
+  case Operator::Less:
+    return Form::IfLess;
+  case Operator::Greater:
+    return Form::IfGreater;
+  case Operator::NotEqual:
+    return Form::IfNotEqual;
+  case Operator::And:
+    return Form::IfAnd;
+  default:
+    return Form::If;
   }
 }
 
@@ -200,7 +236,7 @@ Machine::Step Machine::compile(const Program &program, int pc) {
   if (instruction.first.terms != 3 || !direct(terms[0]) || !direct(terms[2])) {
     return step;
   }
-  step.form = let ? Form::Let : Form::If;
+  step.form = let ? Form::Let : ifForm(terms[1].op);
   step.op = terms[1].op;
   step.left = terms[0].value;
   step.leftRegister = variable(terms[0]);
@@ -262,29 +298,27 @@ int16_t Machine::read(const Channel &channel, int16_t reg) const {
 }
 
 void Machine::write(Channel &channel, int16_t reg, int16_t value) {
+  int16_t *target = nullptr;
   switch (reg) {
   case REGISTER_X:
-    if (channel.object) {
-      channel.object->x = value;
-    }
+    target = channel.object ? &channel.object->x : nullptr;
     break;
   case REGISTER_Y:
-    if (channel.object) {
-      channel.object->y = value;
-    }
+    target = channel.object ? &channel.object->y : nullptr;
     break;
   case REGISTER_A:
-    if (channel.object) {
-      channel.object->image = value;
-    }
+    target = channel.object ? &channel.object->image : nullptr;
     break;
   default:
-    if (reg < REGISTER_GLOBAL_BASE) {
-      channel.registers[static_cast<std::size_t>(reg)] = value;
-    } else {
-      m_globals[static_cast<std::size_t>(reg - REGISTER_GLOBAL_BASE)] = value;
-    }
+    target =
+        reg < REGISTER_GLOBAL_BASE
+            ? &channel.registers[static_cast<std::size_t>(reg)]
+            : &m_globals[static_cast<std::size_t>(reg - REGISTER_GLOBAL_BASE)];
     break;
+  }
+  if (target && *target != value) {
+    *target = value;
+    ++m_changes;
   }
 }
 
@@ -331,6 +365,10 @@ void Machine::run(Channel &channel) {
   if (!channel.alive) {
     return;
   }
+  if (channel.moveFrames > 0) {
+    stepMove(channel);
+    return;
+  }
   const auto combine = [](Operator op, int16_t left, int16_t right) {
     switch (op) {
     case Operator::Add:
@@ -341,64 +379,97 @@ void Machine::run(Channel &channel) {
       return apply(op, left, right);
     }
   };
-  const auto holds = [](Operator op, int16_t left, int16_t right) {
-    switch (op) {
-    case Operator::Equal:
-      return left == right;
-    case Operator::Less:
-      return left < right;
-    case Operator::Greater:
-      return left > right;
-    case Operator::NotEqual:
-      return left != right;
-    case Operator::And:
-      return (left & right) != 0;
-    default:
-      return apply(op, left, right) != 0;
-    }
+  const auto left = [&](const Step &step) {
+    return step.leftRegister ? read(channel, step.left) : step.left;
+  };
+  const auto right = [&](const Step &step) {
+    return step.rightRegister ? read(channel, step.right) : step.right;
   };
   int jumps = 0;
+  std::array<Landing, JUMP_BUDGET> landings;
+  int landed = 0;
+  const auto land = [&](int target) {
+    for (int at = landed; at-- > 0;) {
+      const Landing &earlier = landings[static_cast<std::size_t>(at)];
+      if (earlier.pc != target) {
+        continue;
+      }
+      if (earlier.changes == m_changes) {
+        const int period = jumps - earlier.jumps;
+        while (jumps + period < JUMP_BUDGET) {
+          jumps += period;
+        }
+        landed = 0;
+      }
+      break;
+    }
+    landings[static_cast<std::size_t>(landed++)] = {
+        static_cast<int16_t>(target), static_cast<int16_t>(jumps), m_changes};
+  };
   const Step *const steps = channel.steps;
   const int length = channel.program.length;
+  int pc = channel.pc;
   for (;;) {
-    if (channel.moveFrames > 0) {
-      stepMove(channel);
-      return;
-    }
-    const int pc = channel.pc;
     if (pc < 0 || pc >= length) {
+      channel.pc = pc;
       channel.alive = false;
       return;
     }
     const Step &step = steps[pc];
-    if (step.form == Form::Generic) {
+    bool taken = false;
+    switch (step.form) {
+    case Form::Generic: {
+      channel.pc = pc;
+      const int before = jumps;
       if (!runGeneric(channel, *step.instruction, pc, jumps)) {
         return;
       }
+      if (jumps != before && channel.pc <= pc) {
+        land(channel.pc);
+      }
+      pc = channel.pc;
       continue;
     }
-    const int16_t left =
-        step.leftRegister ? read(channel, step.left) : step.left;
-    if (step.form == Form::LetValue) {
-      write(channel, step.target, left);
-      channel.pc = pc + 1;
+    case Form::LetValue:
+      write(channel, step.target, left(step));
+      ++pc;
+      continue;
+    case Form::Let:
+      write(channel, step.target, combine(step.op, left(step), right(step)));
+      ++pc;
+      continue;
+    case Form::IfEqual:
+      taken = left(step) == right(step);
+      break;
+    case Form::IfLess:
+      taken = left(step) < right(step);
+      break;
+    case Form::IfGreater:
+      taken = left(step) > right(step);
+      break;
+    case Form::IfNotEqual:
+      taken = left(step) != right(step);
+      break;
+    case Form::IfAnd:
+      taken = (left(step) & right(step)) != 0;
+      break;
+    case Form::If:
+      taken = apply(step.op, left(step), right(step)) != 0;
+      break;
+    }
+    if (!taken) {
+      ++pc;
       continue;
     }
-    const int16_t right =
-        step.rightRegister ? read(channel, step.right) : step.right;
-    if (step.form == Form::Let) {
-      write(channel, step.target, combine(step.op, left, right));
-      channel.pc = pc + 1;
-      continue;
-    }
-    if (!holds(step.op, left, right)) {
-      channel.pc = pc + 1;
-      continue;
-    }
-    channel.pc = step.jump;
+    const int target = step.jump;
     if (++jumps >= JUMP_BUDGET) {
+      channel.pc = target;
       return;
     }
+    if (target <= pc) {
+      land(target);
+    }
+    pc = target;
   }
 }
 
@@ -442,8 +513,12 @@ bool Machine::runGeneric(Channel &channel, const Instruction &instruction,
     return true;
   case Opcode::For: {
     const int16_t start = evaluate(channel, instruction.first);
-    channel.loopLimits[static_cast<std::size_t>(pc)] =
-        evaluate(channel, instruction.second);
+    int16_t &limit = channel.loopLimits[static_cast<std::size_t>(pc)];
+    const int16_t last = evaluate(channel, instruction.second);
+    if (limit != last) {
+      limit = last;
+      ++m_changes;
+    }
     write(channel, instruction.reg, start);
     channel.pc = pc + 1;
     return true;
@@ -503,6 +578,7 @@ void Machine::startAnim(Channel &channel) {
   channel.animLoops = evaluate(channel, instruction.first);
   channel.animNext = 0;
   channel.animCounter = 1;
+  ++m_changes;
 }
 
 void Machine::stepAnim(Channel &channel) {

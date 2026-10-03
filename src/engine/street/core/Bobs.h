@@ -56,6 +56,7 @@ public:
   void orient(int number, uint16_t flags);
   void noMask(int number);
   bool isMasked(int number) const;
+  const Picture *mirrored(int number);
   const Box *box(int number) const {
     if (number <= 0 || static_cast<std::size_t>(number) >= m_boxes.size()) {
       return nullptr;
@@ -80,13 +81,23 @@ private:
     MaskBox box;
   };
 
+  struct Mirror {
+    int number = 0;
+    uint32_t used = 0;
+    Picture picture;
+  };
+
   void grow(std::size_t end);
   void store(std::size_t number, Picture &&picture);
   void refreshBox(std::size_t number);
+  void forgetMirror(int number);
 
   std::vector<Entry> m_entries;
   std::vector<Outline> m_outlines;
   std::vector<Box> m_boxes;
+  std::vector<Mirror> m_mirrors;
+  std::size_t m_mirrorBytes = 0;
+  uint32_t m_mirrorUses = 0;
 };
 
 struct SavedArea {

@@ -67,6 +67,7 @@ protected:
   Stage(StreetHost &host, session::GameSession &session, GameOptions &options);
 
   virtual void runBasic(const StreetInput &input) = 0;
+  virtual void settleScreen() const;
 
   static int16_t word(int value);
 
@@ -103,7 +104,7 @@ protected:
   amal::Machine m_machine;
   core::ImageBank m_images;
   core::BobLayer m_bobs;
-  core::IndexedSurface m_screen;
+  mutable core::IndexedSurface m_screen;
   core::DoubleBuffer m_buffer;
   std::unique_ptr<ui::StatusPanel> m_panel;
   amal::Object m_screenDisplay;

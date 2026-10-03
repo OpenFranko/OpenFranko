@@ -1,6 +1,7 @@
 #include "IndexedSurface.h"
 
 #include "../../../systems/Multiply.h"
+#include "../../../systems/graphics/Display.h"
 #include "../../../systems/graphics/PixelOps.h"
 
 #include <algorithm>
@@ -33,17 +34,20 @@ int clampToSize(int value, int size) {
 
 IndexedSurface::IndexedSurface(int width, int height)
     : m_width(width), m_height(height),
-      m_pixels(static_cast<std::size_t>(width * height), 0) {}
+      m_pixels(static_cast<std::size_t>(width * height), 0),
+      m_revision(systems::graphics::newRevision()) {}
 
 IndexedSurface::IndexedSurface(const IndexedSurface &other)
     : m_width(other.m_width), m_height(other.m_height),
-      m_pixels(settled(other.m_pixels)) {}
+      m_pixels(settled(other.m_pixels)),
+      m_revision(systems::graphics::newRevision()) {}
 
 IndexedSurface &IndexedSurface::operator=(const IndexedSurface &other) {
   pixels::finish();
   m_width = other.m_width;
   m_height = other.m_height;
   m_pixels = other.m_pixels;
+  m_revision = systems::graphics::newRevision();
   return *this;
 }
 
@@ -54,6 +58,7 @@ IndexedSurface &IndexedSurface::operator=(IndexedSurface &&other) noexcept {
   m_width = other.m_width;
   m_height = other.m_height;
   m_pixels = std::move(other.m_pixels);
+  m_revision = systems::graphics::newRevision();
   return *this;
 }
 
@@ -74,7 +79,10 @@ uint8_t IndexedSurface::pixel(int x, int y) const {
 
 const std::vector<uint8_t> &IndexedSurface::pixels() const { return m_pixels; }
 
+uint32_t IndexedSurface::revision() const { return m_revision; }
+
 void IndexedSurface::reshape(int width, int height) {
+  m_revision = systems::graphics::newRevision();
   const std::size_t size = static_cast<std::size_t>(rowOffset(height, width));
   if (size > m_pixels.size()) {
     if (size > m_pixels.capacity()) {
@@ -87,11 +95,13 @@ void IndexedSurface::reshape(int width, int height) {
 }
 
 void IndexedSurface::fill(uint8_t color) {
+  m_revision = systems::graphics::newRevision();
   pixels::fill(pixels::Target{m_pixels.data(), m_width}, m_width, m_height,
                color);
 }
 
 void IndexedSurface::clear(uint8_t color, int x1, int y1, int x2, int y2) {
+  m_revision = systems::graphics::newRevision();
   x1 = clampToSize(x1, m_width);
   y1 = clampToSize(y1, m_height);
   x2 = clampToSize(x2, m_width);
@@ -106,6 +116,7 @@ void IndexedSurface::clear(uint8_t color, int x1, int y1, int x2, int y2) {
 
 void IndexedSurface::copy(const IndexedSurface &source, int x1, int y1, int x2,
                           int y2, int x, int y) {
+  m_revision = systems::graphics::newRevision();
   if (x1 < 0) {
     x -= x1;
     x1 = 0;
@@ -146,6 +157,7 @@ void IndexedSurface::copy(const IndexedSurface &source, int x1, int y1, int x2,
 }
 
 void IndexedSurface::unpack(const Picture &picture, int x, int y) {
+  m_revision = systems::graphics::newRevision();
   if (x < 0 || y < 0) {
     throw std::out_of_range("Unpack: the picture does not fit the screen");
   }
@@ -167,6 +179,7 @@ bool IndexedSurface::intersects(int left, int top, int width,
 
 void IndexedSurface::draw(const Picture &picture, int left, int top, bool flipX,
                           bool flipY, bool opaque) {
+  m_revision = systems::graphics::newRevision();
   const int firstColumn = std::max(0, -left);
   const int lastColumn = std::min(picture.width, m_width - left);
   const int firstRow = std::max(0, -top);

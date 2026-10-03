@@ -164,6 +164,7 @@ systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
     stage.rows = SCREEN_HEIGHT;
     stage.mask = static_cast<uint8_t>(m_stage->palette.size() - 1);
     stage.palette = m_stage->palette;
+    stage.revision = shown.revision();
     display.layers.push_back(std::move(stage));
   }
   if (const core::IndexedSurface *shown = panel()) {
@@ -176,6 +177,7 @@ systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
     layer.columns = ui::StatusPanel::WIDTH;
     layer.rows = ui::StatusPanel::VISIBLE_HEIGHT;
     layer.palette = ui::panelPalette();
+    layer.revision = shown->revision();
     display.layers.push_back(std::move(layer));
   }
   for (int number : {1, 0}) {
@@ -202,6 +204,7 @@ systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
     layer.rows = surface.height();
     layer.mask = static_cast<uint8_t>(screen.palette.size() - 1);
     layer.palette = screen.palette;
+    layer.revision = surface.revision();
     display.layers.push_back(std::move(layer));
   }
   return display;

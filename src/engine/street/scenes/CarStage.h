@@ -77,6 +77,8 @@ private:
   void hitKerb(int kerb);
   void spawnPedestrians();
   Flow driveScenery();
+  void copyBands(core::IndexedSurface &target) const;
+  void settleScreen() const override;
   Flow driveBottom();
   void runOver();
   Flow leave();
@@ -108,6 +110,7 @@ private:
   int m_trackBand = 0;
   int m_roadBand = 0;
   int m_pavementBand = 0;
+  mutable bool m_screenBehind = false;
   int m_clock = 0;
   int m_engineBeat = 0;
   int m_passes = 0;

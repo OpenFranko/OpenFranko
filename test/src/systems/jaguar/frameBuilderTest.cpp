@@ -247,8 +247,7 @@ BuiltFrame build(Arena &arena, const graphics::Display &display,
   return frame;
 }
 
-int mismatches(const graphics::Display &original, const Geometry &geometry) {
-  Arena arena;
+graphics::Display inArena(Arena &arena, const graphics::Display &original) {
   graphics::Display display = original;
   for (graphics::Layer &layer : display.layers) {
     if (!layer.pixels) {
@@ -261,9 +260,12 @@ int mismatches(const graphics::Display &original, const Geometry &geometry) {
     std::memcpy(copy, layer.pixels, size);
     layer.pixels = copy;
   }
-  FrameMemory memory;
-  const BuiltFrame frame = build(arena, display, geometry, memory);
-  REQUIRE(frame.phrases.size() <= static_cast<std::size_t>(LIVE_PHRASES));
+  return display;
+}
+
+int wrongPixels(const Arena &arena, const BuiltFrame &frame,
+                const FrameMemory &memory, const graphics::Display &display,
+                const Geometry &geometry) {
   const Screen screen = simulate(arena, frame, memory.liveAddress, geometry);
   std::vector<uint32_t> argb;
   graphics::rasterize(display, argb);
@@ -294,6 +296,15 @@ int mismatches(const graphics::Display &original, const Geometry &geometry) {
     }
   }
   return wrong;
+}
+
+int mismatches(const graphics::Display &original, const Geometry &geometry) {
+  Arena arena;
+  const graphics::Display display = inArena(arena, original);
+  FrameMemory memory;
+  const BuiltFrame frame = build(arena, display, geometry, memory);
+  REQUIRE(frame.phrases.size() <= static_cast<std::size_t>(LIVE_PHRASES));
+  return wrongPixels(arena, frame, memory, display, geometry);
 }
 
 graphics::Layer layer(int width, int height, int colors, uint8_t seed) {
@@ -735,6 +746,289 @@ SCENARIO("Masked layers and row colours on colour 0 need no copper") {
         REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
         REQUIRE(mismatches(display, geometry) == 0);
       }
+    }
+  }
+}
+
+SCENARIO("Frames rebuilt into the same slot follow every change") {
+  GIVEN("A scrolling rainbow whose colours change between builds") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer picture = layer(640, 256, 32, 12);
+    picture.wrap = true;
+    picture.columns = 320;
+    for (int row = 10; row < 230; ++row) {
+      picture.rowColors.push_back(
+          {row, 0, static_cast<uint16_t>((row * 0x17) & 0xFFF)});
+    }
+    display.layers.push_back(picture);
+
+    THEN("Each build shows the colours it was given") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      REQUIRE(wrongPixels(arena, frame, memory, shown, geometry) == 0);
+      shown.layers.back().sourceX += 3;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      REQUIRE(wrongPixels(arena, frame, memory, shown, geometry) == 0);
+      for (graphics::RowColor &change : shown.layers.back().rowColors) {
+        change.color = static_cast<uint16_t>((change.color + 0x123) & 0xFFF);
+      }
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      REQUIRE(wrongPixels(arena, frame, memory, shown, geometry) == 0);
+      shown.layers.back().palette[0] = 0x0F0;
+      shown.layers.back().rowColors.pop_back();
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      REQUIRE(wrongPixels(arena, frame, memory, shown, geometry) == 0);
+    }
+  }
+
+  GIVEN("A rainbow whose rows are shared by copies of the display") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer picture = layer(640, 256, 32, 15);
+    picture.wrap = true;
+    picture.columns = 320;
+    for (int row = 0; row < 240; ++row) {
+      picture.rowColors.push_back(
+          {row, 0, static_cast<uint16_t>((row * 0x29) & 0xFFF)});
+    }
+    display.layers.push_back(picture);
+
+    THEN("A shared copy keeps its colours and a changed copy gets new ones") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      REQUIRE(wrongPixels(arena, frame, memory, shown, geometry) == 0);
+      graphics::Display copy = shown;
+      REQUIRE(
+          copy.layers.back().rowColors.shares(shown.layers.back().rowColors));
+      REQUIRE(sameLayout(shown, copy));
+      copy.layers.back().sourceX += 5;
+      buildFrame(copy, geometry, memory, nullptr, 0, frame);
+      REQUIRE(wrongPixels(arena, frame, memory, copy, geometry) == 0);
+      for (graphics::RowColor &change : copy.layers.back().rowColors) {
+        change.color = static_cast<uint16_t>((change.color + 0x321) & 0xFFF);
+      }
+      REQUIRE_FALSE(
+          copy.layers.back().rowColors.shares(shown.layers.back().rowColors));
+      buildFrame(copy, geometry, memory, nullptr, 0, frame);
+      REQUIRE(wrongPixels(arena, frame, memory, copy, geometry) == 0);
+      copy.layers.back().sourceX = shown.layers.back().sourceX;
+      REQUIRE_FALSE(sameLayout(shown, copy));
+    }
+  }
+
+  GIVEN("A level whose panel palette changes between builds") {
+    graphics::Display stage;
+    stage.width = 304;
+    stage.height = 255;
+    stage.displayHeight = 255;
+    stage.layers.push_back(layer(320, 222, 16, 13));
+    stage.layers.back().columns = 304;
+    graphics::Layer panel = layer(304, 32, 8, 14);
+    panel.top = 223;
+    stage.layers.push_back(panel);
+
+    THEN("Each build uses the palettes it was given") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      graphics::Display shown = inArena(arena, stage);
+      for (int pass = 0; pass < 3; ++pass) {
+        BuiltFrame frame;
+        buildFrame(shown, geometry, memory, nullptr, 0, frame);
+        for (const Translation &translation : frame.translations) {
+          translateOnCpu(translation);
+        }
+        REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
+        REQUIRE(wrongPixels(arena, frame, memory, shown, geometry) == 0);
+        shown.layers[1].palette[2] =
+            static_cast<uint16_t>(shown.layers[1].palette[2] ^ 0x0F0);
+        shown.layers[0].sourceX += 2;
+      }
+    }
+  }
+}
+
+namespace {
+
+const uint8_t *arenaCopy(Arena &arena, const uint8_t *pixels,
+                         std::size_t size) {
+  uint8_t *copy = arena.allocate(size);
+  std::memcpy(copy, pixels, size);
+  return copy;
+}
+
+int scrolledMismatches(Arena &arena, const FrameMemory &memory,
+                       const graphics::Display &built, const BuiltFrame &frame,
+                       const graphics::Display &next, const Geometry &geometry,
+                       bool &patched) {
+  BuiltFrame copy = frame;
+  patched = scrollFrame(next, built, geometry, memory, copy);
+  for (const Translation &translation : copy.translations) {
+    translateOnCpu(translation);
+  }
+  return wrongPixels(arena, copy, memory, next, geometry);
+}
+
+} // namespace
+
+SCENARIO("Scrolled frames are patched instead of rebuilt") {
+  GIVEN("A panning picture over a rainbow") {
+    graphics::Display display;
+    display.width = 368;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer picture = layer(1008, 256, 32, 16);
+    picture.wrap = true;
+    picture.columns = 368;
+    for (int row = 0; row < 223; ++row) {
+      picture.rowColors.push_back(
+          {row, 0, static_cast<uint16_t>((row * 0x13) & 0xFFF)});
+    }
+    display.layers.push_back(picture);
+
+    THEN("Every new offset is patched and matches the desktop") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        ArenaBuffers buffers(arena);
+        const FrameMemory memory = frameMemory(arena, buffers);
+        graphics::Display built = inArena(arena, display);
+        BuiltFrame frame;
+        buildFrame(built, geometry, memory, nullptr, 0, frame);
+        for (int offset : {1, 7, 300, 1000}) {
+          graphics::Display next = built;
+          next.layers[0].sourceX = offset;
+          bool patched = false;
+          REQUIRE(scrolledMismatches(arena, memory, built, frame, next,
+                                     geometry, patched) == 0);
+          REQUIRE(patched);
+        }
+      }
+    }
+  }
+
+  GIVEN("A level whose play screen flips buffers and whose panel moves") {
+    graphics::Display stage;
+    stage.width = 304;
+    stage.height = 255;
+    stage.displayHeight = 255;
+    stage.layers.push_back(layer(640, 222, 16, 17));
+    stage.layers.back().columns = 304;
+    graphics::Layer panel = layer(304, 32, 8, 18);
+    panel.top = 223;
+    stage.layers.push_back(panel);
+    const graphics::Layer otherPlay = layer(640, 222, 16, 19);
+    const graphics::Layer otherPanel = layer(304, 32, 8, 20);
+
+    THEN("The patched frame shows the new buffers and offsets") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        ArenaBuffers buffers(arena);
+        const FrameMemory memory = frameMemory(arena, buffers);
+        graphics::Display built = inArena(arena, stage);
+        BuiltFrame frame;
+        buildFrame(built, geometry, memory, nullptr, 0, frame);
+        for (const Translation &translation : frame.translations) {
+          translateOnCpu(translation);
+        }
+        REQUIRE(frame.translations.size() == 1);
+        graphics::Display next = built;
+        next.layers[0].pixels = arenaCopy(arena, otherPlay.pixels, 640 * 222);
+        next.layers[0].sourceX = 13;
+        bool patched = false;
+        REQUIRE(scrolledMismatches(arena, memory, built, frame, next, geometry,
+                                   patched) == 0);
+        REQUIRE(patched);
+        next.layers[1].pixels = arenaCopy(arena, otherPanel.pixels, 304 * 32);
+        REQUIRE(scrolledMismatches(arena, memory, built, frame, next, geometry,
+                                   patched) == 0);
+        REQUIRE(patched);
+      }
+    }
+
+    THEN("A frame patched again and again stays correct") {
+      graphics::Display tall = stage;
+      tall.layers[0] = layer(640, 230, 16, 22);
+      tall.layers[0].columns = 304;
+      tall.layers[0].rows = 222;
+      const graphics::Layer otherTall = layer(640, 230, 16, 23);
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        ArenaBuffers buffers(arena);
+        const FrameMemory memory = frameMemory(arena, buffers);
+        graphics::Display shown = inArena(arena, tall);
+        const uint8_t *first = shown.layers[0].pixels;
+        const uint8_t *second = arenaCopy(arena, otherTall.pixels, 640 * 230);
+        BuiltFrame frame;
+        buildFrame(shown, geometry, memory, nullptr, 0, frame);
+        for (int step = 1; step <= 6; ++step) {
+          graphics::Display next = shown;
+          next.layers[0].pixels = step % 2 != 0 ? second : first;
+          next.layers[0].sourceX = (step * 37) % 300;
+          next.layers[0].sourceY = step;
+          REQUIRE(scrollFrame(next, shown, geometry, memory, frame));
+          for (const Translation &translation : frame.translations) {
+            translateOnCpu(translation);
+          }
+          REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+          shown = next;
+        }
+      }
+    }
+
+    THEN("A changed palette is rebuilt instead") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display built = inArena(arena, stage);
+      BuiltFrame frame;
+      buildFrame(built, geometry, memory, nullptr, 0, frame);
+      graphics::Display next = built;
+      next.layers[1].palette[2] = 0x0F0;
+      BuiltFrame copy = frame;
+      REQUIRE_FALSE(scrollFrame(next, built, geometry, memory, copy));
+    }
+  }
+
+  GIVEN("A hires picture") {
+    graphics::Display display;
+    display.width = 640;
+    display.height = 200;
+    display.displayHeight = 200;
+    graphics::Layer picture = layer(800, 200, 16, 21);
+    picture.columns = 640;
+    display.layers.push_back(picture);
+
+    THEN("Scaled objects are patched too") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display built = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(built, geometry, memory, nullptr, 0, frame);
+      graphics::Display next = built;
+      next.layers[0].sourceX = 33;
+      bool patched = false;
+      REQUIRE(scrolledMismatches(arena, memory, built, frame, next, geometry,
+                                 patched) == 0);
+      REQUIRE(patched);
     }
   }
 }

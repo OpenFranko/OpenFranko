@@ -46,6 +46,7 @@ struct BitmapObject {
   bool transparent = false;
   bool reflected = false;
   bool scaled = false;
+  bool released = false;
   uint8_t horizontalScale = SCALE_ONE;
   uint8_t verticalScale = SCALE_ONE;
 };
@@ -58,7 +59,7 @@ public:
   void reset(uint32_t liveAddress);
   void addBranch(int halfLine, Branch condition, std::size_t target);
   void addGpuObject(int halfLine, uint32_t data);
-  void addBitmap(const BitmapObject &object);
+  std::size_t addBitmap(const BitmapObject &object);
   std::size_t addStop();
   void alignTo(int bytes);
 
@@ -78,6 +79,8 @@ uint64_t branchPhrase(int halfLine, Branch condition, uint32_t link);
 uint64_t stopPhrase();
 uint64_t gpuPhrase(int halfLine, uint32_t data);
 void bitmapPhrases(const BitmapObject &object, uint32_t link, uint64_t *out);
+void rewriteBitmap(const BitmapObject &object, uint64_t *phrases);
+bool isScaledBitmap(uint64_t phrase);
 
 } // namespace jaguar
 } // namespace systems

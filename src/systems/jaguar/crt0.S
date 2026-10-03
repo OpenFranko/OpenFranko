@@ -9,6 +9,15 @@ _start:
 	move.w	#0xFFFF,0xF0004E
 	move.w	#0x1F00,0xF000E0
 	lea	__stack_top,%sp
+	lea	__text_load,%a0
+	lea	__text_start,%a1
+	lea	__text_end,%a2
+.Ltext:
+	cmp.l	%a2,%a1
+	bhs.s	.Ldata
+	move.l	(%a0)+,(%a1)+
+	bra.s	.Ltext
+.Ldata:
 	lea	__data_load,%a0
 	lea	__data_start,%a1
 	lea	__data_end,%a2

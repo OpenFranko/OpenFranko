@@ -165,6 +165,7 @@ void stageOutput(systems::graphics::Display &output,
   panelLayer.columns = FRAME_WIDTH;
   panelLayer.rows = scaled(StatusPanel::VISIBLE_HEIGHT, perLine);
   panelLayer.palette.assign(panelColors.begin(), panelColors.end());
+  panelLayer.revision = panel->revision();
   systems::graphics::Layer &border = freshLayer(output, index++);
   border.rows = scaled(FIRST_VISIBLE_LINE - top, perLine);
   border.columns = FRAME_WIDTH;

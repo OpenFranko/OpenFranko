@@ -1,8 +1,11 @@
 #include "Blitter.h"
 
+#include "Console.h"
 #include "Hardware.h"
+#include "Runtime.h"
 
 #include <algorithm>
+#include <cstdio>
 
 namespace openfranko::src::systems::jaguar::blitter {
 namespace {
@@ -38,11 +41,15 @@ constexpr std::size_t UNPACKED_END = 5;
 constexpr std::size_t UNPACK_LIMIT = 6;
 constexpr std::size_t UNPACKED_SOURCE = 7;
 constexpr uint32_t NO_LIMIT = 0xFFFFFFFF;
+constexpr uint32_t STALL_VBLS = 250;
+constexpr uint32_t ADDRESS_MASK = 0xFFFFFF;
+constexpr uint32_t WORD_MASK = 0xFFFF;
 
 alignas(64) volatile uint32_t ring[QUEUE_ENTRIES * ENTRY_LONGS];
 volatile uint32_t *queueWrite = nullptr;
 volatile uint32_t *queueRead = nullptr;
 uint32_t written = 0;
+uint32_t knownRead = 0;
 uint32_t pattern = 0;
 
 struct Channel {
@@ -110,6 +117,58 @@ void setPattern(uint8_t value) { pattern = value * 0x01010101u; }
 
 uint32_t pending() { return (written - *queueRead) & INDEX_MASK; }
 
+[[noreturn]] void reportStall(const char *where) {
+  const uint32_t read = *queueRead & INDEX_MASK;
+  const volatile uint32_t *entry =
+      ring + (read & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
+  char message[240];
+  std::snprintf(
+      message, sizeof(message),
+      "GPU stalled (%s): gpu pc %06lX flags %04lX ctrl %lX, queue read %lu "
+      "written %lu, blitter %08lX, command %lu %08lX %08lX %08lX %08lX",
+      where, static_cast<unsigned long>(longWord(GPU_PC) & ADDRESS_MASK),
+      static_cast<unsigned long>(longWord(GPU_FLAGS) & WORD_MASK),
+      static_cast<unsigned long>(longWord(GPU_CTRL)),
+      static_cast<unsigned long>(read), static_cast<unsigned long>(written),
+      static_cast<unsigned long>(longWord(B_CMD)),
+      static_cast<unsigned long>(entry[0]),
+      static_cast<unsigned long>(entry[1]),
+      static_cast<unsigned long>(entry[2]),
+      static_cast<unsigned long>(entry[3]),
+      static_cast<unsigned long>(entry[4]));
+  console::show(message, true);
+}
+
+class StallGuard {
+public:
+  explicit StallGuard(const char *where)
+      : m_where(where), m_start(runtime::vblCount()) {}
+
+  void check() const {
+    if (runtime::vblCount() - m_start > STALL_VBLS) {
+      reportStall(m_where);
+    }
+  }
+
+private:
+  const char *m_where;
+  uint32_t m_start;
+};
+
+void waitForRoom() {
+  if (((written - knownRead) & INDEX_MASK) < QUEUE_ENTRIES) {
+    return;
+  }
+  const StallGuard guard("full queue");
+  for (;;) {
+    knownRead = *queueRead & INDEX_MASK;
+    if (((written - knownRead) & INDEX_MASK) < QUEUE_ENTRIES) {
+      return;
+    }
+    guard.check();
+  }
+}
+
 bool aligned(int pitch) { return (pitch & (PHRASE - 1)) == 0; }
 
 int periodShift(int pitch) {
@@ -128,8 +187,7 @@ void enqueue(uint32_t kind, const uint8_t *source, int sourcePitch,
   if (width <= 0 || height <= 0) {
     return;
   }
-  while (pending() >= QUEUE_ENTRIES) {
-  }
+  waitForRoom();
   volatile uint32_t *entry =
       ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
   entry[0] = kind;
@@ -324,10 +382,14 @@ void fillPhrases(Area target, int width, int height) {
 
 void wait() {
   if (queueWrite) {
+    const StallGuard queue("queue");
     while (pending() != 0) {
+      queue.check();
     }
   }
+  const StallGuard blitter("blitter");
   while ((longWord(B_CMD) & BLIT_IDLE) == 0) {
+    blitter.check();
   }
   asm volatile("" ::: "memory");
 }
@@ -335,6 +397,7 @@ void wait() {
 void useQueue(uint32_t control) {
   wait();
   written = 0;
+  knownRead = 0;
   longWord(control) = reinterpret_cast<uint32_t>(ring);
   longWord(control + QUEUE_WRITE_OFFSET) = 0;
   longWord(control + QUEUE_READ_OFFSET) = 0;
@@ -349,8 +412,7 @@ namespace {
 volatile uint32_t *queueUnpack(const uint8_t *source, const uint8_t *sourceEnd,
                                uint8_t *target, const uint8_t *targetEnd,
                                uint32_t limit) {
-  while (pending() >= QUEUE_ENTRIES) {
-  }
+  waitForRoom();
   volatile uint32_t *entry =
       ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
   entry[0] = KIND_LZ4;
@@ -399,8 +461,7 @@ bool outline(const uint8_t *pixels, int width, int height, void *rows,
   if (!queueWrite) {
     return false;
   }
-  while (pending() >= QUEUE_ENTRIES) {
-  }
+  waitForRoom();
   volatile uint32_t *entry =
       ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
   entry[0] = KIND_OUTLINE;
@@ -427,8 +488,7 @@ bool translate(const uint8_t *source, uint8_t *target, std::size_t count,
     return false;
   }
   const std::size_t longs = count / LONG_BYTES;
-  while (pending() >= QUEUE_ENTRIES) {
-  }
+  waitForRoom();
   volatile uint32_t *entry =
       ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
   entry[0] = KIND_FLIP;
@@ -454,6 +514,13 @@ bool flipSigns(const uint8_t *source, int8_t *target, std::size_t count) {
   }
   wait();
   return true;
+}
+
+void resumeQueue(uint32_t control) {
+  queueRead = &longWord(control + QUEUE_READ_OFFSET);
+  queueWrite = &longWord(control + QUEUE_WRITE_OFFSET);
+  written = *queueWrite & INDEX_MASK;
+  knownRead = *queueRead & INDEX_MASK;
 }
 
 void stopQueue() {

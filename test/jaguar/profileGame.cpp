@@ -19,6 +19,9 @@
 #include "memoryCalls.h"
 #include "sampler.h"
 
+extern "C" char __text_start[];
+extern "C" char __text_end[];
+
 extern "C" int __wrap_getentropy(void *buffer, std::size_t size) {
   static uint32_t state = 0x6A09E667u;
   uint8_t *out = static_cast<uint8_t *>(buffer);
@@ -38,7 +41,6 @@ namespace jag = openfranko::src::systems::jaguar;
 
 namespace {
 
-constexpr uint32_t CODE_START = 0x802000;
 constexpr uint32_t RUN_VBLS = 600;
 constexpr uint32_t WARMUP_VBLS = 1320;
 constexpr uint32_t REPORT_VBLS = 300;
@@ -138,7 +140,8 @@ void profile(const Scenario &scenario) {
     const uint32_t busyBefore = jag::profiler::busy();
     const uint32_t start = jag::runtime::vblCount();
 #ifndef PROFILE_NO_SAMPLER
-    sampler::start(CODE_START, jag::runtime::romEnd());
+    sampler::start(reinterpret_cast<uint32_t>(__text_start),
+                   reinterpret_cast<uint32_t>(__text_end));
 #endif
     memory_calls::start();
     while (scenario.runUpdates > 0
