@@ -63,6 +63,9 @@ inline bool operator!=(const Sprite &left, const Sprite &right) {
 }
 
 inline constexpr std::size_t SPRITE_SLOTS = 16;
+inline constexpr int SPRITE_ALIGNMENT = 8;
+
+bool canBeSprite(const std::vector<uint8_t> &pixels, int width);
 
 struct Layer {
   const uint8_t *pixels = nullptr;

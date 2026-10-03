@@ -9,6 +9,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <algorithm>
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <string>
@@ -120,6 +121,88 @@ SCENARIO("The adverts follow the logo, with the tune stopped") {
       REQUIRE(spider.played(STEP, STEP_VOICES) > 1);
       REQUIRE(spider.played(JINGLE, JINGLE_VOICES) == 1);
       REQUIRE(spider.speaker.musicStops == 1);
+    }
+  }
+}
+
+namespace {
+
+constexpr int LOGO_WIDTH = 320;
+constexpr int LOGO_HEIGHT = 256;
+constexpr int BOB_WIDTH = 32;
+constexpr int BOB_HEIGHT = 16;
+
+openfranko::src::systems::graphics::IndexedBitmap
+patterned(int width, int height, int seed, int hotX, int hotY) {
+  openfranko::src::systems::graphics::IndexedBitmap bitmap;
+  bitmap.width = width;
+  bitmap.height = height;
+  bitmap.hotspotX = hotX;
+  bitmap.hotspotY = hotY;
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      const int value = (x * 7 + y * 3 + seed) % 16;
+      bitmap.pixels.push_back(
+          static_cast<uint8_t>((x + 2 * y) % 5 == 0 ? 0 : value));
+    }
+  }
+  for (int color = 0; color < 16; ++color) {
+    bitmap.palette.push_back(
+        static_cast<uint16_t>(0xF00 - color * 0x100 + color));
+  }
+  return bitmap;
+}
+
+struct PaintedSpider {
+  explicit PaintedSpider(bool showsSprites) {
+    files.bitmaps[assets::picturePath("p50")] =
+        patterned(LOGO_WIDTH, LOGO_HEIGHT, 3, 0, 0);
+    for (int index = 0; index < IMAGES; ++index) {
+      files.bitmaps[assets::imagePath("s50", index)] =
+          patterned(BOB_WIDTH, BOB_HEIGHT, index, 5, 4);
+    }
+    monitor.sprites = showsSprites;
+    state.emplace(monitor, speaker, files);
+  }
+
+  FakeMonitor monitor;
+  FakeSpeaker speaker;
+  FakeFiles files = spiderFiles();
+  std::optional<SpiderLogoState> state;
+};
+
+} // namespace
+
+SCENARIO("The spider shown as a sprite looks the same as the spider drawn") {
+  GIVEN("Two spiders on the same pictures, one on a monitor that shows "
+        "sprites") {
+    PaintedSpider drawn(false);
+    PaintedSpider sprited(true);
+
+    WHEN("Both walk and show the logo to the end") {
+      int spriteFrames = 0;
+      int redraws = 0;
+      const uint8_t *lastPixels = nullptr;
+      std::optional<EngineStateId> next;
+      for (int frame = 0; frame < 3000 && !next; ++frame) {
+        next = drawn.state->update();
+        REQUIRE(sprited.state->update() == next);
+        REQUIRE(sprited.monitor.frame() == drawn.monitor.frame());
+        const auto &layers = sprited.monitor.shown().layers;
+        if (!layers.empty() && layers.front().carriesSprites) {
+          ++spriteFrames;
+          if (lastPixels && layers.front().pixels != lastPixels) {
+            ++redraws;
+          }
+          lastPixels = layers.front().pixels;
+        }
+      }
+
+      THEN("The walk and the logo were each painted once under the sprite") {
+        REQUIRE(next == EngineStateId::Adverts);
+        REQUIRE(spriteFrames > 300);
+        REQUIRE(redraws == 1);
+      }
     }
   }
 }

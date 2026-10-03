@@ -8,9 +8,29 @@
 
 namespace openfranko::src::systems::graphics {
 
+Canvas::Canvas() = default;
+
 Canvas::Canvas(int width, int height)
     : m_width(std::max(width, 0)), m_height(std::max(height, 0)),
       m_pixels(static_cast<std::size_t>(m_width) * m_height, FILL_INDEX) {}
+
+Canvas::Canvas(const Canvas &other)
+    : m_width(other.m_width), m_height(other.m_height),
+      m_pixels(other.m_pixels), m_spare(other.m_spare),
+      m_palette(other.m_palette), m_shown(other.m_shown) {}
+
+Canvas &Canvas::operator=(const Canvas &other) {
+  if (this != &other) {
+    m_width = other.m_width;
+    m_height = other.m_height;
+    m_pixels = other.m_pixels;
+    m_spare = other.m_spare;
+    m_palette = other.m_palette;
+    m_revision = newRevision();
+    m_shown = other.m_shown;
+  }
+  return *this;
+}
 
 int Canvas::width() const { return m_width; }
 
@@ -22,24 +42,33 @@ const std::vector<uint16_t> &Canvas::palette() const { return m_palette; }
 
 void Canvas::fill(uint16_t color) {
   prepare(true);
+  m_revision = newRevision();
   m_palette[FILL_INDEX] = color;
   pixels::fill(pixels::Target{m_pixels.data(), m_width}, m_width, m_height,
                FILL_INDEX);
 }
 
 void Canvas::setPalette(const std::vector<uint16_t> &colors) {
-  std::copy_n(colors.begin(), std::min<std::size_t>(colors.size(), FILL_INDEX),
-              m_palette.begin());
+  const std::size_t count = std::min<std::size_t>(colors.size(), FILL_INDEX);
+  if (std::equal(colors.begin(),
+                 colors.begin() + static_cast<std::ptrdiff_t>(count),
+                 m_palette.begin())) {
+    return;
+  }
+  std::copy_n(colors.begin(), count, m_palette.begin());
+  m_revision = newRevision();
 }
 
 void Canvas::draw(const IndexedBitmap &image, int x, int y) {
   prepare(covers(image, x, y));
+  m_revision = newRevision();
   blit(image, x, y, false, false);
 }
 
 void Canvas::drawMasked(const IndexedBitmap &image, int x, int y,
                         bool flipped) {
   prepare(false);
+  m_revision = newRevision();
   blit(image, x, y, true, flipped);
 }
 
@@ -57,7 +86,16 @@ Display Canvas::output() const {
   display.width = m_width;
   display.height = m_height;
   display.displayHeight = m_height;
+  display.revision = m_revision;
   display.layers.push_back(std::move(layer));
+  return display;
+}
+
+Display Canvas::output(const std::vector<Sprite> &sprites) const {
+  Display display = output();
+  Layer &layer = display.layers.front();
+  layer.carriesSprites = true;
+  layer.sprites = sprites;
   return display;
 }
 
@@ -105,6 +143,17 @@ void Canvas::blit(const IndexedBitmap &image, int x, int y, bool masked,
       m_width};
   pixels::draw(from, to, lastColumn - firstColumn, lastRow - firstRow, masked,
                flipped);
+}
+
+std::optional<Sprite> spriteOf(const IndexedBitmap &image, int x, int y) {
+  if (!canBeSprite(image.pixels, image.width) ||
+      image.pixels.size() < static_cast<std::size_t>(image.width) *
+                                static_cast<std::size_t>(image.height)) {
+    return std::nullopt;
+  }
+  return Sprite{image.pixels.data(), static_cast<int16_t>(image.width),
+                static_cast<int16_t>(image.height), x - image.hotspotX,
+                y - image.hotspotY};
 }
 
 } // namespace openfranko::src::systems::graphics

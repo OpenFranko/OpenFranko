@@ -36,6 +36,9 @@ constexpr int ATTRACT_LOAD_IDLE = 25;
 
 constexpr int MUSIC_ON_VOLUME = 63;
 
+static_assert(effects::sequences::MenuSequence::BOBS <=
+              systems::graphics::SPRITE_SLOTS);
+
 systems::graphics::Canvas menuScreen(bool ntscDisplay) {
   return systems::graphics::Canvas(
       MENU_SCREEN_WIDTH,
@@ -110,7 +113,7 @@ MenuState::MenuState(systems::graphics::Monitor &monitor,
       m_backdrop(loadPicture(files, BACKDROP, session.version)),
       m_menuBobs(loadSprites(files, MENU_BOBS, menuImages(session.version),
                              session.version)),
-      m_menuScreen(menuScreen(options.ntsc)),
+      m_mirroredBobs(m_menuBobs.size()), m_menuScreen(menuScreen(options.ntsc)),
       m_menu(options, resized(m_backdrop.palette, MENU_COLORS),
              session.keyboard, session.version) {
   m_monitor.setNtsc(options.ntsc);
@@ -277,6 +280,7 @@ void MenuState::switchStandard() {
     m_speaker.setMusicTempoScale(menuTuneScale(CONVERTED_MENU_TEMPO));
   }
   m_menuScreen = menuScreen(m_options.ntsc);
+  m_backdropShown = false;
 }
 
 void MenuState::startAttract() {
@@ -297,12 +301,22 @@ void MenuState::startAttract() {
 void MenuState::drawMenu() {
   if (m_menu.isFinished() || !m_menu.isScreenShown()) {
     m_menuScreen.fill(m_session.border);
+    m_backdropShown = false;
     show(m_menuScreen);
     return;
   }
 
   m_menuScreen.setPalette(m_menu.palette());
+  if (menuSprites()) {
+    if (!m_backdropShown) {
+      m_menuScreen.draw(m_backdrop, 0, 0);
+      m_backdropShown = true;
+    }
+    m_monitor.show(m_menuScreen.output(m_sprites));
+    return;
+  }
   m_menuScreen.draw(m_backdrop, 0, 0);
+  m_backdropShown = false;
   for (const effects::animation::Bob &bob : m_menu.shownBobs()) {
     const systems::graphics::IndexedBitmap *image =
         findImage(m_menuBobs, firstMenuImage(m_session.version), bob.image);
@@ -311,6 +325,40 @@ void MenuState::drawMenu() {
     }
   }
   show(m_menuScreen);
+}
+
+bool MenuState::menuSprites() {
+  m_sprites.clear();
+  if (!m_monitor.showsSprites()) {
+    return false;
+  }
+  const int first = firstMenuImage(m_session.version);
+  for (const effects::animation::Bob &bob : m_menu.shownBobs()) {
+    const systems::graphics::IndexedBitmap *image =
+        findImage(m_menuBobs, first, bob.image);
+    if (!bob.shown || !image) {
+      continue;
+    }
+    if (bob.flipped) {
+      image = &mirroredBob(static_cast<std::size_t>(bob.image - first));
+    }
+    const std::optional<systems::graphics::Sprite> sprite =
+        systems::graphics::spriteOf(*image, bob.x, bob.y);
+    if (!sprite) {
+      return false;
+    }
+    m_sprites.push_back(*sprite);
+  }
+  return true;
+}
+
+const systems::graphics::IndexedBitmap &
+MenuState::mirroredBob(std::size_t index) {
+  systems::graphics::IndexedBitmap &flipped = m_mirroredBobs[index];
+  if (flipped.pixels.empty()) {
+    flipped = systems::graphics::mirrored(m_menuBobs[index]);
+  }
+  return flipped;
 }
 
 void MenuState::drawAttract() {
@@ -324,7 +372,10 @@ void MenuState::drawAttract() {
 void MenuState::drawAttractPicture() {
   if (m_attract->kind() == effects::sequences::AttractSequence::Kind::Title) {
     m_attractScreen.setPalette(m_title.palette);
-    m_attractScreen.draw(m_title, 0, -m_attractTop);
+    if (m_rowsDrawn == NO_ROWS_DRAWN) {
+      m_attractScreen.draw(m_title, 0, -m_attractTop);
+      m_rowsDrawn = 0;
+    }
     show(m_attractScreen);
     return;
   }

@@ -107,6 +107,9 @@ void allowCopper(bool allowed);
 void buildFrame(const graphics::Display &display, const Geometry &geometry,
                 const FrameMemory &memory, const Overlay *overlays,
                 std::size_t overlayCount, BuiltFrame &frame);
+bool recolorFrame(const graphics::Display &display,
+                  const graphics::Display &built, const Geometry &geometry,
+                  const FrameMemory &memory, BuiltFrame &frame);
 bool scrollFrame(const graphics::Display &display,
                  const graphics::Display &built, const Geometry &geometry,
                  const FrameMemory &memory, BuiltFrame &frame);

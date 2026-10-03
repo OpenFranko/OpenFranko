@@ -34,6 +34,7 @@ private:
   struct Window;
 
   void present();
+  void settle(int slot);
   void waitVbl();
 
   std::unique_ptr<Window> m_window;

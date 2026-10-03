@@ -12,6 +12,7 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -186,6 +187,93 @@ SCENARIO("START leads to the character selection from the first stage") {
       THEN("The selection follows with the stage reached reset") {
         REQUIRE(exit.next == EngineStateId::CharacterSelectionSequence);
         REQUIRE(menu.session.registers[RO] == 0);
+      }
+    }
+  }
+}
+
+namespace {
+
+constexpr int BACKDROP_WIDTH = 368;
+constexpr int BACKDROP_HEIGHT = 290;
+constexpr int BOB_WIDTH = 16;
+constexpr int BOB_HEIGHT = 8;
+
+openfranko::src::systems::graphics::IndexedBitmap
+patterned(int width, int height, int seed, int hotX, int hotY) {
+  openfranko::src::systems::graphics::IndexedBitmap bitmap;
+  bitmap.width = width;
+  bitmap.height = height;
+  bitmap.hotspotX = hotX;
+  bitmap.hotspotY = hotY;
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      const int value = (x * 3 + y * 5 + seed) % 16;
+      bitmap.pixels.push_back(
+          static_cast<uint8_t>((x + y) % 4 == 0 ? 0 : value));
+    }
+  }
+  for (int color = 0; color < 16; ++color) {
+    bitmap.palette.push_back(static_cast<uint16_t>(color * 0x111));
+  }
+  return bitmap;
+}
+
+struct PaintedMenu {
+  explicit PaintedMenu(bool showsSprites) {
+    files.bitmaps["assets/03B8.bmp"] =
+        patterned(BACKDROP_WIDTH, BACKDROP_HEIGHT, 7, 0, 0);
+    for (int index = 0; index < MENU_IMAGES; ++index) {
+      files.bitmaps[assets::imagePath("0034", index)] =
+          patterned(BOB_WIDTH, BOB_HEIGHT, index, 3, 2);
+    }
+    monitor.sprites = showsSprites;
+    session.version = GameVersion::V10;
+    state.emplace(monitor, speaker, controller, files, options, session);
+  }
+
+  FakeMonitor monitor;
+  FakeSpeaker speaker;
+  ControllerSystem controller;
+  FakeFiles files;
+  GameOptions options;
+  GameSession session;
+  std::optional<MenuState> state;
+};
+
+} // namespace
+
+SCENARIO("Menu bobs shown as sprites look the same as bobs drawn") {
+  GIVEN("Two menus on the same pictures, one on a monitor that shows sprites") {
+    PaintedMenu drawn(false);
+    PaintedMenu sprited(true);
+
+    WHEN("They open, start the credits and the hand moves both ways") {
+      int spriteFrames = 0;
+      int redraws = 0;
+      const uint8_t *lastPixels = nullptr;
+      for (int frame = 0; frame < OPENING_FRAMES + 280; ++frame) {
+        const bool right = frame == OPENING_FRAMES + 100;
+        const bool left = frame == OPENING_FRAMES + 200;
+        for (PaintedMenu *menu : {&drawn, &sprited}) {
+          menu->controller.states.right = right;
+          menu->controller.states.left = left;
+          menu->state->update();
+        }
+        REQUIRE(sprited.monitor.frame() == drawn.monitor.frame());
+        const auto &layers = sprited.monitor.shown().layers;
+        if (!layers.empty() && layers.front().carriesSprites) {
+          ++spriteFrames;
+          if (lastPixels && layers.front().pixels != lastPixels) {
+            ++redraws;
+          }
+          lastPixels = layers.front().pixels;
+        }
+      }
+
+      THEN("The bobs went out as sprites over a backdrop drawn once") {
+        REQUIRE(spriteFrames > 200);
+        REQUIRE(redraws == 0);
       }
     }
   }

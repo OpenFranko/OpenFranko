@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 
 namespace openfranko::src::systems::graphics {
 namespace {
@@ -80,6 +81,11 @@ std::vector<RowColor> &RowColors::owned() {
     m_rows = std::make_shared<std::vector<RowColor>>(*m_rows);
   }
   return *m_rows;
+}
+
+bool canBeSprite(const std::vector<uint8_t> &pixels, int width) {
+  return !pixels.empty() && width % SPRITE_ALIGNMENT == 0 &&
+         reinterpret_cast<uintptr_t>(pixels.data()) % SPRITE_ALIGNMENT == 0;
 }
 
 uint32_t newRevision() {

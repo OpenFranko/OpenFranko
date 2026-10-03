@@ -35,6 +35,7 @@ private:
   void showLogo();
   void showBlack(systems::graphics::Canvas &screen, bool hires);
   void drawBob(systems::graphics::Canvas &screen, int top) const;
+  bool bobSprites(int top);
 
   systems::graphics::Monitor &m_monitor;
   systems::audio::Speaker &m_speaker;
@@ -50,6 +51,9 @@ private:
   VisibleRows m_logoRows;
   systems::graphics::Canvas m_walkScreen;
   systems::graphics::Canvas m_logoScreen;
+  std::vector<systems::graphics::Sprite> m_sprites;
+  bool m_walkPainted = false;
+  bool m_logoPainted = false;
   std::optional<effects::sequences::FotoSequence> m_foto;
   int m_frame = 0;
   int m_timer = 0;

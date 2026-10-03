@@ -5,6 +5,7 @@
 #include "graphics/Display.h"
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace openfranko {
@@ -16,8 +17,13 @@ class Canvas {
 public:
   static constexpr uint8_t FILL_INDEX = 255;
 
-  Canvas() = default;
+  Canvas();
   Canvas(int width, int height);
+  Canvas(const Canvas &other);
+  Canvas(Canvas &&other) = default;
+  Canvas &operator=(const Canvas &other);
+  Canvas &operator=(Canvas &&other) = default;
+  ~Canvas() = default;
 
   int width() const;
   int height() const;
@@ -30,6 +36,7 @@ public:
   void drawMasked(const IndexedBitmap &image, int x, int y,
                   bool flipped = false);
   Display output() const;
+  Display output(const std::vector<Sprite> &sprites) const;
 
 private:
   bool covers(const IndexedBitmap &image, int x, int y) const;
@@ -42,8 +49,11 @@ private:
   std::vector<uint8_t> m_pixels;
   std::vector<uint8_t> m_spare;
   std::vector<uint16_t> m_palette = std::vector<uint16_t>(256, 0);
+  uint32_t m_revision = newRevision();
   mutable bool m_shown = false;
 };
+
+std::optional<Sprite> spriteOf(const IndexedBitmap &image, int x, int y);
 
 } // namespace graphics
 } // namespace systems

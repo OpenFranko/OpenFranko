@@ -15,7 +15,6 @@ namespace {
 constexpr int SIGN_BIT = 0x8000;
 constexpr std::size_t MIRROR_BYTES = 65536;
 constexpr int16_t NO_MIRROR = -1;
-constexpr int SPRITE_ALIGNMENT = 8;
 
 struct Shape {
   ImageBank::Mask mask;
@@ -882,10 +881,7 @@ bool BobLayer::sprites(const IndexedSurface &surface, ImageBank &images,
     if (!picture) {
       return false;
     }
-    if (picture->width % SPRITE_ALIGNMENT != 0 || picture->pixels.empty() ||
-        reinterpret_cast<uintptr_t>(picture->pixels.data()) %
-                SPRITE_ALIGNMENT !=
-            0) {
+    if (!systems::graphics::canBeSprite(picture->pixels, picture->width)) {
       return false;
     }
     out.push_back({picture->pixels.data(), static_cast<int16_t>(picture->width),

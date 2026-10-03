@@ -50,6 +50,8 @@ private:
   void switchStandard();
   void startAttract();
   void drawMenu();
+  bool menuSprites();
+  const systems::graphics::IndexedBitmap &mirroredBob(std::size_t index);
   void drawAttract();
   void drawAttractPicture();
   void drawHiscoreRow(int row);
@@ -65,6 +67,8 @@ private:
   systems::graphics::IndexedBitmap m_title;
   systems::graphics::IndexedBitmap m_hiscores;
   std::vector<systems::graphics::IndexedBitmap> m_menuBobs;
+  std::vector<systems::graphics::IndexedBitmap> m_mirroredBobs;
+  std::vector<systems::graphics::Sprite> m_sprites;
   std::vector<systems::graphics::IndexedBitmap> m_letters;
   systems::graphics::Canvas m_menuScreen;
   systems::graphics::Canvas m_attractScreen;
@@ -76,6 +80,7 @@ private:
   std::optional<effects::sequences::AttractSequence> m_attract;
   effects::sequences::AttractSequence::Kind m_nextAttract =
       effects::sequences::AttractSequence::Kind::Title;
+  bool m_backdropShown = false;
   int m_attractTop = 0;
   int m_rowsDrawn = 0;
   int m_attractClosing = 0;

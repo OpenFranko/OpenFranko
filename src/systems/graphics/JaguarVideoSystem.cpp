@@ -136,6 +136,7 @@ struct VideoSystem::Window : VblankTarget, jaguar::TranslationBuffers {
   int backFrame() const;
   void want(const Display &display);
   int recentFrame(unsigned overlay) const;
+  int twinFrame(int slot, uint32_t revision, unsigned overlay) const;
   void build(int slot, const Display &shown, unsigned overlay);
   void choose(int slot);
   void measure();
@@ -390,6 +391,18 @@ int VideoSystem::Window::recentFrame(unsigned overlay) const {
   return recent;
 }
 
+int VideoSystem::Window::twinFrame(int slot, uint32_t revision,
+                                   unsigned overlay) const {
+  for (int index = 0; index < FRAMES; ++index) {
+    const std::size_t at = static_cast<std::size_t>(index);
+    if (index != slot && index != current && index != pending && built[at] &&
+        sourceOverlays[at] == overlay && sources[at].revision == revision) {
+      return index;
+    }
+  }
+  return NO_FRAME;
+}
+
 void VideoSystem::Window::choose(int slot) {
   marked = false;
   used[static_cast<std::size_t>(slot)] = ++uses;
@@ -537,15 +550,20 @@ void VideoSystem::present() {
         window.choose(slot);
         return;
       }
-      if (slot != window.current && slot != window.pending) {
-        if (jaguar::moveSprites(window.sources[index], window.wanted,
-                                window.geometry, window.memory(index),
-                                window.frames[index])) {
-          takeSprites(window.sources[index], window.wanted);
-          window.choose(slot);
+      const int target = slot != window.current
+                             ? slot
+                             : window.twinFrame(slot, m_shownRevision, overlay);
+      if (target != NO_FRAME) {
+        const std::size_t at = static_cast<std::size_t>(target);
+        if (jaguar::moveSprites(window.sources[at], window.wanted,
+                                window.geometry, window.memory(at),
+                                window.frames[at])) {
+          takeSprites(window.sources[at], window.wanted);
+          m_shownSlot = target;
+          window.choose(target);
           return;
         }
-        window.built[index] = false;
+        window.built[at] = false;
       }
     }
     assign(m_shown, window.sources[index]);
@@ -561,7 +579,7 @@ void VideoSystem::present() {
     }
     if (jaguar::sameSprites(window.sources[index], m_shown)) {
       window.sources[index].revision = m_shown.revision;
-      window.choose(slot);
+      settle(slot);
       return;
     }
     if (restage == NO_FRAME && slot != window.current &&
@@ -574,10 +592,29 @@ void VideoSystem::present() {
     if (jaguar::moveSprites(m_shown, window.sources[index], window.geometry,
                             window.memory(index), window.frames[index])) {
       takeSprites(window.sources[index], m_shown);
-      window.choose(restage);
+      window.sources[index].revision = m_shown.revision;
+      settle(restage);
       return;
     }
     window.built[index] = false;
+  }
+  for (int slot = 0; slot < FRAMES; ++slot) {
+    const std::size_t index = static_cast<std::size_t>(slot);
+    if (slot == window.current || !window.built[index] ||
+        window.sourceOverlays[index] != overlay ||
+        !jaguar::recolorFrame(m_shown, window.sources[index], window.geometry,
+                              window.memory(index), window.frames[index])) {
+      continue;
+    }
+    if (!jaguar::sameSprites(window.sources[index], m_shown) &&
+        !jaguar::moveSprites(m_shown, window.sources[index], window.geometry,
+                             window.memory(index), window.frames[index])) {
+      window.built[index] = false;
+      continue;
+    }
+    assign(window.sources[index], m_shown);
+    settle(slot);
+    return;
   }
   int target = window.recentFrame(overlay);
   bool scrolled = false;
@@ -602,7 +639,16 @@ void VideoSystem::present() {
   assign(window.sources[index], m_shown);
   window.sourceOverlays[index] = overlay;
   window.built[index] = true;
-  window.choose(target);
+  settle(target);
+}
+
+void VideoSystem::settle(int slot) {
+  Window &window = *m_window;
+  window.choose(slot);
+  if (m_shownRevision != 0) {
+    m_shownSlot = slot;
+    window.want(m_shown);
+  }
 }
 
 void VideoSystem::waitVbl() {

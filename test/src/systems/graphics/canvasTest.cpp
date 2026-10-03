@@ -3,6 +3,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -211,6 +212,107 @@ SCENARIO("A shown canvas is never drawn into again") {
 
     THEN("Both drawings land in the same buffer") {
       REQUIRE(canvas.pixels() == std::vector<uint8_t>{5, FILL});
+    }
+  }
+}
+
+SCENARIO("A bob can be shown as a sprite instead of drawn") {
+  GIVEN("A 16 x 2 canvas and an 8 x 1 bob with holes and its hot spot at 2") {
+    Canvas canvas(16, 2);
+    canvas.fill(0x00F);
+    const IndexedBitmap bob = picture(8, 1, {1, 0, 2, 0, 3, 0, 4, 0}, 2, 0);
+
+    WHEN("It is turned into a sprite at 5, 1") {
+      const std::optional<Sprite> sprite = spriteOf(bob, 5, 1);
+
+      THEN("The sprite starts at the hot spot's offset and keeps the pixels") {
+        REQUIRE(sprite);
+        REQUIRE(sprite->left == 3);
+        REQUIRE(sprite->top == 1);
+        REQUIRE(sprite->width == 8);
+        REQUIRE(sprite->height == 1);
+        REQUIRE(sprite->pixels == bob.pixels.data());
+      }
+
+      THEN("The canvas shows it as drawMasked would") {
+        const Display withSprite = canvas.output({*sprite});
+        REQUIRE(withSprite.layers[0].carriesSprites);
+        std::vector<uint32_t> sprited;
+        rasterize(withSprite, sprited);
+        canvas.drawMasked(bob, 5, 1);
+        REQUIRE(sprited == shown(canvas));
+      }
+    }
+
+    WHEN("It hangs over the left edge") {
+      const std::optional<Sprite> sprite = spriteOf(bob, 0, 0);
+
+      THEN("Only the part on the canvas shows, as when drawn") {
+        REQUIRE(sprite);
+        std::vector<uint32_t> sprited;
+        rasterize(canvas.output({*sprite}), sprited);
+        canvas.drawMasked(bob, 0, 0);
+        REQUIRE(sprited == shown(canvas));
+      }
+    }
+  }
+
+  GIVEN("Pictures the Jaguar cannot show as sprites") {
+    THEN("A width that is not a multiple of 8 is refused") {
+      REQUIRE_FALSE(
+          spriteOf(picture(12, 1, std::vector<uint8_t>(12, 1)), 0, 0));
+    }
+
+    THEN("An empty picture is refused") {
+      REQUIRE_FALSE(spriteOf(IndexedBitmap{}, 0, 0));
+    }
+
+    THEN("Pixels shorter than the size are refused") {
+      REQUIRE_FALSE(spriteOf(picture(8, 2, std::vector<uint8_t>(8, 1)), 0, 0));
+    }
+  }
+}
+
+SCENARIO("A canvas keeps its revision while its picture stays the same") {
+  GIVEN("A filled and shown canvas") {
+    Canvas canvas(8, 2);
+    canvas.fill(0x123);
+    canvas.setPalette({0x000, 0x111});
+    const uint32_t revision = canvas.output().revision;
+
+    THEN("It has a revision, and showing it again keeps it") {
+      REQUIRE(revision != 0);
+      REQUIRE(canvas.output().revision == revision);
+      REQUIRE(canvas.output({}).revision == revision);
+    }
+
+    THEN("Setting the same colours keeps it") {
+      canvas.setPalette({0x000, 0x111});
+      REQUIRE(canvas.output().revision == revision);
+    }
+
+    THEN("New colours change it") {
+      canvas.setPalette({0x000, 0x222});
+      REQUIRE(canvas.output().revision != revision);
+    }
+
+    THEN("Drawing changes it") {
+      canvas.drawMasked(picture(1, 1, {1}), 0, 0);
+      REQUIRE(canvas.output().revision != revision);
+    }
+
+    THEN("Filling changes it") {
+      canvas.fill(0x123);
+      REQUIRE(canvas.output().revision != revision);
+    }
+
+    THEN("A copy shows other pixels, so it gets its own") {
+      const Canvas copy(canvas);
+      Canvas assigned;
+      assigned = canvas;
+      REQUIRE(copy.output().revision != revision);
+      REQUIRE(assigned.output().revision != revision);
+      REQUIRE(copy.output().revision != assigned.output().revision);
     }
   }
 }

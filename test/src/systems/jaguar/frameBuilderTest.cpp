@@ -1531,3 +1531,84 @@ SCENARIO("Sprites are shown as objects over the layer that carries them") {
     }
   }
 }
+
+SCENARIO("Frames whose colours change are recoloured instead of rebuilt") {
+  GIVEN("A picture fading out") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    display.layers.push_back(layer(320, 256, 32, 4));
+
+    THEN("Only the colour table changes, as a rebuild would make it") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        ArenaBuffers buffers(arena);
+        const FrameMemory memory = frameMemory(arena, buffers);
+        const graphics::Display built = inArena(arena, display);
+        BuiltFrame frame;
+        buildFrame(built, geometry, memory, nullptr, 0, frame);
+        const std::vector<uint64_t> phrases = frame.phrases;
+        graphics::Display faded = built;
+        for (uint16_t &color : faded.layers[0].palette) {
+          color = static_cast<uint16_t>((color >> 1) & 0x777);
+        }
+        REQUIRE(recolorFrame(faded, built, geometry, memory, frame));
+        REQUIRE(frame.phrases == phrases);
+        REQUIRE(wrongPixels(arena, frame, memory, faded, geometry) == 0);
+        BuiltFrame rebuilt;
+        buildFrame(faded, geometry, memory, nullptr, 0, rebuilt);
+        REQUIRE(rebuilt.clut == frame.clut);
+      }
+    }
+
+    THEN("A palette of another size is left to a rebuild") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display built = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(built, palGeometry(), memory, nullptr, 0, frame);
+      graphics::Display longer = built;
+      longer.layers[0].palette.push_back(0x123);
+      REQUIRE_FALSE(recolorFrame(longer, built, palGeometry(), memory, frame));
+    }
+
+    THEN("Row colours are left to a rebuild") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display built = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(built, palGeometry(), memory, nullptr, 0, frame);
+      graphics::Display banded = built;
+      banded.layers[0].rowColors.push_back({10, 1, 0xF00});
+      REQUIRE_FALSE(recolorFrame(banded, built, palGeometry(), memory, frame));
+    }
+  }
+
+  GIVEN("A play screen over a panel whose colours need their own bank") {
+    graphics::Display stage;
+    stage.width = 304;
+    stage.height = 255;
+    stage.displayHeight = 255;
+    stage.layers.push_back(layer(320, 222, 16, 2));
+    stage.layers.back().columns = 304;
+    graphics::Layer panel = layer(304, 32, 8, 3);
+    panel.top = 223;
+    stage.layers.push_back(panel);
+
+    THEN("New colours are left to a rebuild") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display built = inArena(arena, stage);
+      BuiltFrame frame;
+      buildFrame(built, palGeometry(), memory, nullptr, 0, frame);
+      REQUIRE_FALSE(frame.translations.empty());
+      graphics::Display faded = built;
+      faded.layers[0].palette[1] = 0x000;
+      REQUIRE_FALSE(recolorFrame(faded, built, palGeometry(), memory, frame));
+    }
+  }
+}

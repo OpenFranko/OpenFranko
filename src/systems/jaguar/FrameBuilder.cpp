@@ -1049,6 +1049,16 @@ bool sameInput(const BankInput &input, const graphics::Layer &layer,
          input.palette == layer.palette;
 }
 
+BankCache &bankCache() {
+  static BankCache banks;
+  return banks;
+}
+
+std::vector<LayerPlan> &layerPlans() {
+  static std::vector<LayerPlan> plans;
+  return plans;
+}
+
 bool reuseBanks(const BankCache &banks, const graphics::Display &display,
                 const std::vector<LayerArea> &areas, const FrameMemory &memory,
                 std::vector<LayerPlan> &plans) {
@@ -1189,7 +1199,10 @@ bool sameSprites(const graphics::Display &display, const SpriteLists &sprites) {
   return true;
 }
 
-bool sameLayers(const graphics::Display &left, const graphics::Display &right) {
+namespace {
+
+bool samePlacing(const graphics::Display &left,
+                 const graphics::Display &right) {
   if (left.width != right.width || left.height != right.height ||
       left.displayHeight != right.displayHeight ||
       left.border != right.border ||
@@ -1209,7 +1222,16 @@ bool sameLayers(const graphics::Display &left, const graphics::Display &right) {
       return false;
     }
   }
-  other = right.layers.data();
+  return true;
+}
+
+} // namespace
+
+bool sameLayers(const graphics::Display &left, const graphics::Display &right) {
+  if (!samePlacing(left, right)) {
+    return false;
+  }
+  const graphics::Layer *other = right.layers.data();
   for (const graphics::Layer &a : left.layers) {
     const graphics::Layer &b = *other++;
     if (a.palette != b.palette || !sameRowColors(a.rowColors, b.rowColors)) {
@@ -1277,8 +1299,8 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
     areas.push_back(visibleArea(display, layer, placement, geometry));
   }
 
-  static std::vector<LayerPlan> plans;
-  static BankCache banks;
+  std::vector<LayerPlan> &plans = layerPlans();
+  BankCache &banks = bankCache();
   if (!reuseBanks(banks, display, areas, memory, plans)) {
     Banking banking;
     const std::size_t base = planBanks(display, areas, memory, plans, banking);
@@ -1592,6 +1614,47 @@ bool scrollFrame(const graphics::Display &display,
     return false;
   }
   frame.areas.assign(areas.begin(), areas.end());
+  return true;
+}
+
+bool recolorFrame(const graphics::Display &display,
+                  const graphics::Display &built, const Geometry &geometry,
+                  const FrameMemory &memory, BuiltFrame &frame) {
+  if (frame.clutVersion == 0 || !frame.translations.empty() ||
+      !samePlacing(display, built)) {
+    return false;
+  }
+  const graphics::Layer *other = built.layers.data();
+  for (const graphics::Layer &layer : display.layers) {
+    const graphics::Layer &before = *other++;
+    if (layer.palette.size() != before.palette.size() ||
+        !layer.rowColors.empty() || !before.rowColors.empty()) {
+      return false;
+    }
+  }
+  const Placement placement = placeDisplay(display, geometry);
+  static std::vector<LayerArea> areas;
+  areas.clear();
+  for (const graphics::Layer &layer : display.layers) {
+    areas.push_back(visibleArea(display, layer, placement, geometry));
+  }
+  std::vector<LayerPlan> &plans = layerPlans();
+  BankCache &banks = bankCache();
+  if (!reuseBanks(banks, display, areas, memory, plans)) {
+    Banking banking;
+    const std::size_t base = planBanks(display, areas, memory, plans, banking);
+    rememberBanks(banks, display, areas, memory, plans, banking, base);
+  }
+  for (std::size_t index = 0; index < areas.size(); ++index) {
+    const LayerPlan &plan = plans[index];
+    if (!isEmpty(areas[index]) &&
+        (!display.layers[index].pixels || !plan.merged || plan.translated ||
+         plan.bank != 0)) {
+      return false;
+    }
+  }
+  frame.clut = banks.clut;
+  frame.clutVersion = banks.version;
   return true;
 }
 
