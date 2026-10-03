@@ -179,7 +179,9 @@ void Engine::switchState(states::EngineStateId nextState) {
     nextState = states::EngineStateId::Level3;
   }
 #endif
-  m_videoSystem.clear();
+  if (!m_session.streetExit) {
+    m_videoSystem.clear();
+  }
   m_currentState.reset();
   m_streetHost.reset();
   m_booting = nextState == states::EngineStateId::Mirage;
