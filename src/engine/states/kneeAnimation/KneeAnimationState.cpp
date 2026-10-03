@@ -40,6 +40,8 @@ constexpr int SCREENS = 2;
 constexpr int OPEN_FRAMES = SCREENS * SCREEN_OPEN_VBLS;
 constexpr int GONE_FRAME = CLOSE_FRAME + SCREEN_CLOSE_SHOWN_VBLS;
 constexpr int CLOSED_FRAME = CLOSE_FRAME + SCREENS * SCREEN_CLOSE_VBLS;
+constexpr int BLACK_SCENE = -1;
+constexpr int GREY_SCENE = 0;
 
 } // namespace
 
@@ -102,16 +104,21 @@ std::optional<EngineStateId> KneeAnimationState::update() {
     m_speaker.setMusicTempo(VERSION12_TEMPO);
   }
 
-  const int copied = std::min(time / FRAMES_PER_UNPACK, IMAGES);
-  if (time < 0 || time >= GONE_FRAME) {
-    m_screen.fill(effects::color::BLACK);
-  } else if (copied == 0) {
-    m_screen.fill(BACKGROUND_GREY);
-  } else {
-    m_loads.finish(m_imageLoads[static_cast<std::size_t>(copied - 1)]);
-    const systems::graphics::IndexedBitmap &image = m_images[copied - 1];
-    m_screen.setPalette(image.palette);
-    m_screen.draw(image, 0, 0);
+  const int scene = time < 0 || time >= GONE_FRAME
+                        ? BLACK_SCENE
+                        : std::min(time / FRAMES_PER_UNPACK, IMAGES);
+  if (scene != m_painted) {
+    if (scene == BLACK_SCENE) {
+      m_screen.fill(effects::color::BLACK);
+    } else if (scene == GREY_SCENE) {
+      m_screen.fill(BACKGROUND_GREY);
+    } else {
+      m_loads.finish(m_imageLoads[static_cast<std::size_t>(scene - 1)]);
+      const systems::graphics::IndexedBitmap &image = m_images[scene - 1];
+      m_screen.setPalette(image.palette);
+      m_screen.draw(image, 0, 0);
+    }
+    m_painted = scene;
   }
   m_monitor.show(m_screen.output());
 

@@ -12,6 +12,7 @@
 #include "../shared/StepLoader.h"
 
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace openfranko {
@@ -42,6 +43,7 @@ private:
   std::size_t m_musicLoad = 0;
   systems::graphics::Canvas m_screen;
   int m_frame = 0;
+  std::optional<int> m_painted;
 };
 
 } // namespace kneeAnimation

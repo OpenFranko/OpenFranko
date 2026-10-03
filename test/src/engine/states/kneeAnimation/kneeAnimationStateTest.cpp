@@ -207,3 +207,28 @@ SCENARIO("The knee is heard on the third picture and the tune after the last") {
     }
   }
 }
+
+SCENARIO("The knee is painted only when its picture changes") {
+  GIVEN("Version 1.0") {
+    Knee knee(GameVersion::V10);
+
+    WHEN("It runs from the first frame to the last") {
+      int repaints = 0;
+      const uint8_t *last = nullptr;
+      for (int frame = 0; frame < FRAMES - 1; ++frame) {
+        run(*knee.state, 1);
+        const auto &layers = knee.monitor.shown().layers;
+        const uint8_t *pixels =
+            layers.empty() ? nullptr : layers.front().pixels;
+        if (frame > 0 && pixels != last) {
+          ++repaints;
+        }
+        last = pixels;
+      }
+
+      THEN("Grey, the four pictures and the black end are painted once each") {
+        REQUIRE(repaints <= 6);
+      }
+    }
+  }
+}
