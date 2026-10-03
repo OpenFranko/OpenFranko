@@ -62,6 +62,25 @@ bool overlaps(Source source, Target target, int width, int height) {
   return targetFirst < sourceLast && sourceFirst < targetLast;
 }
 
+bool shiftsAlongRows(Source source, Target target, int width) {
+  const std::ptrdiff_t shift = target.pixels - source.pixels;
+  return source.pitch == target.pitch && shift > 0 && shift < width &&
+         shift < source.pitch && shift % PHRASE == 0;
+}
+
+void shiftRight(Source source, Target target, int width, int height) {
+  const int shift = static_cast<int>(target.pixels - source.pixels);
+  for (int right = width; right > 0; right -= shift) {
+    const int left = std::max(right - shift, 0);
+    const Source strip{source.pixels + left, source.pitch};
+    const Target place{target.pixels + left, target.pitch};
+    if (!blitter::queue(from(strip), to(place), right - left, height,
+                        blitter::Mode::Copy)) {
+      blitter::copy(from(strip), to(place), right - left, height);
+    }
+  }
+}
+
 void bounce(Source source, Target target, int width, int height) {
   const int pitch = (width + PHRASE - 1) & ~(PHRASE - 1);
   const int band = std::max(1, SCRATCH_BYTES / pitch);
@@ -119,6 +138,10 @@ void move(Source source, Target target, int width, int height) {
     } else {
       blitter::copy(from(source), to(target), width, height);
     }
+    return;
+  }
+  if (!isSmall(width, height) && shiftsAlongRows(source, target, width)) {
+    shiftRight(source, target, width, height);
     return;
   }
   if (isSmall(width, height) || width > SCRATCH_BYTES) {

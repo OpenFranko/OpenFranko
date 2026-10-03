@@ -1,4 +1,5 @@
 #include "../../lib/converter/packedArchive/lz4Compressor.h"
+#include "../../src/systems/graphics/PixelOps.h"
 #include "../../src/systems/jaguar/Blitter.h"
 #include "../../src/systems/jaguar/Console.h"
 #include "../../src/systems/jaguar/Eeprom.h"
@@ -289,6 +290,50 @@ std::vector<uint8_t> lz4Sample(std::size_t size, int kind) {
     }
   }
   return data;
+}
+
+void testMove() {
+  struct Move {
+    const char *name;
+    int sourceX;
+    int sourceY;
+    int targetX;
+    int targetY;
+    int width;
+    int height;
+  };
+  constexpr int PITCH = 320;
+  constexpr int ROWS = 44;
+  const Move moves[] = {
+      {"move right 8", 0, 1, 8, 1, 312, 40},
+      {"move right 16 +3", 3, 2, 19, 2, 200, 12},
+      {"move right 8 w13", 5, 0, 13, 0, 13, 9},
+      {"move left 8", 8, 1, 0, 1, 312, 40},
+      {"move down 1", 4, 2, 4, 3, 56, 10},
+  };
+  for (const Move &test : moves) {
+    std::vector<uint8_t> buffer(static_cast<std::size_t>(PITCH * ROWS));
+    for (std::size_t at = 0; at < buffer.size(); ++at) {
+      buffer[at] =
+          sample(static_cast<int>(at % PITCH), static_cast<int>(at / PITCH));
+    }
+    std::vector<uint8_t> expected = buffer;
+    for (int y = 0; y < test.height; ++y) {
+      std::memcpy(expected.data() + (test.targetY + y) * PITCH + test.targetX,
+                  buffer.data() + (test.sourceY + y) * PITCH + test.sourceX,
+                  static_cast<std::size_t>(test.width));
+    }
+    namespace pixels = openfranko::src::systems::graphics::pixels;
+    pixels::move(
+        pixels::Source{buffer.data() + test.sourceY * PITCH + test.sourceX,
+                       PITCH},
+        pixels::Target{buffer.data() + test.targetY * PITCH + test.targetX,
+                       PITCH},
+        test.width, test.height);
+    pixels::finish();
+    const Case shown{test.name, Kind::Copy, 0, 0, 0, 0, PITCH, PITCH, false};
+    same(shown, buffer, expected);
+  }
 }
 
 void testLz4() {
@@ -602,6 +647,7 @@ int main() {
     runFill("fill w1 p37", 4, 1, 7, 37);
   };
   runBlits();
+  testMove();
   const RiscProgram gpu = gpuProgram();
   longWord(GPU_CTRL) = 0;
   loadProgram(gpu);
@@ -610,6 +656,7 @@ int main() {
   longWord(GPU_CTRL) = RISC_GO;
   report("GPU queue:");
   runBlits();
+  testMove();
   queueCalls = true;
   for (const Case &test : cases) {
     runCopy(test);
