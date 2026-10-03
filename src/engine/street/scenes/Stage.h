@@ -37,6 +37,7 @@ public:
 
   void showSprites(bool on);
   void advance(const StreetInput &input);
+  virtual void handOver();
   void compose(std::vector<uint32_t> &frame) const;
   const systems::graphics::Display &output() const;
   const systems::graphics::Display &upcomingOutput() const;

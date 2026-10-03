@@ -51,6 +51,8 @@ void Stage::showSprites(bool on) {
   }
 }
 
+void Stage::handOver() {}
+
 void Stage::advance(const StreetInput &input) {
   m_images.releaseRetired();
   if (m_outcome != Outcome::Playing) {

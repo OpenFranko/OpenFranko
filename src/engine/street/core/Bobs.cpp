@@ -13,7 +13,7 @@ namespace openfranko::src::engine::street::core {
 namespace {
 
 constexpr int SIGN_BIT = 0x8000;
-constexpr std::size_t MIRROR_BYTES = 131072;
+constexpr std::size_t MIRROR_BYTES = 65536;
 constexpr int16_t NO_MIRROR = -1;
 constexpr int SPRITE_ALIGNMENT = 8;
 

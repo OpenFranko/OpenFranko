@@ -32,6 +32,7 @@ public:
   Display frame;
   Display upcomingFrame;
   bool sprites = false;
+  int handOvers = 0;
 };
 
 class ScriptedStage {
@@ -44,6 +45,8 @@ public:
   void showSprites(bool on) { m_script.sprites = on; }
 
   void advance(const StreetInput &input) { m_script.inputs.push_back(input); }
+
+  void handOver() { ++m_script.handOvers; }
 
   const Display &output() const { return m_script.frame; }
 
@@ -100,6 +103,7 @@ SCENARIO("A stage's outcome picks the next state") {
     THEN("A game over goes to the graveyard") {
       stage.script.outcome = StageOutcome::GameOver;
       REQUIRE(stage.state->update() == EngineStateId::GameOver);
+      REQUIRE(stage.script.handOvers == 0);
     }
 
     THEN("Quitting goes to the scores") {
@@ -107,9 +111,10 @@ SCENARIO("A stage's outcome picks the next state") {
       REQUIRE(stage.state->update() == EngineStateId::HighScore);
     }
 
-    THEN("Clearing it goes to the next stage") {
+    THEN("Clearing it hands the stage over and goes to the next one") {
       stage.script.outcome = StageOutcome::Cleared;
       REQUIRE(stage.state->update() == EngineStateId::Level2Car);
+      REQUIRE(stage.script.handOvers == 1);
     }
   }
 }

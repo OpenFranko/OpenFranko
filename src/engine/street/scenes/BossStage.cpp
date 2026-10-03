@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace openfranko::src::engine::street::scenes {
 namespace {
@@ -148,9 +149,10 @@ BossStage::Flow BossStage::init() {
   if (!m_session.streetExit) {
     throw std::logic_error("BossStage needs the screen the street left");
   }
-  m_screen = m_session.streetExit->screen;
-  m_buffer = m_session.streetExit->buffer ? *m_session.streetExit->buffer
-                                          : core::DoubleBuffer(m_screen);
+  m_screen = std::move(m_session.streetExit->screen);
+  m_buffer = m_session.streetExit->buffer
+                 ? std::move(*m_session.streetExit->buffer)
+                 : core::DoubleBuffer(m_screen);
   m_buffer.setSprites(m_sprites);
   m_block.emplace(m_session.streetExit->block);
   m_playerX = m_session.streetExit->playerX;

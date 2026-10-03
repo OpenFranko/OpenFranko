@@ -62,6 +62,7 @@ std::optional<EngineStateId> StageState<Stage, NEXT>::update() {
   case Stage::Outcome::Quit:
     return EngineStateId::HighScore;
   case Stage::Outcome::Cleared:
+    m_stage.handOver();
     return NEXT;
   case Stage::Outcome::Playing:
     break;

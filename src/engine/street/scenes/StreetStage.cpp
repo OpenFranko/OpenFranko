@@ -586,7 +586,8 @@ StreetStage::Flow StreetStage::advanceWalk(const StreetInput &input) {
   reg(1, 1) = word(bias);
   m_scrollPhase = m_scrollPhase + 1 > 1 ? 0 : m_scrollPhase + 1;
   if (m_scrollPhase == 0) {
-    autoback([column = m_columns.at(static_cast<std::size_t>(m_columnInChunk)),
+    autoback([column = std::move(
+                  m_columns.at(static_cast<std::size_t>(m_columnInChunk))),
               x = stage() == 2 ? 0 : 304](core::IndexedSurface &surface) {
       surface.unpack(column, x, 0);
     });
@@ -630,12 +631,20 @@ StreetStage::Flow StreetStage::advanceLeaveFlushed() {
 }
 
 StreetStage::Flow StreetStage::advanceLeavePasted() {
-  m_session.streetExit.emplace(session::StreetExit{
-      m_screen, *m_block, m_playerX, m_energyShown, m_killsShown, m_buffer});
-  m_block.reset();
+  std::vector<core::Picture>().swap(m_columns);
   m_outcome = Outcome::Cleared;
   m_step = Step::Finished;
   return Flow::Yield;
+}
+
+void StreetStage::handOver() {
+  if (m_outcome != Outcome::Cleared || !m_block) {
+    return;
+  }
+  m_session.streetExit.emplace(
+      session::StreetExit{std::move(m_screen), *m_block, m_playerX,
+                          m_energyShown, m_killsShown, std::move(m_buffer)});
+  m_block.reset();
 }
 
 StreetStage::Flow StreetStage::spawnFlushed() {

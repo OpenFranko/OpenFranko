@@ -19,6 +19,7 @@ public:
   StreetStage(StreetHost &host, session::GameSession &session,
               GameOptions &options);
 
+  void handOver() override;
   int columnsWalked() const;
   int wavesSpawned() const;
   bool isFighting() const;

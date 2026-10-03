@@ -741,6 +741,13 @@ SCENARIO("The level ends one column before its length") {
     StreetStage &stage = street.start();
     street.run(OPENING_FRAMES + 1);
 
+    THEN("Handing it over before its end gives nothing") {
+      const auto screen = stage.screen().pixels();
+      stage.handOver();
+      REQUIRE_FALSE(street.session.streetExit.has_value());
+      REQUIRE(stage.screen().pixels() == screen);
+    }
+
     WHEN("It is walked to its end") {
       const int ended = street.runUntil(
           [&] { return stage.outcome() == StreetStage::Outcome::Cleared; }, 600,
@@ -759,15 +766,20 @@ SCENARIO("The level ends one column before its length") {
         REQUIRE(stage.screen().pixels() == screen);
       }
 
-      THEN("The boss stage gets the stamped screen and the block under it") {
+      THEN("Handing it over gives the boss stage the stamped screen and the "
+           "block under it") {
+        const auto screen = stage.screen().pixels();
+        REQUIRE_FALSE(street.session.streetExit.has_value());
+        stage.handOver();
         REQUIRE(street.session.streetExit.has_value());
         const StreetExit &exit = *street.session.streetExit;
+        REQUIRE(exit.buffer.has_value());
         const int x = exit.playerX;
         REQUIRE(x > 152);
         REQUIRE(x <= 164);
         REQUIRE(exit.energyShown == 64);
         REQUIRE(exit.killsShown == 0);
-        REQUIRE(exit.screen.pixels() == stage.screen().pixels());
+        REQUIRE(exit.screen.pixels() == screen);
         REQUIRE(exit.screen.pixel(x, 150) == 1);
         IndexedSurface restored = exit.screen;
         exit.block.put(restored);
