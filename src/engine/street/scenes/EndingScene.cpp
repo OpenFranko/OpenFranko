@@ -72,10 +72,13 @@ constexpr std::size_t TEXT_COLORS = 16;
 constexpr int BEAT_SPEED = 10;
 constexpr int BEAT_HOLD = 150;
 constexpr int BEAT_DARK = 150;
+constexpr std::size_t GLYPHS_PER_FRAME = 4;
 
 const effects::color::AmigaPalette DANCER_PALETTE = {
     0x000, 0x06F, 0x730, 0x840, 0x950, 0xA60, 0xB70, 0xC80,
     0xD90, 0xEA0, 0xFB0, 0xFC1, 0xFD2, 0xFE3, 0xFF4, 0xFFF};
+
+const systems::graphics::Layer BLANK_LAYER{};
 
 effects::color::AmigaPalette beat(effects::color::AmigaColor ink,
                                   effects::color::AmigaColor shade) {
@@ -119,7 +122,7 @@ void EndingScene::advance(int16_t joystick) {
   }
   m_stillVbl = true;
   m_machine.tick();
-  m_fader.advance(m_screens[0].palette);
+  const bool faded = m_fader.advance(m_screens[0].palette);
   if (!m_hold.holdsAtStart(m_frame)) {
     stillTest();
     if (m_dancerBuffer) {
@@ -133,6 +136,9 @@ void EndingScene::advance(int16_t joystick) {
       m_dancerBuffer->test(m_bobs, m_images);
     }
   }
+  if (!faded) {
+    preparePage();
+  }
   redraw();
   ++m_frame;
 }
@@ -142,24 +148,46 @@ void EndingScene::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display EndingScene::output() const {
-  return buildOutput(false);
+  systems::graphics::Display display;
+  output(display);
+  return display;
 }
 
 systems::graphics::Display EndingScene::upcomingOutput() const {
-  return buildOutput(m_step != Step::Finished);
+  systems::graphics::Display display;
+  upcomingOutput(display);
+  return display;
 }
 
-systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
-  systems::graphics::Display display;
+void EndingScene::output(systems::graphics::Display &display) const {
+  buildOutput(display, false);
+}
+
+void EndingScene::upcomingOutput(systems::graphics::Display &display) const {
+  buildOutput(display, m_step != Step::Finished);
+}
+
+void EndingScene::buildOutput(systems::graphics::Display &display,
+                              bool upcoming) const {
   display.width = SCREEN_WIDTH;
   display.height = SCREEN_HEIGHT;
   display.displayHeight = SCREEN_HEIGHT;
   display.border = m_border;
+  display.revision = 0;
+  std::size_t used = 0;
+  const auto next = [&display, &used]() -> systems::graphics::Layer & {
+    if (used == display.layers.size()) {
+      display.layers.emplace_back();
+    }
+    systems::graphics::Layer &layer = display.layers[used++];
+    layer = BLANK_LAYER;
+    return layer;
+  };
   if (m_stageShown && m_stage) {
     const core::IndexedSurface &shown =
         upcoming ? m_stage->buffer.upcoming() : m_stage->buffer.shown();
     const int rowsPerLine = m_stage->laced ? 2 : 1;
-    systems::graphics::Layer stage;
+    systems::graphics::Layer &stage = next();
     stage.pixels = shown.pixels().data();
     stage.stride = shown.width();
     stage.sourceColumns = shown.width();
@@ -172,10 +200,9 @@ systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
     stage.mask = static_cast<uint8_t>(m_stage->palette.size() - 1);
     stage.palette = m_stage->palette;
     stage.revision = shown.revision();
-    display.layers.push_back(std::move(stage));
   }
   if (const core::IndexedSurface *shown = panel()) {
-    systems::graphics::Layer layer;
+    systems::graphics::Layer &layer = next();
     layer.pixels = shown->pixels().data();
     layer.stride = shown->width();
     layer.sourceColumns = shown->width();
@@ -185,7 +212,6 @@ systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
     layer.rows = ui::StatusPanel::VISIBLE_HEIGHT;
     layer.palette = ui::panelPalette();
     layer.revision = shown->revision();
-    display.layers.push_back(std::move(layer));
   }
   for (int number : {1, 0}) {
     const Screen &screen = m_screens[static_cast<std::size_t>(number)];
@@ -193,7 +219,7 @@ systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
     if (!screen.open || (screen.hidden && !unhiding)) {
       continue;
     }
-    systems::graphics::Layer layer;
+    systems::graphics::Layer &layer = next();
     const core::IndexedSurface *dancer = nullptr;
     if (number == 1 && m_dancerBuffer) {
       const core::DoubleBuffer::View view = upcoming
@@ -220,9 +246,8 @@ systems::graphics::Display EndingScene::buildOutput(bool upcoming) const {
     layer.mask = static_cast<uint8_t>(screen.palette.size() - 1);
     layer.palette = screen.palette;
     layer.revision = surface.revision();
-    display.layers.push_back(std::move(layer));
   }
-  return display;
+  display.layers.resize(used);
 }
 
 bool EndingScene::isLoading() const {
@@ -261,6 +286,10 @@ bool EndingScene::isStageShown() const { return m_stageShown; }
 int EndingScene::displayLine() const { return m_displayLine; }
 
 effects::color::AmigaColor EndingScene::border() const { return m_border; }
+
+const core::IndexedSurface &EndingScene::preparedPage() const {
+  return m_nextPage;
+}
 
 const core::IndexedSurface &EndingScene::screen(int number) const {
   return m_screens[static_cast<std::size_t>(number)].surface;
@@ -454,7 +483,14 @@ void EndingScene::runBasic(int16_t joystick) {
       flow = wait(BEAT_DARK, Step::PageClear);
       break;
     case Step::PageClear:
-      m_screens[0].surface.fill(0);
+      m_pagePasted =
+          m_preparedPage == m_page + 1 && m_pastedGlyphs == m_pageGlyphs.size();
+      if (m_pagePasted) {
+        m_screens[0].surface.copy(m_nextPage, 0, 0, m_nextPage.width(),
+                                  m_nextPage.height(), 0, 0);
+      } else {
+        m_screens[0].surface.fill(0);
+      }
       ++m_page;
       m_count = 0;
       m_step = m_page < static_cast<int>(m_credits.pages.size())
@@ -625,15 +661,49 @@ void EndingScene::pageUp() {
   if (m_page == SECOND_DANCE_PAGE) {
     secondDance();
   }
-  for (const core::CreditLine &line :
-       m_credits.pages[static_cast<std::size_t>(m_page)].lines) {
-    core::font(line.text, line.y, [this](int x, int y, int image) {
-      core::BobLayer::paste(m_screens[0].surface, m_images, x, y, image);
-    });
+  if (!m_pagePasted) {
+    for (const core::CreditLine &line :
+         m_credits.pages[static_cast<std::size_t>(m_page)].lines) {
+      core::font(line.text, line.y, [this](int x, int y, int image) {
+        core::BobLayer::paste(m_screens[0].surface, m_images, x, y, image);
+      });
+    }
   }
   m_fader.start(m_screens[0].palette, BEAT_SPEED,
                 beat(effects::sequences::BlyskSequence::INK,
                      effects::sequences::BlyskSequence::SHADE));
+}
+
+void EndingScene::preparePage() {
+  const int next = m_page + 1;
+  if (!isShowingCredits() || next >= static_cast<int>(m_credits.pages.size())) {
+    return;
+  }
+  const core::IndexedSurface &text = m_screens[0].surface;
+  if (m_preparedPage != next) {
+    m_preparedPage = next;
+    m_pastedGlyphs = 0;
+    m_pageGlyphs.clear();
+    for (const core::CreditLine &line :
+         m_credits.pages[static_cast<std::size_t>(next)].lines) {
+      core::font(line.text, line.y, [this](int x, int y, int image) {
+        m_pageGlyphs.push_back({x, y, image});
+      });
+    }
+    if (m_nextPage.width() != text.width() ||
+        m_nextPage.height() != text.height()) {
+      m_nextPage = core::IndexedSurface(text.width(), text.height());
+    } else {
+      m_nextPage.fill(0);
+    }
+    return;
+  }
+  for (std::size_t pasted = 0;
+       pasted < GLYPHS_PER_FRAME && m_pastedGlyphs < m_pageGlyphs.size();
+       ++pasted, ++m_pastedGlyphs) {
+    const PageGlyph &glyph = m_pageGlyphs[m_pastedGlyphs];
+    core::BobLayer::paste(m_nextPage, m_images, glyph.x, glyph.y, glyph.image);
+  }
 }
 
 EndingScene::Flow EndingScene::musicFade() {

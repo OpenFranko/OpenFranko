@@ -45,6 +45,8 @@ public:
   void compose(std::vector<uint32_t> &frame) const;
   systems::graphics::Display output() const;
   systems::graphics::Display upcomingOutput() const;
+  void output(systems::graphics::Display &display) const;
+  void upcomingOutput(systems::graphics::Display &display) const;
 
   bool isLoading() const;
   bool isShowingStill() const;
@@ -57,6 +59,7 @@ public:
   int displayLine() const;
   effects::color::AmigaColor border() const;
   const core::IndexedSurface &screen(int number) const;
+  const core::IndexedSurface &preparedPage() const;
   const effects::color::AmigaPalette &palette(int number) const;
   const core::BobLayer &bobs() const;
   const core::IndexedSurface *panel() const;
@@ -109,12 +112,19 @@ private:
     effects::color::AmigaPalette palette;
   };
 
+  struct PageGlyph {
+    int x = 0;
+    int y = 0;
+    int image = 0;
+  };
+
   Flow wait(int frames, Step next);
   Flow hold(int frames, Step next);
-  systems::graphics::Display buildOutput(bool upcoming) const;
+  void buildOutput(systems::graphics::Display &display, bool upcoming) const;
   void stageFrame();
   bool kliker(int16_t joystick, int frames);
   void runBasic(int16_t joystick);
+  void preparePage();
   void start();
   void era();
   void stepCredits();
@@ -169,6 +179,11 @@ private:
   core::UpdateHold m_hold;
   int m_count = 0;
   int m_page = 0;
+  core::IndexedSurface m_nextPage = core::IndexedSurface(0, 0);
+  std::vector<PageGlyph> m_pageGlyphs;
+  std::size_t m_pastedGlyphs = 0;
+  int m_preparedPage = -1;
+  bool m_pagePasted = false;
   bool m_ntsc = false;
   int m_displayLine = DISPLAY_LINE;
 };

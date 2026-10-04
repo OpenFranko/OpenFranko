@@ -900,6 +900,36 @@ int scrolledMismatches(Arena &arena, const FrameMemory &memory,
 
 } // namespace
 
+namespace {
+
+void forgetBanks(Arena &arena, const Geometry &geometry,
+                 const FrameMemory &memory) {
+  graphics::Display other;
+  other.width = 64;
+  other.height = 48;
+  other.displayHeight = 48;
+  for (int index = 0; index < 3; ++index) {
+    graphics::Layer part = layer(64, 16, 8, static_cast<uint8_t>(40 + index));
+    part.top = index * 16;
+    part.rows = 16;
+    other.layers.push_back(part);
+  }
+  BuiltFrame scratch;
+  buildFrame(inArena(arena, other), geometry, memory, nullptr, 0, scratch);
+}
+
+std::array<uint16_t, 256> freshClut(Arena &arena,
+                                    const graphics::Display &display,
+                                    const Geometry &geometry,
+                                    const FrameMemory &memory) {
+  forgetBanks(arena, geometry, memory);
+  BuiltFrame fresh;
+  buildFrame(display, geometry, memory, nullptr, 0, fresh);
+  return fresh.clut;
+}
+
+} // namespace
+
 SCENARIO("Scrolled frames are patched instead of rebuilt") {
   GIVEN("A panning picture over a rainbow") {
     graphics::Display display;
@@ -1105,18 +1135,45 @@ SCENARIO("Scrolled frames are patched instead of rebuilt") {
       }
     }
 
-    THEN("A changed palette is rebuilt instead") {
+    THEN("A new panel colour during a flip is patched and recoloured") {
       const Geometry geometry = palGeometry();
       Arena arena;
       ArenaBuffers buffers(arena);
       const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, geometry, memory);
       const graphics::Display built = inArena(arena, stage);
       BuiltFrame frame;
       buildFrame(built, geometry, memory, nullptr, 0, frame);
+      REQUIRE(frame.translations.size() == 1);
       graphics::Display next = built;
+      next.layers[0].pixels = arenaCopy(arena, otherPlay.pixels, 640 * 222);
+      next.layers[0].sourceX = 13;
       next.layers[1].palette[2] = 0x0F0;
-      BuiltFrame copy = frame;
-      REQUIRE_FALSE(scrollFrame(next, built, geometry, memory, copy));
+      REQUIRE(scrollFrame(next, built, geometry, memory, frame));
+      for (const Translation &translation : frame.translations) {
+        translateOnCpu(translation);
+      }
+      REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+      REQUIRE(freshClut(arena, next, geometry, memory) == frame.clut);
+    }
+
+    THEN("Colours that need other banks are rebuilt instead") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, geometry, memory);
+      graphics::Display shared = inArena(arena, stage);
+      std::copy_n(shared.layers[0].palette.begin(),
+                  shared.layers[1].palette.size(),
+                  shared.layers[1].palette.begin());
+      BuiltFrame frame;
+      buildFrame(shared, geometry, memory, nullptr, 0, frame);
+      REQUIRE(frame.translations.empty());
+      graphics::Display next = shared;
+      next.layers[0].pixels = arenaCopy(arena, otherPlay.pixels, 640 * 222);
+      next.layers[1].palette = stage.layers[1].palette;
+      REQUIRE_FALSE(scrollFrame(next, shared, geometry, memory, frame));
     }
   }
 
@@ -1658,6 +1715,18 @@ SCENARIO("Frames whose colours change are recoloured instead of rebuilt") {
       }
     }
 
+    THEN("A frame placed for another screen is left to a rebuild") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display built = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(built, palGeometry(), memory, nullptr, 0, frame);
+      graphics::Display faded = built;
+      faded.layers[0].palette[1] = 0x0F0;
+      REQUIRE_FALSE(recolorFrame(faded, built, ntscGeometry(), memory, frame));
+    }
+
     THEN("A palette of another size is left to a rebuild") {
       Arena arena;
       ArenaBuffers buffers(arena);
@@ -1719,20 +1788,286 @@ SCENARIO("Frames whose colours change are recoloured instead of rebuilt") {
       }
     }
 
-    THEN("Colours that let the panel share the first bank are left to a "
-         "rebuild") {
+    THEN("Colours that would let the panel share the first bank keep its "
+         "own") {
       Arena arena;
       ArenaBuffers buffers(arena);
       const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, palGeometry(), memory);
       const graphics::Display built = inArena(arena, stage);
       BuiltFrame frame;
       buildFrame(built, palGeometry(), memory, nullptr, 0, frame);
+      for (const Translation &translation : frame.translations) {
+        translateOnCpu(translation);
+      }
       REQUIRE_FALSE(frame.translations.empty());
+      const std::vector<uint64_t> phrases = frame.phrases;
       graphics::Display shared = built;
       std::copy_n(shared.layers[0].palette.begin(),
                   shared.layers[1].palette.size(),
                   shared.layers[1].palette.begin());
-      REQUIRE_FALSE(recolorFrame(shared, built, palGeometry(), memory, frame));
+      REQUIRE(recolorFrame(shared, built, palGeometry(), memory, frame));
+      REQUIRE(frame.phrases == phrases);
+      REQUIRE(wrongPixels(arena, frame, memory, shared, palGeometry()) == 0);
+    }
+
+    THEN("A panel that stops sharing the first bank gets its own again") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, palGeometry(), memory);
+      graphics::Display shared = inArena(arena, stage);
+      std::copy_n(shared.layers[0].palette.begin(),
+                  shared.layers[1].palette.size(),
+                  shared.layers[1].palette.begin());
+      BuiltFrame frame;
+      buildFrame(shared, palGeometry(), memory, nullptr, 0, frame);
+      REQUIRE(frame.translations.empty());
+      graphics::Display apart = shared;
+      apart.layers[1].palette = stage.layers[1].palette;
+      if (!recolorFrame(apart, shared, palGeometry(), memory, frame)) {
+        buildFrame(apart, palGeometry(), memory, nullptr, 0, frame);
+      }
+      for (const Translation &translation : frame.translations) {
+        translateOnCpu(translation);
+      }
+      REQUIRE(wrongPixels(arena, frame, memory, apart, palGeometry()) == 0);
+      REQUIRE(freshClut(arena, apart, palGeometry(), memory) == frame.clut);
+    }
+  }
+
+  GIVEN("Text fading in over a dancer, in a bank of its own") {
+    graphics::Display credits;
+    credits.width = 320;
+    credits.height = 256;
+    credits.displayHeight = 256;
+    graphics::Layer dancer = layer(320, 164, 16, 6);
+    dancer.top = 81;
+    dancer.mask = 15;
+    graphics::Layer text = layer(320, 80, 16, 8);
+    text.mask = 15;
+    credits.layers = {dancer, text};
+
+    THEN("Every step gives the colour table a fresh plan would") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        Arena arena;
+        ArenaBuffers buffers(arena);
+        const FrameMemory memory = frameMemory(arena, buffers);
+        graphics::Display shown = inArena(arena, credits);
+        BuiltFrame frame;
+        buildFrame(shown, geometry, memory, nullptr, 0, frame);
+        for (const Translation &translation : frame.translations) {
+          translateOnCpu(translation);
+        }
+        REQUIRE(frame.translations.size() == 1);
+        const std::vector<uint64_t> phrases = frame.phrases;
+        for (int step = 1; step <= 15; ++step) {
+          graphics::Display next = shown;
+          next.layers[1].palette[1] = static_cast<uint16_t>(step * 0x111);
+          next.layers[1].palette[2] = static_cast<uint16_t>(step * 0x011);
+          REQUIRE(recolorFrame(next, shown, geometry, memory, frame));
+          REQUIRE(frame.phrases == phrases);
+          REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+          REQUIRE(freshClut(arena, next, geometry, memory) == frame.clut);
+          shown = next;
+        }
+      }
+    }
+  }
+
+  GIVEN("A picture whose pixels carry bits above its colour mask") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer picture = layer(320, 256, 64, 4);
+    picture.mask = 31;
+    picture.palette.resize(32);
+    display.layers.push_back(picture);
+
+    THEN("Fading it recolours the unused slots too") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, palGeometry(), memory, nullptr, 0, frame);
+      for (int step = 0; step < 4; ++step) {
+        graphics::Display next = shown;
+        for (uint16_t &color : next.layers[0].palette) {
+          color = static_cast<uint16_t>((color >> 1) & 0x777);
+        }
+        REQUIRE(recolorFrame(next, shown, palGeometry(), memory, frame));
+        REQUIRE(wrongPixels(arena, frame, memory, next, palGeometry()) == 0);
+        REQUIRE(freshClut(arena, next, palGeometry(), memory) == frame.clut);
+        shown = next;
+      }
+    }
+  }
+
+  GIVEN("A picture whose mask is not a run of low bits") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer picture = layer(320, 256, 64, 7);
+    picture.mask = 23;
+    picture.palette.resize(24);
+    display.layers.push_back(picture);
+
+    THEN("Fading it recolours every slot its colours reach") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, palGeometry(), memory);
+      const graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, palGeometry(), memory, nullptr, 0, frame);
+      graphics::Display next = shown;
+      next.layers[0].palette[5] = 0xF0F;
+      next.layers[0].palette[18] = 0x0FF;
+      REQUIRE(recolorFrame(next, shown, palGeometry(), memory, frame));
+      REQUIRE(wrongPixels(arena, frame, memory, next, palGeometry()) == 0);
+      REQUIRE(freshClut(arena, next, palGeometry(), memory) == frame.clut);
+    }
+  }
+
+  GIVEN("A picture whose palette is longer than its mask") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer picture = layer(320, 256, 16, 3);
+    picture.mask = 15;
+    picture.palette.resize(32, 0x123);
+    display.layers.push_back(picture);
+
+    THEN("Colours past the mask change nothing") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, palGeometry(), memory);
+      const graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, palGeometry(), memory, nullptr, 0, frame);
+      const std::array<uint16_t, 256> before = frame.clut;
+      graphics::Display next = shown;
+      for (std::size_t value = 16; value < 32; ++value) {
+        next.layers[0].palette[value] = 0xFFF;
+      }
+      REQUIRE(recolorFrame(next, shown, palGeometry(), memory, frame));
+      REQUIRE(frame.clut == before);
+      REQUIRE(freshClut(arena, next, palGeometry(), memory) == frame.clut);
+    }
+  }
+
+  GIVEN("Two masked pictures sharing the first bank") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 200;
+    display.displayHeight = 200;
+    graphics::Layer upper = layer(320, 100, 64, 3);
+    upper.palette.resize(16);
+    upper.mask = 15;
+    upper.carriesSprites = true;
+    graphics::Layer lower = layer(320, 100, 64, 3);
+    lower.palette.assign(upper.palette.begin(), upper.palette.begin() + 8);
+    lower.mask = 7;
+    lower.top = 100;
+    display.layers = {upper, lower};
+
+    THEN("The layer that takes over the sprites fills the unused slots") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, palGeometry(), memory, nullptr, 0, frame);
+      REQUIRE(frame.translations.empty());
+      graphics::Display next = shown;
+      next.layers[0].carriesSprites = false;
+      next.layers[1].carriesSprites = true;
+      for (std::size_t value = 8; value < 16; ++value) {
+        next.layers[0].palette[value] = static_cast<uint16_t>(0x0F0 + value);
+      }
+      if (!recolorFrame(next, shown, palGeometry(), memory, frame)) {
+        buildFrame(next, palGeometry(), memory, nullptr, 0, frame);
+      }
+      REQUIRE(frame.translations.empty());
+      REQUIRE(freshClut(arena, next, palGeometry(), memory) == frame.clut);
+    }
+  }
+
+  GIVEN("Two pictures, the upper one carrying the sprites") {
+    const Bob small = bob(16, 12, 1);
+    graphics::Display display;
+    display.width = 320;
+    display.height = 220;
+    display.displayHeight = 220;
+    graphics::Layer upper = layer(320, 120, 16, 2);
+    upper.mask = 15;
+    upper.carriesSprites = true;
+    graphics::Layer lower = layer(320, 100, 16, 9);
+    lower.mask = 15;
+    lower.top = 120;
+    display.layers = {upper, lower};
+
+    THEN("The lower one gets the first bank when it takes the sprites over") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, palGeometry(), memory);
+      const graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, palGeometry(), memory, nullptr, 0, frame);
+      REQUIRE(frame.translations.size() == 1);
+      graphics::Display moved = display;
+      moved.layers[0].carriesSprites = false;
+      moved.layers[1].carriesSprites = true;
+      moved.layers[1].sprites.push_back(
+          {small.pixels.data(), static_cast<int16_t>(small.width),
+           static_cast<int16_t>(small.height), 40, 30});
+      for (uint16_t &color : moved.layers[1].palette) {
+        color = static_cast<uint16_t>((color >> 1) & 0x777);
+      }
+      const graphics::Display next = inArena(arena, moved);
+      if (!recolorFrame(next, shown, palGeometry(), memory, frame)) {
+        buildFrame(next, palGeometry(), memory, nullptr, 0, frame);
+      }
+      for (const Translation &translation : frame.translations) {
+        translateOnCpu(translation);
+      }
+      REQUIRE(wrongPixels(arena, frame, memory, next, palGeometry()) == 0);
+    }
+  }
+
+  GIVEN("A picture over a solid colour") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer solid;
+    solid.columns = 320;
+    solid.rows = 256;
+    solid.palette = {0x00F};
+    graphics::Layer picture = layer(320, 100, 16, 5);
+    picture.top = 50;
+    display.layers = {solid, picture};
+
+    THEN("A new solid colour gives the table a fresh plan would") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, palGeometry(), memory, nullptr, 0, frame);
+      graphics::Display next = shown;
+      next.layers[0].palette[0] = 0x0F0;
+      if (!recolorFrame(next, shown, palGeometry(), memory, frame)) {
+        buildFrame(next, palGeometry(), memory, nullptr, 0, frame);
+      }
+      REQUIRE(wrongPixels(arena, frame, memory, next, palGeometry()) == 0);
+      REQUIRE(freshClut(arena, next, palGeometry(), memory) == frame.clut);
     }
   }
 }

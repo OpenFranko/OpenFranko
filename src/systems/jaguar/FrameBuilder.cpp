@@ -905,6 +905,8 @@ public:
     }
   }
 
+  const std::array<bool, CLUT_SIZE> &usedSlots() const { return m_used; }
+
 private:
   std::array<uint16_t, CLUT_SIZE> m_colors{};
   std::array<bool, CLUT_SIZE> m_used{};
@@ -1025,6 +1027,7 @@ struct BankInput {
   bool pixels = false;
   bool empty = false;
   bool translatable = false;
+  bool shared = false;
   uint8_t mask = FULL_MASK;
   int rows = 0;
   std::vector<uint16_t> palette;
@@ -1034,19 +1037,35 @@ struct BankCache {
   bool valid = false;
   uint32_t version = 0;
   bool buffers = false;
+  std::size_t base = 0;
   std::vector<BankInput> inputs;
   std::vector<LayerPlan> plans;
   std::vector<uint16_t> merged;
   std::array<uint16_t, CLUT_SIZE> clut{};
+  std::array<bool, CLUT_SIZE> used{};
 };
 
-bool sameInput(const BankInput &input, const graphics::Layer &layer,
+bool sameShape(const BankInput &input, const graphics::Layer &layer,
                const LayerArea &area) {
   return input.pixels == (layer.pixels != nullptr) &&
          input.empty == isEmpty(area) && input.mask == layer.mask &&
          input.rows == area.lastRow - area.firstRow &&
          input.translatable == isTranslatable(layer) &&
-         input.palette == layer.palette;
+         input.palette.size() == layer.palette.size();
+}
+
+template <typename Visit>
+void forClaims(const graphics::Layer &layer, const LayerPlan &plan,
+               Visit visit) {
+  if (!plan.merged || !layer.pixels) {
+    return;
+  }
+  const uint32_t bank = plan.translated ? plan.bank : 0;
+  for (std::size_t value = 0; value < layer.palette.size(); ++value) {
+    if (isKept(layer, value)) {
+      visit(value ^ bank, layer.palette[value] & COLOR_MASK);
+    }
+  }
 }
 
 BankCache &bankCache() {
@@ -1059,23 +1078,14 @@ std::vector<LayerPlan> &layerPlans() {
   return plans;
 }
 
-bool reuseBanks(const BankCache &banks, const graphics::Display &display,
-                const std::vector<LayerArea> &areas, const FrameMemory &memory,
-                std::vector<LayerPlan> &plans) {
-  if (!banks.valid || banks.buffers != (memory.buffers != nullptr) ||
-      banks.inputs.size() != areas.size()) {
-    return false;
-  }
-  for (std::size_t index = 0; index < areas.size(); ++index) {
-    if (!sameInput(banks.inputs[index], display.layers[index], areas[index])) {
-      return false;
-    }
-  }
+bool takePlans(const BankCache &banks, const graphics::Display &display,
+               const FrameMemory &memory, bool buffers,
+               std::vector<LayerPlan> &plans) {
   plans = banks.plans;
-  for (std::size_t index = 0; index < areas.size(); ++index) {
+  for (std::size_t index = 0; index < plans.size(); ++index) {
     LayerPlan &plan = plans[index];
     plan.buffer = nullptr;
-    if (plan.translated) {
+    if (plan.translated && buffers) {
       const graphics::Layer &layer = display.layers[index];
       plan.buffer = memory.buffers->buffer(layer.pixels, sourceBytes(layer));
       if (!plan.buffer) {
@@ -1094,6 +1104,8 @@ void rememberBanks(BankCache &banks, const graphics::Display &display,
   banks.valid = true;
   ++banks.version;
   banks.buffers = memory.buffers != nullptr;
+  banks.base = base;
+  banks.used = banking.usedSlots();
   banks.inputs.resize(areas.size());
   for (std::size_t index = 0; index < areas.size(); ++index) {
     const graphics::Layer &layer = display.layers[index];
@@ -1107,12 +1119,150 @@ void rememberBanks(BankCache &banks, const graphics::Display &display,
     input.palette = layer.palette;
   }
   banks.plans = plans;
+  std::array<uint8_t, CLUT_SIZE> claims{};
+  for (std::size_t index = 0; index < areas.size(); ++index) {
+    const LayerPlan &plan = plans[index];
+    if (plan.solidSlot != NO_SLOT) {
+      ++claims[static_cast<std::size_t>(plan.solidSlot)];
+    }
+    forClaims(display.layers[index], plan,
+              [&claims](std::size_t slot, uint16_t) { ++claims[slot]; });
+  }
+  for (std::size_t index = 0; index < areas.size(); ++index) {
+    bool shared = false;
+    forClaims(display.layers[index], plans[index],
+              [&claims, &shared](std::size_t slot, uint16_t) {
+                shared = shared || claims[slot] > 1;
+              });
+    banks.inputs[index].shared = shared;
+  }
   banking.palette(base < areas.size() ? &display.layers[base] : nullptr,
                   banks.merged);
   const std::array<uint16_t, AMIGA_COLORS> &table = rgb16Table();
   for (int value = 0; value < CLUT_SIZE; ++value) {
     const std::size_t index = static_cast<std::size_t>(value);
     banks.clut[index] = table[banks.merged[index] & COLOR_MASK];
+  }
+}
+
+bool samePlan(const LayerPlan &left, const LayerPlan &right) {
+  return left.merged == right.merged && left.translated == right.translated &&
+         left.bank == right.bank && left.solidSlot == right.solidSlot;
+}
+
+void recolorChanged(BankCache &banks, const graphics::Display &display,
+                    const std::vector<LayerPlan> &plans) {
+  const std::array<uint16_t, AMIGA_COLORS> &table = rgb16Table();
+  const auto recolor = [&banks, &table](std::size_t slot, uint16_t color) {
+    banks.merged[slot] = color;
+    banks.clut[slot] = table[color];
+  };
+  for (std::size_t index = 0; index < plans.size(); ++index) {
+    const graphics::Layer &layer = display.layers[index];
+    BankInput &input = banks.inputs[index];
+    const LayerPlan &plan = plans[index];
+    const bool claims = plan.merged && layer.pixels;
+    const uint32_t bank = plan.translated ? plan.bank : 0;
+    const bool fills = index == banks.base && layer.mask != FULL_MASK;
+    const std::size_t step = static_cast<std::size_t>(layer.mask) + 1;
+    const bool stepped = (layer.mask & step) == 0;
+    bool refill = false;
+    for (std::size_t value = 0; value < layer.palette.size(); ++value) {
+      if (input.palette[value] == layer.palette[value] ||
+          !isKept(layer, value)) {
+        continue;
+      }
+      const uint16_t color = layer.palette[value] & COLOR_MASK;
+      if (claims) {
+        recolor(value ^ bank, color);
+      }
+      if (fills && stepped) {
+        for (std::size_t slot = value; slot < banks.used.size(); slot += step) {
+          if (!banks.used[slot]) {
+            recolor(slot, color);
+          }
+        }
+      }
+      refill = refill || (fills && !stepped);
+    }
+    if (refill) {
+      for (std::size_t slot = 0; slot < banks.used.size(); ++slot) {
+        if (!banks.used[slot]) {
+          recolor(slot, effectiveColor(layer, static_cast<int>(slot)));
+        }
+      }
+    }
+    input.palette = layer.palette;
+  }
+  ++banks.version;
+}
+
+bool cachedBanks(BankCache &banks, const graphics::Display &display,
+                 const std::vector<LayerArea> &areas, const FrameMemory &memory,
+                 bool buffers, std::vector<LayerPlan> &plans) {
+  if (!banks.valid || banks.buffers != (memory.buffers != nullptr) ||
+      banks.inputs.size() != areas.size() ||
+      banks.merged.size() != banks.clut.size() ||
+      baseLayer(display, areas) != banks.base) {
+    return false;
+  }
+  bool recolored = false;
+  for (std::size_t index = 0; index < areas.size(); ++index) {
+    const graphics::Layer &layer = display.layers[index];
+    const BankInput &input = banks.inputs[index];
+    if (!sameShape(input, layer, areas[index])) {
+      return false;
+    }
+    if (input.palette != layer.palette) {
+      if (input.shared || !layer.pixels) {
+        return false;
+      }
+      recolored = true;
+    }
+  }
+  if (!takePlans(banks, display, memory, buffers, plans)) {
+    return false;
+  }
+  if (recolored) {
+    recolorChanged(banks, display, plans);
+  }
+  return true;
+}
+
+bool recolorBanks(BankCache &banks, const graphics::Display &display,
+                  const std::vector<LayerArea> &areas,
+                  const FrameMemory &memory,
+                  const std::vector<LayerPlan> &plans, std::size_t base) {
+  if (!banks.valid || banks.base != base ||
+      banks.buffers != (memory.buffers != nullptr) ||
+      banks.inputs.size() != areas.size() ||
+      banks.plans.size() != plans.size() ||
+      banks.merged.size() != banks.clut.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < areas.size(); ++index) {
+    const graphics::Layer &layer = display.layers[index];
+    const BankInput &input = banks.inputs[index];
+    if (!samePlan(plans[index], banks.plans[index]) ||
+        !sameShape(input, layer, areas[index]) ||
+        (!layer.pixels && input.palette != layer.palette)) {
+      return false;
+    }
+  }
+  recolorChanged(banks, display, plans);
+  return true;
+}
+
+void settleBanks(BankCache &banks, const graphics::Display &display,
+                 const std::vector<LayerArea> &areas, const FrameMemory &memory,
+                 bool buffers, std::vector<LayerPlan> &plans) {
+  if (cachedBanks(banks, display, areas, memory, buffers, plans)) {
+    return;
+  }
+  Banking banking;
+  const std::size_t base = planBanks(display, areas, memory, plans, banking);
+  if (!recolorBanks(banks, display, areas, memory, plans, base)) {
+    rememberBanks(banks, display, areas, memory, plans, banking, base);
   }
 }
 
@@ -1301,11 +1451,7 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
 
   std::vector<LayerPlan> &plans = layerPlans();
   BankCache &banks = bankCache();
-  if (!reuseBanks(banks, display, areas, memory, plans)) {
-    Banking banking;
-    const std::size_t base = planBanks(display, areas, memory, plans, banking);
-    rememberBanks(banks, display, areas, memory, plans, banking, base);
-  }
+  settleBanks(banks, display, areas, memory, true, plans);
 
   frame.translations.clear();
   static std::vector<const uint8_t *> pixels;
@@ -1448,7 +1594,19 @@ bool scrollsOnly(const graphics::Display &left,
         a.repeat != b.repeat || a.wrap != b.wrap || a.left != b.left ||
         a.top != b.top || a.columns != b.columns || a.rows != b.rows ||
         a.mask != b.mask || a.carriesSprites != b.carriesSprites ||
-        a.palette != b.palette || !sameRowColors(a.rowColors, b.rowColors)) {
+        a.palette.size() != b.palette.size() ||
+        !sameRowColors(a.rowColors, b.rowColors)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool samePalettes(const graphics::Display &left,
+                  const graphics::Display &right) {
+  const graphics::Layer *other = right.layers.data();
+  for (const graphics::Layer &layer : left.layers) {
+    if (layer.palette != (other++)->palette) {
       return false;
     }
   }
@@ -1634,7 +1792,8 @@ bool scrollFrame(const graphics::Display &display,
     return false;
   }
   frame.areas.assign(areas.begin(), areas.end());
-  return true;
+  return samePalettes(display, built) ||
+         recolorFrame(display, display, geometry, memory, frame);
 }
 
 bool recolorFrame(const graphics::Display &display,
@@ -1642,7 +1801,9 @@ bool recolorFrame(const graphics::Display &display,
                   const FrameMemory &memory, BuiltFrame &frame) {
   if (frame.clutVersion == 0 ||
       frame.layerTranslations.size() != display.layers.size() ||
-      !samePlacing(display, built)) {
+      frame.areas.size() != display.layers.size() ||
+      !samePlacing(display, built) ||
+      !samePlacement(placeDisplay(display, geometry), frame.placement)) {
     return false;
   }
   const graphics::Layer *other = built.layers.data();
@@ -1653,19 +1814,10 @@ bool recolorFrame(const graphics::Display &display,
       return false;
     }
   }
-  const Placement placement = placeDisplay(display, geometry);
-  static std::vector<LayerArea> areas;
-  areas.clear();
-  for (const graphics::Layer &layer : display.layers) {
-    areas.push_back(visibleArea(display, layer, placement, geometry));
-  }
+  const std::vector<LayerArea> &areas = frame.areas;
   std::vector<LayerPlan> &plans = layerPlans();
   BankCache &banks = bankCache();
-  if (!reuseBanks(banks, display, areas, memory, plans)) {
-    Banking banking;
-    const std::size_t base = planBanks(display, areas, memory, plans, banking);
-    rememberBanks(banks, display, areas, memory, plans, banking, base);
-  }
+  settleBanks(banks, display, areas, memory, false, plans);
   for (std::size_t index = 0; index < areas.size(); ++index) {
     const LayerPlan &plan = plans[index];
     const int used = frame.layerTranslations[index];
