@@ -605,12 +605,14 @@ void VideoSystem::present() {
   }
   int restage = NO_FRAME;
   int recolor = NO_FRAME;
+  std::array<bool, FRAMES> placed{};
   for (int slot = 0; slot < FRAMES; ++slot) {
     const std::size_t index = static_cast<std::size_t>(slot);
     if (!window.built[index] || window.sourceOverlays[index] != overlay ||
         !jaguar::samePlacing(window.sources[index], m_shown)) {
       continue;
     }
+    placed[index] = true;
     if (!jaguar::sameColors(window.sources[index], m_shown)) {
       if (recolor == NO_FRAME && slot != window.current &&
           slot != window.pending) {
@@ -655,8 +657,7 @@ void VideoSystem::present() {
   }
   for (int slot = 0; slot < FRAMES; ++slot) {
     const std::size_t index = static_cast<std::size_t>(slot);
-    if (slot == window.current || !window.built[index] ||
-        window.sourceOverlays[index] != overlay ||
+    if (slot == window.current || !placed[index] || !window.built[index] ||
         !jaguar::recolorFrame(m_shown, window.sources[index], window.geometry,
                               window.memory(index), window.frames[index])) {
       continue;

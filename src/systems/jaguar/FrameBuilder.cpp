@@ -1358,26 +1358,23 @@ bool sameSprites(const graphics::Display &display, const SpriteLists &sprites) {
 
 bool samePlacing(const graphics::Display &left,
                  const graphics::Display &right) {
-  if (left.width != right.width || left.height != right.height ||
-      left.displayHeight != right.displayHeight ||
-      left.border != right.border ||
-      left.layers.size() != right.layers.size()) {
-    return false;
-  }
-  const graphics::Layer *other = right.layers.data();
-  for (const graphics::Layer &a : left.layers) {
-    const graphics::Layer &b = *other++;
-    if (a.pixels != b.pixels || a.stride != b.stride ||
-        a.sourceColumns != b.sourceColumns || a.sourceRows != b.sourceRows ||
-        a.sourceX != b.sourceX || a.sourceY != b.sourceY ||
-        a.sourceStep != b.sourceStep || a.repeat != b.repeat ||
-        a.wrap != b.wrap || a.left != b.left || a.top != b.top ||
-        a.columns != b.columns || a.rows != b.rows || a.mask != b.mask ||
-        a.carriesSprites != b.carriesSprites) {
+  auto a = left.layers.begin();
+  auto b = right.layers.begin();
+  for (; a != left.layers.end() && b != right.layers.end(); ++a, ++b) {
+    if (a->pixels != b->pixels || a->sourceX != b->sourceX ||
+        a->sourceY != b->sourceY || a->stride != b->stride ||
+        a->sourceColumns != b->sourceColumns ||
+        a->sourceRows != b->sourceRows || a->sourceStep != b->sourceStep ||
+        a->repeat != b->repeat || a->wrap != b->wrap || a->left != b->left ||
+        a->top != b->top || a->columns != b->columns || a->rows != b->rows ||
+        a->mask != b->mask || a->carriesSprites != b->carriesSprites) {
       return false;
     }
   }
-  return true;
+  return a == left.layers.end() && b == right.layers.end() &&
+         left.width == right.width && left.height == right.height &&
+         left.displayHeight == right.displayHeight &&
+         left.border == right.border;
 }
 
 bool sameColors(const graphics::Display &left, const graphics::Display &right) {

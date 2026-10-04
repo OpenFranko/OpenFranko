@@ -1394,6 +1394,116 @@ SCENARIO("A sprite object can be rewritten without a bitmap object") {
   }
 }
 
+namespace {
+
+constexpr int PLACING_CHANGES = 15;
+
+void changePlacing(graphics::Layer &layer, int change) {
+  switch (change) {
+  case 0:
+    ++layer.pixels;
+    break;
+  case 1:
+    ++layer.sourceX;
+    break;
+  case 2:
+    ++layer.sourceY;
+    break;
+  case 3:
+    ++layer.stride;
+    break;
+  case 4:
+    ++layer.sourceColumns;
+    break;
+  case 5:
+    ++layer.sourceRows;
+    break;
+  case 6:
+    ++layer.sourceStep;
+    break;
+  case 7:
+    ++layer.repeat;
+    break;
+  case 8:
+    layer.wrap = !layer.wrap;
+    break;
+  case 9:
+    ++layer.left;
+    break;
+  case 10:
+    ++layer.top;
+    break;
+  case 11:
+    ++layer.columns;
+    break;
+  case 12:
+    ++layer.rows;
+    break;
+  case 13:
+    layer.mask = 0x0F;
+    break;
+  default:
+    layer.carriesSprites = !layer.carriesSprites;
+    break;
+  }
+}
+
+} // namespace
+
+SCENARIO("Displays are placed alike only when the screen and every layer "
+         "match") {
+  GIVEN("A display with two layers") {
+    const graphics::Display display = stageDisplay(false);
+
+    THEN("A copy with other colours, revisions and sprites is placed alike") {
+      graphics::Display copy = display;
+      copy.revision = 7;
+      copy.layers[0].palette[1] ^= 0x111;
+      copy.layers[1].revision = 9;
+      copy.layers[1].sprites.push_back(graphics::Sprite{});
+      REQUIRE(samePlacing(display, copy));
+      REQUIRE(samePlacing(copy, display));
+    }
+
+    THEN("Any placing change in either layer is noticed both ways") {
+      for (std::size_t index = 0; index < display.layers.size(); ++index) {
+        for (int change = 0; change < PLACING_CHANGES; ++change) {
+          graphics::Display moved = display;
+          changePlacing(moved.layers[index], change);
+          REQUIRE_FALSE(samePlacing(display, moved));
+          REQUIRE_FALSE(samePlacing(moved, display));
+        }
+      }
+    }
+
+    THEN("A missing layer is noticed on either side") {
+      graphics::Display shorter = display;
+      shorter.layers.pop_back();
+      REQUIRE_FALSE(samePlacing(display, shorter));
+      REQUIRE_FALSE(samePlacing(shorter, display));
+      graphics::Display empty = display;
+      empty.layers.clear();
+      REQUIRE_FALSE(samePlacing(display, empty));
+      REQUIRE_FALSE(samePlacing(empty, display));
+      REQUIRE(samePlacing(empty, empty));
+    }
+
+    THEN("Another screen size or border is noticed") {
+      for (int change = 0; change < 4; ++change) {
+        graphics::Display other = display;
+        int *fields[] = {&other.width, &other.height, &other.displayHeight};
+        if (change < 3) {
+          ++*fields[change];
+        } else {
+          other.border = 0x123;
+        }
+        REQUIRE_FALSE(samePlacing(display, other));
+        REQUIRE_FALSE(samePlacing(other, display));
+      }
+    }
+  }
+}
+
 SCENARIO("A bitmap object can be pointed at other data") {
   GIVEN("Objects already linked into a list") {
     THEN("Only the data address changes") {
