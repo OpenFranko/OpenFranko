@@ -6,6 +6,7 @@
 #include "../../effects/color/AmigaPalette.h"
 #include "../core/Bobs.h"
 #include "../core/IndexedSurface.h"
+#include "../core/SurfacePair.h"
 #include "../session/GameSession.h"
 #include "StreetHost.h"
 
@@ -49,13 +50,12 @@ private:
   void leave();
   void redraw();
 
-  StreetHost &m_host;
   session::GameSession &m_session;
   amal::Machine m_machine;
   core::ImageBank m_images;
   core::BobLayer m_bobs;
   core::IndexedSurface m_screen;
-  core::IndexedSurface m_display;
+  core::SurfacePair m_display;
   effects::color::AmigaPalette m_palette;
 
   Step m_step = Step::Open;

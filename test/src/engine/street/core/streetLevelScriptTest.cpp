@@ -71,3 +71,63 @@ SCENARIO("A level script is read from the extractor's JSON") {
     }
   }
 }
+
+SCENARIO("A level script is read one wave per step") {
+  GIVEN("The first two waves of stage 1") {
+    LevelScriptReader reader(SCRIPT);
+    LevelScript script;
+
+    THEN("The header takes a step and each wave one more") {
+      REQUIRE_FALSE(reader.step(script));
+      REQUIRE(script.length == 568);
+      REQUIRE(script.waves.empty());
+      REQUIRE_FALSE(reader.step(script));
+      REQUIRE(script.waves.size() == 1);
+      REQUIRE_FALSE(reader.step(script));
+      REQUIRE(script.waves.size() == 2);
+      REQUIRE(reader.step(script));
+      REQUIRE(script.waves[1].slots[1].x == 420);
+    }
+  }
+
+  GIVEN("Members in another order, repeated and unknown") {
+    const LevelScript script = LevelScript::fromJson(R"({
+      "waves": [{
+        "slots": [null, {"aggression": 3, "energy": 4, "spawnY": 5,
+                         "spawnX": -6, "kind": 7, "kind": 70,
+                         "spriteSetId": 8, "extra": {"a": [1, "x\"y"]}},
+                  null],
+        "triggerColumn": 9}],
+      "lengthInColumns": 10,
+      "lengthInColumns": 11,
+      "note": [true, false, null, 2.5]})");
+
+    THEN("Each field is found and the first copy of a member wins") {
+      REQUIRE(script.length == 10);
+      REQUIRE(script.waves.size() == 1);
+      REQUIRE(script.waves[0].trigger == 9);
+      const EnemySlot &slot = script.waves[0].slots[1];
+      REQUIRE(slot.spriteSet == 8);
+      REQUIRE(slot.type == 7);
+      REQUIRE(slot.x == -6);
+      REQUIRE(slot.y == 5);
+      REQUIRE(slot.energy == 4);
+      REQUIRE(slot.aggression == 3);
+      REQUIRE(script.waves[0].slots[0].spriteSet == EnemySlot::EMPTY);
+    }
+  }
+
+  GIVEN("Scripts missing a member") {
+    THEN("The member is named") {
+      REQUIRE_THROWS_WITH(
+          LevelScript::fromJson(R"({"lengthInColumns": 1, "waves": [
+            {"triggerColumn": 1, "slots": [{"spriteSetId": 1}, null, null]}]})"),
+          "JSON: missing \"kind\"");
+      REQUIRE_THROWS_WITH(LevelScript::fromJson(R"({"waves": []})"),
+                          "JSON: missing \"lengthInColumns\"");
+      REQUIRE_THROWS_WITH(
+          LevelScript::fromJson(R"({"lengthInColumns": 1, "waves": [{}]})"),
+          "JSON: missing \"triggerColumn\"");
+    }
+  }
+}

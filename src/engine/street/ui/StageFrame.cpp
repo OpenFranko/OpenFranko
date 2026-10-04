@@ -1,8 +1,11 @@
 #include "StageFrame.h"
 
+#include "../../../systems/Multiply.h"
 #include "../../AmigaDisplay.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <utility>
 
 namespace openfranko::src::engine::street::ui {
@@ -11,6 +14,10 @@ namespace {
 constexpr int NTSC_SHIFT = 40;
 constexpr int LACED_PLAY_SHIFT = 60;
 constexpr int LACED_PANEL_SHIFT = 51;
+constexpr std::size_t STAGE_LAYERS = 3;
+constexpr uint16_t BORDER_COLOR = 0x000;
+
+const systems::graphics::Layer BLANK_LAYER{};
 
 const effects::color::AmigaPalette LEVEL_PALETTE = {
     0x555, 0xAAA, 0x666, 0xFAA, 0x083, 0x902, 0xB95, 0x760,
@@ -24,6 +31,18 @@ const effects::color::AmigaPalette PANEL_PALETTE = {0x555, 0x000, 0xF10, 0x666,
 int sys(const StageLayout &layout) { return layout.ntsc ? -1 : 0; }
 
 int wyb(const StageLayout &layout) { return layout.laced ? -1 : 0; }
+
+int scaled(int rows, int perLine) {
+  return systems::multiplySigned16(static_cast<int16_t>(rows),
+                                   static_cast<int16_t>(perLine));
+}
+
+systems::graphics::Layer &freshLayer(systems::graphics::Display &output,
+                                     std::size_t index) {
+  systems::graphics::Layer &layer = output.layers[index];
+  layer = BLANK_LAYER;
+  return layer;
+}
 
 } // namespace
 
@@ -48,7 +67,7 @@ int frameTop(const StageLayout &layout) {
 int rowsPerLine(const StageLayout &layout) { return layout.laced ? 2 : 1; }
 
 int frameRows(const StageLayout &layout) {
-  return FRAME_HEIGHT * rowsPerLine(layout);
+  return scaled(FRAME_HEIGHT, rowsPerLine(layout));
 }
 
 void switchStandard(GameOptions &options, amal::Object &screenDisplay,
@@ -89,6 +108,12 @@ void StageDisplay::hide() {
 
 const StageCopper &StageDisplay::live() const { return m_live; }
 
+StageDisplay StageDisplay::upcoming(bool ntsc) const {
+  StageDisplay next = *this;
+  next.vbl(ntsc);
+  return next;
+}
+
 StageLayout StageDisplay::window(bool laced) const {
   return {m_beamNtsc, laced};
 }
@@ -97,52 +122,68 @@ int StageDisplay::panelY(bool laced) const {
   return panelDisplayY({m_live.ntsc, laced});
 }
 
-systems::graphics::Display
-stageOutput(const core::IndexedSurface *display,
-            const effects::color::AmigaPalette &palette,
-            const amal::Object &screenDisplay, int offsetX,
-            const StatusPanel *panel, int panelY,
-            const effects::color::AmigaPalette &panelColors,
-            const StageLayout &window) {
+void stageOutput(systems::graphics::Display &output,
+                 const core::IndexedSurface *display,
+                 const effects::color::AmigaPalette &palette,
+                 const amal::Object &screenDisplay, int offsetX,
+                 const StatusPanel *panel, int panelY,
+                 const effects::color::AmigaPalette &panelColors,
+                 const StageLayout &window,
+                 const std::vector<core::Sprite> *sprites) {
   const int rows = frameRows(window);
   const int perLine = rowsPerLine(window);
   const int top = frameTop(window);
-  systems::graphics::Display output;
   output.width = FRAME_WIDTH;
   output.height = rows;
   output.displayHeight = FRAME_HEIGHT;
   output.border = STAGE_BORDER;
   if (!panel) {
-    return output;
+    output.layers.clear();
+    return;
   }
+  output.layers.resize(display ? STAGE_LAYERS : STAGE_LAYERS - 1);
+  std::size_t index = 0;
   if (display) {
-    systems::graphics::Layer screen;
+    systems::graphics::Layer &screen = freshLayer(output, index++);
     screen.pixels = display->pixels().data();
     screen.stride = display->width();
     screen.sourceColumns = display->width();
     screen.sourceRows = display->height();
     screen.sourceX = offsetX;
-    screen.sourceY = (top - screenDisplay.y) * perLine;
+    screen.sourceY = scaled(top - screenDisplay.y, perLine);
     screen.columns = FRAME_WIDTH;
     screen.rows = rows;
-    screen.palette = palette;
-    output.layers.push_back(std::move(screen));
+    screen.palette.assign(palette.begin(), palette.end());
+    if (sprites) {
+      screen.carriesSprites = true;
+      screen.sprites.assign(sprites->begin(), sprites->end());
+    }
   }
   const core::IndexedSurface &panelSurface = panel->surface();
-  systems::graphics::Layer panelLayer;
+  systems::graphics::Layer &panelLayer = freshLayer(output, index++);
   panelLayer.pixels = panelSurface.pixels().data();
   panelLayer.stride = panelSurface.width();
   panelLayer.sourceColumns = panelSurface.width();
   panelLayer.sourceRows = StatusPanel::VISIBLE_HEIGHT;
   panelLayer.repeat = perLine;
-  panelLayer.top = (panelY - top) * perLine;
+  panelLayer.top = scaled(panelY - top, perLine);
   panelLayer.columns = FRAME_WIDTH;
-  panelLayer.rows = StatusPanel::VISIBLE_HEIGHT * perLine;
-  panelLayer.palette = panelColors;
-  output.layers.push_back(std::move(panelLayer));
-  output.layers.push_back(systems::graphics::solidLayer(
-      0x000, 0, (FIRST_VISIBLE_LINE - top) * perLine, FRAME_WIDTH));
-  return output;
+  panelLayer.rows = scaled(StatusPanel::VISIBLE_HEIGHT, perLine);
+  panelLayer.palette.assign(panelColors.begin(), panelColors.end());
+  panelLayer.revision = panel->revision();
+  systems::graphics::Layer &border = freshLayer(output, index++);
+  border.rows = scaled(FIRST_VISIBLE_LINE - top, perLine);
+  border.columns = FRAME_WIDTH;
+  border.palette.assign(1, BORDER_COLOR);
+}
+
+bool updateSprites(systems::graphics::Display &output,
+                   const std::vector<core::Sprite> &sprites) {
+  if (output.layers.empty() || !output.layers.front().carriesSprites) {
+    return false;
+  }
+  output.layers.front().sprites.assign(sprites.begin(), sprites.end());
+  return true;
 }
 
 void composeFrame(std::vector<uint32_t> &frame,
@@ -152,10 +193,10 @@ void composeFrame(std::vector<uint32_t> &frame,
                   const StatusPanel *panel, int panelY,
                   const effects::color::AmigaPalette &panelColors,
                   const StageLayout &window) {
-  systems::graphics::rasterize(stageOutput(display, palette, screenDisplay,
-                                           offsetX, panel, panelY, panelColors,
-                                           window),
-                               frame);
+  systems::graphics::Display output;
+  stageOutput(output, display, palette, screenDisplay, offsetX, panel, panelY,
+              panelColors, window);
+  systems::graphics::rasterize(output, frame);
 }
 
 } // namespace openfranko::src::engine::street::ui

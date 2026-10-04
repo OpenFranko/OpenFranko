@@ -156,6 +156,7 @@ void Mixer::startModule(bool looping) {
   if (m_moduleLoaded && xmp_start_player(m_module->player, m_rate, 0) == 0) {
     m_modulePlaying = true;
     m_playerStarted = true;
+    applyInterpolation();
   }
 }
 
@@ -183,6 +184,18 @@ bool Mixer::isModuleTempoOverridden() const { return m_tempoOverride > 0; }
 void Mixer::setMusicVolume(int volume) { m_musicVolume = volume; }
 
 void Mixer::setFilter(bool on) { m_filterOn = on; }
+
+void Mixer::setInterpolation(bool on) {
+  m_interpolation = on;
+  if (m_playerStarted) {
+    applyInterpolation();
+  }
+}
+
+void Mixer::applyInterpolation() {
+  xmp_set_player(m_module->player, XMP_PLAYER_INTERP,
+                 m_interpolation ? XMP_INTERP_LINEAR : XMP_INTERP_NEAREST);
+}
 
 void Mixer::play(const Sound &sound, int voiceMask, int frequency, bool loop) {
   const int playRate = frequency > 0 ? frequency : sound.rate;

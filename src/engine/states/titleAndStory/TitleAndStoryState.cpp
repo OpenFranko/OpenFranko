@@ -105,9 +105,13 @@ std::optional<EngineStateId> TitleAndStoryState::runTitle() {
       m_title.advance();
       if (m_title.isShown()) {
         m_screen.setPalette(m_title.palette());
-        m_screen.draw(m_titlePicture, 0, 0);
+        if (!m_titleDrawn) {
+          m_screen.draw(m_titlePicture, 0, 0);
+          m_titleDrawn = true;
+          m_drawnView.reset();
+        }
       } else {
-        m_screen.fill(effects::color::BLACK);
+        fillScreen(effects::color::BLACK);
       }
       return std::nullopt;
     }
@@ -156,7 +160,7 @@ std::optional<EngineStateId> TitleAndStoryState::runPages() {
 
 std::optional<EngineStateId> TitleAndStoryState::runStory() {
   if (m_phase == Phase::MusicFade) {
-    m_screen.fill(m_background);
+    fillScreen(m_background);
     if (m_musicFade.advance(m_speaker)) {
       return EngineStateId::HighScore;
     }
@@ -165,8 +169,8 @@ std::optional<EngineStateId> TitleAndStoryState::runStory() {
   if (m_phase == Phase::StoryOpening) {
     m_background = STORY_BACKGROUND_GREY;
     if (m_phaseFrames < STORY_SCREENS * SCREEN_OPEN_VBLS) {
-      m_screen.fill(m_phaseFrames == 0 ? effects::color::BLACK
-                                       : STORY_BACKGROUND_GREY);
+      fillScreen(m_phaseFrames == 0 ? effects::color::BLACK
+                                    : STORY_BACKGROUND_GREY);
       ++m_phaseFrames;
       return std::nullopt;
     }
@@ -194,7 +198,7 @@ std::optional<EngineStateId> TitleAndStoryState::runStory() {
   if (m_phaseFrames < SCREEN_CLOSE_SHOWN_VBLS) {
     drawStory(m_lastView);
   } else {
-    m_screen.fill(STORY_BACKGROUND_GREY);
+    fillScreen(STORY_BACKGROUND_GREY);
   }
   ++m_phaseFrames;
   return std::nullopt;
@@ -208,8 +212,19 @@ std::optional<EngineStateId> TitleAndStoryState::leave() {
   return runStory();
 }
 
+void TitleAndStoryState::fillScreen(effects::color::AmigaColor color) {
+  m_screen.fill(color);
+  m_drawnView.reset();
+  m_titleDrawn = false;
+}
+
 void TitleAndStoryState::drawStory(
     const effects::sequences::StorySequence::View &view) {
+  if (m_drawnView == view) {
+    return;
+  }
+  m_drawnView = view;
+  m_titleDrawn = false;
   m_screen.fill(STORY_BACKGROUND_GREY);
   if (view.frame) {
     drawStoryImage(m_frame, *view.frame - 1, FRAME_POSITION.x, FRAME_POSITION.y,

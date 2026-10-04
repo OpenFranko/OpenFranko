@@ -1,6 +1,8 @@
 #ifndef ENGINE_STREET_CORE_ENDINGCREDITS_H_
 #define ENGINE_STREET_CORE_ENDINGCREDITS_H_
 
+#include "Json.h"
+
 #include <string>
 #include <vector>
 
@@ -24,6 +26,19 @@ struct EndingCredits {
   std::vector<CreditPage> pages;
 
   static EndingCredits fromJson(const std::string &json);
+};
+
+class EndingCreditsReader {
+public:
+  explicit EndingCreditsReader(std::string json);
+
+  bool step(EndingCredits &credits);
+
+private:
+  JsonCursor m_json;
+  bool m_opened = false;
+  bool m_inPages = false;
+  bool m_hasPages = false;
 };
 
 } // namespace core

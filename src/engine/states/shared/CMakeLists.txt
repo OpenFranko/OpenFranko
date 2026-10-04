@@ -8,6 +8,8 @@ add_library(StatesShared
     MusicFadeOut.cpp
     MusicFadeOut.h
     StageState.h
+    StepLoader.cpp
+    StepLoader.h
     StreetControls.cpp
     StreetControls.h
     StreetVideo.cpp

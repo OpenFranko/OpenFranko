@@ -3,6 +3,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <stdexcept>
+#include <string>
 
 using namespace openfranko::src::engine::street::core;
 
@@ -58,6 +59,47 @@ SCENARIO("JSON documents are read into values") {
       REQUIRE_THROWS_WITH(parseJson(R"({"a" 1})"),
                           "JSON: expected ':' at offset 5");
       REQUIRE_THROWS_AS(parseJson("[nul]"), std::invalid_argument);
+    }
+  }
+}
+
+SCENARIO("A JSON cursor reads values one at a time") {
+  GIVEN("An object with numbers, text and nested values") {
+    JsonCursor cursor(
+        R"( {"a": -1e3, "b": "t\"x", "c": [1, {"d": null}], "e": 4, "f": 7} )");
+
+    THEN("Members are visited in order and skipped values leave no trace") {
+      std::string key;
+      cursor.openObject();
+      REQUIRE(cursor.nextMember(key));
+      REQUIRE(key == "a");
+      REQUIRE(cursor.integer() == -1000);
+      REQUIRE(cursor.nextMember(key));
+      REQUIRE(key == "b");
+      REQUIRE(cursor.text() == "t\"x");
+      REQUIRE(cursor.nextMember(key));
+      REQUIRE(key == "c");
+      cursor.skip();
+      REQUIRE(cursor.nextMember(key));
+      REQUIRE(key == "e");
+      REQUIRE_FALSE(cursor.skipNull());
+      REQUIRE(cursor.integer() == 4);
+      REQUIRE(cursor.nextMember(key));
+      REQUIRE(cursor.value().integer() == 7);
+      REQUIRE_FALSE(cursor.nextMember(key));
+      cursor.finish();
+    }
+  }
+
+  GIVEN("Values of the wrong kind") {
+    THEN("They are refused like the values of a document") {
+      REQUIRE_THROWS_WITH(JsonCursor("2.5").integer(),
+                          "JSON: expected an integer");
+      REQUIRE_THROWS_WITH(JsonCursor("\"9\"").integer(),
+                          "JSON: expected an integer");
+      REQUIRE_THROWS_WITH(JsonCursor("[]").text(), "JSON: expected a string");
+      REQUIRE_THROWS_WITH(JsonCursor("[1 2]").skip(),
+                          "JSON: expected ']' at offset 3");
     }
   }
 }

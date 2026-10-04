@@ -12,9 +12,16 @@ void showStageFrame(systems::graphics::Monitor &monitor,
 }
 
 void showSceneFrame(systems::graphics::Monitor &monitor,
-                    systems::graphics::Display frame, const VisibleRows &rows) {
+                    systems::graphics::Display &frame,
+                    const VisibleRows &rows) {
   systems::graphics::cropRows(frame, rows.first, rows.count);
   monitor.show(frame);
+}
+
+void showSceneFrame(systems::graphics::Monitor &monitor,
+                    systems::graphics::Display &&frame,
+                    const VisibleRows &rows) {
+  showSceneFrame(monitor, frame, rows);
 }
 
 } // namespace openfranko::src::engine::states::shared

@@ -4,6 +4,8 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <vector>
+
 using namespace openfranko::src::engine::street::core;
 using namespace openfranko::test::src::engine::street::core;
 
@@ -39,6 +41,30 @@ struct Screen {
 };
 
 } // namespace
+
+SCENARIO("A double buffer made from a moved screen") {
+  GIVEN("A painted screen") {
+    IndexedSurface paper(64, 32);
+    paper.fill(PAPER);
+    paper.clear(INK, 2, 1, 5, 2);
+    const uint8_t *storage = paper.pixels().data();
+
+    WHEN("It is moved into a double buffer") {
+      const DoubleBuffer buffer(std::move(paper));
+
+      THEN("Both buffers show it, one of them in the moved storage") {
+        REQUIRE(buffer.shown().pixel(2, 1) == INK);
+        REQUIRE(buffer.logic().pixel(2, 1) == INK);
+        REQUIRE(buffer.shown().pixel(40, 20) == PAPER);
+        REQUIRE(buffer.logic().pixel(40, 20) == PAPER);
+        REQUIRE((buffer.shown().pixels().data() == storage ||
+                 buffer.logic().pixels().data() == storage));
+        REQUIRE(buffer.shown().pixels().data() !=
+                buffer.logic().pixels().data());
+      }
+    }
+  }
+}
 
 SCENARIO("Double Buffer shows each automatic update one VBL later") {
   GIVEN("A double-buffered screen with no bobs") {
@@ -284,6 +310,69 @@ SCENARIO("A double buffer opened by size starts blank") {
         REQUIRE(buffer.shown().pixel(16, 8) == INK);
         REQUIRE(buffer.shown().pixel(40, 20) == 0);
       }
+    }
+  }
+}
+
+SCENARIO("The upcoming buffer is the one the next VBL shows and leaves alone") {
+  GIVEN("A double-buffered screen with a bob that moves every frame") {
+    Screen screen;
+    screen.bobs.set(1, 8, 8, 1);
+
+    THEN("Each frame's upcoming buffer is shown next and not drawn into") {
+      for (int frame = 0; frame < 6; ++frame) {
+        const IndexedSurface &upcoming = screen.buffer.upcoming();
+        const std::vector<uint8_t> before = upcoming.pixels();
+        screen.bobs.set(1, 8 + 4 * frame, 8, 1);
+        screen.frame();
+        REQUIRE(&screen.buffer.shown() == &upcoming);
+        REQUIRE(upcoming.pixels() == before);
+      }
+    }
+
+    WHEN("An autoback op scrolls both buffers over two VBLs") {
+      screen.frame();
+      screen.frame();
+      screen.buffer.autoback([](IndexedSurface &surface) {
+        surface.copy(surface, 0, 0, 64, 32, 8, 0);
+      });
+
+      THEN("Neither step draws into the buffer that was upcoming") {
+        for (int step = 0; step < 3; ++step) {
+          const IndexedSurface &upcoming = screen.buffer.upcoming();
+          const std::vector<uint8_t> before = upcoming.pixels();
+          screen.frame();
+          REQUIRE(&screen.buffer.shown() == &upcoming);
+          REQUIRE(upcoming.pixels() == before);
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("A recorded sprite is baked only when its image is retired") {
+  GIVEN("A bob recorded as a sprite and shown") {
+    Screen screen;
+    screen.buffer.setSprites(true);
+    screen.images.setBeforeRetire(
+        [&screen](const uint8_t *pixels) { screen.buffer.bakeUsing(pixels); });
+    screen.bobs.set(1, 10, 10, 1);
+    screen.frame();
+    screen.frame();
+    REQUIRE(screen.buffer.shownView().sprites.size() == 1);
+    REQUIRE(screen.buffer.shownView().pixels.pixel(12, 12) == PAPER);
+
+    THEN("Replacing another image keeps it a sprite") {
+      screen.images.load(2, box(8, 8, COPIED));
+      REQUIRE(screen.buffer.shownView().sprites.size() == 1);
+      REQUIRE(screen.buffer.shownView().pixels.pixel(12, 12) == PAPER);
+    }
+
+    THEN("Replacing its image stamps the old pixels into the screen") {
+      screen.images.load(1, box(16, 8, COPIED));
+      REQUIRE(screen.buffer.shownView().sprites.empty());
+      REQUIRE(screen.buffer.shownView().pixels.pixel(12, 12) == INK);
+      REQUIRE(screen.shown(12, 12) == INK);
     }
   }
 }

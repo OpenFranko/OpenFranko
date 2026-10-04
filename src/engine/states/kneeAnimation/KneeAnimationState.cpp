@@ -32,6 +32,7 @@ constexpr int TEMPO_WAIT = 2;
 constexpr int CLOSE_WAIT = 80;
 
 constexpr int IMAGES = 4;
+constexpr int PICTURE_LOAD_STEPS = 2;
 constexpr int SAMPLE_FRAME = SAMPLE_UNPACK * FRAMES_PER_UNPACK;
 constexpr int MUSIC_FRAME = IMAGES * FRAMES_PER_UNPACK + MUSIC_WAIT;
 constexpr int CLOSE_FRAME = MUSIC_FRAME + TEMPO_WAIT + CLOSE_WAIT;
@@ -39,6 +40,8 @@ constexpr int SCREENS = 2;
 constexpr int OPEN_FRAMES = SCREENS * SCREEN_OPEN_VBLS;
 constexpr int GONE_FRAME = CLOSE_FRAME + SCREEN_CLOSE_SHOWN_VBLS;
 constexpr int CLOSED_FRAME = CLOSE_FRAME + SCREENS * SCREEN_CLOSE_VBLS;
+constexpr int BLACK_SCENE = -1;
+constexpr int GREY_SCENE = 0;
 
 } // namespace
 
@@ -53,18 +56,29 @@ KneeAnimationState::KneeAnimationState(
     controllerSystem.clearFireLatch();
   }
   const std::string images = assets::resourceName(IMAGE_SET, m_version);
+  const std::string sample =
+      version12
+          ? assets::samplePath(files, VERSION12_SAMPLE_BANK,
+                               VERSION12_SAMPLE_NUMBER)
+          : assets::samplePath(files,
+                               assets::resourceName(SAMPLE_BANK, m_version),
+                               SAMPLE_NUMBER);
+  m_images.resize(IMAGES);
   for (int image = 0; image < IMAGES; ++image) {
-    m_images.push_back(files.loadBitmap(assets::partPath(images, image)));
+    m_imageLoads.push_back(m_loads.add(
+        shared::bitmapStep(files, assets::partPath(images, image),
+                           m_images[static_cast<std::size_t>(image)])));
+    if (image == SAMPLE_UNPACK - 1) {
+      m_sampleLoad = m_loads.add([this, sample] {
+        m_speaker.loadSample(SAMPLE, sample);
+        return true;
+      });
+    }
   }
-  m_speaker.loadSample(
-      SAMPLE, version12
-                  ? assets::samplePath(files, VERSION12_SAMPLE_BANK,
-                                       VERSION12_SAMPLE_NUMBER)
-                  : assets::samplePath(
-                        files, assets::resourceName(SAMPLE_BANK, m_version),
-                        SAMPLE_NUMBER));
-  m_speaker.loadMusic(
-      assets::musicPath(assets::resourceName(assets::MENU_TUNE, m_version)));
+  m_musicLoad = m_loads.add(shared::musicStep(
+      files, m_speaker,
+      assets::musicPath(assets::resourceName(assets::MENU_TUNE, m_version))));
+  m_speaker.stopMusic();
 }
 
 KneeAnimationState::~KneeAnimationState() { m_speaker.clearSample(SAMPLE); }
@@ -75,27 +89,36 @@ std::optional<EngineStateId> KneeAnimationState::update() {
     return EngineStateId::TitleAndStory;
   }
 
+  m_loads.step(m_loads.isDone(m_imageLoads.back()) ? 1 : PICTURE_LOAD_STEPS);
   const bool version12 = m_version == GameVersion::V12;
   if (time == SAMPLE_FRAME) {
+    m_loads.finish(m_sampleLoad);
     m_speaker.playSample(SAMPLE, version12 ? VERSION12_SAMPLE_VOICES
                                            : systems::audio::Mixer::ALL_VOICES);
   }
   if (time == MUSIC_FRAME) {
+    m_loads.finish(m_musicLoad);
     m_speaker.playMusic();
   }
   if (version12 && time == MUSIC_FRAME + TEMPO_WAIT) {
     m_speaker.setMusicTempo(VERSION12_TEMPO);
   }
 
-  const int copied = std::min(time / FRAMES_PER_UNPACK, IMAGES);
-  if (time < 0 || time >= GONE_FRAME) {
-    m_screen.fill(effects::color::BLACK);
-  } else if (copied == 0) {
-    m_screen.fill(BACKGROUND_GREY);
-  } else {
-    const systems::graphics::IndexedBitmap &image = m_images[copied - 1];
-    m_screen.setPalette(image.palette);
-    m_screen.draw(image, 0, 0);
+  const int scene = time < 0 || time >= GONE_FRAME
+                        ? BLACK_SCENE
+                        : std::min(time / FRAMES_PER_UNPACK, IMAGES);
+  if (scene != m_painted) {
+    if (scene == BLACK_SCENE) {
+      m_screen.fill(effects::color::BLACK);
+    } else if (scene == GREY_SCENE) {
+      m_screen.fill(BACKGROUND_GREY);
+    } else {
+      m_loads.finish(m_imageLoads[static_cast<std::size_t>(scene - 1)]);
+      const systems::graphics::IndexedBitmap &image = m_images[scene - 1];
+      m_screen.setPalette(image.palette);
+      m_screen.draw(image, 0, 0);
+    }
+    m_painted = scene;
   }
   m_monitor.show(m_screen.output());
 

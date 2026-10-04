@@ -1,4 +1,6 @@
 add_library(StatesMenu
+    MenuPrefetch.cpp
+    MenuPrefetch.h
     MenuState.cpp
     MenuState.h)
 target_link_libraries(StatesMenu

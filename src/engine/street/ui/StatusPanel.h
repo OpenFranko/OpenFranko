@@ -4,6 +4,8 @@
 #include "../../GameVersion.h"
 #include "../core/IndexedSurface.h"
 
+#include <cstdint>
+
 namespace openfranko {
 namespace src {
 namespace engine {
@@ -34,6 +36,7 @@ public:
   void gainEnergy(int energy);
 
   const core::IndexedSurface &surface() const;
+  uint32_t revision() const;
 
 private:
   core::Picture m_loadingStrip;

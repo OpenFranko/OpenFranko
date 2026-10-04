@@ -298,6 +298,37 @@ SCENARIO("Walking right scrolls the street as state 12 does") {
   }
 }
 
+SCENARIO("The upcoming frame is the one the next update shows") {
+  GIVEN("A street being walked through, scrolling as it goes") {
+    Street street(emptyStreet(600));
+    StreetStage &stage = street.start();
+    street.run(OPENING_FRAMES + 1);
+
+    THEN("Each upcoming frame matches the frame shown after the next update") {
+      int scrolledFrames = 0;
+      for (int frame = 0; frame < 200; ++frame) {
+        const openfranko::src::systems::graphics::Display upcoming =
+            stage.upcomingOutput();
+        const int columns = stage.columnsWalked();
+        street.run(1, JOY_RIGHT);
+        const openfranko::src::systems::graphics::Display shown =
+            stage.output();
+        scrolledFrames += stage.columnsWalked() != columns ? 1 : 0;
+        REQUIRE(upcoming.layers.size() == shown.layers.size());
+        for (std::size_t layer = 0; layer < shown.layers.size(); ++layer) {
+          REQUIRE(upcoming.layers[layer].pixels == shown.layers[layer].pixels);
+          REQUIRE(upcoming.layers[layer].sourceX ==
+                  shown.layers[layer].sourceX);
+          REQUIRE(upcoming.layers[layer].sourceY ==
+                  shown.layers[layer].sourceY);
+          REQUIRE(upcoming.layers[layer].top == shown.layers[layer].top);
+        }
+      }
+      REQUIRE(scrolledFrames > 0);
+    }
+  }
+}
+
 SCENARIO("A wave spawns at its trigger column") {
   GIVEN("A bald enemy from set 1 due at column 2") {
     Street street(oneEnemyAt(2, enemy(1, 300, 172, 20, 100)));
@@ -710,6 +741,13 @@ SCENARIO("The level ends one column before its length") {
     StreetStage &stage = street.start();
     street.run(OPENING_FRAMES + 1);
 
+    THEN("Handing it over before its end gives nothing") {
+      const auto screen = stage.screen().pixels();
+      stage.handOver();
+      REQUIRE_FALSE(street.session.streetExit.has_value());
+      REQUIRE(stage.screen().pixels() == screen);
+    }
+
     WHEN("It is walked to its end") {
       const int ended = street.runUntil(
           [&] { return stage.outcome() == StreetStage::Outcome::Cleared; }, 600,
@@ -728,15 +766,20 @@ SCENARIO("The level ends one column before its length") {
         REQUIRE(stage.screen().pixels() == screen);
       }
 
-      THEN("The boss stage gets the stamped screen and the block under it") {
+      THEN("Handing it over gives the boss stage the stamped screen and the "
+           "block under it") {
+        const auto screen = stage.screen().pixels();
+        REQUIRE_FALSE(street.session.streetExit.has_value());
+        stage.handOver();
         REQUIRE(street.session.streetExit.has_value());
         const StreetExit &exit = *street.session.streetExit;
+        REQUIRE(exit.buffer.has_value());
         const int x = exit.playerX;
         REQUIRE(x > 152);
         REQUIRE(x <= 164);
         REQUIRE(exit.energyShown == 64);
         REQUIRE(exit.killsShown == 0);
-        REQUIRE(exit.screen.pixels() == stage.screen().pixels());
+        REQUIRE(exit.screen.pixels() == screen);
         REQUIRE(exit.screen.pixel(x, 150) == 1);
         IndexedSurface restored = exit.screen;
         exit.block.put(restored);

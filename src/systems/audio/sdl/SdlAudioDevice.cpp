@@ -63,4 +63,6 @@ void AudioDevice::unlock() { SDL_UnlockAudioDevice(m_stream->device); }
 
 void AudioDevice::update() {}
 
+bool AudioDevice::interpolatesMusic() { return true; }
+
 } // namespace openfranko::src::systems::audio

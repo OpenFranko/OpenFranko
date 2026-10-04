@@ -11,14 +11,13 @@ namespace openfranko::src::systems::audio {
 namespace {
 
 constexpr int OUTPUT_RATE = 22050;
-constexpr int PAL_VBL_RATE = 50;
 
 } // namespace
 
 AudioSystem::AudioSystem(Read read)
     : m_output(std::make_unique<Output>(OUTPUT_RATE)) {
   m_output->read = std::move(read);
-  m_output->vblRate = PAL_VBL_RATE;
+  m_output->mixer.setInterpolation(AudioDevice::interpolatesMusic());
   m_output->device = std::make_unique<AudioDevice>(
       OUTPUT_RATE, [mixer = &m_output->mixer](int16_t *stereo, int frames) {
         mixer->render(stereo, frames);
@@ -41,6 +40,18 @@ void AudioSystem::loadMusic(const std::string &path) {
     m_output->musicPath = path;
   }
 }
+
+std::unique_ptr<Speaker::MusicLoad>
+AudioSystem::beginMusic(const std::string &path, std::vector<uint8_t> data,
+                        int steps) {
+  return Speaker::beginMusic(path, std::move(data), steps);
+}
+
+void AudioSystem::prepareMusic(const std::string &, std::vector<uint8_t>) {}
+
+bool AudioSystem::stepPreparation() { return false; }
+
+void AudioSystem::dropPreparedMusic() {}
 
 void AudioSystem::clearMusic() {
   std::lock_guard<AudioDevice> lock(*m_output->device);
@@ -97,15 +108,6 @@ void AudioSystem::setMusicTempo(int tempo) {
   m_output->mixer.overrideModuleTempo(tempo);
 }
 
-void AudioSystem::setVblRate(int hertz) {
-  if (hertz == m_output->vblRate) {
-    return;
-  }
-  std::lock_guard<AudioDevice> lock(*m_output->device);
-  m_output->vblRate = hertz;
-  applyTempo();
-}
-
 void AudioSystem::setLowPassFilter(bool on) {
   std::lock_guard<AudioDevice> lock(*m_output->device);
   m_output->mixer.setFilter(on);
@@ -156,8 +158,7 @@ void AudioSystem::startMusic(bool looping) {
 }
 
 void AudioSystem::applyTempo() {
-  m_output->mixer.setModuleTempo(static_cast<double>(PAL_VBL_RATE) /
-                                 (m_output->vblRate * m_output->tempoScale));
+  m_output->mixer.setModuleTempo(1.0 / m_output->tempoScale);
 }
 
 } // namespace openfranko::src::systems::audio

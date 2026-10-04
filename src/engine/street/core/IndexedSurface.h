@@ -25,12 +25,20 @@ struct Picture {
 class IndexedSurface {
 public:
   IndexedSurface(int width, int height);
+  IndexedSurface(int width, int height, std::vector<uint8_t> pixels);
+  IndexedSurface(const IndexedSurface &other);
+  IndexedSurface(IndexedSurface &&other) noexcept = default;
+  IndexedSurface &operator=(const IndexedSurface &other);
+  IndexedSurface &operator=(IndexedSurface &&other) noexcept;
+  ~IndexedSurface();
 
   int width() const;
   int height() const;
   uint8_t pixel(int x, int y) const;
   const std::vector<uint8_t> &pixels() const;
+  uint32_t revision() const;
 
+  void reshape(int width, int height);
   void fill(uint8_t color);
   void clear(uint8_t color, int x1, int y1, int x2, int y2);
   void copy(const IndexedSurface &source, int x1, int y1, int x2, int y2, int x,
@@ -39,11 +47,14 @@ public:
   bool intersects(int left, int top, int width, int height) const;
   void draw(const Picture &picture, int left, int top, bool flipX, bool flipY,
             bool opaque = false);
+  void draw(const uint8_t *pixels, int width, int height, int left, int top,
+            bool opaque);
 
 private:
   int m_width;
   int m_height;
   std::vector<uint8_t> m_pixels;
+  uint32_t m_revision;
 };
 
 class ScreenBlock {

@@ -10,8 +10,10 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace openfranko::src::engine;
@@ -32,6 +34,28 @@ constexpr int TITLE_FRAMES = FADE_IN_FRAMES + 300 + FADE_OUT_FRAMES;
 constexpr int VERSION12_TITLE_FRAMES = FADE_IN_FRAMES + 100 + FADE_OUT_FRAMES;
 constexpr int STORY_OPEN_FRAMES = 2 * SCREEN_OPEN_VBLS;
 
+constexpr auto INTRO = "assets/intro.json";
+constexpr auto PAGES = R"({"pages": [
+  {"beat": 0, "lines": [{"y": 16, "text": "A"}]},
+  {"beat": 0, "lines": [{"y": 16, "text": "B"}]},
+  {"beat": 0, "lines": [{"y": 16, "text": "C"}]},
+  {"beat": 0, "lines": [{"y": 16, "text": "DE"}]}]})";
+constexpr int IMAGE_OFFSET = 5;
+
+std::string glyphPath(char letter) {
+  return assets::imagePath("s50", letter + IMAGE_OFFSET);
+}
+
+FakeFiles introFiles() {
+  FakeFiles files;
+  const std::string pages = PAGES;
+  files.contents[INTRO] = std::vector<uint8_t>(pages.begin(), pages.end());
+  for (const char letter : {'A', 'B', 'C', 'D', 'E'}) {
+    files.bitmaps[glyphPath(letter)] = {};
+  }
+  return files;
+}
+
 void latchFire(ControllerSystem &controller) {
   KeyEvent space;
   space.key = Key::Space;
@@ -42,6 +66,11 @@ void latchFire(ControllerSystem &controller) {
 
 struct Title {
   explicit Title(GameVersion version) {
+    state.emplace(monitor, speaker, controller, files, version);
+  }
+
+  Title(GameVersion version, FakeFiles introFiles)
+      : files(std::move(introFiles)) {
     state.emplace(monitor, speaker, controller, files, version);
   }
 
@@ -123,6 +152,100 @@ SCENARIO("Left alone, the title opens the story") {
 
       THEN("Its first frame is read from 03BE") {
         REQUIRE(title.files.wasLoaded(assets::partPath("03BE", 0)));
+      }
+    }
+  }
+}
+
+SCENARIO("Version 1.2 reads the next page's letters while a page holds lit") {
+  GIVEN("Four pages of credits, the first two shown before the knee") {
+    Title title(GameVersion::V12, introFiles());
+
+    WHEN("The title is still up") {
+      run(*title.state, VERSION12_TITLE_FRAMES);
+
+      THEN("No letter has been read") {
+        REQUIRE(title.files.loaded ==
+                std::vector<std::string>{"assets/p54.bmp", INTRO});
+      }
+    }
+
+    WHEN("The third page is fading in") {
+      run(*title.state, VERSION12_TITLE_FRAMES + 4);
+
+      THEN("Only its own letter has been read") {
+        REQUIRE(title.files.wasLoaded(glyphPath('C')));
+        REQUIRE_FALSE(title.files.wasLoaded(glyphPath('D')));
+        REQUIRE_FALSE(title.files.wasLoaded(glyphPath('E')));
+      }
+    }
+
+    WHEN("The third page has been fully lit for a few frames") {
+      run(*title.state, VERSION12_TITLE_FRAMES + 40);
+
+      THEN("The fourth page's letters are read ahead") {
+        REQUIRE(title.files.wasLoaded(glyphPath('D')));
+        REQUIRE(title.files.wasLoaded(glyphPath('E')));
+      }
+
+      THEN("The pages shown before the knee are not read") {
+        REQUIRE_FALSE(title.files.wasLoaded(glyphPath('A')));
+        REQUIRE_FALSE(title.files.wasLoaded(glyphPath('B')));
+      }
+    }
+  }
+}
+
+namespace {
+
+int repaints(Title &title, int frames) {
+  int changes = 0;
+  const uint8_t *last = nullptr;
+  for (int frame = 0; frame < frames; ++frame) {
+    run(*title.state, 1);
+    const auto &layers = title.monitor.shown().layers;
+    const uint8_t *pixels = layers.empty() ? nullptr : layers.front().pixels;
+    if (frame > 0 && pixels != last) {
+      ++changes;
+    }
+    last = pixels;
+  }
+  return changes;
+}
+
+} // namespace
+
+SCENARIO("The title and story are painted only when they change") {
+  GIVEN("Version 1.0") {
+    Title title(GameVersion::V10);
+
+    WHEN("The title holds lit") {
+      run(*title.state, FADE_IN_FRAMES + 10);
+
+      THEN("The picture is not painted again") {
+        REQUIRE(repaints(title, 100) == 0);
+      }
+    }
+
+    WHEN("The story runs for eight animation frames") {
+      run(*title.state, TITLE_FRAMES + STORY_OPEN_FRAMES + 1);
+
+      THEN("It is painted once per animation frame at most") {
+        const int changes = repaints(title, 64);
+        REQUIRE(changes >= 1);
+        REQUIRE(changes <= 8);
+      }
+    }
+  }
+
+  GIVEN("Version 1.2 with four pages of credits") {
+    Title title(GameVersion::V12, introFiles());
+
+    WHEN("The third page fades in, holds and goes") {
+      run(*title.state, VERSION12_TITLE_FRAMES);
+
+      THEN("The strip is painted only when a page changes") {
+        REQUIRE(repaints(title, 80) <= 3);
       }
     }
   }

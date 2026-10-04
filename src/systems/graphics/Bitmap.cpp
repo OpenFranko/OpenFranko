@@ -2,6 +2,7 @@
 
 #include "graphics/Display.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstring>
@@ -155,6 +156,19 @@ IndexedBitmap loadIndexedBitmap(const std::string &path) {
   } catch (const std::runtime_error &error) {
     throw std::runtime_error(std::string(error.what()) + ": " + path);
   }
+}
+
+IndexedBitmap mirrored(const IndexedBitmap &image) {
+  IndexedBitmap flipped = image;
+  flipped.hotspotX = image.width - image.hotspotX;
+  for (std::size_t row = 0; row < static_cast<std::size_t>(image.height);
+       ++row) {
+    const auto start = flipped.pixels.begin() +
+                       static_cast<std::ptrdiff_t>(
+                           row * static_cast<std::size_t>(image.width));
+    std::reverse(start, start + image.width);
+  }
+  return flipped;
 }
 
 } // namespace openfranko::src::systems::graphics

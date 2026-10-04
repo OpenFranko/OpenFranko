@@ -15,11 +15,18 @@ EndingState::EndingState(systems::graphics::Monitor &monitor,
                          street::scenes::EndingScene::SCREEN_HEIGHT,
                          options.ntsc)) {
   m_monitor.setNtsc(options.ntsc);
+  m_scene.showSprites(monitor.showsSprites(),
+                      monitor.showsSprites() && !monitor.diffsFrames());
 }
 
 std::optional<EngineStateId> EndingState::update() {
   m_scene.advance(m_controllerSystem.joystick());
-  shared::showSceneFrame(m_monitor, m_scene.output(), m_rows);
+  if (m_monitor.readsBuffersLive()) {
+    m_scene.upcomingOutput(m_frame);
+  } else {
+    m_scene.output(m_frame);
+  }
+  shared::showSceneFrame(m_monitor, m_frame, m_rows);
   if (m_scene.isFinished()) {
     return EngineStateId::HighScore;
   }

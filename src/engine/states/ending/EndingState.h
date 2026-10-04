@@ -33,6 +33,7 @@ private:
   systems::input::ControllerSystem &m_controllerSystem;
   street::scenes::EndingScene m_scene;
   VisibleRows m_rows;
+  systems::graphics::Display m_frame;
 };
 
 } // namespace ending

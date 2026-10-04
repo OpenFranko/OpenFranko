@@ -187,30 +187,65 @@ void SpiderLogoState::logo() {
 }
 
 void SpiderLogoState::showWalk() {
-  m_walkScreen.fill(effects::color::BLACK);
   m_walkScreen.setPalette(WALK_PALETTE);
-  m_walkScreen.draw(m_water, 0, WATER_TOP - m_walkRows.first);
-  drawBob(m_walkScreen, m_walkRows.first);
-  systems::graphics::Display display = m_walkScreen.output();
+  const bool sprites = bobSprites(m_walkRows.first);
+  if (!sprites || !m_walkPainted) {
+    m_walkScreen.fill(effects::color::BLACK);
+    m_walkScreen.draw(m_water, 0, WATER_TOP - m_walkRows.first);
+    m_walkPainted = sprites;
+  }
+  if (!sprites) {
+    drawBob(m_walkScreen, m_walkRows.first);
+  }
+  systems::graphics::Display display =
+      sprites ? m_walkScreen.output(m_sprites) : m_walkScreen.output();
   display.displayHeight = 2 * display.height;
   m_monitor.show(display);
 }
 
 void SpiderLogoState::showLogo() {
   m_logoScreen.setPalette(m_foto->palette());
-  m_logoScreen.draw(m_logo, 0, -m_logoRows.first);
-  m_logoScreen.draw(m_reflectionArea, 0, REFLECTION_TOP - m_logoRows.first);
-  drawBob(m_logoScreen, m_logoRows.first);
-  m_monitor.show(m_logoScreen.output());
+  const bool sprites = bobSprites(m_logoRows.first);
+  if (!sprites || !m_logoPainted) {
+    m_logoScreen.draw(m_logo, 0, -m_logoRows.first);
+    m_logoScreen.draw(m_reflectionArea, 0, REFLECTION_TOP - m_logoRows.first);
+    m_logoPainted = sprites;
+  }
+  if (!sprites) {
+    drawBob(m_logoScreen, m_logoRows.first);
+  }
+  m_monitor.show(sprites ? m_logoScreen.output(m_sprites)
+                         : m_logoScreen.output());
 }
 
 void SpiderLogoState::showBlack(systems::graphics::Canvas &screen, bool hires) {
   screen.fill(effects::color::BLACK);
+  m_walkPainted = false;
+  m_logoPainted = false;
   systems::graphics::Display display = screen.output();
   if (hires) {
     display.displayHeight = 2 * display.height;
   }
   m_monitor.show(display);
+}
+
+bool SpiderLogoState::bobSprites(int top) {
+  m_sprites.clear();
+  if (!m_monitor.showsSprites()) {
+    return false;
+  }
+  const int image = m_shownBob.image - 1;
+  if (image < 0 || image >= static_cast<int>(m_images.size())) {
+    return true;
+  }
+  const std::optional<systems::graphics::Sprite> sprite =
+      systems::graphics::spriteOf(m_images[static_cast<std::size_t>(image)],
+                                  m_shownBob.x, m_shownBob.y - top);
+  if (!sprite) {
+    return false;
+  }
+  m_sprites.push_back(*sprite);
+  return true;
 }
 
 void SpiderLogoState::drawBob(systems::graphics::Canvas &screen,

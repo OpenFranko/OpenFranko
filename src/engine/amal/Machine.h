@@ -59,6 +59,7 @@ public:
 
   void bind(int channel, Object *object);
   void create(int channel, const Program &program);
+  void prepare(const Program &program);
   void create(int channel, const std::string &source);
   void start(int channel);
   void startAll();
@@ -78,8 +79,35 @@ public:
   void tick();
 
 private:
+  enum class Form : uint8_t {
+    Generic,
+    Pause,
+    Jump,
+    LetValue,
+    Let,
+    IfEqual,
+    IfLess,
+    IfGreater,
+    IfNotEqual,
+    IfAnd,
+    If
+  };
+
+  struct Step {
+    const Instruction *instruction = nullptr;
+    Form form = Form::Generic;
+    Operator op = Operator::Add;
+    bool leftRegister = false;
+    bool rightRegister = false;
+    int16_t target = 0;
+    int16_t left = 0;
+    int16_t right = 0;
+    int16_t jump = -1;
+  };
+
   struct Channel {
     Program program;
+    const Step *steps = nullptr;
     bool open = false;
     int pc = 0;
     bool alive = true;
@@ -100,10 +128,18 @@ private:
     uint16_t animCounter = 0;
   };
 
+  struct Landing {
+    int16_t pc;
+    int16_t jumps;
+    uint32_t changes;
+  };
   struct SourceHash {
     std::size_t operator()(const std::string &source) const;
   };
 
+  static Form ifForm(Operator op);
+  static Step compile(const Program &program, int pc);
+  const Step *steps(const Program &program);
   Channel &channel(int number);
   Channel *opened(int number);
   const Channel *opened(int number) const;
@@ -112,6 +148,8 @@ private:
   int16_t operand(const Channel &channel, const Term &term) const;
   int16_t evaluate(const Channel &channel, const Expression &expression) const;
   void run(Channel &channel);
+  bool runGeneric(Channel &channel, const Instruction &instruction, int pc,
+                  int &jumps);
   void startMove(Channel &channel, int16_t dx, int16_t dy, int16_t frames);
   void stepMove(Channel &channel);
   void startAnim(Channel &channel);
@@ -121,7 +159,11 @@ private:
   std::array<Object *, CHANNELS> m_bindings{};
   std::array<Channel, CHANNELS> m_channels{};
   std::unordered_map<std::string, ParsedProgram, SourceHash> m_programs;
+  std::unordered_map<const uint16_t *, std::vector<Step>> m_steps;
   int16_t m_joystick = 0;
+  uint32_t m_changes = 0;
+  std::size_t m_activeEnd = 0;
+  bool m_activeDirty = true;
 };
 
 } // namespace amal

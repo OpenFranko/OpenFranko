@@ -34,6 +34,8 @@ std::optional<EngineStateId> HighScoreState::update() {
   return std::nullopt;
 }
 
+bool HighScoreState::isEnteringText() const { return m_scene.isEntering(); }
+
 const street::scenes::HighScoreScene &HighScoreState::scene() const {
   return m_scene;
 }

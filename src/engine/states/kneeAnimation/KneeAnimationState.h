@@ -9,7 +9,10 @@
 #include "../../GameVersion.h"
 #include "../../assets/Files.h"
 #include "../EngineState.h"
+#include "../shared/StepLoader.h"
 
+#include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace openfranko {
@@ -34,8 +37,13 @@ private:
   systems::audio::Speaker &m_speaker;
   GameVersion m_version;
   std::vector<systems::graphics::IndexedBitmap> m_images;
+  shared::StepLoader m_loads;
+  std::vector<std::size_t> m_imageLoads;
+  std::size_t m_sampleLoad = 0;
+  std::size_t m_musicLoad = 0;
   systems::graphics::Canvas m_screen;
   int m_frame = 0;
+  std::optional<int> m_painted;
 };
 
 } // namespace kneeAnimation

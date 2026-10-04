@@ -30,6 +30,9 @@ public:
   StageOutcome outcome = StageOutcome::Playing;
   std::vector<StreetInput> inputs;
   Display frame;
+  Display upcomingFrame;
+  bool sprites = false;
+  int handOvers = 0;
 };
 
 class ScriptedStage {
@@ -39,9 +42,15 @@ public:
   ScriptedStage(StreetHost &host, GameSession &, GameOptions &)
       : m_script(static_cast<Script &>(host)) {}
 
+  void showSprites(bool on) { m_script.sprites = on; }
+
   void advance(const StreetInput &input) { m_script.inputs.push_back(input); }
 
+  void handOver() { ++m_script.handOvers; }
+
   const Display &output() const { return m_script.frame; }
+
+  const Display &upcomingOutput() const { return m_script.upcomingFrame; }
 
   Outcome outcome() const { return m_script.outcome; }
 
@@ -94,6 +103,7 @@ SCENARIO("A stage's outcome picks the next state") {
     THEN("A game over goes to the graveyard") {
       stage.script.outcome = StageOutcome::GameOver;
       REQUIRE(stage.state->update() == EngineStateId::GameOver);
+      REQUIRE(stage.script.handOvers == 0);
     }
 
     THEN("Quitting goes to the scores") {
@@ -101,9 +111,68 @@ SCENARIO("A stage's outcome picks the next state") {
       REQUIRE(stage.state->update() == EngineStateId::HighScore);
     }
 
-    THEN("Clearing it goes to the next stage") {
+    THEN("Clearing it hands the stage over and goes to the next one") {
       stage.script.outcome = StageOutcome::Cleared;
       REQUIRE(stage.state->update() == EngineStateId::Level2Car);
+      REQUIRE(stage.script.handOvers == 1);
+    }
+  }
+}
+
+SCENARIO("Bobs become sprites only on monitors that show sprites") {
+  GIVEN("A monitor without sprites") {
+    Stage stage;
+
+    THEN("The stage draws its bobs into the screen") {
+      REQUIRE_FALSE(stage.script.sprites);
+    }
+  }
+
+  GIVEN("A monitor that shows sprites") {
+    Stage stage;
+    stage.monitor.sprites = true;
+    stage.state.emplace(stage.monitor, stage.script, stage.controller,
+                        stage.options, stage.session);
+
+    THEN("The stage hands its bobs over as sprites") {
+      REQUIRE(stage.script.sprites);
+    }
+  }
+
+  GIVEN("A monitor that shows sprites but sends only what changed") {
+    Stage stage;
+    stage.monitor.sprites = true;
+    stage.monitor.diffs = true;
+    stage.state.emplace(stage.monitor, stage.script, stage.controller,
+                        stage.options, stage.session);
+
+    THEN("The stage draws its bobs into the screen") {
+      REQUIRE_FALSE(stage.script.sprites);
+    }
+  }
+}
+
+SCENARIO("A monitor that reads the buffers live gets the upcoming frame") {
+  GIVEN("A stage whose upcoming frame has another border") {
+    Stage stage;
+    stage.script.upcomingFrame = stageFrame();
+    stage.script.upcomingFrame.border = 0xF00;
+
+    WHEN("The monitor copies each frame") {
+      run(*stage.state, 1);
+
+      THEN("It is shown the current frame") {
+        REQUIRE(stage.monitor.pixel(0, 0) == toArgb(0x0F0));
+      }
+    }
+
+    WHEN("The monitor reads the buffers while the next frame is drawn") {
+      stage.monitor.live = true;
+      run(*stage.state, 1);
+
+      THEN("It is shown the frame that the next update keeps on screen") {
+        REQUIRE(stage.monitor.pixel(0, 0) == toArgb(0xF00));
+      }
     }
   }
 }

@@ -26,6 +26,10 @@ SCENARIO("BlyskSequence shows FONT pages the way BLYSK lights them") {
         REQUIRE(sequence.page() == 0);
         REQUIRE(sequence.palette() == AmigaPalette{0x000, 0x000, 0x000, 0x000});
       }
+
+      THEN("The second page comes next") { REQUIRE(sequence.nextPage() == 1); }
+
+      THEN("The page is fading in") { REQUIRE_FALSE(sequence.isSteady()); }
     }
 
     WHEN("Fade 2 has had 29 frames") {
@@ -34,6 +38,12 @@ SCENARIO("BlyskSequence shows FONT pages the way BLYSK lights them") {
       THEN("Ink and shade have reached white and grey, colour 3 is kept") {
         REQUIRE(sequence.palette() == AmigaPalette{0x000, 0xFFF, 0xAAA, 0x000});
       }
+    }
+
+    WHEN("The lit page is held") {
+      run(sequence, 45);
+
+      THEN("It holds steady") { REQUIRE(sequence.isSteady()); }
     }
 
     WHEN("Wait 60 has passed") {
@@ -49,6 +59,7 @@ SCENARIO("BlyskSequence shows FONT pages the way BLYSK lights them") {
         THEN("The page takes its first step back to black") {
           REQUIRE(sequence.palette()[1] == 0xEEE);
           REQUIRE(sequence.palette()[2] == 0x999);
+          REQUIRE_FALSE(sequence.isSteady());
         }
       }
     }
@@ -67,6 +78,10 @@ SCENARIO("BlyskSequence shows FONT pages the way BLYSK lights them") {
         THEN("The second page is pasted in the same frame") {
           REQUIRE(sequence.page() == 1);
           REQUIRE_FALSE(sequence.isFinished());
+        }
+
+        THEN("No page comes after it") {
+          REQUIRE_FALSE(sequence.nextPage().has_value());
         }
       }
     }
@@ -99,6 +114,8 @@ SCENARIO("BlyskSequence shows FONT pages the way BLYSK lights them") {
     THEN("There is nothing to show") {
       REQUIRE(sequence.isFinished());
       REQUIRE_FALSE(sequence.isSkipped());
+      REQUIRE_FALSE(sequence.nextPage().has_value());
+      REQUIRE_FALSE(sequence.isSteady());
     }
   }
 }

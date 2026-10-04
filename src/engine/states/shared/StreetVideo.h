@@ -15,7 +15,10 @@ void showStageFrame(systems::graphics::Monitor &monitor,
                     const systems::graphics::Display &frame,
                     const GameOptions &options);
 void showSceneFrame(systems::graphics::Monitor &monitor,
-                    systems::graphics::Display frame, const VisibleRows &rows);
+                    systems::graphics::Display &frame, const VisibleRows &rows);
+void showSceneFrame(systems::graphics::Monitor &monitor,
+                    systems::graphics::Display &&frame,
+                    const VisibleRows &rows);
 
 } // namespace shared
 } // namespace states

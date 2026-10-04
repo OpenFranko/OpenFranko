@@ -21,6 +21,9 @@ public:
   int height = 0;
   int displayHeight = 0;
   bool ntsc = false;
+  bool live = false;
+  bool sprites = false;
+  bool diffs = false;
 
   void
   show(const openfranko::src::systems::graphics::Display &display) override {
@@ -36,11 +39,22 @@ public:
 
   bool isNtsc() const override { return ntsc; }
 
+  bool readsBuffersLive() const override { return live; }
+
+  bool showsSprites() const override { return sprites; }
+  bool diffsFrames() const override { return diffs; }
+
   uint32_t pixel(int x, int y) const {
+    return frame()[static_cast<std::size_t>(y * width + x)];
+  }
+  const std::vector<uint32_t> &frame() const {
     if (m_frame.empty()) {
       openfranko::src::systems::graphics::rasterize(m_shown, m_frame);
     }
-    return m_frame[static_cast<std::size_t>(y * width + x)];
+    return m_frame;
+  }
+  const openfranko::src::systems::graphics::Display &shown() const {
+    return m_shown;
   }
 
 private:

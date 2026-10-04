@@ -202,15 +202,14 @@ void CarStage::era() {
   m_host.stopMusic();
   m_musicLoaded = false;
   m_images.clear();
-  m_loading.queue([this] {
-    m_images.load(1, m_host.loadSpriteSet(CAR_SET, CAR_SAMPLE_BANK));
-  });
-  m_loading.queue([this] {
-    m_images.load(PEDESTRIAN_IMAGES,
-                  m_host.loadSpriteSet(CAR_SET - stage(), 0));
-  });
-  m_loading.queue(
-      [this] { m_backdrop = m_host.loadPicture(ROAD_PICTURE + stage()); });
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [] { return CAR_SET; }, CAR_SAMPLE_BANK, 1,
+      ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [this] { return CAR_SET - stage(); }, 0,
+      PEDESTRIAN_IMAGES, ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps(pictureJob(
+      m_host, [this] { return ROAD_PICTURE + stage(); }, m_backdrop, nullptr));
   m_afterLoading = Step::Loaded;
   m_step = Step::Loading;
 }
@@ -231,6 +230,7 @@ void CarStage::openStrip() {
 
 void CarStage::startDrive() {
   m_screenShown = true;
+  settleScreen();
   m_screen.copy(m_strip, 0, 0, VISIBLE_WIDTH, SCREEN_HEIGHT, 0, 0);
   m_buffer.logic().copy(m_strip, 0, 0, VISIBLE_WIDTH, SCREEN_HEIGHT, 0, 0);
   for (int channel = 1; channel <= PEDESTRIANS; ++channel) {
@@ -385,16 +385,8 @@ CarStage::Flow CarStage::driveScenery() {
   addWrap(m_pavementBand, m_speed * 4, 0, BAND_END);
   addWrap(m_roadBand, m_speed * 3, 0, BAND_END);
   addWrap(m_fenceBand, m_speed, 0, BAND_END);
-  for (core::IndexedSurface *target : {&m_screen, &m_buffer.logic()}) {
-    target->copy(m_strip, m_trackBand, 93, VISIBLE_WIDTH + m_trackBand, 115, 0,
-                 93);
-    target->copy(m_strip, m_pavementBand, 202, VISIBLE_WIDTH + m_pavementBand,
-                 222, 0, 202);
-    target->copy(m_strip, m_fenceBand, 0, VISIBLE_WIDTH + m_fenceBand, 94, 0,
-                 0);
-    target->copy(m_strip, m_roadBand, 95, VISIBLE_WIDTH + m_roadBand, 201, 0,
-                 95);
-  }
+  copyBands(m_buffer.logic());
+  m_screenBehind = true;
   if (m_x != START_X || m_speed != 0) {
     addWrap(m_clock, 1, 1, CLOCK_CYCLE);
   }
@@ -414,6 +406,22 @@ CarStage::Flow CarStage::driveScenery() {
   m_buffer.drawBobs(m_bobs, m_images);
   m_buffer.swap();
   return wait(1, Step::DriveBottom);
+}
+
+void CarStage::copyBands(core::IndexedSurface &target) const {
+  target.copy(m_strip, m_trackBand, 93, VISIBLE_WIDTH + m_trackBand, 115, 0,
+              93);
+  target.copy(m_strip, m_pavementBand, 202, VISIBLE_WIDTH + m_pavementBand, 222,
+              0, 202);
+  target.copy(m_strip, m_fenceBand, 0, VISIBLE_WIDTH + m_fenceBand, 94, 0, 0);
+  target.copy(m_strip, m_roadBand, 95, VISIBLE_WIDTH + m_roadBand, 201, 0, 95);
+}
+
+void CarStage::settleScreen() const {
+  if (m_screenBehind) {
+    m_screenBehind = false;
+    copyBands(m_screen);
+  }
 }
 
 CarStage::Flow CarStage::driveBottom() {
@@ -456,12 +464,11 @@ CarStage::Flow CarStage::driveBottom() {
 void CarStage::runOver() {
   for (int channel = 1; channel <= PEDESTRIANS; ++channel) {
     const int bob = FIRST_PEDESTRIAN + channel - 1;
-    const bool touched = m_bobs.collide(CAR, m_images) && m_bobs.collided(bob);
     const int y = m_bobs.y(bob);
     const int carY = m_bobs.y(CAR);
-    if (!touched || y <= carY - HIT_REACH_ABOVE ||
-        y >= carY + HIT_REACH_BELOW ||
-        m_hit[static_cast<std::size_t>(channel)]) {
+    if (y <= carY - HIT_REACH_ABOVE || y >= carY + HIT_REACH_BELOW ||
+        m_hit[static_cast<std::size_t>(channel)] ||
+        !m_bobs.collide(CAR, m_images, bob, bob) || !m_bobs.collided(bob)) {
       continue;
     }
     m_speed /= 4;

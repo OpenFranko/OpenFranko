@@ -9,6 +9,7 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -601,6 +602,32 @@ SCENARIO("The break-dance opens two screens and walks the dancer in") {
   }
 }
 
+SCENARIO("The upcoming frame already holds the dancer's screen") {
+  GIVEN("The farewell dismissed") {
+    Ending ending;
+    EndingScene &scene = ending.scene;
+    ending.reachLastWalkFrame();
+    ending.run(1, JOY_FIRE);
+
+    THEN("The frame before screen 1 is shown already holds it upcoming") {
+      bool unhidden = false;
+      for (int frame = 0; frame < 300 && !unhidden; ++frame) {
+        const bool wasShown = scene.isShown(1);
+        const Display upcoming = scene.upcomingOutput();
+        ending.run(1);
+        if (!wasShown && scene.isShown(1)) {
+          unhidden = true;
+          const int rows = scene.screen(1).height();
+          REQUIRE(std::any_of(
+              upcoming.layers.begin(), upcoming.layers.end(),
+              [rows](const Layer &layer) { return layer.rows == rows; }));
+        }
+      }
+      REQUIRE(unhidden);
+    }
+  }
+}
+
 SCENARIO("Each credit page is pasted in glyphs and flashed by BLYSK2") {
   GIVEN("The first page") {
     Ending ending;
@@ -629,6 +656,33 @@ SCENARIO("Each credit page is pasted in glyphs and flashed by BLYSK2") {
       REQUIRE(scene.palette(0)[0] == 0x000);
       REQUIRE(scene.palette(0)[1] == 0xFFF);
       REQUIRE(scene.palette(0)[2] == 0xAAA);
+    }
+
+    THEN("The next page is pasted aside while this one holds") {
+      ending.run(150);
+      const std::string &next = credits.pages[1].lines[0].text;
+      const int nextX = (280 - static_cast<int>(next.size()) * 16) / 2;
+      for (std::size_t i = 0; i < next.size(); ++i) {
+        const int glyphX = 16 * (static_cast<int>(i) + 1) + nextX;
+        REQUIRE(scene.preparedPage().pixel(glyphX, 16) ==
+                static_cast<unsigned char>(next[i]) + 6);
+      }
+      REQUIRE(scene.screen(0).pixel(x + 16, 16) ==
+              static_cast<unsigned char>(text[0]) + 6);
+    }
+
+    THEN("Each page replaces the one before it") {
+      ending.runUntil([&] { return scene.page() == 2; }, 20000);
+      const std::string &before = credits.pages[1].lines[0].text;
+      const int beforeX = (280 - static_cast<int>(before.size()) * 16) / 2;
+      for (std::size_t i = 0; i < before.size(); ++i) {
+        const int glyphX = 16 * (static_cast<int>(i) + 1) + beforeX;
+        REQUIRE(scene.screen(0).pixel(glyphX, 16) == 0);
+      }
+      const std::string &now = credits.pages[2].lines[0].text;
+      const int nowX = (280 - static_cast<int>(now.size()) * 16) / 2;
+      REQUIRE(scene.screen(0).pixel(nowX + 16, 0) ==
+              static_cast<unsigned char>(now[0]) + 6);
     }
 
     THEN("The page holds 150 frames, fades out for 150, then Cls 0 and "
@@ -762,6 +816,123 @@ SCENARIO("The credits come from the JSON that frankoExtract writes") {
       REQUIRE(ending.scene.isShown(0));
       REQUIRE_FALSE(ending.scene.isShowingCredits());
       REQUIRE(ending.scene.page() == 0);
+    }
+  }
+}
+
+namespace {
+
+bool sameLayer(const Layer &left, const Layer &right) {
+  return left.pixels == right.pixels && left.stride == right.stride &&
+         left.sourceColumns == right.sourceColumns &&
+         left.sourceRows == right.sourceRows && left.sourceX == right.sourceX &&
+         left.sourceY == right.sourceY && left.sourceStep == right.sourceStep &&
+         left.repeat == right.repeat && left.wrap == right.wrap &&
+         left.left == right.left && left.top == right.top &&
+         left.columns == right.columns && left.rows == right.rows &&
+         left.mask == right.mask && left.revision == right.revision &&
+         left.carriesSprites == right.carriesSprites &&
+         left.sprites == right.sprites && left.palette == right.palette &&
+         left.rowColors.size() == right.rowColors.size();
+}
+
+bool sameDisplay(const Display &left, const Display &right) {
+  return left.width == right.width && left.height == right.height &&
+         left.displayHeight == right.displayHeight &&
+         left.border == right.border && left.revision == right.revision &&
+         left.layers.size() == right.layers.size() &&
+         std::equal(left.layers.begin(), left.layers.end(),
+                    right.layers.begin(), sameLayer);
+}
+
+} // namespace
+
+SCENARIO("A display kept from frame to frame shows what a fresh one does") {
+  GIVEN("An ending on a monitor that shows sprites") {
+    Ending ending;
+    ending.scene.showSprites(true, true);
+
+    WHEN("It runs to the end, filling the same display every frame") {
+      Display kept;
+      kept.revision = newRevision();
+      Display shown = kept;
+      std::vector<std::size_t> counts;
+      for (int frame = 0; frame < 12000 && !ending.scene.isFinished();
+           ++frame) {
+        ending.scene.advance(frame % 400 == 399 ? JOY_FIRE : 0);
+        ending.scene.upcomingOutput(kept);
+        REQUIRE(sameDisplay(kept, ending.scene.upcomingOutput()));
+        ending.scene.output(shown);
+        REQUIRE(sameDisplay(shown, ending.scene.output()));
+        if (counts.empty() || counts.back() != kept.layers.size()) {
+          counts.push_back(kept.layers.size());
+        }
+      }
+
+      THEN("It went through screens with different layers") {
+        REQUIRE(ending.scene.isFinished());
+        REQUIRE(counts.size() >= 4);
+      }
+    }
+  }
+}
+
+SCENARIO("Bobs shown as sprites look the same as bobs drawn in the ending") {
+  GIVEN("Three endings: bobs drawn, all bobs as sprites, and only the still "
+        "bobs as sprites") {
+    Ending drawn;
+    Ending sprited;
+    sprited.scene.showSprites(true, true);
+    Ending stills;
+    stills.scene.showSprites(true, false);
+
+    WHEN("They run to the end, with fire pressed now and then") {
+      int stillSprites = 0;
+      int dancerSprites = 0;
+      int drawnDancerSprites = 0;
+      std::vector<uint32_t> drawnFrame;
+      std::vector<uint32_t> spritedFrame;
+      for (int frame = 0; frame < 12000 && !drawn.scene.isFinished(); ++frame) {
+        const int16_t joystick = frame % 400 == 399 ? JOY_FIRE : 0;
+        drawn.scene.advance(joystick);
+        sprited.scene.advance(joystick);
+        stills.scene.advance(joystick);
+        if (frame % 3 != 0) {
+          continue;
+        }
+        drawn.scene.compose(drawnFrame);
+        for (Ending *ending : {&sprited, &stills}) {
+          ending->scene.compose(spritedFrame);
+          REQUIRE(spritedFrame == drawnFrame);
+        }
+        rasterize(drawn.scene.upcomingOutput(), drawnFrame);
+        const Display upcoming = sprited.scene.upcomingOutput();
+        rasterize(upcoming, spritedFrame);
+        REQUIRE(spritedFrame == drawnFrame);
+        const Display stillsUpcoming = stills.scene.upcomingOutput();
+        rasterize(stillsUpcoming, spritedFrame);
+        REQUIRE(spritedFrame == drawnFrame);
+        for (const Layer &layer : upcoming.layers) {
+          if (layer.carriesSprites && !layer.sprites.empty()) {
+            ++(sprited.scene.isShowingCredits() ? dancerSprites : stillSprites);
+          }
+        }
+        for (const Layer &layer : stillsUpcoming.layers) {
+          if (stills.scene.isShowingCredits() && !layer.sprites.empty()) {
+            ++drawnDancerSprites;
+          }
+        }
+      }
+
+      THEN("They finish, with the still and the dancer shown as sprites where "
+           "asked") {
+        REQUIRE(drawn.scene.isFinished());
+        REQUIRE(sprited.scene.isFinished());
+        REQUIRE(stills.scene.isFinished());
+        REQUIRE(stillSprites > 100);
+        REQUIRE(dancerSprites > 100);
+        REQUIRE(drawnDancerSprites == 0);
+      }
     }
   }
 }

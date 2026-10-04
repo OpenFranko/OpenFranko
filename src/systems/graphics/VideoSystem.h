@@ -26,16 +26,22 @@ public:
   void sync();
   void setNtsc(bool enabled) override;
   bool isNtsc() const override;
+  bool readsBuffersLive() const override;
+  bool showsSprites() const override;
+  bool diffsFrames() const override;
   int refreshRate() const;
 
 private:
   struct Window;
 
   void present();
+  void settle(int slot);
   void waitVbl();
 
   std::unique_ptr<Window> m_window;
   Display m_shown;
+  int m_shownSlot = -1;
+  uint32_t m_shownRevision = 0;
   std::vector<uint32_t> m_frame;
   bool m_frameChanged = false;
   bool m_ntsc = false;

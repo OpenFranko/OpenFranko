@@ -17,11 +17,26 @@ YieldingFiles::list(const std::string &directory) const {
   return m_files->list(directory);
 }
 
+std::unique_ptr<Files::Listing>
+YieldingFiles::walk(const std::string &directory) const {
+  return m_files->walk(directory);
+}
+
 systems::graphics::IndexedBitmap
 YieldingFiles::loadBitmap(const std::string &path) {
   systems::graphics::IndexedBitmap bitmap = m_files->loadBitmap(path);
   m_yield();
   return bitmap;
+}
+
+std::unique_ptr<Files::BitmapLoad>
+YieldingFiles::beginBitmap(const std::string &path) {
+  return m_files->beginBitmap(path);
+}
+
+std::unique_ptr<Files::FileLoad>
+YieldingFiles::beginRead(const std::string &path) {
+  return m_files->beginRead(path);
 }
 
 std::vector<uint8_t> YieldingFiles::read(const std::string &path) {

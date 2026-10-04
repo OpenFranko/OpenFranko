@@ -53,9 +53,16 @@ effects::color::AmigaPalette graveyardPalette() {
 } // namespace
 
 GameOverScene::GameOverScene(StreetHost &host, session::GameSession &session)
-    : m_host(host), m_session(session), m_screen(PICTURE_WIDTH, PICTURE_HEIGHT),
+    : m_host(host), m_session(session), m_screen(0, 0),
       m_palette(graveyardPalette()), m_border(session.border),
       m_copperBorder(session.border) {}
+
+void GameOverScene::showSprites(bool on) {
+  m_sprites = on;
+  if (m_buffer) {
+    m_buffer->setSprites(on);
+  }
+}
 
 void GameOverScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
@@ -96,7 +103,12 @@ void GameOverScene::advance(int16_t joystick) {
       flow = wait(UNPACK_VBLS, Step::Unpacked);
       break;
     case Step::Unpacked:
-      m_buffer.emplace(m_screen);
+      m_buffer.emplace(std::move(m_screen));
+      m_screen = core::IndexedSurface(0, 0);
+      m_buffer->setSprites(m_sprites);
+      m_pictureRevisions = {
+          static_cast<const core::DoubleBuffer &>(*m_buffer).logic().revision(),
+          m_buffer->shownView().pixels.revision()};
       flow = wait(DOUBLE_BUFFER_VBLS, Step::Opened);
       break;
     case Step::Opened:
@@ -139,34 +151,53 @@ void GameOverScene::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display GameOverScene::output() const {
+  return buildOutput(m_shown, m_border, m_shownOffset, false);
+}
+
+systems::graphics::Display GameOverScene::upcomingOutput() const {
+  if (m_step == Step::Finished) {
+    return output();
+  }
+  return buildOutput(m_copperShown, m_copperBorder, m_copperOffset, true);
+}
+
+systems::graphics::Display
+GameOverScene::buildOutput(bool shown, effects::color::AmigaColor border,
+                           int offset, bool upcoming) const {
   systems::graphics::Display display;
   display.width = SCREEN_WIDTH;
   display.height = SCREEN_HEIGHT;
   display.displayHeight = SCREEN_HEIGHT;
-  display.border = m_border;
-  if (!m_shown || !m_buffer) {
+  display.border = border;
+  if (!shown || !m_buffer) {
     return display;
   }
-  const core::IndexedSurface &shown = m_buffer->shown();
   systems::graphics::Layer layer;
-  layer.pixels = shown.pixels().data();
-  layer.stride = shown.width();
+  if (m_sprites) {
+    const core::DoubleBuffer::View view =
+        upcoming ? m_buffer->upcomingView() : m_buffer->shownView();
+    const uint32_t revision = view.pixels.revision();
+    layer.pixels = view.pixels.pixels().data();
+    layer.stride = view.pixels.width();
+    layer.revision =
+        revision == m_pictureRevisions[1] ? m_pictureRevisions[0] : revision;
+    layer.carriesSprites = true;
+    layer.sprites = view.sprites;
+  } else {
+    const core::IndexedSurface &screen =
+        upcoming ? m_buffer->upcoming() : m_buffer->shown();
+    layer.pixels = screen.pixels().data();
+    layer.stride = screen.width();
+  }
   layer.sourceColumns = PICTURE_WIDTH;
   layer.sourceRows = PICTURE_HEIGHT;
-  layer.sourceX = m_shownOffset;
+  layer.sourceX = offset;
   layer.wrap = true;
   layer.columns = SCREEN_WIDTH;
   layer.rows = SCREEN_HEIGHT;
   layer.palette = m_palette;
-  const int top = std::max(RAINBOW_Y, FIRST_RAINBOW_LINE);
-  const int size = static_cast<int>(m_rainbow.size());
-  for (int row = 0; m_rainbowShown && size > 0 && row < SCREEN_HEIGHT; ++row) {
-    const int line = SCREEN_TOP + row;
-    if (line >= top && line < top + RAINBOW_LINES) {
-      layer.rowColors.push_back({row, 0,
-                                 m_rainbow[static_cast<std::size_t>(
-                                     (RAINBOW_BASE + line - top) % size)]});
-    }
+  if (m_rainbowShown) {
+    layer.rowColors = m_rainbowRows;
   }
   display.layers.push_back(std::move(layer));
   return display;
@@ -191,10 +222,13 @@ void GameOverScene::close() {
   m_images.clear();
   m_shown = false;
   m_copperShown = false;
-  m_loading.queue(
-      [this] { m_images.load(1, m_host.loadSpriteSet(OBJECTS, 0)); });
-  m_loading.queue([this] { m_picture = m_host.loadPicture(GRAVEYARD); });
-  m_loading.queue([this] { m_host.loadMusic(GAME_OVER_TUNE); });
+  m_loading.queueSteps(spriteSetJob(
+      m_host, m_images, [] { return OBJECTS; }, 0, 1,
+      ui::LoadingQueue::FILE_FRAMES));
+  m_loading.queueSteps(
+      pictureJob(m_host, [] { return GRAVEYARD; }, m_picture, nullptr));
+  m_loading.queueSteps(musicJob(
+      m_host, [] { return GAME_OVER_TUNE; }, ui::LoadingQueue::FILE_FRAMES));
 }
 
 GameOverScene::Flow GameOverScene::wait(int frames, Step next) {
@@ -207,14 +241,31 @@ GameOverScene::Flow GameOverScene::wait(int frames, Step next) {
 void GameOverScene::unpack() {
   m_host.setMusicVolume(systems::audio::Mixer::FULL_VOLUME);
   m_host.playMusic();
-  m_screen.unpack(m_picture, 0, 0);
+  if (m_picture.width == PICTURE_WIDTH && m_picture.height == PICTURE_HEIGHT) {
+    m_screen = core::IndexedSurface(PICTURE_WIDTH, PICTURE_HEIGHT,
+                                    std::move(m_picture.pixels));
+  } else {
+    m_screen = core::IndexedSurface(PICTURE_WIDTH, PICTURE_HEIGHT);
+    m_screen.unpack(m_picture, 0, 0);
+  }
   m_picture = core::Picture{};
 }
 
 void GameOverScene::open() {
   m_palette = graveyardPalette();
-  m_rainbow = effects::color::rainbowTable(
+  const effects::color::AmigaPalette rainbow = effects::color::rainbowTable(
       RAINBOW_ENTRIES, "(8,-1,15)(16,1,15)", "", "(8,1,15)(16,-1,15)");
+  m_rainbowRows.clear();
+  const int top = std::max(RAINBOW_Y, FIRST_RAINBOW_LINE);
+  const int size = static_cast<int>(rainbow.size());
+  for (int row = 0; size > 0 && row < SCREEN_HEIGHT; ++row) {
+    const int line = SCREEN_TOP + row;
+    if (line >= top && line < top + RAINBOW_LINES) {
+      m_rainbowRows.push_back({row, 0,
+                               rainbow[static_cast<std::size_t>(
+                                   (RAINBOW_BASE + line - top) % size)]});
+    }
+  }
   m_rainbowShown = true;
   m_bobs.set(HAND, HAND_X, HAND_Y, HAND_IMAGE);
   m_bobs.set(TITLE, PINNED_X, TITLE_Y, TITLE_IMAGE);

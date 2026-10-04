@@ -15,6 +15,9 @@ constexpr uint32_t BYTE_LANES = 0x01010101u;
 constexpr int16_t NO_SLOT = -1;
 constexpr std::size_t UNROLLED_BYTES = 16;
 constexpr int NO_LAYER = -1;
+constexpr int NEW_LAYOUT = -2;
+constexpr int NO_SPRITE = -1;
+constexpr int OUTSIDE = std::numeric_limits<int>::min();
 constexpr int SHIFT_ALIGNMENT = 4;
 
 std::size_t blockSize(const Layer &layer) {
@@ -33,6 +36,25 @@ uint16_t layerColor(const Layer &layer, std::size_t index) {
   return index < layer.palette.size()
              ? static_cast<uint16_t>(layer.palette[index] & COLOR_BITS)
              : BLACK;
+}
+
+bool sameLayout(const Layer &left, const Layer &right) {
+  return (left.pixels == nullptr) == (right.pixels == nullptr) &&
+         left.stride == right.stride &&
+         left.sourceColumns == right.sourceColumns &&
+         left.sourceRows == right.sourceRows && left.sourceY == right.sourceY &&
+         left.sourceStep == right.sourceStep && left.repeat == right.repeat &&
+         left.wrap == right.wrap && left.left == right.left &&
+         left.top == right.top && left.columns == right.columns &&
+         left.rows == right.rows && left.mask == right.mask &&
+         left.palette == right.palette &&
+         (left.rowColors.shares(right.rowColors) ||
+          std::equal(left.rowColors.begin(), left.rowColors.end(),
+                     right.rowColors.begin(), right.rowColors.end(),
+                     [](const RowColor &a, const RowColor &b) {
+                       return a.row == b.row && a.index == b.index &&
+                              a.color == b.color;
+                     }));
 }
 
 int sourceRowOf(const Layer &layer, int row) {
@@ -138,9 +160,76 @@ uint8_t copyMasked(uint8_t *out, const uint8_t *in, std::size_t count,
 
 void copyMapped(uint8_t *out, const uint8_t *in, std::size_t count,
                 const std::array<uint8_t, FRAME_COLORS> &slots) {
-  for (std::size_t at = 0; at < count; ++at) {
+  std::size_t at = 0;
+  for (; at + sizeof(uint32_t) <= count; at += sizeof(uint32_t)) {
+    out[at] = slots[in[at]];
+    out[at + 1] = slots[in[at + 1]];
+    out[at + 2] = slots[in[at + 2]];
+    out[at + 3] = slots[in[at + 3]];
+  }
+  for (; at < count; ++at) {
     out[at] = slots[in[at]];
   }
+}
+
+void overlayRun(uint8_t *out, const uint8_t *in, std::size_t count,
+                const std::array<uint8_t, FRAME_COLORS> &slots) {
+  constexpr uint32_t ONES = 0x01010101u;
+  constexpr uint32_t HIGHS = 0x80808080u;
+  std::size_t at = 0;
+  for (; at + sizeof(uint32_t) <= count; at += sizeof(uint32_t)) {
+    uint32_t quad;
+    std::memcpy(&quad, in + at, sizeof(quad));
+    if (quad == 0) {
+      continue;
+    }
+    if (((quad - ONES) & ~quad & HIGHS) == 0) {
+      out[at] = slots[in[at]];
+      out[at + 1] = slots[in[at + 1]];
+      out[at + 2] = slots[in[at + 2]];
+      out[at + 3] = slots[in[at + 3]];
+      continue;
+    }
+    for (std::size_t pixel = at; pixel < at + sizeof(uint32_t); ++pixel) {
+      if (in[pixel] != 0) {
+        out[pixel] = slots[in[pixel]];
+      }
+    }
+  }
+  for (; at < count; ++at) {
+    if (in[at] != 0) {
+      out[at] = slots[in[at]];
+    }
+  }
+}
+
+void addSpan(std::array<Span, 2> &spans, std::size_t slots, Span span) {
+  if (span.first >= span.last) {
+    return;
+  }
+  for (std::size_t at = 0; at < slots; ++at) {
+    if (spans[at].first >= spans[at].last) {
+      spans[at] = span;
+      return;
+    }
+  }
+  std::size_t best = 0;
+  int growth = std::numeric_limits<int>::max();
+  for (std::size_t at = 0; at < slots; ++at) {
+    const int grown = std::max(spans[at].last, span.last) -
+                      std::min(spans[at].first, span.first) -
+                      (spans[at].last - spans[at].first);
+    if (grown < growth) {
+      growth = grown;
+      best = at;
+    }
+  }
+  spans[best] = {std::min(spans[best].first, span.first),
+                 std::max(spans[best].last, span.last)};
+}
+
+int floorDivide(int value, int divisor) {
+  return value >= 0 ? value / divisor : -((divisor - 1 - value) / divisor);
 }
 
 int spanWidth(const RowChange &change) {
@@ -190,12 +279,34 @@ void IndexedRasterizer::rasterize(const Display &display, IndexedFrame &frame) {
   frame.pixels.resize(size);
   frame.changes.assign(static_cast<std::size_t>(height), RowChange{});
   m_streak = 0;
-  if (!resized && isUnchanged(display)) {
+  m_pannedLayer = NO_LAYER;
+  m_pinnedSprite = NO_SPRITE;
+  m_sourceKept.assign(display.layers.size(), false);
+  m_anyKept = false;
+  m_anySprites =
+      std::any_of(display.layers.begin(), display.layers.end(),
+                  [](const Layer &layer) { return !layer.sprites.empty(); });
+  for (std::size_t index = 0;
+       !resized &&
+       index < std::min(display.layers.size(), m_lastDisplay.layers.size());
+       ++index) {
+    const uint32_t revision = display.layers[index].revision;
+    m_sourceKept[index] =
+        revision != 0 && revision == m_lastDisplay.layers[index].revision;
+    m_anyKept = m_anyKept || m_sourceKept[index];
+  }
+  const int panned = resized ? NEW_LAYOUT : pannedLayer(display);
+  if (panned != NEW_LAYOUT) {
     for (Mapping &mapping : m_mappings) {
       mapping.block = mapping.placed;
     }
+    m_colorsKept = true;
     m_updates.assign(static_cast<std::size_t>(height), Update::None);
+    if (panned != NO_LAYER) {
+      panLayer(display, static_cast<std::size_t>(panned));
+    }
     findChanges(display);
+    markSprites(display);
   } else {
     arrange(display, resized);
   }
@@ -206,14 +317,14 @@ void IndexedRasterizer::rasterize(const Display &display, IndexedFrame &frame) {
       drawRow(display, row, m_border);
       frame.changes[static_cast<std::size_t>(row)].spans[0] = {0, width};
     }
-    if (update != Update::Spans) {
+    if (update != Update::Spans && update != Update::Panned) {
       ++row;
       continue;
     }
     const int shift = frame.changes[static_cast<std::size_t>(row)].shift;
     int lastRow = row + 1;
     while (shift != 0 && lastRow < height &&
-           m_updates[static_cast<std::size_t>(lastRow)] == Update::Spans &&
+           m_updates[static_cast<std::size_t>(lastRow)] == update &&
            frame.changes[static_cast<std::size_t>(lastRow)].shift == shift) {
       ++lastRow;
     }
@@ -222,40 +333,73 @@ void IndexedRasterizer::rasterize(const Display &display, IndexedFrame &frame) {
       drawSpans(display, row);
     }
   }
+  drawExposed(display);
   for (row = 0; row < height; ++row) {
-    if (m_updates[static_cast<std::size_t>(row)] != Update::None) {
+    const Update update = m_updates[static_cast<std::size_t>(row)];
+    if (update == Update::None) {
+      continue;
+    }
+    const int only = m_onlyLayers[static_cast<std::size_t>(row)];
+    if (m_anyKept && (update == Update::Spans || update == Update::Panned) &&
+        m_sourceKept[static_cast<std::size_t>(only)]) {
+      continue;
+    }
+    if ((update == Update::Spans || update == Update::Panned) &&
+        !isPlain(display, static_cast<std::size_t>(only), row)) {
+      const std::array<Span, 2> &spans =
+          frame.changes[static_cast<std::size_t>(row)].spans;
+      for (std::size_t at = 0; at < (update == Update::Panned ? 1 : 2); ++at) {
+        if (spans[at].first < spans[at].last) {
+          saveWindow(display, static_cast<std::size_t>(only), row,
+                     spans[at].first, spans[at].last);
+        }
+      }
+    } else {
       save(display, row);
     }
   }
   m_lastDisplay = display;
 }
 
-bool IndexedRasterizer::isUnchanged(const Display &display) const {
-  const auto sameChange = [](const RowColor &left, const RowColor &right) {
-    return left.row == right.row && left.index == right.index &&
-           left.color == right.color;
-  };
-  const auto sameLayer = [&sameChange](const Layer &left, const Layer &right) {
-    return (left.pixels == nullptr) == (right.pixels == nullptr) &&
-           left.stride == right.stride &&
-           left.sourceColumns == right.sourceColumns &&
-           left.sourceRows == right.sourceRows &&
-           left.sourceX == right.sourceX && left.sourceY == right.sourceY &&
-           left.sourceStep == right.sourceStep && left.repeat == right.repeat &&
-           left.wrap == right.wrap && left.left == right.left &&
-           left.top == right.top && left.columns == right.columns &&
-           left.rows == right.rows && left.mask == right.mask &&
-           left.palette == right.palette &&
-           std::equal(left.rowColors.begin(), left.rowColors.end(),
-                      right.rowColors.begin(), right.rowColors.end(),
-                      sameChange);
-  };
-  return display.width == m_lastDisplay.width &&
-         display.height == m_lastDisplay.height &&
-         display.border == m_lastDisplay.border &&
-         std::equal(display.layers.begin(), display.layers.end(),
-                    m_lastDisplay.layers.begin(), m_lastDisplay.layers.end(),
-                    sameLayer);
+int IndexedRasterizer::pannedLayer(const Display &display) const {
+  if (display.width != m_lastDisplay.width ||
+      display.height != m_lastDisplay.height ||
+      display.border != m_lastDisplay.border ||
+      display.layers.size() != m_lastDisplay.layers.size()) {
+    return NEW_LAYOUT;
+  }
+  int panned = NO_LAYER;
+  for (std::size_t index = 0; index < display.layers.size(); ++index) {
+    const Layer &now = display.layers[index];
+    const Layer &before = m_lastDisplay.layers[index];
+    if (!sameLayout(now, before)) {
+      return NEW_LAYOUT;
+    }
+    if (now.sourceX == before.sourceX) {
+      continue;
+    }
+    if (panned != NO_LAYER ||
+        std::abs(now.sourceX - before.sourceX) >= display.width ||
+        coversColumns(display, now) != coversColumns(m_lastDisplay, before)) {
+      return NEW_LAYOUT;
+    }
+    panned = static_cast<int>(index);
+  }
+  return panned;
+}
+
+void IndexedRasterizer::panLayer(const Display &display, std::size_t index) {
+  const Layer &layer = display.layers[index];
+  const int moved = layer.sourceX - m_lastDisplay.layers[index].sourceX;
+  Placed &placed = m_placed[index];
+  placed.shift = layer.sourceX - layer.left;
+  placed.start = std::clamp(-placed.shift, placed.first, placed.last);
+  placed.end =
+      std::clamp(layer.sourceColumns - placed.shift, placed.start, placed.last);
+  placed.wrapEnd = std::clamp(2 * layer.sourceColumns - placed.shift,
+                              placed.end, placed.last);
+  m_lastDrawn[index].sourceX = layer.sourceX;
+  panRows(display, index, moved);
 }
 
 void IndexedRasterizer::arrange(const Display &display, bool resized) {
@@ -268,10 +412,18 @@ void IndexedRasterizer::arrange(const Display &display, bool resized) {
     m_colorSlots[color] = NO_SLOT;
   }
   m_assignedColors.clear();
+  if (m_recolorSlots.size() != AMIGA_COLORS) {
+    m_recolorSlots.assign(AMIGA_COLORS, NO_SLOT);
+  }
+  for (const uint16_t color : m_recolorColors) {
+    m_recolorSlots[color] = NO_SLOT;
+  }
+  m_recolorColors.clear();
   m_used.fill(false);
   m_nextFree = 0;
   const std::size_t layers = display.layers.size();
   m_mappings.assign(layers, Mapping{});
+  m_rowLayer = NO_LAYER;
   for (std::size_t block = FRAME_COLORS; block > 0; block /= 2) {
     for (std::size_t index = 0; index < layers; ++index) {
       if (blockSize(display.layers[index]) == block) {
@@ -279,12 +431,25 @@ void IndexedRasterizer::arrange(const Display &display, bool resized) {
       }
     }
   }
+  m_colorsKept = !resized && keepsColors(display);
+  m_recoloredRows.assign(static_cast<std::size_t>(height), false);
+  if (!resized && !m_colorsKept) {
+    for (const std::vector<int> &starts : m_recolorStarts) {
+      for (std::size_t row = 0; !starts.empty() && row + 1 < starts.size();
+           ++row) {
+        if (starts[row + 1] > starts[row]) {
+          m_recoloredRows[row] = true;
+        }
+      }
+    }
+  }
+  place(display);
+  assignRecolors(display);
   m_border = slot(display.border);
   m_drawn.resize(layers);
   for (std::size_t index = 0; index < layers; ++index) {
     m_drawn[index] = drawn(display.layers[index], m_mappings[index]);
   }
-  place(display);
 
   const auto same = [](const Drawn &left, const Drawn &right) {
     return (left.pixels == nullptr) == (right.pixels == nullptr) &&
@@ -304,17 +469,26 @@ void IndexedRasterizer::arrange(const Display &display, bool resized) {
   bool redraw =
       resized || m_border != m_lastBorder || m_lastDrawn.size() != layers;
   int movedLayer = NO_LAYER;
+  int pannedLayer = NO_LAYER;
+  int panned = 0;
   for (std::size_t index = 0; !redraw && index < layers; ++index) {
     const Drawn &now = m_drawn[index];
     const Drawn &before = m_lastDrawn[index];
     if (same(now, before)) {
       continue;
     }
+    const bool first = movedLayer == NO_LAYER && pannedLayer == NO_LAYER;
     Drawn moved = now;
     moved.sourceY = before.sourceY;
-    if (movedLayer == NO_LAYER && same(moved, before) && now.repeat <= 1 &&
+    Drawn shifted = now;
+    shifted.sourceX = before.sourceX;
+    if (first && same(moved, before) && now.repeat <= 1 &&
         now.sourceStep == 1) {
       movedLayer = static_cast<int>(index);
+    } else if (first && m_colorsKept && same(shifted, before) &&
+               std::abs(now.sourceX - before.sourceX) < m_frame->width) {
+      pannedLayer = static_cast<int>(index);
+      panned = now.sourceX - before.sourceX;
     } else {
       redraw = true;
     }
@@ -333,10 +507,19 @@ void IndexedRasterizer::arrange(const Display &display, bool resized) {
     m_updates.assign(static_cast<std::size_t>(height), Update::Full);
   } else {
     m_updates.assign(static_cast<std::size_t>(height), Update::None);
+    for (int row = 0; !m_colorsKept && row < height; ++row) {
+      if (m_recoloredRows[static_cast<std::size_t>(row)]) {
+        m_updates[static_cast<std::size_t>(row)] = Update::Full;
+      }
+    }
     if (movedLayer != NO_LAYER) {
       moveRows(static_cast<std::size_t>(movedLayer));
     }
+    if (pannedLayer != NO_LAYER) {
+      panRows(display, static_cast<std::size_t>(pannedLayer), panned);
+    }
     findChanges(display);
+    markSprites(display);
   }
   m_lastDrawn.swap(m_drawn);
   m_lastSoleLayers = m_soleLayers;
@@ -391,6 +574,30 @@ IndexedRasterizer::Mapping &IndexedRasterizer::mapped(const Layer &layer,
   return mapping;
 }
 
+uint8_t IndexedRasterizer::recolorSlot(uint16_t color) {
+  color &= COLOR_BITS;
+  if (m_recolorSlots[color] != NO_SLOT) {
+    return static_cast<uint8_t>(m_recolorSlots[color]);
+  }
+  while (m_nextFree < FRAME_COLORS && m_used[m_nextFree]) {
+    ++m_nextFree;
+  }
+  uint8_t chosen = 0;
+  if (m_nextFree == FRAME_COLORS) {
+    chosen = nearestSlot(color);
+  } else {
+    chosen = static_cast<uint8_t>(m_nextFree);
+    m_used[m_nextFree] = true;
+    m_frame->palette[m_nextFree] = color;
+  }
+  m_recolorSlots[color] = chosen;
+  m_recolorColors.push_back(color);
+  if (m_colorSlots[color] == NO_SLOT) {
+    remember(color, chosen);
+  }
+  return chosen;
+}
+
 uint8_t IndexedRasterizer::slot(uint16_t color) {
   color &= COLOR_BITS;
   if (m_colorSlots[color] != NO_SLOT) {
@@ -428,6 +635,50 @@ uint8_t IndexedRasterizer::nearestSlot(uint16_t color) const {
   return static_cast<uint8_t>(nearest);
 }
 
+void IndexedRasterizer::assignRecolors(const Display &display) {
+  const std::size_t layers = display.layers.size();
+  m_recolorTargets.resize(layers);
+  bool recolors = false;
+  for (std::size_t index = 0; index < layers; ++index) {
+    m_recolorTargets[index].assign(m_recolorOrder[index].size(), 0);
+    recolors = recolors || !m_recolorOrder[index].empty();
+  }
+  if (!recolors) {
+    return;
+  }
+  const int height = m_frame->height;
+  for (int row = 0; row < height; ++row) {
+    for (std::size_t index = 0; index < layers; ++index) {
+      if (!isRecolored(index, row) || !isShown(index, row)) {
+        continue;
+      }
+      const std::vector<int> &starts = m_recolorStarts[index];
+      const std::vector<int> &order = m_recolorOrder[index];
+      const RowColor *changes = display.layers[index].rowColors.begin();
+      for (int at = starts[static_cast<std::size_t>(row)];
+           at < starts[static_cast<std::size_t>(row) + 1]; ++at) {
+        m_recolorTargets[index][static_cast<std::size_t>(at)] =
+            recolorSlot(changes[order[static_cast<std::size_t>(at)]].color);
+      }
+    }
+  }
+}
+
+bool IndexedRasterizer::keepsColors(const Display &display) const {
+  return std::equal(
+      display.layers.begin(), display.layers.end(),
+      m_lastDisplay.layers.begin(), m_lastDisplay.layers.end(),
+      [](const Layer &left, const Layer &right) {
+        return left.rowColors.shares(right.rowColors) ||
+               std::equal(left.rowColors.begin(), left.rowColors.end(),
+                          right.rowColors.begin(), right.rowColors.end(),
+                          [](const RowColor &a, const RowColor &b) {
+                            return a.row == b.row && a.index == b.index &&
+                                   a.color == b.color;
+                          });
+      });
+}
+
 IndexedRasterizer::Drawn IndexedRasterizer::drawn(const Layer &layer,
                                                   Mapping &mapping) {
   Drawn result;
@@ -461,7 +712,8 @@ void IndexedRasterizer::place(const Display &display) {
   const std::size_t layers = display.layers.size();
   const int height = m_frame->height;
   m_placed.resize(layers);
-  m_recolored.resize(layers);
+  m_recolorStarts.resize(layers);
+  m_recolorOrder.resize(layers);
   m_topLayers.assign(static_cast<std::size_t>(height), NO_LAYER);
   for (std::size_t index = 0; index < layers; ++index) {
     const Layer &layer = display.layers[index];
@@ -479,14 +731,30 @@ void IndexedRasterizer::place(const Display &display) {
                             placed.last);
     placed.wrapEnd = std::clamp(2 * layer.sourceColumns - placed.shift,
                                 placed.end, placed.last);
-    std::vector<bool> &recolored = m_recolored[index];
-    recolored.clear();
+    std::vector<int> &starts = m_recolorStarts[index];
+    std::vector<int> &order = m_recolorOrder[index];
+    starts.clear();
+    order.clear();
     if (!layer.rowColors.empty()) {
-      recolored.assign(static_cast<std::size_t>(height), false);
+      starts.assign(static_cast<std::size_t>(height) + 1, 0);
       for (const RowColor &change : layer.rowColors) {
         if (change.row >= 0 && change.row < height) {
-          recolored[static_cast<std::size_t>(change.row)] = true;
+          ++starts[static_cast<std::size_t>(change.row) + 1];
         }
+      }
+      for (std::size_t row = 0; row < static_cast<std::size_t>(height); ++row) {
+        starts[row + 1] += starts[row];
+      }
+      order.resize(static_cast<std::size_t>(starts.back()));
+      m_recolorNext.assign(starts.begin(), starts.end() - 1);
+      int position = 0;
+      for (const RowColor &change : layer.rowColors) {
+        if (change.row >= 0 && change.row < height) {
+          order[static_cast<std::size_t>(
+              m_recolorNext[static_cast<std::size_t>(change.row)]++)] =
+              position;
+        }
+        ++position;
       }
     }
     if (!coversColumns(display, layer)) {
@@ -510,11 +778,13 @@ void IndexedRasterizer::place(const Display &display) {
       }
     }
   }
+  m_onlyLayers.assign(static_cast<std::size_t>(height), NO_LAYER);
   for (int row = 0; row < height; ++row) {
     const int top = m_topLayers[static_cast<std::size_t>(row)];
     int &sole = m_soleLayers[static_cast<std::size_t>(row)];
-    sole = sole == 1 && top != NO_LAYER &&
-                   isPlain(display, static_cast<std::size_t>(top), row)
+    const bool only = sole == 1 && top != NO_LAYER;
+    m_onlyLayers[static_cast<std::size_t>(row)] = only ? top : NO_LAYER;
+    sole = only && isPlain(display, static_cast<std::size_t>(top), row)
                ? top
                : NO_LAYER;
   }
@@ -533,8 +803,9 @@ bool IndexedRasterizer::isPlain(const Display &display, std::size_t index,
 }
 
 bool IndexedRasterizer::isRecolored(std::size_t index, int row) const {
-  const std::vector<bool> &recolored = m_recolored[index];
-  return !recolored.empty() && recolored[static_cast<std::size_t>(row)];
+  const std::vector<int> &starts = m_recolorStarts[index];
+  return !starts.empty() && starts[static_cast<std::size_t>(row) + 1] >
+                                starts[static_cast<std::size_t>(row)];
 }
 
 void IndexedRasterizer::findChanges(const Display &display) {
@@ -542,12 +813,15 @@ void IndexedRasterizer::findChanges(const Display &display) {
   int row = 0;
   while (row < height) {
     const int sole = m_soleLayers[static_cast<std::size_t>(row)];
-    if (m_updates[static_cast<std::size_t>(row)] == Update::Full) {
+    if (m_updates[static_cast<std::size_t>(row)] != Update::None) {
       ++row;
       continue;
     }
     if (sole == NO_LAYER) {
-      if (hasChanged(display, row)) {
+      const int only = m_onlyLayers[static_cast<std::size_t>(row)];
+      if (only != NO_LAYER) {
+        compareWindow(display, static_cast<std::size_t>(only), row);
+      } else if (hasChanged(display, row)) {
         m_updates[static_cast<std::size_t>(row)] = Update::Full;
       }
       ++row;
@@ -556,7 +830,7 @@ void IndexedRasterizer::findChanges(const Display &display) {
     int lastRow = row + 1;
     while (lastRow < height &&
            m_soleLayers[static_cast<std::size_t>(lastRow)] == sole &&
-           m_updates[static_cast<std::size_t>(lastRow)] != Update::Full) {
+           m_updates[static_cast<std::size_t>(lastRow)] == Update::None) {
       ++lastRow;
     }
     compareRows(display, static_cast<std::size_t>(sole), row, lastRow);
@@ -594,8 +868,278 @@ void IndexedRasterizer::moveRows(std::size_t index) {
   }
 }
 
+void IndexedRasterizer::panRows(const Display &display, std::size_t index,
+                                int moved) {
+  const int height = m_frame->height;
+  const int width = m_frame->width;
+  const Span exposed = moved > 0 ? Span{width - moved, width} : Span{0, -moved};
+  const Span kept = moved > 0 ? Span{0, width - moved} : Span{-moved, width};
+  const bool unchanged = m_sourceKept[index];
+  for (int row = 0; row < height; ++row) {
+    const std::size_t at = static_cast<std::size_t>(row);
+    if (m_onlyLayers[at] == static_cast<int>(index)) {
+      RowChange &change = m_frame->changes[at];
+      change.shift = -moved;
+      change.spans = {
+          unchanged ? Span{}
+                    : changedSpan(display, index, row, kept.first, kept.last),
+          exposed};
+      m_updates[at] = Update::Panned;
+      m_exposedLayer = static_cast<int>(index);
+      m_exposed = exposed;
+      m_pannedLayer = static_cast<int>(index);
+      m_pannedBy = moved;
+    } else if (isShown(index, row)) {
+      m_updates[at] = Update::Full;
+    }
+  }
+}
+
+void IndexedRasterizer::compareWindow(const Display &display, std::size_t index,
+                                      int row) {
+  if (!m_colorsKept && isRecolored(index, row)) {
+    m_updates[static_cast<std::size_t>(row)] = Update::Full;
+    return;
+  }
+  const Span changed = changedSpan(display, index, row, 0, m_frame->width);
+  if (changed.first < changed.last) {
+    m_frame->changes[static_cast<std::size_t>(row)].spans[0] = changed;
+    m_updates[static_cast<std::size_t>(row)] = Update::Spans;
+  }
+}
+
+Span IndexedRasterizer::changedSpan(const Display &display, std::size_t index,
+                                    int row, int from, int to) const {
+  const Layer &layer = display.layers[index];
+  Span changed{to, from};
+  if (!layer.pixels || m_sourceKept[index]) {
+    return {};
+  }
+  const Placed &placed = m_placed[index];
+  const int sourceRow = sourceRowOf(layer, row);
+  const auto scan = [&](int first, int last, int line, int column) {
+    const int low = std::max(first, from);
+    const int high = std::min(last, to);
+    if (low >= high || line < 0 || line >= layer.sourceRows) {
+      return;
+    }
+    const std::size_t offset = static_cast<std::size_t>(line) *
+                                   static_cast<std::size_t>(layer.stride) +
+                               static_cast<std::size_t>(column + low - first);
+    const uint8_t *in = layer.pixels + offset;
+    const uint8_t *saved = m_saved[index].data() + offset;
+    const std::size_t count = static_cast<std::size_t>(high - low);
+    const std::size_t lead = m_leading(in, saved, count);
+    if (lead == count) {
+      return;
+    }
+    const std::size_t trail = m_trailing(in + lead, saved + lead, count - lead);
+    changed.first = std::min(changed.first, low + static_cast<int>(lead));
+    changed.last = std::max(changed.last, high - static_cast<int>(trail));
+  };
+  scan(placed.start, placed.end, sourceRow, placed.start + placed.shift);
+  if (layer.wrap) {
+    scan(placed.end, placed.wrapEnd, sourceRow + layer.sourceStep,
+         placed.end + placed.shift - layer.sourceColumns);
+  }
+  return changed.first < changed.last ? changed : Span{};
+}
+
+void IndexedRasterizer::markSprites(const Display &display) {
+  static const std::vector<Sprite> none;
+  for (std::size_t index = 0; index < display.layers.size(); ++index) {
+    const Layer &layer = display.layers[index];
+    const std::vector<Sprite> &before =
+        index < m_lastDisplay.layers.size()
+            ? m_lastDisplay.layers[index].sprites
+            : none;
+    if (!layer.pixels || (layer.sprites.empty() && before.empty())) {
+      continue;
+    }
+    const int pinned = pinSprite(display, index, before);
+    for (std::size_t at = 0; at < before.size(); ++at) {
+      if (static_cast<int>(at) != pinned) {
+        markSprite(display, index, before[at],
+                   at < layer.sprites.size() && layer.sprites[at] == before[at],
+                   true);
+      }
+    }
+    for (std::size_t at = 0; at < layer.sprites.size(); ++at) {
+      if (static_cast<int>(at) != pinned) {
+        markSprite(display, index, layer.sprites[at],
+                   at < before.size() && layer.sprites[at] == before[at],
+                   false);
+      }
+    }
+  }
+}
+
+int IndexedRasterizer::pinSprite(const Display &display, std::size_t index,
+                                 const std::vector<Sprite> &before) {
+  const Layer &layer = display.layers[index];
+  if (static_cast<int>(index) != m_pannedLayer || !m_sourceKept[index] ||
+      layer.sourceStep <= 0 || layer.repeat <= 0) {
+    return NO_SPRITE;
+  }
+  const Placed &placed = m_placed[index];
+  const std::size_t count = std::min(layer.sprites.size(), before.size());
+  for (std::size_t at = 0; at < count; ++at) {
+    const Sprite &now = layer.sprites[at];
+    const Sprite &then = before[at];
+    if (now.pixels != then.pixels || now.width != then.width ||
+        now.height != then.height || now.top != then.top ||
+        now.left - then.left != m_pannedBy) {
+      continue;
+    }
+    const int x = now.left - placed.shift;
+    const Span span{std::min(x, x - m_pannedBy),
+                    std::max(x + now.width, x + now.width - m_pannedBy)};
+    if (span.first < placed.start || span.last > placed.end ||
+        (layer.wrap && spriteColumns(layer, placed, now, true).first <
+                           spriteColumns(layer, placed, now, true).last)) {
+      continue;
+    }
+    const auto crosses = [&](const Sprite &other) {
+      const int top = std::max(other.top, now.top) - layer.sourceStep;
+      const int bottom =
+          std::min(other.top + other.height, now.top + now.height) +
+          layer.sourceStep;
+      if (top >= bottom) {
+        return false;
+      }
+      for (const bool wrapped : {false, true}) {
+        const Span columns = spriteColumns(layer, placed, other, wrapped);
+        if ((layer.wrap || !wrapped) && columns.first < span.last &&
+            span.first < columns.last) {
+          return true;
+        }
+      }
+      return false;
+    };
+    bool alone = true;
+    for (std::size_t other = 0; alone && other < layer.sprites.size();
+         ++other) {
+      alone = other == at || !crosses(layer.sprites[other]);
+    }
+    for (std::size_t other = 0; alone && other < before.size(); ++other) {
+      alone = other == at || !crosses(before[other]);
+    }
+    const int lowest = std::max(
+        -floorDivide(layer.sourceY - now.top, layer.sourceStep) - 1, 0);
+    const int highest =
+        floorDivide(now.top + now.height - layer.sourceY, layer.sourceStep);
+    const int firstRow =
+        std::max(placed.firstRow, layer.top + lowest * layer.repeat);
+    const int lastRow =
+        std::min(placed.lastRow, layer.top + (highest + 1) * layer.repeat);
+    for (int row = firstRow; alone && row < lastRow; ++row) {
+      const int line = sourceRowOf(layer, row);
+      const bool shows = line >= now.top && line < now.top + now.height &&
+                         line >= 0 && line < layer.sourceRows;
+      alone = !shows ||
+              (m_updates[static_cast<std::size_t>(row)] == Update::Panned &&
+               m_onlyLayers[static_cast<std::size_t>(row)] ==
+                   static_cast<int>(index));
+    }
+    if (!alone) {
+      continue;
+    }
+    m_pinnedRows.assign(static_cast<std::size_t>(m_frame->height), false);
+    for (int row = firstRow; row < lastRow; ++row) {
+      const int line = sourceRowOf(layer, row);
+      if (line >= now.top && line < now.top + now.height && line >= 0 &&
+          line < layer.sourceRows) {
+        m_pinnedRows[static_cast<std::size_t>(row)] = true;
+        addSpan(m_frame->changes[static_cast<std::size_t>(row)].spans, 1, span);
+      }
+    }
+    m_pinnedSprite = static_cast<int>(at);
+    m_pinnedX = x;
+    m_pinnedSpan = span;
+    return m_pinnedSprite;
+  }
+  return NO_SPRITE;
+}
+
+void IndexedRasterizer::markSprite(const Display &display, std::size_t index,
+                                   const Sprite &sprite, bool kept, bool old) {
+  const Layer &layer = display.layers[index];
+  const Placed &placed = m_placed[index];
+  const Span shown = spriteColumns(layer, placed, sprite, false);
+  const Span wrapped =
+      layer.wrap ? spriteColumns(layer, placed, sprite, true) : Span{};
+  if (shown.first >= shown.last && wrapped.first >= wrapped.last) {
+    return;
+  }
+  int firstRow = placed.firstRow;
+  int lastRow = placed.lastRow;
+  if (layer.sourceStep > 0 && layer.repeat > 0) {
+    const int lowest =
+        std::max(-floorDivide(layer.sourceY - sprite.top, layer.sourceStep) -
+                     (layer.wrap ? 1 : 0),
+                 0);
+    const int highest = floorDivide(
+        sprite.top + sprite.height - 1 - layer.sourceY, layer.sourceStep);
+    firstRow = std::max(firstRow, layer.top + lowest * layer.repeat);
+    lastRow = std::min(lastRow, layer.top + (highest + 1) * layer.repeat);
+  }
+  const auto covers = [&](int line) {
+    return line >= sprite.top && line < sprite.top + sprite.height &&
+           line >= 0 && line < layer.sourceRows;
+  };
+  for (int row = firstRow; row < lastRow; ++row) {
+    const std::size_t at = static_cast<std::size_t>(row);
+    const Update update = m_updates[at];
+    if (update == Update::Full || !isShown(index, row)) {
+      continue;
+    }
+    RowChange &change = m_frame->changes[at];
+    const bool moved = update == Update::Spans && change.shift != 0;
+    if (kept && !moved) {
+      continue;
+    }
+    const int line = sourceRowOf(layer, row);
+    const bool first = covers(line) && shown.first < shown.last;
+    const bool second =
+        covers(line + layer.sourceStep) && wrapped.first < wrapped.last;
+    if (!first && !second) {
+      continue;
+    }
+    Span span{first ? shown.first : wrapped.first,
+              second ? wrapped.last : shown.last};
+    if (old && moved) {
+      span = {std::max(span.first + change.shift, 0),
+              std::min(span.last + change.shift, m_frame->width)};
+    }
+    if (span.first >= span.last) {
+      continue;
+    }
+    if (m_onlyLayers[at] != static_cast<int>(index)) {
+      m_updates[at] = Update::Full;
+      continue;
+    }
+    addSpan(change.spans, update == Update::Panned ? 1 : 2, span);
+    if (update == Update::None || update == Update::Resave) {
+      m_updates[at] = Update::Spans;
+    }
+  }
+}
+
+Span IndexedRasterizer::spriteColumns(const Layer &layer, const Placed &placed,
+                                      const Sprite &sprite, bool wrapped) {
+  const int first = wrapped ? placed.end : placed.start;
+  const int last = wrapped ? placed.wrapEnd : placed.end;
+  const int offset = placed.shift - (wrapped ? layer.sourceColumns : 0);
+  const Span span{std::max(first, sprite.left - offset),
+                  std::min(last, sprite.left + sprite.width - offset)};
+  return span.first < span.last ? span : Span{};
+}
+
 void IndexedRasterizer::compareRows(const Display &display, std::size_t index,
                                     int firstRow, int lastRow) {
+  if (m_sourceKept[index]) {
+    return;
+  }
   const Layer &layer = display.layers[index];
   if (layer.repeat > 1 || layer.sourceStep != 1 ||
       layer.stride != layer.sourceColumns) {
@@ -716,7 +1260,7 @@ bool IndexedRasterizer::hasChanged(const Display &display, int row) const {
       return true;
     }
     const Layer &layer = display.layers[index];
-    if (!layer.pixels) {
+    if (!layer.pixels || m_sourceKept[index]) {
       continue;
     }
     const Placed &placed = m_placed[index];
@@ -751,20 +1295,84 @@ void IndexedRasterizer::drawRow(const Display &display, int row,
                 border, static_cast<std::size_t>(m_frame->width));
   }
   for (std::size_t index = 0; index < display.layers.size(); ++index) {
-    if (!isShown(index, row)) {
-      continue;
+    if (isShown(index, row)) {
+      drawWindow(display, index, row, m_placed[index].first,
+                 m_placed[index].last);
     }
-    const Layer &layer = display.layers[index];
-    const Placed &placed = m_placed[index];
-    Mapping &mapping = m_mappings[index];
-    if (isRecolored(index, row)) {
-      m_rowMapping = mapped(layer, mapping);
-      m_rowMapping.block = false;
-      recolor(layer, row);
-      drawSpan(layer, placed, m_rowMapping, row, placed.first, placed.last);
-      continue;
+  }
+}
+
+void IndexedRasterizer::drawWindow(const Display &display, std::size_t index,
+                                   int row, int from, int to) {
+  const Layer &layer = display.layers[index];
+  const Placed &placed = m_placed[index];
+  Mapping &mapping = m_mappings[index];
+  if (isRecolored(index, row)) {
+    rowSlots(layer, index, row);
+    drawSpan(layer, placed, m_rowMapping, row, from, to);
+    overlaySprites(display, index, row, from, to, m_rowMapping.slots);
+    uncolor(layer, index, row, mapped(layer, mapping));
+    return;
+  }
+  drawChecked(layer, placed, mapping, row, from, to);
+  if (!layer.sprites.empty()) {
+    overlaySprites(display, index, row, from, to, mapped(layer, mapping).slots);
+  }
+}
+
+const std::array<uint8_t, FRAME_COLORS> &
+IndexedRasterizer::rowSlots(const Layer &layer, std::size_t index, int row) {
+  const Mapping &base = mapped(layer, m_mappings[index]);
+  if (!isRecolored(index, row)) {
+    return base.slots;
+  }
+  if (m_rowLayer != static_cast<int>(index)) {
+    m_rowMapping = base;
+    m_rowMapping.block = false;
+    m_rowLayer = static_cast<int>(index);
+  }
+  recolor(layer, index, row);
+  return m_rowMapping.slots;
+}
+
+void IndexedRasterizer::overlaySprites(
+    const Display &display, std::size_t index, int row, int from, int to,
+    const std::array<uint8_t, FRAME_COLORS> &slots) {
+  const Layer &layer = display.layers[index];
+  if (layer.sprites.empty() || !layer.pixels) {
+    return;
+  }
+  const Placed &placed = m_placed[index];
+  uint8_t *out = m_frame->pixels.data() +
+                 static_cast<std::ptrdiff_t>(row) * m_frame->width;
+  const int sourceRow = sourceRowOf(layer, row);
+  const auto overlay = [&](int first, int last, int line, int column) {
+    const int low = std::max(first, from);
+    const int high = std::min(last, to);
+    if (low >= high || line < 0 || line >= layer.sourceRows) {
+      return;
     }
-    drawChecked(layer, placed, mapping, row, placed.first, placed.last);
+    const int offset = column - first;
+    for (const Sprite &sprite : layer.sprites) {
+      const int y = line - sprite.top;
+      if (y < 0 || y >= sprite.height) {
+        continue;
+      }
+      const int a = std::max(low, sprite.left - offset);
+      const int b = std::min(high, sprite.left + sprite.width - offset);
+      if (a < b) {
+        overlayRun(out + a,
+                   sprite.pixels +
+                       static_cast<std::ptrdiff_t>(y) * sprite.width + a +
+                       offset - sprite.left,
+                   static_cast<std::size_t>(b - a), slots);
+      }
+    }
+  };
+  overlay(placed.start, placed.end, sourceRow, placed.start + placed.shift);
+  if (layer.wrap) {
+    overlay(placed.end, placed.wrapEnd, sourceRow + layer.sourceStep,
+            placed.end + placed.shift - layer.sourceColumns);
   }
 }
 
@@ -786,7 +1394,26 @@ void IndexedRasterizer::shiftRows(int firstRow, int lastRow, int shift) {
 
 void IndexedRasterizer::drawSpans(const Display &display, int row) {
   const std::size_t index =
-      static_cast<std::size_t>(m_soleLayers[static_cast<std::size_t>(row)]);
+      static_cast<std::size_t>(m_onlyLayers[static_cast<std::size_t>(row)]);
+  const std::size_t count =
+      m_updates[static_cast<std::size_t>(row)] == Update::Panned ? 1 : 2;
+  if (!isPlain(display, index, row)) {
+    const std::array<Span, 2> &spans =
+        m_frame->changes[static_cast<std::size_t>(row)].spans;
+    if (m_pinnedSprite != NO_SPRITE &&
+        m_pinnedRows[static_cast<std::size_t>(row)] &&
+        spans[0].first == m_pinnedSpan.first &&
+        spans[0].last == m_pinnedSpan.last) {
+      drawPinned(display, index, row);
+      return;
+    }
+    for (std::size_t at = 0; at < count; ++at) {
+      if (spans[at].first < spans[at].last) {
+        drawWindow(display, index, row, spans[at].first, spans[at].last);
+      }
+    }
+    return;
+  }
   const Layer &layer = display.layers[index];
   Mapping &mapping = m_mappings[index];
   uint8_t *out = m_frame->pixels.data() +
@@ -795,15 +1422,17 @@ void IndexedRasterizer::drawSpans(const Display &display, int row) {
       layer.pixels +
       static_cast<std::ptrdiff_t>(sourceRowOf(layer, row)) * layer.stride +
       m_placed[index].shift;
-  for (const Span &span :
-       m_frame->changes[static_cast<std::size_t>(row)].spans) {
+  const std::array<Span, 2> &spans =
+      m_frame->changes[static_cast<std::size_t>(row)].spans;
+  for (std::size_t at = 0; at < count; ++at) {
+    const Span &span = spans[at];
     if (span.first >= span.last) {
       continue;
     }
-    const std::size_t count = static_cast<std::size_t>(span.last - span.first);
+    const std::size_t pixels = static_cast<std::size_t>(span.last - span.first);
     if (mapping.block) {
       const uint8_t seen =
-          copyMasked(out + span.first, in + span.first, count, mapping.keep,
+          copyMasked(out + span.first, in + span.first, pixels, mapping.keep,
                      mapping.base, mapping.checked);
       if (!mapping.checked ||
           (seen & layer.mask & ~(blockSize(layer) - 1)) == 0) {
@@ -811,8 +1440,188 @@ void IndexedRasterizer::drawSpans(const Display &display, int row) {
       }
       mapping.block = false;
     }
-    copyMapped(out + span.first, in + span.first, count,
+    copyMapped(out + span.first, in + span.first, pixels,
                mapped(layer, mapping).slots);
+  }
+  if (m_anySprites) {
+    overlaySpans(display, row);
+  }
+}
+
+void IndexedRasterizer::overlaySpans(const Display &display, int row) {
+  const std::size_t index =
+      static_cast<std::size_t>(m_onlyLayers[static_cast<std::size_t>(row)]);
+  if (display.layers[index].sprites.empty()) {
+    return;
+  }
+  const std::size_t count =
+      m_updates[static_cast<std::size_t>(row)] == Update::Panned ? 1 : 2;
+  const std::array<Span, 2> &spans =
+      m_frame->changes[static_cast<std::size_t>(row)].spans;
+  const std::array<uint8_t, FRAME_COLORS> &slots =
+      mapped(display.layers[index], m_mappings[index]).slots;
+  for (std::size_t at = 0; at < count; ++at) {
+    if (spans[at].first < spans[at].last) {
+      overlaySprites(display, index, row, spans[at].first, spans[at].last,
+                     slots);
+    }
+  }
+}
+
+void IndexedRasterizer::drawPinned(const Display &display, std::size_t index,
+                                   int row) {
+  constexpr uint32_t ONES = 0x01010101u;
+  constexpr uint32_t HIGHS = 0x80808080u;
+  const Layer &layer = display.layers[index];
+  const Sprite &sprite =
+      layer.sprites[static_cast<std::size_t>(m_pinnedSprite)];
+  const uint8_t *slots = rowSlots(layer, index, row).data();
+  const int line = sourceRowOf(layer, row);
+  const int left = m_pinnedX;
+  const int width = sprite.width;
+  const int moved = m_pannedBy;
+  const int first = m_pinnedSpan.first;
+  const int last = m_pinnedSpan.last;
+  const uint8_t *image =
+      sprite.pixels + static_cast<std::ptrdiff_t>(line - sprite.top) * width;
+  const uint8_t *picture = layer.pixels +
+                           static_cast<std::ptrdiff_t>(line) * layer.stride +
+                           m_placed[index].shift;
+  uint8_t *out = m_frame->pixels.data() +
+                 static_cast<std::ptrdiff_t>(row) * m_frame->width;
+  const int middle = left + std::max(0, -moved);
+  const int end = left + width - std::max(0, moved);
+  for (int x = first; x < last; ++x) {
+    if (x == middle) {
+      for (; x + static_cast<int>(sizeof(uint32_t)) <= end;
+           x += static_cast<int>(sizeof(uint32_t))) {
+        uint32_t shown;
+        uint32_t hidden;
+        const uint8_t *now = image + (x - left);
+        std::memcpy(&shown, now, sizeof(shown));
+        std::memcpy(&hidden, now + moved, sizeof(hidden));
+        if ((shown | hidden) == 0) {
+          continue;
+        }
+        if (((shown - ONES) & ~shown & HIGHS) == 0) {
+          out[x] = slots[now[0]];
+          out[x + 1] = slots[now[1]];
+          out[x + 2] = slots[now[2]];
+          out[x + 3] = slots[now[3]];
+          continue;
+        }
+        for (int pixel = 0; pixel < static_cast<int>(sizeof(uint32_t));
+             ++pixel) {
+          const uint8_t value = now[pixel];
+          if (value != 0) {
+            out[x + pixel] = slots[value];
+          } else if (now[pixel + moved] != 0) {
+            out[x + pixel] = slots[picture[x + pixel]];
+          }
+        }
+      }
+      if (x >= last) {
+        break;
+      }
+    }
+    const int at = x - left;
+    const uint8_t value = at >= 0 && at < width ? image[at] : 0;
+    if (value != 0) {
+      out[x] = slots[value];
+    } else if (at + moved >= 0 && at + moved < width &&
+               image[at + moved] != 0) {
+      out[x] = slots[picture[x]];
+    }
+  }
+  if (isRecolored(index, row)) {
+    uncolor(layer, index, row, mapped(layer, m_mappings[index]));
+  }
+}
+
+void IndexedRasterizer::drawExposed(const Display &display) {
+  if (m_exposedLayer == NO_LAYER) {
+    return;
+  }
+  const std::size_t index = static_cast<std::size_t>(m_exposedLayer);
+  m_exposedLayer = NO_LAYER;
+  const Layer &layer = display.layers[index];
+  const Placed &placed = m_placed[index];
+  const Mapping &base = mapped(layer, m_mappings[index]);
+  const std::vector<int> &starts = m_recolorStarts[index];
+  const std::vector<int> &order = m_recolorOrder[index];
+  const RowColor *changes = layer.rowColors.begin();
+  const std::vector<uint8_t> &targets = m_recolorTargets[index];
+  uint8_t *saved = m_saved[index].data();
+  const std::size_t stride = static_cast<std::size_t>(layer.stride);
+  bool crossed = false;
+  for (const Sprite &sprite : layer.sprites) {
+    for (const bool wrapped : {false, true}) {
+      const Span columns = spriteColumns(layer, placed, sprite, wrapped);
+      crossed = crossed ||
+                (columns.first < m_exposed.last &&
+                 m_exposed.first < columns.last && (layer.wrap || !wrapped));
+    }
+  }
+  m_exposedColumns.clear();
+  for (int x = m_exposed.first; x < m_exposed.last; ++x) {
+    if (x < placed.start || x >= placed.wrapEnd ||
+        (x >= placed.end && !layer.wrap)) {
+      if (layer.wrap) {
+        m_exposedColumns.push_back({x, 0, OUTSIDE});
+      }
+    } else if (x >= placed.end) {
+      m_exposedColumns.push_back(
+          {x, x + placed.shift - layer.sourceColumns, layer.sourceStep});
+    } else {
+      m_exposedColumns.push_back({x, x + placed.shift, 0});
+    }
+  }
+  for (int row = 0; row < m_frame->height; ++row) {
+    if (m_updates[static_cast<std::size_t>(row)] != Update::Panned) {
+      continue;
+    }
+    const int firstChange =
+        starts.empty() ? 0 : starts[static_cast<std::size_t>(row)];
+    const int lastChange =
+        starts.empty() ? 0 : starts[static_cast<std::size_t>(row) + 1];
+    const auto slotOf = [&](uint8_t value) {
+      uint8_t chosen = base.slots[value];
+      for (int at = firstChange; at < lastChange; ++at) {
+        const uint8_t changed =
+            changes[order[static_cast<std::size_t>(at)]].index;
+        if ((changed & layer.mask) == changed &&
+            (value & layer.mask) == changed) {
+          chosen = targets[static_cast<std::size_t>(at)];
+        }
+      }
+      return chosen;
+    };
+    uint8_t *out = m_frame->pixels.data() +
+                   static_cast<std::ptrdiff_t>(row) * m_frame->width;
+    const int sourceRow = sourceRowOf(layer, row);
+    for (const ExposedColumn &exposed : m_exposedColumns) {
+      const int line =
+          exposed.lines == OUTSIDE ? -1 : sourceRow + exposed.lines;
+      if (line < 0 || line >= layer.sourceRows) {
+        if (layer.wrap) {
+          out[exposed.x] = slotOf(0);
+        }
+        continue;
+      }
+      const std::size_t at = static_cast<std::size_t>(line) * stride +
+                             static_cast<std::size_t>(exposed.column);
+      saved[at] = layer.pixels[at];
+      out[exposed.x] = slotOf(layer.pixels[at]);
+    }
+    if (crossed) {
+      const std::array<uint8_t, FRAME_COLORS> &slots =
+          rowSlots(layer, index, row);
+      overlaySprites(display, index, row, m_exposed.first, m_exposed.last,
+                     slots);
+      if (isRecolored(index, row)) {
+        uncolor(layer, index, row, base);
+      }
+    }
   }
 }
 
@@ -886,15 +1695,33 @@ void IndexedRasterizer::drawChecked(const Layer &layer, const Placed &placed,
   }
 }
 
-void IndexedRasterizer::recolor(const Layer &layer, int row) {
-  for (const RowColor &change : layer.rowColors) {
-    if (change.row != row) {
-      continue;
-    }
-    const uint8_t recolored = slot(change.color);
+void IndexedRasterizer::recolor(const Layer &layer, std::size_t index,
+                                int row) {
+  const std::vector<int> &starts = m_recolorStarts[index];
+  const std::vector<int> &order = m_recolorOrder[index];
+  const RowColor *changes = layer.rowColors.begin();
+  for (int at = starts[static_cast<std::size_t>(row)];
+       at < starts[static_cast<std::size_t>(row) + 1]; ++at) {
+    const RowColor &change = changes[order[static_cast<std::size_t>(at)]];
+    const uint8_t recolored =
+        m_recolorTargets[index][static_cast<std::size_t>(at)];
     forEachValue(layer.mask, change.index, [&](std::size_t value) {
       m_rowMapping.slots[value] = recolored;
     });
+  }
+}
+
+void IndexedRasterizer::uncolor(const Layer &layer, std::size_t index, int row,
+                                const Mapping &base) {
+  const std::vector<int> &starts = m_recolorStarts[index];
+  const std::vector<int> &order = m_recolorOrder[index];
+  const RowColor *changes = layer.rowColors.begin();
+  for (int at = starts[static_cast<std::size_t>(row)];
+       at < starts[static_cast<std::size_t>(row) + 1]; ++at) {
+    forEachValue(layer.mask, changes[order[static_cast<std::size_t>(at)]].index,
+                 [&](std::size_t value) {
+                   m_rowMapping.slots[value] = base.slots[value];
+                 });
   }
 }
 
@@ -909,6 +1736,33 @@ void IndexedRasterizer::save(const Display &display, int row) {
     if (layer.wrap) {
       saveRow(layer, index, sourceRow + layer.sourceStep);
     }
+  }
+}
+
+void IndexedRasterizer::saveWindow(const Display &display, std::size_t index,
+                                   int row, int from, int to) {
+  const Layer &layer = display.layers[index];
+  if (!layer.pixels || from >= to) {
+    return;
+  }
+  const Placed &placed = m_placed[index];
+  const int sourceRow = sourceRowOf(layer, row);
+  const auto copy = [&](int first, int last, int line, int column) {
+    const int low = std::max(first, from);
+    const int high = std::min(last, to);
+    if (low >= high || line < 0 || line >= layer.sourceRows) {
+      return;
+    }
+    const std::size_t offset = static_cast<std::size_t>(line) *
+                                   static_cast<std::size_t>(layer.stride) +
+                               static_cast<std::size_t>(column + low - first);
+    std::memcpy(m_saved[index].data() + offset, layer.pixels + offset,
+                static_cast<std::size_t>(high - low));
+  };
+  copy(placed.start, placed.end, sourceRow, placed.start + placed.shift);
+  if (layer.wrap) {
+    copy(placed.end, placed.wrapEnd, sourceRow + layer.sourceStep,
+         placed.end + placed.shift - layer.sourceColumns);
   }
 }
 

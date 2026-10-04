@@ -1,5 +1,6 @@
 #include "IntroStrip.h"
 
+#include "../../../systems/graphics/PixelOps.h"
 #include "../../assets/Assets.h"
 #include "../../street/core/Font.h"
 
@@ -50,16 +51,24 @@ int IntroStrip::pages() const { return static_cast<int>(m_pages.size()); }
 
 void IntroStrip::show(const effects::sequences::BlyskSequence &sequence) {
   if (sequence.page() != m_pasted) {
-    std::fill(m_strip.pixels.begin(), m_strip.pixels.end(), 0);
+    systems::graphics::pixels::fill({m_strip.pixels.data(), STRIP_WIDTH},
+                                    STRIP_WIDTH, STRIP_HEIGHT, 0);
     m_pasted = sequence.page();
     if (m_pasted) {
       paste(*m_pasted);
     }
+    m_stripDrawn = false;
+  } else if (const std::optional<int> next = sequence.nextPage();
+             next && sequence.isSteady()) {
+    preload(*next);
   }
-  m_frame.fill(effects::color::BLACK);
   m_frame.setPalette(sequence.palette());
-  m_frame.draw(m_strip, STRIP_LEFT,
-               STRIP_DISPLAY_LINE - FRAME_DISPLAY_LINE - m_rows.first);
+  if (!m_stripDrawn) {
+    m_frame.fill(effects::color::BLACK);
+    m_frame.draw(m_strip, STRIP_LEFT,
+                 STRIP_DISPLAY_LINE - FRAME_DISPLAY_LINE - m_rows.first);
+    m_stripDrawn = true;
+  }
   systems::graphics::Display display = m_frame.output();
   display.displayHeight = 2 * display.height;
   m_monitor.show(display);
@@ -67,9 +76,34 @@ void IntroStrip::show(const effects::sequences::BlyskSequence &sequence) {
 
 void IntroStrip::showBlack() {
   m_frame.fill(effects::color::BLACK);
+  m_stripDrawn = false;
   systems::graphics::Display display = m_frame.output();
   display.displayHeight = 2 * display.height;
   m_monitor.show(display);
+}
+
+void IntroStrip::preload(int page) {
+  if (page < 0 || page >= pages()) {
+    return;
+  }
+  if (m_preloading != page) {
+    m_preloading = page;
+    m_waiting.clear();
+    for (const street::core::CreditLine &line :
+         m_pages[static_cast<std::size_t>(page)].lines) {
+      street::core::font(line.text, line.y, [this](int, int, int image) {
+        m_waiting.push_back(image);
+      });
+    }
+  }
+  while (!m_waiting.empty()) {
+    const int image = m_waiting.back();
+    m_waiting.pop_back();
+    if (m_glyphs.find(image) == m_glyphs.end()) {
+      glyph(image);
+      return;
+    }
+  }
 }
 
 void IntroStrip::paste(int page) {
@@ -91,21 +125,20 @@ void IntroStrip::pasteGlyph(int x, int y, int image) {
   }
   const int left = x - bitmap->hotspotX;
   const int top = y - bitmap->hotspotY;
-  for (int row = 0; row < bitmap->height; ++row) {
-    for (int column = 0; column < bitmap->width; ++column) {
-      const int stripX = left + column;
-      const int stripY = top + row;
-      const uint8_t index =
-          bitmap
-              ->pixels[static_cast<std::size_t>(row * bitmap->width + column)];
-      if (index != 0 && stripX >= 0 && stripX < STRIP_WIDTH && stripY >= 0 &&
-          stripY < STRIP_HEIGHT) {
-        m_strip
-            .pixels[static_cast<std::size_t>(stripY * STRIP_WIDTH + stripX)] =
-            index;
-      }
-    }
+  const int firstColumn = std::max(0, -left);
+  const int lastColumn = std::min(bitmap->width, STRIP_WIDTH - left);
+  const int firstRow = std::max(0, -top);
+  const int lastRow = std::min(bitmap->height, STRIP_HEIGHT - top);
+  if (firstColumn >= lastColumn || firstRow >= lastRow) {
+    return;
   }
+  systems::graphics::pixels::draw(
+      {bitmap->pixels.data() + firstRow * bitmap->width + firstColumn,
+       bitmap->width},
+      {m_strip.pixels.data() + (top + firstRow) * STRIP_WIDTH + left +
+           firstColumn,
+       STRIP_WIDTH},
+      lastColumn - firstColumn, lastRow - firstRow, true, false);
 }
 
 const systems::graphics::IndexedBitmap *IntroStrip::glyph(int image) {
