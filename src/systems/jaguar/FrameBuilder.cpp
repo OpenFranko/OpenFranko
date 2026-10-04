@@ -594,6 +594,7 @@ bool makeObject(const graphics::Layer &layer, const uint8_t *pixels,
   if (object.scaled) {
     object.horizontalScale = placement.halfWidth > 1 ? HALF_SCALE : SCALE_ONE;
     object.verticalScale = static_cast<uint8_t>(SCALE_ONE * lineRepeat);
+    --object.height;
   }
   return true;
 }

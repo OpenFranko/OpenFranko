@@ -39,6 +39,8 @@ Geometry ntscGeometry() {
   return geometry;
 }
 
+constexpr int SCALED_DONE = 0x3FF;
+
 uint64_t bits(uint64_t value, int shift, int count) {
   return (value >> shift) & ((uint64_t(1) << count) - 1);
 }
@@ -169,7 +171,8 @@ Screen simulate(const Arena &arena, const BuiltFrame &frame,
       }
       const bool scaled = type == 1;
       int height = static_cast<int>(bits(phrase, 14, 10));
-      if (halfLine >= ypos && height > 0) {
+      const bool showing = scaled ? height != SCALED_DONE : height > 0;
+      if (halfLine >= ypos && showing) {
         drawBitmap(arena, list, at, scaled, line, clut);
         uint32_t data = static_cast<uint32_t>(bits(phrase, 43, 21));
         const uint32_t dataWidth =
@@ -177,10 +180,14 @@ Screen simulate(const Arena &arena, const BuiltFrame &frame,
         if (scaled) {
           const int verticalScale = static_cast<int>(bits(list[at + 2], 8, 8));
           int remainder = static_cast<int>(bits(list[at + 2], 16, 8)) - 32;
-          while (remainder <= 0 && height > 0) {
+          while (remainder <= 0 && height != SCALED_DONE) {
             remainder += verticalScale;
-            --height;
-            data += dataWidth;
+            if (height == 0) {
+              height = SCALED_DONE;
+            } else {
+              --height;
+              data += dataWidth;
+            }
           }
           list[at + 2] = (list[at + 2] & ~(uint64_t(0xFF) << 16)) |
                          uint64_t(remainder & 0xFF) << 16;
