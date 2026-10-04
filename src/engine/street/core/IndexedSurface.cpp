@@ -37,6 +37,13 @@ IndexedSurface::IndexedSurface(int width, int height)
       m_pixels(static_cast<std::size_t>(width * height), 0),
       m_revision(systems::graphics::newRevision()) {}
 
+IndexedSurface::IndexedSurface(int width, int height,
+                               std::vector<uint8_t> pixels)
+    : m_width(width), m_height(height), m_pixels(std::move(pixels)),
+      m_revision(systems::graphics::newRevision()) {
+  m_pixels.resize(static_cast<std::size_t>(width * height), 0);
+}
+
 IndexedSurface::IndexedSurface(const IndexedSurface &other)
     : m_width(other.m_width), m_height(other.m_height),
       m_pixels(settled(other.m_pixels)),

@@ -25,6 +25,7 @@ struct Picture {
 class IndexedSurface {
 public:
   IndexedSurface(int width, int height);
+  IndexedSurface(int width, int height, std::vector<uint8_t> pixels);
   IndexedSurface(const IndexedSurface &other);
   IndexedSurface(IndexedSurface &&other) noexcept = default;
   IndexedSurface &operator=(const IndexedSurface &other);

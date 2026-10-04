@@ -26,6 +26,7 @@ public:
   };
 
   explicit DoubleBuffer(const IndexedSurface &screen);
+  explicit DoubleBuffer(IndexedSurface &&screen);
   DoubleBuffer(int width, int height);
   DoubleBuffer(const DoubleBuffer &other);
   DoubleBuffer(DoubleBuffer &&other);

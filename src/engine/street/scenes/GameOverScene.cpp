@@ -53,7 +53,7 @@ effects::color::AmigaPalette graveyardPalette() {
 } // namespace
 
 GameOverScene::GameOverScene(StreetHost &host, session::GameSession &session)
-    : m_host(host), m_session(session), m_screen(PICTURE_WIDTH, PICTURE_HEIGHT),
+    : m_host(host), m_session(session), m_screen(0, 0),
       m_palette(graveyardPalette()), m_border(session.border),
       m_copperBorder(session.border) {}
 
@@ -96,7 +96,8 @@ void GameOverScene::advance(int16_t joystick) {
       flow = wait(UNPACK_VBLS, Step::Unpacked);
       break;
     case Step::Unpacked:
-      m_buffer.emplace(m_screen);
+      m_buffer.emplace(std::move(m_screen));
+      m_screen = core::IndexedSurface(0, 0);
       flow = wait(DOUBLE_BUFFER_VBLS, Step::Opened);
       break;
     case Step::Opened:
@@ -218,7 +219,13 @@ GameOverScene::Flow GameOverScene::wait(int frames, Step next) {
 void GameOverScene::unpack() {
   m_host.setMusicVolume(systems::audio::Mixer::FULL_VOLUME);
   m_host.playMusic();
-  m_screen.unpack(m_picture, 0, 0);
+  if (m_picture.width == PICTURE_WIDTH && m_picture.height == PICTURE_HEIGHT) {
+    m_screen = core::IndexedSurface(PICTURE_WIDTH, PICTURE_HEIGHT,
+                                    std::move(m_picture.pixels));
+  } else {
+    m_screen = core::IndexedSurface(PICTURE_WIDTH, PICTURE_HEIGHT);
+    m_screen.unpack(m_picture, 0, 0);
+  }
   m_picture = core::Picture{};
 }
 

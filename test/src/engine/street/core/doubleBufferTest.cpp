@@ -42,6 +42,30 @@ struct Screen {
 
 } // namespace
 
+SCENARIO("A double buffer made from a moved screen") {
+  GIVEN("A painted screen") {
+    IndexedSurface paper(64, 32);
+    paper.fill(PAPER);
+    paper.clear(INK, 2, 1, 5, 2);
+    const uint8_t *storage = paper.pixels().data();
+
+    WHEN("It is moved into a double buffer") {
+      const DoubleBuffer buffer(std::move(paper));
+
+      THEN("Both buffers show it, one of them in the moved storage") {
+        REQUIRE(buffer.shown().pixel(2, 1) == INK);
+        REQUIRE(buffer.logic().pixel(2, 1) == INK);
+        REQUIRE(buffer.shown().pixel(40, 20) == PAPER);
+        REQUIRE(buffer.logic().pixel(40, 20) == PAPER);
+        REQUIRE((buffer.shown().pixels().data() == storage ||
+                 buffer.logic().pixels().data() == storage));
+        REQUIRE(buffer.shown().pixels().data() !=
+                buffer.logic().pixels().data());
+      }
+    }
+  }
+}
+
 SCENARIO("Double Buffer shows each automatic update one VBL later") {
   GIVEN("A double-buffered screen with no bobs") {
     Screen screen;

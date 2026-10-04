@@ -19,6 +19,9 @@ constexpr int BYTE_BITS = 8;
 DoubleBuffer::DoubleBuffer(const IndexedSurface &screen)
     : m_buffers{Buffer{screen, {}, 0}, Buffer{screen, {}, 0}} {}
 
+DoubleBuffer::DoubleBuffer(IndexedSurface &&screen)
+    : m_buffers{Buffer{screen, {}, 0}, Buffer{std::move(screen), {}, 0}} {}
+
 DoubleBuffer::DoubleBuffer(int width, int height)
     : m_buffers{Buffer{IndexedSurface(width, height), {}, 0},
                 Buffer{IndexedSurface(width, height), {}, 0}} {}

@@ -118,6 +118,40 @@ SCENARIO("Cls fills a rectangle with exclusive ends, clamped to the screen") {
   }
 }
 
+SCENARIO("A screen can take over pixels instead of copying them") {
+  GIVEN("Pixels for a 4x3 screen") {
+    std::vector<uint8_t> pixels(12);
+    for (std::size_t at = 0; at < pixels.size(); ++at) {
+      pixels[at] = static_cast<uint8_t>(at + 1);
+    }
+    const uint8_t *storage = pixels.data();
+
+    WHEN("A screen is made from them") {
+      const IndexedSurface screen(4, 3, std::move(pixels));
+
+      THEN("It keeps the same storage and shows them row by row") {
+        REQUIRE(screen.pixels().data() == storage);
+        REQUIRE(screen.pixel(0, 0) == 1);
+        REQUIRE(screen.pixel(3, 0) == 4);
+        REQUIRE(screen.pixel(0, 2) == 9);
+        REQUIRE(screen.pixel(3, 2) == 12);
+      }
+    }
+
+    WHEN("Too few are given") {
+      pixels.resize(5);
+      const IndexedSurface screen(4, 3, std::move(pixels));
+
+      THEN("The rest of the screen is colour 0") {
+        REQUIRE(screen.pixels().size() == 12);
+        REQUIRE(screen.pixel(0, 1) == 5);
+        REQUIRE(screen.pixel(1, 1) == 0);
+        REQUIRE(screen.pixel(3, 2) == 0);
+      }
+    }
+  }
+}
+
 SCENARIO("Unpack draws a packed picture opaquely at a byte-aligned X") {
   GIVEN("A screen and a 16 px column of colour 0 and 5") {
     IndexedSurface screen(320, 222);
