@@ -610,14 +610,22 @@ void VideoSystem::Window::writeStrips() {
     strips[static_cast<std::size_t>(column & (PLANES - 1))].push_back(
         {column / PLANES, source});
   };
-  for (int column = 0; column < placement.x; ++column) {
+  const int moved = exposed.last - exposed.first;
+  const bool rightward = exposed.first == 0;
+  const int right = placement.x + placement.width;
+  const int leftFirst = rightward ? 0 : std::max(placement.x - moved, 0);
+  const int leftLast = rightward ? std::min(moved, placement.x) : placement.x;
+  const int rightFirst =
+      rightward ? right : std::max(SCREEN_WIDTH - moved, right);
+  const int rightLast =
+      rightward ? std::min(right + moved, SCREEN_WIDTH) : SCREEN_WIDTH;
+  for (int column = leftFirst; column < leftLast; ++column) {
     add(origin + column, NO_ROW);
   }
   for (int column = exposed.first; column < exposed.last; ++column) {
     add(origin + placement.x + column, column);
   }
-  for (int column = placement.x + placement.width; column < SCREEN_WIDTH;
-       ++column) {
+  for (int column = rightFirst; column < rightLast; ++column) {
     add(origin + column, NO_ROW);
   }
   bmp_select(screen);

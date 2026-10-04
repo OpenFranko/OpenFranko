@@ -886,6 +886,165 @@ SCENARIO("IndexedRasterizer draws sprites over a picture that did not change") {
   }
 }
 
+SCENARIO("IndexedRasterizer keeps a sprite pinned over a panning picture") {
+  GIVEN("A wrapped picture with copper colours and a mostly clear title "
+        "pinned in place") {
+    constexpr int SOURCE_WIDTH = 120;
+    constexpr int SOURCE_HEIGHT = 24;
+    constexpr int WIDTH = 40;
+    std::vector<uint8_t> picture = pattern(SOURCE_WIDTH, SOURCE_HEIGHT, 16);
+    std::vector<uint8_t> title(20 * 9);
+    for (int y = 0; y < 9; ++y) {
+      for (int x = 0; x < 20; ++x) {
+        uint8_t value = 0;
+        if (x < 4) {
+          value = static_cast<uint8_t>(1 + (x + y) % 4);
+        } else if (x >= 8 && x < 12) {
+          value = (x + y) % 2 == 0 ? 5 : 0;
+        } else if (x >= 12 && x < 16) {
+          value = x == 12 + y % 4 ? 6 : 0;
+        } else if (x >= 16) {
+          value = static_cast<uint8_t>(7 + (x + y) % 3);
+        }
+        title[static_cast<std::size_t>(y * 20 + x)] = value;
+      }
+    }
+    const std::vector<uint8_t> other = pattern(4, 3, 9);
+    std::vector<uint16_t> colors;
+    for (int color = 0; color < 16; ++color) {
+      colors.push_back(static_cast<uint16_t>(0x111 * color + color % 3));
+    }
+    Display display = screen(WIDTH, SOURCE_HEIGHT);
+    Layer graveyard = layer(picture, SOURCE_WIDTH, SOURCE_HEIGHT, colors);
+    graveyard.columns = WIDTH;
+    graveyard.wrap = true;
+    graveyard.sourceX = 30;
+    graveyard.revision = 1;
+    graveyard.carriesSprites = true;
+    for (int row = 0; row < SOURCE_HEIGHT; row += 2) {
+      graveyard.rowColors.push_back(
+          {row, static_cast<uint8_t>(row % 5),
+           static_cast<uint16_t>(0x00F + 0x100 * (row % 7))});
+    }
+    display.layers.push_back(graveyard);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    int titleX = 10;
+    const auto show = [&] {
+      Layer &shown = display.layers[0];
+      shown.sprites.resize(std::max<std::size_t>(shown.sprites.size(), 1));
+      shown.sprites[0] = {title.data(), 20, 9, shown.sourceX + titleX, 6};
+      rasterizer.rasterize(display, frame);
+      applyChanges(frame, shownPixels);
+      REQUIRE(colorsOf(frame) == expected(display));
+      REQUIRE(shownPixels == frame.pixels);
+    };
+    const auto pan = [&](int moved) {
+      display.layers[0].sourceX += moved;
+      show();
+    };
+    show();
+
+    WHEN("The picture pans left and right under it") {
+      for (int step = 0; step < 12; ++step) {
+        pan(1 + step % 2);
+      }
+      for (int step = 0; step < 12; ++step) {
+        pan(-(1 + step % 3));
+      }
+
+      THEN("Every frame shows the title over the moved picture") {
+        REQUIRE(colorsOf(frame) == expected(display));
+      }
+    }
+
+    WHEN("Another sprite crosses the title while the picture pans") {
+      display.layers[0].sprites.push_back(
+          {other.data(), 4, 3, display.layers[0].sourceX + 6, 8});
+      for (int step = 0; step < 10; ++step) {
+        display.layers[0].sprites[1].left += 3;
+        pan(1);
+      }
+
+      THEN("Every frame shows both sprites") {
+        REQUIRE(colorsOf(frame) == expected(display));
+      }
+    }
+
+    WHEN("A sprite appears inside the title while the picture pans") {
+      pan(1);
+      display.layers[0].sprites.push_back(
+          {other.data(), 4, 3, display.layers[0].sourceX + titleX + 6, 8});
+      pan(1);
+      display.layers[0].sprites[1].left += 1;
+      pan(1);
+
+      THEN("It is shown over the title") {
+        REQUIRE(colorsOf(frame) == expected(display));
+      }
+    }
+
+    WHEN("A sprite inside the title goes while the picture pans") {
+      display.layers[0].sprites.push_back(
+          {other.data(), 4, 3, display.layers[0].sourceX + titleX + 6, 8});
+      show();
+      display.layers[0].sprites.pop_back();
+      pan(2);
+
+      THEN("The title is shown without it") {
+        REQUIRE(colorsOf(frame) == expected(display));
+      }
+    }
+
+    WHEN("A sprite on the title's rows beside it changes while the picture "
+         "pans") {
+      display.layers[0].sprites.push_back(
+          {other.data(), 4, 3, display.layers[0].sourceX + 34, 7});
+      for (int step = 0; step < 6; ++step) {
+        display.layers[0].sprites[1].top = 7 + step % 2;
+        pan(2);
+      }
+
+      THEN("Every frame shows both sprites") {
+        REQUIRE(colorsOf(frame) == expected(display));
+      }
+    }
+
+    WHEN("The title is pinned against the edge where the picture comes in") {
+      titleX = 19;
+      show();
+      for (int step = 0; step < 4; ++step) {
+        pan(1 + step % 2);
+      }
+      titleX = -5;
+      show();
+      for (int step = 0; step < 4; ++step) {
+        pan(-1);
+      }
+
+      THEN("Every frame shows the title") {
+        REQUIRE(colorsOf(frame) == expected(display));
+      }
+    }
+
+    WHEN("The picture changes under the title while it pans") {
+      for (int step = 0; step < 6; ++step) {
+        const int column = display.layers[0].sourceX + 1 + titleX + 5;
+        for (int y = 5; y < 16; ++y) {
+          picture[static_cast<std::size_t>(y * SOURCE_WIDTH + column)] ^= 3;
+        }
+        ++display.layers[0].revision;
+        pan(1);
+      }
+
+      THEN("Every frame shows the changed picture under the title") {
+        REQUIRE(colorsOf(frame) == expected(display));
+      }
+    }
+  }
+}
+
 SCENARIO("IndexedRasterizer pans layers in all combinations") {
   GIVEN("A play screen over a wider picture and a panel below it") {
     std::vector<uint8_t> play = pattern(40, 8, 16);

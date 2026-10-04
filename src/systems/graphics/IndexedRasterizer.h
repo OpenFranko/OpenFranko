@@ -97,6 +97,12 @@ private:
     int shift = 0;
   };
 
+  struct ExposedColumn {
+    int x = 0;
+    int column = 0;
+    int lines = 0;
+  };
+
   enum class Update { None, Resave, Spans, Panned, Full };
 
   int pannedLayer(const Display &display) const;
@@ -120,6 +126,8 @@ private:
   void panRows(const Display &display, std::size_t index, int moved);
   void compareWindow(const Display &display, std::size_t index, int row);
   void markSprites(const Display &display);
+  int pinSprite(const Display &display, std::size_t index,
+                const std::vector<Sprite> &before);
   void markSprite(const Display &display, std::size_t index,
                   const Sprite &sprite, bool kept, bool old);
   static Span spriteColumns(const Layer &layer, const Placed &placed,
@@ -142,6 +150,7 @@ private:
   const std::array<uint8_t, FRAME_COLORS> &rowSlots(const Layer &layer,
                                                     std::size_t index, int row);
   void overlaySpans(const Display &display, int row);
+  void drawPinned(const Display &display, std::size_t index, int row);
   void overlaySprites(const Display &display, std::size_t index, int row,
                       int from, int to,
                       const std::array<uint8_t, FRAME_COLORS> &slots);
@@ -193,9 +202,15 @@ private:
   std::vector<bool> m_sourceKept;
   bool m_anyKept = false;
   bool m_anySprites = false;
+  int m_pannedLayer = -1;
+  int m_pannedBy = 0;
+  int m_pinnedSprite = -1;
+  int m_pinnedX = 0;
+  Span m_pinnedSpan;
+  std::vector<bool> m_pinnedRows;
+  std::vector<ExposedColumn> m_exposedColumns;
   std::vector<bool> m_recoloredRows;
   Span m_exposed;
-  std::vector<std::array<uint8_t, 2>> m_overrides;
 };
 
 } // namespace graphics
