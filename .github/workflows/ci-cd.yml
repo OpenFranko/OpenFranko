@@ -56,6 +56,41 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            catch2 gcovr libsdl2-dev libxmp-dev
+      - name: Configure
+        run: >-
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
+          -DCMAKE_C_FLAGS=--coverage -DCMAKE_CXX_FLAGS=--coverage
+          -DCMAKE_EXE_LINKER_FLAGS=--coverage
+      - name: Build
+        run: cmake --build build -j "$(nproc)"
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Report
+        run: |
+          mkdir -p coverage
+          gcovr --root . --filter src/ --filter lib/ --exclude-throw-branches \
+            --html-details coverage/index.html \
+            --json-summary coverage/summary.json --print-summary build
+          python3 .github/scripts/coverage-summary.py coverage/summary.json \
+            >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage
+          if-no-files-found: error
+          overwrite: true
+
   windows:
     name: Windows
     runs-on: windows-2025
