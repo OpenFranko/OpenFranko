@@ -1882,6 +1882,132 @@ SCENARIO("Frames whose colours change are recoloured instead of rebuilt") {
     }
   }
 
+  GIVEN("Text fading over a dancer, recoloured in place") {
+    graphics::Display credits;
+    credits.width = 320;
+    credits.height = 256;
+    credits.displayHeight = 256;
+    graphics::Layer dancer = layer(320, 164, 16, 6);
+    dancer.top = 81;
+    dancer.mask = 15;
+    graphics::Layer text = layer(320, 80, 16, 8);
+    text.mask = 15;
+    credits.layers = {dancer, text};
+
+    THEN("Both frames of the pair take the new colours without other work") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, geometry, memory);
+      const graphics::Display shown = inArena(arena, credits);
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      for (const Translation &translation : frame.translations) {
+        translateOnCpu(translation);
+      }
+      BuiltFrame twin = frame;
+      const std::vector<uint64_t> phrases = frame.phrases;
+      graphics::Display next = shown;
+      next.layers[1].palette[1] = 0x0F0;
+      next.layers[1].palette[2] = 0x070;
+      REQUIRE(recolorPalettes(next, frame));
+      REQUIRE(frame.phrases == phrases);
+      REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+      REQUIRE(recolorPalettes(next, twin));
+      REQUIRE(twin.clut == frame.clut);
+      REQUIRE(twin.clutVersion == frame.clutVersion);
+      REQUIRE(freshClut(arena, next, geometry, memory) == frame.clut);
+    }
+
+    THEN("A frame from an older plan is left to the full path") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display shown = inArena(arena, credits);
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      forgetBanks(arena, geometry, memory);
+      BuiltFrame other;
+      buildFrame(shown, geometry, memory, nullptr, 0, other);
+      graphics::Display next = shown;
+      next.layers[1].palette[1] = 0x0F0;
+      REQUIRE_FALSE(recolorPalettes(next, frame));
+      REQUIRE(recolorPalettes(next, other));
+    }
+
+    THEN("Row colours are left to the full path") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display shown = inArena(arena, credits);
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      graphics::Display next = shown;
+      next.layers[1].rowColors.push_back({10, 1, 0xF00});
+      REQUIRE_FALSE(recolorPalettes(next, frame));
+    }
+  }
+
+  GIVEN("A panel sharing the first bank with the play screen") {
+    graphics::Display stage;
+    stage.width = 304;
+    stage.height = 255;
+    stage.displayHeight = 255;
+    stage.layers.push_back(layer(320, 222, 16, 2));
+    stage.layers.back().columns = 304;
+    graphics::Layer panel = layer(304, 32, 8, 3);
+    panel.top = 223;
+    std::copy_n(stage.layers[0].palette.begin(), panel.palette.size(),
+                panel.palette.begin());
+    stage.layers.push_back(panel);
+
+    THEN("New panel colours are left to the full path") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, geometry, memory);
+      const graphics::Display shown = inArena(arena, stage);
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      REQUIRE(frame.translations.empty());
+      graphics::Display next = shown;
+      next.layers[1].palette[3] = 0xF0F;
+      REQUIRE_FALSE(recolorPalettes(next, frame));
+    }
+  }
+
+  GIVEN("A picture over a solid colour, recoloured in place") {
+    graphics::Display display;
+    display.width = 320;
+    display.height = 256;
+    display.displayHeight = 256;
+    graphics::Layer solid;
+    solid.columns = 320;
+    solid.rows = 256;
+    solid.palette = {0x00F};
+    graphics::Layer picture = layer(320, 100, 16, 5);
+    picture.top = 50;
+    display.layers = {solid, picture};
+
+    THEN("A new solid colour is left to the full path") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, geometry, memory);
+      const graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      graphics::Display next = shown;
+      next.layers[0].palette[0] = 0x0F0;
+      REQUIRE_FALSE(recolorPalettes(next, frame));
+    }
+  }
+
   GIVEN("A picture whose pixels carry bits above its colour mask") {
     graphics::Display display;
     display.width = 320;

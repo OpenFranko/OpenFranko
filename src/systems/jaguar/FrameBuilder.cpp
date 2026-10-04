@@ -1037,6 +1037,7 @@ struct BankInput {
 struct BankCache {
   bool valid = false;
   uint32_t version = 0;
+  uint32_t plan = 0;
   bool buffers = false;
   std::size_t base = 0;
   std::vector<BankInput> inputs;
@@ -1104,6 +1105,7 @@ void rememberBanks(BankCache &banks, const graphics::Display &display,
                    std::size_t base) {
   banks.valid = true;
   ++banks.version;
+  ++banks.plan;
   banks.buffers = memory.buffers != nullptr;
   banks.base = base;
   banks.used = banking.usedSlots();
@@ -1158,6 +1160,7 @@ void recolorChanged(BankCache &banks, const graphics::Display &display,
     banks.merged[slot] = color;
     banks.clut[slot] = table[color];
   };
+  bool changed = false;
   for (std::size_t index = 0; index < plans.size(); ++index) {
     const graphics::Layer &layer = display.layers[index];
     BankInput &input = banks.inputs[index];
@@ -1173,6 +1176,7 @@ void recolorChanged(BankCache &banks, const graphics::Display &display,
           !isKept(layer, value)) {
         continue;
       }
+      changed = true;
       const uint16_t color = layer.palette[value] & COLOR_MASK;
       if (claims) {
         recolor(value ^ bank, color);
@@ -1195,7 +1199,9 @@ void recolorChanged(BankCache &banks, const graphics::Display &display,
     }
     input.palette = layer.palette;
   }
-  ++banks.version;
+  if (changed) {
+    ++banks.version;
+  }
 }
 
 bool cachedBanks(BankCache &banks, const graphics::Display &display,
@@ -1350,8 +1356,6 @@ bool sameSprites(const graphics::Display &display, const SpriteLists &sprites) {
   return true;
 }
 
-namespace {
-
 bool samePlacing(const graphics::Display &left,
                  const graphics::Display &right) {
   if (left.width != right.width || left.height != right.height ||
@@ -1376,12 +1380,7 @@ bool samePlacing(const graphics::Display &left,
   return true;
 }
 
-} // namespace
-
-bool sameLayers(const graphics::Display &left, const graphics::Display &right) {
-  if (!samePlacing(left, right)) {
-    return false;
-  }
+bool sameColors(const graphics::Display &left, const graphics::Display &right) {
   const graphics::Layer *other = right.layers.data();
   for (const graphics::Layer &a : left.layers) {
     const graphics::Layer &b = *other++;
@@ -1390,6 +1389,10 @@ bool sameLayers(const graphics::Display &left, const graphics::Display &right) {
     }
   }
   return true;
+}
+
+bool sameLayers(const graphics::Display &left, const graphics::Display &right) {
+  return samePlacing(left, right) && sameColors(left, right);
 }
 
 void allowCopper(bool allowed) { copperAllowed = allowed; }
@@ -1453,6 +1456,7 @@ void buildFrame(const graphics::Display &display, const Geometry &geometry,
   std::vector<LayerPlan> &plans = layerPlans();
   BankCache &banks = bankCache();
   settleBanks(banks, display, areas, memory, true, plans);
+  frame.plan = banks.plan;
 
   frame.translations.clear();
   static std::vector<const uint8_t *> pixels;
@@ -1793,7 +1797,7 @@ bool scrollFrame(const graphics::Display &display,
     return false;
   }
   frame.areas.assign(areas.begin(), areas.end());
-  return samePalettes(display, built) ||
+  return samePalettes(display, built) || recolorPalettes(display, frame) ||
          recolorFrame(display, display, geometry, memory, frame);
 }
 
@@ -1846,6 +1850,30 @@ bool recolorFrame(const graphics::Display &display,
       return false;
     }
   }
+  frame.clut = banks.clut;
+  frame.clutVersion = banks.version;
+  frame.plan = banks.plan;
+  return true;
+}
+
+bool recolorPalettes(const graphics::Display &display, BuiltFrame &frame) {
+  BankCache &banks = bankCache();
+  if (frame.clutVersion == 0 || !banks.valid || frame.plan != banks.plan ||
+      banks.inputs.size() != display.layers.size() ||
+      banks.plans.size() != display.layers.size() ||
+      banks.merged.size() != banks.clut.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < display.layers.size(); ++index) {
+    const graphics::Layer &layer = display.layers[index];
+    const BankInput &input = banks.inputs[index];
+    if (!layer.rowColors.empty() ||
+        input.palette.size() != layer.palette.size() ||
+        ((input.shared || !layer.pixels) && input.palette != layer.palette)) {
+      return false;
+    }
+  }
+  recolorChanged(banks, display, banks.plans);
   frame.clut = banks.clut;
   frame.clutVersion = banks.version;
   return true;

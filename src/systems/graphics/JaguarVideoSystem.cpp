@@ -59,6 +59,14 @@ void takeSprites(Display &target, const Display &source) {
   }
 }
 
+void takeColors(Display &target, const Display &source) {
+  const Layer *from = source.layers.data();
+  for (Layer &layer : target.layers) {
+    layer.palette = from->palette;
+    ++from;
+  }
+}
+
 void takeSprites(Display &target, const jaguar::SpriteLists &sprites) {
   const std::vector<Sprite> *from = sprites.data();
   for (Layer &layer : target.layers) {
@@ -596,10 +604,18 @@ void VideoSystem::present() {
     m_shownSlot = NO_FRAME;
   }
   int restage = NO_FRAME;
+  int recolor = NO_FRAME;
   for (int slot = 0; slot < FRAMES; ++slot) {
     const std::size_t index = static_cast<std::size_t>(slot);
     if (!window.built[index] || window.sourceOverlays[index] != overlay ||
-        !jaguar::sameLayers(window.sources[index], m_shown)) {
+        !jaguar::samePlacing(window.sources[index], m_shown)) {
+      continue;
+    }
+    if (!jaguar::sameColors(window.sources[index], m_shown)) {
+      if (recolor == NO_FRAME && slot != window.current &&
+          slot != window.pending) {
+        recolor = slot;
+      }
       continue;
     }
     if (jaguar::sameSprites(window.sources[index], m_shown)) {
@@ -622,6 +638,20 @@ void VideoSystem::present() {
       return;
     }
     window.built[index] = false;
+  }
+  if (recolor != NO_FRAME) {
+    const std::size_t index = static_cast<std::size_t>(recolor);
+    if (jaguar::recolorPalettes(m_shown, window.frames[index])) {
+      if (jaguar::sameSprites(window.sources[index], m_shown) ||
+          jaguar::moveSprites(m_shown, window.sources[index], window.geometry,
+                              window.memory(index), window.frames[index])) {
+        takeColors(window.sources[index], m_shown);
+        takeSprites(window.sources[index], m_shown);
+        settle(recolor);
+        return;
+      }
+      window.built[index] = false;
+    }
   }
   for (int slot = 0; slot < FRAMES; ++slot) {
     const std::size_t index = static_cast<std::size_t>(slot);
