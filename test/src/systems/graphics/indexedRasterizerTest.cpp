@@ -414,6 +414,222 @@ SCENARIO("IndexedRasterizer redraws only what changed since the last frame") {
   }
 }
 
+SCENARIO("IndexedRasterizer pans a wide wrapped picture by shifting rows") {
+  GIVEN("A double buffered graveyard with copper rows, a pinned title and a "
+        "hand") {
+    constexpr int SOURCE_WIDTH = 100;
+    constexpr int SOURCE_HEIGHT = 20;
+    constexpr int WIDTH = 37;
+    constexpr int TITLE_X = 9;
+    std::vector<uint8_t> picture = pattern(SOURCE_WIDTH, SOURCE_HEIGHT, 32);
+    for (std::size_t at = 0; at < picture.size(); at += 3) {
+      picture[at] = 0;
+    }
+    std::array<std::vector<uint8_t>, 2> buffers{picture, picture};
+    std::vector<uint16_t> colors;
+    for (int color = 0; color < 32; ++color) {
+      colors.push_back(static_cast<uint16_t>(0x111 * (color % 16) + color));
+    }
+    Display display = screen(WIDTH, SOURCE_HEIGHT);
+    Layer graveyard = layer(buffers[0], SOURCE_WIDTH, SOURCE_HEIGHT, colors);
+    graveyard.columns = WIDTH;
+    graveyard.wrap = true;
+    for (int row = 0; row < 16; ++row) {
+      graveyard.rowColors.push_back(
+          {row, 0, static_cast<uint16_t>(0x00F + 0x100 * (row % 6))});
+    }
+    display.layers.push_back(graveyard);
+    const auto draw = [&](std::vector<uint8_t> &buffer, int offset) {
+      buffer = picture;
+      for (int y = 4; y < 8; ++y) {
+        std::fill_n(buffer.begin() + y * SOURCE_WIDTH + std::min(offset, 60) +
+                        TITLE_X,
+                    12, static_cast<uint8_t>(5 + y));
+      }
+      for (int y = 12; y < 16; ++y) {
+        std::fill_n(buffer.begin() + y * SOURCE_WIDTH + 70, 6,
+                    static_cast<uint8_t>(offset % 3 + 20));
+      }
+      for (int y = 2; y < 4; ++y) {
+        std::fill_n(buffer.begin() + y * SOURCE_WIDTH + 2, 4,
+                    static_cast<uint8_t>(offset % 5 + 24));
+      }
+    };
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    int offset = 0;
+    int pannedFrames = 0;
+    int shiftedRows = 0;
+    int drawnPixels = 0;
+    int stillChanges = 0;
+    for (int step = 0; step < 60; ++step) {
+      const bool pans = step < 50;
+      const bool fades = step >= 54;
+      const int moved = pans ? 1 + step % 2 : 0;
+      offset += moved;
+      std::vector<uint8_t> &buffer =
+          buffers[static_cast<std::size_t>(step % 2)];
+      draw(buffer, offset);
+      Layer &shown = display.layers[0];
+      shown.pixels = buffer.data();
+      shown.sourceX = offset;
+      if (fades) {
+        for (uint16_t &color : shown.palette) {
+          color = static_cast<uint16_t>(color & 0xEEE) >> 1;
+        }
+      }
+      rasterizer.rasterize(display, frame);
+      REQUIRE(colorsOf(frame) == expected(display));
+      applyChanges(frame, shownPixels);
+      REQUIRE(shownPixels == frame.pixels);
+      if (pans && step > 0) {
+        ++pannedFrames;
+        for (const RowChange &change : frame.changes) {
+          shiftedRows += change.shift == -moved ? 1 : 0;
+          for (const Span &span : change.spans) {
+            drawnPixels += std::max(0, span.last - span.first);
+          }
+        }
+      }
+      if (!pans) {
+        stillChanges += static_cast<int>(std::count_if(
+            frame.changes.begin(), frame.changes.end(), isChanged));
+      }
+    }
+
+    THEN("Panned frames shift every row and draw only a few columns") {
+      REQUIRE(shiftedRows == pannedFrames * SOURCE_HEIGHT);
+      REQUIRE(drawnPixels < pannedFrames * SOURCE_HEIGHT * WIDTH / 3);
+    }
+
+    THEN("Frames that only change colours or nothing redraw no row") {
+      REQUIRE(stillChanges == 0);
+    }
+  }
+}
+
+SCENARIO("IndexedRasterizer pans layers in all combinations") {
+  GIVEN("A play screen over a wider picture and a panel below it") {
+    const std::vector<uint8_t> play = pattern(40, 8, 16);
+    const std::vector<uint8_t> panel = pattern(36, 3, 8);
+    Display display = screen(32, 11, 0x0F0);
+    Layer playLayer = layer(play, 40, 8, LEVEL_COLORS);
+    playLayer.columns = 32;
+    playLayer.sourceX = 4;
+    display.layers.push_back(playLayer);
+    Layer panelLayer = layer(panel, 36, 3, PANEL_COLORS);
+    panelLayer.top = 8;
+    panelLayer.columns = 32;
+    panelLayer.sourceX = 2;
+    display.layers.push_back(panelLayer);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    const auto show = [&] {
+      rasterizer.rasterize(display, frame);
+      applyChanges(frame, shownPixels);
+    };
+    show();
+
+    WHEN("Both layers pan in the same frame") {
+      display.layers[0].sourceX += 1;
+      display.layers[1].sourceX -= 1;
+      show();
+
+      THEN("Both are shown where they moved to") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+
+    WHEN("The play screen pans past the end of its picture") {
+      display.layers[0].sourceX = 8;
+      show();
+      display.layers[0].sourceX = 9;
+      show();
+
+      THEN("The column it no longer covers shows the border") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+  }
+}
+
+SCENARIO("IndexedRasterizer redraws copper rows whose colours change") {
+  GIVEN("A wrapped picture with copper colours, one of them a picture colour") {
+    std::vector<uint8_t> pixels = pattern(24, 6, 8);
+    for (std::size_t at = 0; at < pixels.size(); at += 2) {
+      pixels[at] = 0;
+    }
+    Display display = screen(16, 6, 0x000);
+    Layer picture =
+        layer(pixels, 24, 6,
+              {0x000, 0x0F0, 0x00F, 0x888, 0xF0F, 0x0FF, 0xFF0, 0x444});
+    picture.columns = 16;
+    picture.wrap = true;
+    picture.sourceX = 3;
+    picture.rowColors = {{0, 0, 0x0F0}, {1, 0, 0xF00}, {2, 0, 0x0F0},
+                         {3, 0, 0x123}, {4, 0, 0xF00}, {5, 0, 0x456}};
+    display.layers.push_back(picture);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    const auto show = [&] {
+      rasterizer.rasterize(display, frame);
+      applyChanges(frame, shownPixels);
+    };
+    show();
+    Layer &shown = display.layers[0];
+
+    WHEN("Only the copper colours change, so rows stop sharing them") {
+      shown.rowColors.begin()[2].color = 0x0A0;
+      shown.rowColors.begin()[4].color = 0xF55;
+      show();
+
+      THEN("Every row shows its new colour") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+
+    WHEN("The picture pans while the copper colours change") {
+      shown.sourceX += 1;
+      shown.rowColors.begin()[2].color = 0x0A0;
+      shown.rowColors.begin()[4].color = 0xF55;
+      show();
+
+      THEN("The moved rows show the new colours") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+
+    WHEN("The picture pans right past its left edge") {
+      shown.sourceX = 1;
+      show();
+      shown.sourceX = -1;
+      show();
+
+      THEN("The uncovered columns show each row's copper colour") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+
+    WHEN("The picture colour that a copper row shares fades") {
+      shown.palette[1] = 0x080;
+      show();
+
+      THEN("The copper rows keep their colour") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+  }
+}
+
 SCENARIO("IndexedRasterizer keeps the colour indices of a full palette") {
   GIVEN("A 256-colour screen") {
     std::vector<uint16_t> palette(FRAME_COLORS);

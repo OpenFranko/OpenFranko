@@ -51,6 +51,15 @@ constexpr int PERIOD_SMOOTHING = 8;
 constexpr int PERIOD_SAMPLES = 64;
 constexpr int FASTEST_HERTZ = 55;
 constexpr int SLOWEST_HERTZ = 45;
+constexpr int VIRTUAL_WIDTH = 896;
+constexpr int CRTC_PORT = 0x3D4;
+constexpr int START_HIGH = 0x0C;
+constexpr int START_LOW = 0x0D;
+constexpr int ATTRIBUTE_PORT = 0x3C0;
+constexpr int PEL_PANNING = 0x13;
+constexpr int PALETTE_ADDRESS_SOURCE = 0x20;
+constexpr int PEL_STEP = 2;
+constexpr int NO_REBASE = -1;
 
 volatile int vbls = 0;
 
@@ -68,6 +77,26 @@ struct RowWork {
   int shift = 0;
   std::array<Span, 2> spans{};
 };
+
+int panOf(const IndexedFrame &frame, int height) {
+  int pan = 0;
+  for (int row = 0; row < height; ++row) {
+    const RowChange &change = frame.changes[static_cast<std::size_t>(row)];
+    if (change.from != NO_ROW || change.shift == 0 ||
+        (pan != 0 && change.shift != pan)) {
+      return 0;
+    }
+    pan = change.shift;
+  }
+  return pan;
+}
+
+bool movesRows(const IndexedFrame &frame) {
+  return std::any_of(frame.changes.begin(), frame.changes.end(),
+                     [](const RowChange &change) {
+                       return change.from != NO_ROW || change.shift != 0;
+                     });
+}
 
 struct Placement {
   int x = 0;
@@ -355,6 +384,10 @@ struct VideoSystem::Window {
   void draw();
   void followRetrace();
   void measurePeriod(int found, int vblTicks);
+  void scrollTo(int next, int pan);
+  void prepareScroll();
+  void latch(bool on);
+  void writeStrips();
 
   IndexedRasterizer rasterizer{leadingWords, trailingWords};
   IndexedFrame frame;
@@ -378,13 +411,27 @@ struct VideoSystem::Window {
   int refClock = 0;
   int refVbl = 0;
   int phase = 0;
+  int limit = 0;
+  int origin = 0;
+  int target = 0;
+  bool scrolling = false;
+  int rebaseFrom = NO_REBASE;
+  int rebaseTo = 0;
+  int mode = 0;
+  bool latched = false;
+  bool wide = false;
+  Span exposed;
+  std::array<std::vector<std::array<int, 2>>, PLANES> strips;
 };
 
 VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
   set_color_depth(8);
-  if (set_gfx_mode(GFX_MODEX, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0) != 0) {
+  if (set_gfx_mode(GFX_MODEX, SCREEN_WIDTH, SCREEN_HEIGHT, VIRTUAL_WIDTH,
+                   SCREEN_HEIGHT) != 0 &&
+      set_gfx_mode(GFX_MODEX, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0) != 0) {
     throwError("Failed to open the 376x282 VGA screen");
   }
+  m_window->limit = std::max(VIRTUAL_W - SCREEN_WIDTH, 0);
   LOCK_VARIABLE(vbls);
   LOCK_FUNCTION(countVbl);
   set_palette(black_palette);
@@ -430,21 +477,46 @@ void VideoSystem::present() {
     window.recolored = true;
   }
   const int letterbox = window.darkest;
-  const bool cleared = fresh || letterbox != window.letterbox;
-  if (cleared) {
-    window.cleared = true;
-    window.letterbox = letterbox;
-  }
-
   const int step = placement.step;
   const bool movable = frame.width % (PLANES * step) == 0;
   const bool copyable = placement.height == frame.height;
+  bool cleared = fresh || letterbox != window.letterbox;
+  const int pan =
+      !cleared && step == 1 && copyable ? panOf(frame, placement.height) : 0;
+  const bool scrolls = pan != 0 && window.limit >= SCREEN_WIDTH;
+  cleared = cleared || (!scrolls && window.origin != 0 && movesRows(frame));
+  window.exposed = {};
+  if (cleared) {
+    window.cleared = true;
+    window.letterbox = letterbox;
+    window.scrollTo(0, 0);
+  } else if (scrolls) {
+    window.scrollTo(window.origin - pan, pan);
+    window.exposed =
+        pan < 0 ? Span{frame.width + pan, frame.width} : Span{0, pan};
+  }
   const auto screenSpan = [&](const Span &span) {
     return Span{(span.first + step - 1) / step,
                 std::min(placement.width, (span.last + step - 1) / step)};
   };
   window.rows.clear();
-  for (int row = 0; row < placement.height; ++row) {
+  for (int row = 0; scrolls && row < placement.height; ++row) {
+    RowWork work;
+    work.row = row;
+    work.spans = frame.changes[static_cast<std::size_t>(row)].spans;
+    for (Span &span : work.spans) {
+      if (pan < 0) {
+        span.last = std::min(span.last, window.exposed.first);
+      } else {
+        span.first = std::max(span.first, window.exposed.last);
+      }
+    }
+    if (std::any_of(work.spans.begin(), work.spans.end(),
+                    [](const Span &span) { return span.first < span.last; })) {
+      window.rows.push_back(work);
+    }
+  }
+  for (int row = 0; !scrolls && row < placement.height; ++row) {
     const RowChange &change =
         frame.changes[static_cast<std::size_t>(sourceRow(placement, row))];
     RowWork work;
@@ -471,13 +543,121 @@ void VideoSystem::present() {
   }
 }
 
+void VideoSystem::Window::scrollTo(int next, int pan) {
+  if (next < 0 || next > limit) {
+    rebaseFrom = origin;
+    rebaseTo =
+        next > limit ? origin % PLANES : limit - (limit - origin) % PLANES;
+    next = rebaseTo - pan;
+  }
+  target = next;
+  scrolling = target != origin || rebaseFrom != NO_REBASE;
+}
+
+void VideoSystem::Window::latch(bool on) {
+  if (on == latched) {
+    return;
+  }
+  latched = on;
+  outportw(GRAPHICS_PORT, ((mode & ~WRITE_MODES) | (on ? LATCH_WRITE : 0))
+                                  << PLANE_SHIFT |
+                              MODE_REGISTER);
+  if (on) {
+    outportw(SEQUENCER_PORT, ALL_PLANES << PLANE_SHIFT | MAP_MASK);
+  }
+}
+
+void VideoSystem::Window::prepareScroll() {
+  if (!scrolling) {
+    return;
+  }
+  if (!wide && target != 0) {
+    rectfill(screen, SCREEN_WIDTH, 0, VIRTUAL_W - 1, SCREEN_HEIGHT - 1,
+             letterbox);
+    wide = true;
+  }
+  if (rebaseFrom != NO_REBASE) {
+    bmp_select(screen);
+    outportb(GRAPHICS_PORT, MODE_REGISTER);
+    mode = inportb(GRAPHICS_PORT + 1);
+    latched = false;
+    latch(true);
+    const int count = SCREEN_WIDTH / PLANES + 1;
+    for (int line = 0; line < SCREEN_HEIGHT; ++line) {
+      const uintptr_t start = reinterpret_cast<uintptr_t>(screen->line[line]);
+      copyLatches(start + static_cast<uintptr_t>(rebaseFrom / PLANES),
+                  start + static_cast<uintptr_t>(rebaseTo / PLANES), count,
+                  rebaseTo > rebaseFrom);
+    }
+    latch(false);
+    rebaseFrom = NO_REBASE;
+  }
+  const uintptr_t start = reinterpret_cast<uintptr_t>(screen->line[0]) +
+                          static_cast<uintptr_t>(target / PLANES);
+  outportb(CRTC_PORT, START_HIGH);
+  outportb(CRTC_PORT + 1, static_cast<int>(start >> BYTE_BITS) & 0xFF);
+  outportb(CRTC_PORT, START_LOW);
+  outportb(CRTC_PORT + 1, static_cast<int>(start) & 0xFF);
+}
+
+void VideoSystem::Window::writeStrips() {
+  for (std::vector<std::array<int, 2>> &columns : strips) {
+    columns.clear();
+  }
+  const auto add = [&](int column, int source) {
+    strips[static_cast<std::size_t>(column & (PLANES - 1))].push_back(
+        {column / PLANES, source});
+  };
+  for (int column = 0; column < placement.x; ++column) {
+    add(origin + column, NO_ROW);
+  }
+  for (int column = exposed.first; column < exposed.last; ++column) {
+    add(origin + placement.x + column, column);
+  }
+  for (int column = placement.x + placement.width; column < SCREEN_WIDTH;
+       ++column) {
+    add(origin + column, NO_ROW);
+  }
+  bmp_select(screen);
+  const auto width = static_cast<std::size_t>(frame.width);
+  for (int plane = 0; plane < PLANES; ++plane) {
+    const std::vector<std::array<int, 2>> &columns =
+        strips[static_cast<std::size_t>(plane)];
+    if (columns.empty()) {
+      continue;
+    }
+    outportw(SEQUENCER_PORT, (1 << (PLANE_SHIFT + plane)) | MAP_MASK);
+    for (int row = 0; row < placement.height; ++row) {
+      const uintptr_t line =
+          reinterpret_cast<uintptr_t>(screen->line[placement.y + row]);
+      const uint8_t *source =
+          frame.pixels.data() + static_cast<std::size_t>(row) * width;
+      for (const std::array<int, 2> &column : columns) {
+        bmp_write8(line + static_cast<uintptr_t>(column[0]),
+                   column[1] == NO_ROW ? letterbox : source[column[1]]);
+      }
+    }
+  }
+}
+
 void VideoSystem::Window::draw() {
+  if (scrolling) {
+    inportb(STATUS_PORT);
+    outportb(ATTRIBUTE_PORT, PEL_PANNING | PALETTE_ADDRESS_SOURCE);
+    outportb(ATTRIBUTE_PORT, target % PLANES * PEL_STEP);
+    origin = target;
+    scrolling = false;
+    if (!cleared) {
+      writeStrips();
+    }
+  }
   if (recolored) {
     set_palette_range(dac, 0, static_cast<int>(FRAME_COLORS) - 1, FALSE);
     recolored = false;
   }
   if (cleared) {
-    clear_to_color(screen, letterbox);
+    rectfill(screen, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, letterbox);
+    wide = false;
     cleared = false;
   }
   if (rows.empty()) {
@@ -485,23 +665,14 @@ void VideoSystem::Window::draw() {
   }
   bmp_select(screen);
   outportb(GRAPHICS_PORT, MODE_REGISTER);
-  const int mode = inportb(GRAPHICS_PORT + 1);
-  bool latched = false;
-  const auto latch = [&](bool on) {
-    if (on == latched) {
-      return;
-    }
-    latched = on;
-    outportw(GRAPHICS_PORT, ((mode & ~WRITE_MODES) | (on ? LATCH_WRITE : 0))
-                                    << PLANE_SHIFT |
-                                MODE_REGISTER);
-    if (on) {
-      outportw(SEQUENCER_PORT, ALL_PLANES << PLANE_SHIFT | MAP_MASK);
-    }
+  mode = inportb(GRAPHICS_PORT + 1);
+  latched = false;
+  const int left = origin + placement.x;
+  const auto lineStart = [&](int row) {
+    return reinterpret_cast<uintptr_t>(screen->line[placement.y + row]);
   };
   const auto rowStart = [&](int row) {
-    return reinterpret_cast<uintptr_t>(screen->line[placement.y + row]) +
-           static_cast<uintptr_t>(placement.x / PLANES);
+    return lineStart(row) + static_cast<uintptr_t>(left / PLANES);
   };
   const int groups = placement.width / PLANES;
   const std::size_t width = static_cast<std::size_t>(frame.width);
@@ -535,9 +706,10 @@ void VideoSystem::Window::draw() {
             frame.pixels.data() +
             static_cast<std::size_t>(sourceRow(placement, work.row)) * width;
         for (const Span &span : work.spans) {
-          const int first =
-              span.first + (plane - span.first % PLANES + PLANES) % PLANES;
-          if (first >= span.last) {
+          const unsigned first = static_cast<unsigned>(
+              left + span.first + ((plane - left - span.first) & (PLANES - 1)));
+          const unsigned last = static_cast<unsigned>(left + span.last);
+          if (first >= last) {
             continue;
           }
           if (!selected) {
@@ -545,10 +717,10 @@ void VideoSystem::Window::draw() {
             outportw(SEQUENCER_PORT, (1 << (PLANE_SHIFT + plane)) | MAP_MASK);
             selected = true;
           }
-          writePlaneRow(rowStart(work.row) +
-                            static_cast<uintptr_t>(first / PLANES),
-                        source + first * step,
-                        (span.last - first + PLANES - 1) / PLANES, step);
+          writePlaneRow(lineStart(work.row) + first / PLANES,
+                        source + (first - static_cast<unsigned>(left)) * step,
+                        static_cast<int>((last - first + PLANES - 1) / PLANES),
+                        step);
         }
       }
     }
@@ -609,6 +781,7 @@ void VideoSystem::waitVbl() {
     window.nextVbl = vbls;
     window.timed = false;
   }
+  window.prepareScroll();
   if (window.retrace && hertz == SCREEN_HERTZ) {
     window.followRetrace();
     window.nextVbl = vbls;
