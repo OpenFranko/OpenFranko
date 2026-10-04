@@ -41,6 +41,7 @@ public:
   bool isModuleTempoOverridden() const;
   void setMusicVolume(int volume);
   void setFilter(bool on);
+  void setInterpolation(bool on);
 
   void play(const Sound &sound, int voiceMask, int frequency, bool loop);
   void endLoops();
@@ -84,6 +85,7 @@ private:
   void stopPlayer();
   void finishModule();
   void applyModuleTempo();
+  void applyInterpolation();
   RowPosition modulePosition() const;
   ModuleTiming moduleTiming() const;
   bool playModule(std::size_t samples);
@@ -110,6 +112,7 @@ private:
   std::array<Voice, VOICES> m_voices;
   std::optional<Playing> m_silencing;
   bool m_filterOn = false;
+  bool m_interpolation = true;
   Biquad m_lowPass;
   std::array<std::array<double, 4>, 2> m_filterHistory{};
 };

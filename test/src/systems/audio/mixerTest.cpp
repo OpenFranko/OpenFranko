@@ -263,6 +263,35 @@ std::vector<char> tempoModule() {
   return data;
 }
 
+std::vector<char> toneModule() {
+  std::vector<char> data = tempoModule();
+  data.resize(0xC0);
+  putWord(data, 0x70 + 0x0E, 0x110 / 16);
+  data[0x70 + 0x10] = 16;
+  data[0x70 + 0x18] = 16;
+  data[0x70 + 0x1C] = 64;
+  data[0x70 + 0x1F] = 1;
+  putWord(data, 0x70 + 0x20, 8363);
+  const std::vector<char> rowZero = {0x20, 0x40, 1, 0};
+  std::vector<char> pattern(2, 0);
+  pattern.insert(pattern.end(), rowZero.begin(), rowZero.end());
+  pattern.insert(pattern.end(), 63, 0);
+  putWord(pattern, 0, static_cast<int>(pattern.size()));
+  data.insert(data.end(), pattern.begin(), pattern.end());
+  data.resize(0x110);
+  for (int frame = 0; frame < 16; ++frame) {
+    data.push_back(static_cast<char>(frame % 8 < 4 ? 228 : 28));
+  }
+  return data;
+}
+
+std::size_t levels(const std::vector<int16_t> &samples) {
+  std::vector<int16_t> sorted(samples);
+  std::sort(sorted.begin(), sorted.end());
+  return static_cast<std::size_t>(std::unique(sorted.begin(), sorted.end()) -
+                                  sorted.begin());
+}
+
 void renderSeconds(Mixer &mixer, double seconds) {
   std::vector<int16_t> stereo(static_cast<std::size_t>(MODULE_RATE) * 2);
   for (int frames = static_cast<int>(seconds * MODULE_RATE); frames > 0;
@@ -325,6 +354,30 @@ SCENARIO("A tune can be played once instead of looping") {
       THEN("It keeps looping") {
         renderSeconds(mixer, 13.0);
         REQUIRE(mixer.isModulePlaying());
+      }
+    }
+  }
+}
+
+SCENARIO("Music can be mixed without interpolation") {
+  GIVEN("A tune playing a square wave at a rate that is not the mixer's") {
+    const auto play = [](bool interpolation) {
+      Mixer mixer(MODULE_RATE);
+      REQUIRE(mixer.loadModule(toneModule()));
+      mixer.setInterpolation(interpolation);
+      mixer.startModule();
+      mixer.setModuleTempo(1.0);
+      render(mixer, 400);
+      return render(mixer, 400).left;
+    };
+
+    WHEN("It is mixed with and without interpolation") {
+      const std::vector<int16_t> smooth = play(true);
+      const std::vector<int16_t> held = play(false);
+
+      THEN("Without interpolation only the wave's own two levels are heard") {
+        REQUIRE(levels(held) <= 2);
+        REQUIRE(levels(smooth) > 2);
       }
     }
   }

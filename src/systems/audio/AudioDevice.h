@@ -24,6 +24,8 @@ public:
   void unlock();
   void update();
 
+  static bool interpolatesMusic();
+
 private:
   struct Stream;
 

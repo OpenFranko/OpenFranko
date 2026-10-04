@@ -17,6 +17,7 @@ constexpr int OUTPUT_RATE = 22050;
 AudioSystem::AudioSystem(Read read)
     : m_output(std::make_unique<Output>(OUTPUT_RATE)) {
   m_output->read = std::move(read);
+  m_output->mixer.setInterpolation(AudioDevice::interpolatesMusic());
   m_output->device = std::make_unique<AudioDevice>(
       OUTPUT_RATE, [mixer = &m_output->mixer](int16_t *stereo, int frames) {
         mixer->render(stereo, frames);

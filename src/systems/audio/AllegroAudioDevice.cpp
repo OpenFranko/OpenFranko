@@ -154,6 +154,8 @@ void AudioDevice::lock() { ++m_stream->locks; }
 
 void AudioDevice::unlock() { --m_stream->locks; }
 
+bool AudioDevice::interpolatesMusic() { return false; }
+
 void AudioDevice::update() {
   Stream &stream = *m_stream;
   if (stream.voice < 0) {
