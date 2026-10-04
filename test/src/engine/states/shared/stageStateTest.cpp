@@ -138,6 +138,18 @@ SCENARIO("Bobs become sprites only on monitors that show sprites") {
       REQUIRE(stage.script.sprites);
     }
   }
+
+  GIVEN("A monitor that shows sprites but sends only what changed") {
+    Stage stage;
+    stage.monitor.sprites = true;
+    stage.monitor.diffs = true;
+    stage.state.emplace(stage.monitor, stage.script, stage.controller,
+                        stage.options, stage.session);
+
+    THEN("The stage draws its bobs into the screen") {
+      REQUIRE_FALSE(stage.script.sprites);
+    }
+  }
 }
 
 SCENARIO("A monitor that reads the buffers live gets the upcoming frame") {

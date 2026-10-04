@@ -119,6 +119,11 @@ private:
   void moveRows(std::size_t index);
   void panRows(const Display &display, std::size_t index, int moved);
   void compareWindow(const Display &display, std::size_t index, int row);
+  void markSprites(const Display &display);
+  void markSprite(const Display &display, std::size_t index,
+                  const Sprite &sprite, bool kept, bool old);
+  static Span spriteColumns(const Layer &layer, const Placed &placed,
+                            const Sprite &sprite, bool wrapped);
   Span changedSpan(const Display &display, std::size_t index, int row, int from,
                    int to) const;
   void compareRows(const Display &display, std::size_t index, int firstRow,
@@ -134,6 +139,12 @@ private:
   void drawExposed(const Display &display);
   void drawWindow(const Display &display, std::size_t index, int row, int from,
                   int to);
+  const std::array<uint8_t, FRAME_COLORS> &rowSlots(const Layer &layer,
+                                                    std::size_t index, int row);
+  void overlaySpans(const Display &display, int row);
+  void overlaySprites(const Display &display, std::size_t index, int row,
+                      int from, int to,
+                      const std::array<uint8_t, FRAME_COLORS> &slots);
   uint8_t drawSpan(const Layer &layer, const Placed &placed,
                    const Mapping &shown, int row, int from, int to);
   void drawChecked(const Layer &layer, const Placed &placed, Mapping &mapping,
@@ -179,6 +190,10 @@ private:
   Mapping m_rowMapping;
   int m_rowLayer = -1;
   int m_exposedLayer = -1;
+  std::vector<bool> m_sourceKept;
+  bool m_anyKept = false;
+  bool m_anySprites = false;
+  std::vector<bool> m_recoloredRows;
   Span m_exposed;
   std::vector<std::array<uint8_t, 2>> m_overrides;
 };

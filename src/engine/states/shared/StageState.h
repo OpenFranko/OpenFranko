@@ -45,7 +45,7 @@ StageState<Stage, NEXT>::StageState(
     : m_monitor(monitor), m_controllerSystem(controllerSystem),
       m_options(options), m_version(session.version),
       m_stage(host, session, options) {
-  m_stage.showSprites(monitor.showsSprites());
+  m_stage.showSprites(monitor.showsSprites() && !monitor.diffsFrames());
 }
 
 template <typename Stage, EngineStateId NEXT>

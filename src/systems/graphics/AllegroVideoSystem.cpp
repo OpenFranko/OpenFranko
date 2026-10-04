@@ -445,7 +445,9 @@ VideoSystem::~VideoSystem() {
   set_gfx_mode(GFX_TEXT, 0, 0, 0, 0);
 }
 
-bool VideoSystem::showsSprites() const { return false; }
+bool VideoSystem::showsSprites() const { return true; }
+
+bool VideoSystem::diffsFrames() const { return true; }
 
 void VideoSystem::present() {
   if (!m_frameChanged) {

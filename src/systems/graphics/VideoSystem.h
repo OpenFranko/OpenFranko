@@ -28,6 +28,7 @@ public:
   bool isNtsc() const override;
   bool readsBuffersLive() const override;
   bool showsSprites() const override;
+  bool diffsFrames() const override;
   int refreshRate() const;
 
 private:

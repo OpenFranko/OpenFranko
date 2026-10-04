@@ -23,6 +23,7 @@ public:
   bool ntsc = false;
   bool live = false;
   bool sprites = false;
+  bool diffs = false;
 
   void
   show(const openfranko::src::systems::graphics::Display &display) override {
@@ -41,6 +42,7 @@ public:
   bool readsBuffersLive() const override { return live; }
 
   bool showsSprites() const override { return sprites; }
+  bool diffsFrames() const override { return diffs; }
 
   uint32_t pixel(int x, int y) const {
     return frame()[static_cast<std::size_t>(y * width + x)];

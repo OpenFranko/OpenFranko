@@ -12,6 +12,7 @@
 #include "../ui/LoadingQueue.h"
 #include "StreetHost.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -34,6 +35,7 @@ public:
 
   GameOverScene(StreetHost &host, session::GameSession &session);
 
+  void showSprites(bool on);
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
   systems::graphics::Display output() const;
@@ -64,9 +66,9 @@ private:
   enum class Flow { Continue, Yield };
 
   Flow wait(int frames, Step next);
-  systems::graphics::Display
-  buildOutput(bool shown, effects::color::AmigaColor border, int offset,
-              const core::IndexedSurface *screen) const;
+  systems::graphics::Display buildOutput(bool shown,
+                                         effects::color::AmigaColor border,
+                                         int offset, bool upcoming) const;
   void close();
   void unpack();
   void open();
@@ -96,6 +98,8 @@ private:
   bool m_copperShown = false;
   bool m_rainbowShown = false;
   bool m_animating = false;
+  bool m_sprites = false;
+  std::array<uint32_t, 2> m_pictureRevisions{};
   int m_offset = 0;
   int m_copperOffset = 0;
   int m_shownOffset = 0;

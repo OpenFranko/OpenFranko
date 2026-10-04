@@ -57,6 +57,13 @@ GameOverScene::GameOverScene(StreetHost &host, session::GameSession &session)
       m_palette(graveyardPalette()), m_border(session.border),
       m_copperBorder(session.border) {}
 
+void GameOverScene::showSprites(bool on) {
+  m_sprites = on;
+  if (m_buffer) {
+    m_buffer->setSprites(on);
+  }
+}
+
 void GameOverScene::advance(int16_t joystick) {
   if (m_step == Step::Finished) {
     return;
@@ -98,6 +105,10 @@ void GameOverScene::advance(int16_t joystick) {
     case Step::Unpacked:
       m_buffer.emplace(std::move(m_screen));
       m_screen = core::IndexedSurface(0, 0);
+      m_buffer->setSprites(m_sprites);
+      m_pictureRevisions = {
+          static_cast<const core::DoubleBuffer &>(*m_buffer).logic().revision(),
+          m_buffer->shownView().pixels.revision()};
       flow = wait(DOUBLE_BUFFER_VBLS, Step::Opened);
       break;
     case Step::Opened:
@@ -140,33 +151,44 @@ void GameOverScene::compose(std::vector<uint32_t> &frame) const {
 }
 
 systems::graphics::Display GameOverScene::output() const {
-  return buildOutput(m_shown, m_border, m_shownOffset,
-                     m_buffer ? &m_buffer->shown() : nullptr);
+  return buildOutput(m_shown, m_border, m_shownOffset, false);
 }
 
 systems::graphics::Display GameOverScene::upcomingOutput() const {
   if (m_step == Step::Finished) {
     return output();
   }
-  return buildOutput(m_copperShown, m_copperBorder, m_copperOffset,
-                     m_buffer ? &m_buffer->upcoming() : nullptr);
+  return buildOutput(m_copperShown, m_copperBorder, m_copperOffset, true);
 }
 
 systems::graphics::Display
 GameOverScene::buildOutput(bool shown, effects::color::AmigaColor border,
-                           int offset,
-                           const core::IndexedSurface *screen) const {
+                           int offset, bool upcoming) const {
   systems::graphics::Display display;
   display.width = SCREEN_WIDTH;
   display.height = SCREEN_HEIGHT;
   display.displayHeight = SCREEN_HEIGHT;
   display.border = border;
-  if (!shown || !screen) {
+  if (!shown || !m_buffer) {
     return display;
   }
   systems::graphics::Layer layer;
-  layer.pixels = screen->pixels().data();
-  layer.stride = screen->width();
+  if (m_sprites) {
+    const core::DoubleBuffer::View view =
+        upcoming ? m_buffer->upcomingView() : m_buffer->shownView();
+    const uint32_t revision = view.pixels.revision();
+    layer.pixels = view.pixels.pixels().data();
+    layer.stride = view.pixels.width();
+    layer.revision =
+        revision == m_pictureRevisions[1] ? m_pictureRevisions[0] : revision;
+    layer.carriesSprites = true;
+    layer.sprites = view.sprites;
+  } else {
+    const core::IndexedSurface &screen =
+        upcoming ? m_buffer->upcoming() : m_buffer->shown();
+    layer.pixels = screen.pixels().data();
+    layer.stride = screen.width();
+  }
   layer.sourceColumns = PICTURE_WIDTH;
   layer.sourceRows = PICTURE_HEIGHT;
   layer.sourceX = offset;

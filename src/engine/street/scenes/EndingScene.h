@@ -40,7 +40,7 @@ public:
   EndingScene(StreetHost &host, session::GameSession &session,
               bool ntsc = false);
 
-  void showSprites(bool on);
+  void showSprites(bool stills, bool dancers);
   void advance(int16_t joystick);
   void compose(std::vector<uint32_t> &frame) const;
   systems::graphics::Display output() const;
@@ -156,6 +156,7 @@ private:
   core::BobLayer m_stillBobs;
   std::vector<core::Sprite> m_stillSprites;
   bool m_sprites = false;
+  bool m_dancerSprites = false;
   bool m_stillSprited = false;
   bool m_stillVbl = false;
   std::optional<core::DoubleBuffer> m_dancerBuffer;

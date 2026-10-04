@@ -175,8 +175,8 @@ void paint(Random &random, const Layer &layer, std::vector<uint8_t> &source) {
   }
 }
 
-void mutate(Random &random, Display &display,
-            std::vector<std::vector<uint8_t>> &sources) {
+void changeSources(Random &random, const Display &display,
+                   std::vector<std::vector<uint8_t>> &sources) {
   for (std::vector<uint8_t> &source : sources) {
     const int changes = random.below(4);
     for (int change = 0; change < changes; ++change) {
@@ -201,6 +201,9 @@ void mutate(Random &random, Display &display,
       paint(random, layer, *source);
     }
   }
+}
+
+void changeLayout(Random &random, Display &display) {
   if (display.layers.empty() || random.below(3) != 0) {
     return;
   }
@@ -225,6 +228,103 @@ void mutate(Random &random, Display &display,
     display.border = static_cast<uint16_t>(random.below(0x1000));
     break;
   }
+}
+
+void mutate(Random &random, Display &display,
+            std::vector<std::vector<uint8_t>> &sources) {
+  changeSources(random, display, sources);
+  changeLayout(random, display);
+}
+
+const uint8_t *spriteImage(Random &random, int width, int height,
+                           std::vector<std::vector<uint8_t>> &images) {
+  const int values = random.below(3) == 0 ? 256 : 40;
+  images.emplace_back(static_cast<std::size_t>(width * height));
+  for (uint8_t &pixel : images.back()) {
+    pixel =
+        random.below(3) == 0 ? 0 : static_cast<uint8_t>(random.below(values));
+  }
+  return images.back().data();
+}
+
+Sprite randomSprite(Random &random, const Layer &layer,
+                    std::vector<std::vector<uint8_t>> &images) {
+  Sprite sprite;
+  sprite.width = static_cast<int16_t>(random.between(1, 12));
+  sprite.height = static_cast<int16_t>(random.between(1, 10));
+  sprite.pixels = spriteImage(random, sprite.width, sprite.height, images);
+  sprite.left = random.between(-6, std::max(layer.sourceColumns, 1) + 2);
+  sprite.top = random.between(-6, std::max(layer.sourceRows, 1) + 2);
+  return sprite;
+}
+
+void addSprites(Random &random, Display &display,
+                std::vector<std::vector<uint8_t>> &images) {
+  for (Layer &layer : display.layers) {
+    const int count = random.below(3) == 0 ? 0 : random.between(1, 4);
+    for (int at = 0; at < count; ++at) {
+      layer.sprites.push_back(randomSprite(random, layer, images));
+    }
+    layer.carriesSprites = !layer.sprites.empty();
+  }
+}
+
+void changeSprites(Random &random, Display &display,
+                   std::vector<std::vector<uint8_t>> &images) {
+  for (Layer &layer : display.layers) {
+    std::vector<Sprite> &sprites = layer.sprites;
+    const int count = static_cast<int>(sprites.size());
+    Sprite *picked =
+        count > 0 ? &sprites[static_cast<std::size_t>(random.below(count))]
+                  : nullptr;
+    switch (random.below(7)) {
+    case 0:
+      if (picked) {
+        picked->left += random.between(-3, 3);
+        picked->top += random.between(-2, 2);
+      }
+      break;
+    case 1:
+      if (count < 6) {
+        sprites.push_back(randomSprite(random, layer, images));
+      }
+      break;
+    case 2:
+      if (picked) {
+        sprites.erase(sprites.begin() + (picked - sprites.data()));
+      }
+      break;
+    case 3:
+      if (count > 1) {
+        std::swap(*picked,
+                  sprites[static_cast<std::size_t>(random.below(count))]);
+      }
+      break;
+    case 4:
+      if (picked) {
+        picked->pixels =
+            spriteImage(random, picked->width, picked->height, images);
+      }
+      break;
+    default:
+      break;
+    }
+    layer.carriesSprites = !sprites.empty();
+  }
+}
+
+int g_scans = 0;
+
+std::size_t countedLeading(const uint8_t *left, const uint8_t *right,
+                           std::size_t count) {
+  ++g_scans;
+  return leadingBytes(left, right, count);
+}
+
+std::size_t countedTrailing(const uint8_t *left, const uint8_t *right,
+                            std::size_t count) {
+  ++g_scans;
+  return trailingBytes(left, right, count);
 }
 
 void applyChanges(const IndexedFrame &frame, std::vector<uint8_t> &screen) {
@@ -311,6 +411,20 @@ SCENARIO("IndexedRasterizer shows what rasterize shows") {
       }
     }
   }
+
+  GIVEN("Several thousand random displays with sprites on their layers") {
+    Random random;
+
+    THEN("Each one matches rasterize") {
+      for (int round = 0; round < 3000; ++round) {
+        std::vector<std::vector<uint8_t>> sources;
+        std::vector<std::vector<uint8_t>> images;
+        Display display = randomDisplay(random, sources);
+        addSprites(random, display, images);
+        REQUIRE(shown(display) == expected(display));
+      }
+    }
+  }
 }
 
 SCENARIO("IndexedRasterizer redraws only what changed since the last frame") {
@@ -330,6 +444,51 @@ SCENARIO("IndexedRasterizer redraws only what changed since the last frame") {
           applyChanges(frame, screen);
           REQUIRE(screen == frame.pixels);
           mutate(random, display, sources);
+        }
+      }
+    }
+  }
+
+  GIVEN("Random displays whose sprites move, change, come and go") {
+    Random random;
+
+    THEN("Each frame matches rasterize and its changes update the last one") {
+      uint32_t revision = 0;
+      for (int round = 0; round < 1500; ++round) {
+        std::vector<std::vector<uint8_t>> sources;
+        std::vector<std::vector<uint8_t>> images;
+        Display display = randomDisplay(random, sources);
+        addSprites(random, display, images);
+        std::vector<uint32_t> revisions(sources.size());
+        for (uint32_t &value : revisions) {
+          value = random.below(3) == 0 ? 0 : ++revision;
+        }
+        IndexedRasterizer rasterizer;
+        IndexedFrame frame;
+        std::vector<uint8_t> screen;
+        for (int step = 0; step < 8; ++step) {
+          for (Layer &shown : display.layers) {
+            for (std::size_t at = 0; at < sources.size(); ++at) {
+              if (sources[at].data() == shown.pixels) {
+                shown.revision = revisions[at];
+              }
+            }
+          }
+          rasterizer.rasterize(display, frame);
+          REQUIRE(colorsOf(frame) == expected(display));
+          applyChanges(frame, screen);
+          REQUIRE(screen == frame.pixels);
+          const std::vector<std::vector<uint8_t>> before = sources;
+          if (random.below(2) == 0) {
+            changeSources(random, display, sources);
+          }
+          changeLayout(random, display);
+          changeSprites(random, display, images);
+          for (std::size_t at = 0; at < sources.size(); ++at) {
+            if (revisions[at] != 0 && sources[at] != before[at]) {
+              revisions[at] = ++revision;
+            }
+          }
         }
       }
     }
@@ -393,6 +552,34 @@ SCENARIO("IndexedRasterizer redraws only what changed since the last frame") {
 
     THEN("A shaken frame moves its rows up or down") {
       REQUIRE(movedRows > 8 * 34 / 2);
+    }
+  }
+
+  GIVEN("A screen narrower than its picture with a sprite on its rows") {
+    std::vector<uint8_t> play = pattern(40, 8, 16);
+    const std::vector<uint8_t> image = pattern(8, 4, 15);
+    Display display = screen(32, 8);
+    Layer playLayer = layer(play, 40, 8, LEVEL_COLORS);
+    playLayer.columns = 32;
+    playLayer.carriesSprites = true;
+    playLayer.sprites.push_back({image.data(), 8, 4, 4, 2});
+    display.layers.push_back(playLayer);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    rasterizer.rasterize(display, frame);
+    applyChanges(frame, shownPixels);
+
+    WHEN("The sprite moves while a hidden column of its rows changes") {
+      play[3 * 40 + 36] ^= 1;
+      display.layers[0].sprites[0].left = 9;
+      rasterizer.rasterize(display, frame);
+      applyChanges(frame, shownPixels);
+
+      THEN("The sprite is shown where it moved to") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
     }
   }
 
@@ -509,9 +696,199 @@ SCENARIO("IndexedRasterizer pans a wide wrapped picture by shifting rows") {
   }
 }
 
+SCENARIO("IndexedRasterizer draws sprites over a picture that did not change") {
+  GIVEN("Two copies of a wrapped graveyard with copper rows sharing a "
+        "revision, a title sprite, an animated hand and a sprite past the "
+        "wrap") {
+    constexpr int SOURCE_WIDTH = 100;
+    constexpr int SOURCE_HEIGHT = 20;
+    constexpr int WIDTH = 37;
+    constexpr int TITLE_X = 9;
+    std::vector<uint8_t> picture = pattern(SOURCE_WIDTH, SOURCE_HEIGHT, 32);
+    for (std::size_t at = 0; at < picture.size(); at += 3) {
+      picture[at] = 0;
+    }
+    const std::array<std::vector<uint8_t>, 2> buffers{picture, picture};
+    std::vector<uint16_t> colors;
+    for (int color = 0; color < 32; ++color) {
+      colors.push_back(static_cast<uint16_t>(0x111 * (color % 16) + color));
+    }
+    Display display = screen(WIDTH, SOURCE_HEIGHT);
+    Layer graveyard = layer(buffers[0], SOURCE_WIDTH, SOURCE_HEIGHT, colors);
+    graveyard.columns = WIDTH;
+    graveyard.wrap = true;
+    graveyard.revision = 7;
+    graveyard.carriesSprites = true;
+    for (int row = 0; row < 16; ++row) {
+      graveyard.rowColors.push_back(
+          {row, 0, static_cast<uint16_t>(0x00F + 0x100 * (row % 6))});
+    }
+    display.layers.push_back(graveyard);
+    std::vector<uint8_t> title = pattern(16, 4, 9);
+    std::array<std::vector<uint8_t>, 2> hands{pattern(8, 4, 3),
+                                              pattern(8, 4, 5)};
+    std::array<std::vector<uint8_t>, 5> wrapped;
+    for (std::size_t at = 0; at < wrapped.size(); ++at) {
+      wrapped[at].assign(8 * 2, static_cast<uint8_t>(at + 24));
+      wrapped[at][3] = 0;
+    }
+    IndexedRasterizer rasterizer(countedLeading, countedTrailing);
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    int offset = 0;
+    int pannedFrames = 0;
+    int shiftedRows = 0;
+    int drawnPixels = 0;
+    int pannedScans = 0;
+    int stillChanges = 0;
+    for (int step = 0; step < 60; ++step) {
+      const bool pans = step < 50;
+      const bool fades = step >= 54;
+      const int moved = pans ? 1 + step % 2 : 0;
+      offset += moved;
+      Layer &shown = display.layers[0];
+      shown.pixels = buffers[static_cast<std::size_t>(step % 2)].data();
+      shown.sourceX = offset;
+      shown.sprites = {
+          {title.data(), 16, 4, std::min(offset, 60) + TITLE_X, 4},
+          {hands[static_cast<std::size_t>(offset / 4 % 2)].data(), 8, 4, 70,
+           12},
+          {wrapped[static_cast<std::size_t>(offset / 5 % 5)].data(), 8, 2, 2,
+           2}};
+      if (fades) {
+        for (uint16_t &color : shown.palette) {
+          color = static_cast<uint16_t>(color & 0xEEE) >> 1;
+        }
+      }
+      g_scans = 0;
+      rasterizer.rasterize(display, frame);
+      REQUIRE(colorsOf(frame) == expected(display));
+      applyChanges(frame, shownPixels);
+      REQUIRE(shownPixels == frame.pixels);
+      if (pans && step > 0) {
+        ++pannedFrames;
+        pannedScans += g_scans;
+        for (const RowChange &change : frame.changes) {
+          shiftedRows += change.shift == -moved ? 1 : 0;
+          for (const Span &span : change.spans) {
+            drawnPixels += std::max(0, span.last - span.first);
+          }
+        }
+      }
+      if (!pans) {
+        stillChanges += static_cast<int>(std::count_if(
+            frame.changes.begin(), frame.changes.end(), isChanged));
+      }
+    }
+
+    THEN("Panned frames compare no picture rows and draw only a few columns") {
+      REQUIRE(pannedScans == 0);
+      REQUIRE(shiftedRows == pannedFrames * SOURCE_HEIGHT);
+      REQUIRE(drawnPixels < pannedFrames * SOURCE_HEIGHT * WIDTH / 3);
+    }
+
+    THEN("Frames that only change colours or nothing redraw no row") {
+      REQUIRE(stillChanges == 0);
+    }
+  }
+
+  GIVEN("A wrapped picture shown wider than itself with a tall sprite") {
+    const std::vector<uint8_t> picture = pattern(20, 12, 16);
+    const std::vector<uint8_t> image = pattern(4, 6, 13);
+    const std::vector<uint8_t> other = pattern(4, 6, 11);
+    Display display = screen(37, 10);
+    Layer wrapped = layer(picture, 20, 12, LEVEL_COLORS);
+    wrapped.columns = 37;
+    wrapped.rows = 10;
+    wrapped.sourceX = 5;
+    wrapped.wrap = true;
+    wrapped.carriesSprites = true;
+    wrapped.sprites = {{image.data(), 4, 6, 8, 2}};
+    display.layers.push_back(wrapped);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    rasterizer.rasterize(display, frame);
+    applyChanges(frame, shownPixels);
+
+    WHEN("The sprite changes where each row shows it twice") {
+      display.layers[0].sprites = {{other.data(), 4, 6, 9, 2}};
+      rasterizer.rasterize(display, frame);
+      applyChanges(frame, shownPixels);
+
+      THEN("Both of its copies change") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+  }
+
+  GIVEN("A street that scrolls left under walking sprites") {
+    Random random;
+    std::vector<uint8_t> street = pattern(64, 24, 16);
+    std::vector<std::vector<uint8_t>> images;
+    Display display = screen(48, 24);
+    Layer streetLayer = layer(street, 64, 24, LEVEL_COLORS);
+    streetLayer.sourceX = 8;
+    streetLayer.columns = 48;
+    streetLayer.carriesSprites = true;
+    streetLayer.revision = 1;
+    display.layers.push_back(streetLayer);
+    for (int at = 0; at < 3; ++at) {
+      display.layers[0].sprites.push_back(
+          {spriteImage(random, 8, 10, images), 8, 10, 12 + 14 * at, 6 + at});
+    }
+    IndexedRasterizer rasterizer(countedLeading, countedTrailing);
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    int shiftedRows = 0;
+    int stillScans = 0;
+    for (int step = 0; step < 12; ++step) {
+      if (step % 2 == 1) {
+        for (int y = 0; y < 24; ++y) {
+          uint8_t *row = street.data() + y * 64;
+          std::memmove(row, row + SHIFT_STEP, 64 - SHIFT_STEP);
+          std::fill(row + 64 - SHIFT_STEP, row + 64,
+                    static_cast<uint8_t>(y % 16));
+        }
+        ++display.layers[0].revision;
+      }
+      std::vector<Sprite> &sprites = display.layers[0].sprites;
+      sprites[0].left += 1;
+      sprites[1].top = 6 + step % 3;
+      if (step % 3 == 2) {
+        sprites[2].pixels = spriteImage(random, 8, 10, images);
+      }
+      g_scans = 0;
+      rasterizer.rasterize(display, frame);
+      REQUIRE(colorsOf(frame) == expected(display));
+      applyChanges(frame, shownPixels);
+      REQUIRE(shownPixels == frame.pixels);
+      if (step > 0 && step % 2 == 0) {
+        stillScans += g_scans;
+      }
+      if (step % 2 == 1) {
+        shiftedRows += static_cast<int>(
+            std::count_if(frame.changes.begin(), frame.changes.end(),
+                          [](const RowChange &change) {
+                            return change.shift == -SHIFT_STEP;
+                          }));
+      }
+    }
+
+    THEN("Scrolled frames move the rows under the sprites too") {
+      REQUIRE(shiftedRows > 6 * 24 / 2);
+    }
+
+    THEN("Frames that only move sprites compare no street rows") {
+      REQUIRE(stillScans == 0);
+    }
+  }
+}
+
 SCENARIO("IndexedRasterizer pans layers in all combinations") {
   GIVEN("A play screen over a wider picture and a panel below it") {
-    const std::vector<uint8_t> play = pattern(40, 8, 16);
+    std::vector<uint8_t> play = pattern(40, 8, 16);
     const std::vector<uint8_t> panel = pattern(36, 3, 8);
     Display display = screen(32, 11, 0x0F0);
     Layer playLayer = layer(play, 40, 8, LEVEL_COLORS);
@@ -538,6 +915,26 @@ SCENARIO("IndexedRasterizer pans layers in all combinations") {
       show();
 
       THEN("Both are shown where they moved to") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+
+    WHEN("The play screen pans while its picture changes at one end and a "
+         "sprite at the other") {
+      const std::vector<uint8_t> first = pattern(4, 3, 9);
+      const std::vector<uint8_t> second = pattern(4, 3, 7);
+      display.layers[0].carriesSprites = true;
+      display.layers[0].sprites = {{first.data(), 4, 3, 32, 2}};
+      show();
+      display.layers[0].sourceX += 1;
+      display.layers[0].sprites = {{second.data(), 4, 3, 32, 2}};
+      for (int y = 2; y < 5; ++y) {
+        play[static_cast<std::size_t>(y * 40 + 6)] ^= 1;
+      }
+      show();
+
+      THEN("Both changes are shown") {
         REQUIRE(colorsOf(frame) == expected(display));
         REQUIRE(shownPixels == frame.pixels);
       }
@@ -613,6 +1010,44 @@ SCENARIO("IndexedRasterizer redraws copper rows whose colours change") {
       show();
 
       THEN("The uncovered columns show each row's copper colour") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+
+    WHEN("The copper changes move to other colours and rows") {
+      shown.rowColors = {{0, 1, 0xF00},
+                         {1, 2, 0x0F0},
+                         {2, 1, 0x00F},
+                         {3, 2, 0xFF0},
+                         {4, 1, 0x0FF}};
+      show();
+
+      THEN("The rows that lost their copper colours show the picture's") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+
+    WHEN("The picture pans under a sprite on rows with their own copper "
+         "colours") {
+      shown.rowColors = {{0, 1, 0xF00},
+                         {1, 2, 0x0F0},
+                         {2, 1, 0x00F},
+                         {3, 2, 0xFF0},
+                         {4, 1, 0x0FF}};
+      std::vector<uint8_t> image(4 * 5);
+      for (std::size_t at = 0; at < image.size(); ++at) {
+        image[at] = static_cast<uint8_t>(1 + at % 2);
+      }
+      shown.carriesSprites = true;
+      shown.sprites = {{image.data(), 4, 5, 17, 0}};
+      show();
+      shown.sourceX += 1;
+      shown.sprites[0].left += 1;
+      show();
+
+      THEN("The sprite shows each row's copper colours") {
         REQUIRE(colorsOf(frame) == expected(display));
         REQUIRE(shownPixels == frame.pixels);
       }

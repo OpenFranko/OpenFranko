@@ -16,6 +16,7 @@ GameOverState::GameOverState(systems::graphics::Monitor &monitor,
                       options.ntsc),
           street::scenes::GameOverScene::SCREEN_HEIGHT, options.ntsc)) {
   m_monitor.setNtsc(options.ntsc);
+  m_scene.showSprites(monitor.showsSprites() && !monitor.readsBuffersLive());
 }
 
 std::optional<EngineStateId> GameOverState::update() {

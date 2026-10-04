@@ -98,10 +98,11 @@ EndingScene::EndingScene(StreetHost &host, session::GameSession &session,
       m_display(0, 0), m_ntsc(ntsc),
       m_displayLine(pictureLine(DISPLAY_LINE, ntsc)) {}
 
-void EndingScene::showSprites(bool on) {
-  m_sprites = on;
+void EndingScene::showSprites(bool stills, bool dancers) {
+  m_sprites = stills;
+  m_dancerSprites = dancers;
   if (m_dancerBuffer) {
-    m_dancerBuffer->setSprites(on);
+    m_dancerBuffer->setSprites(dancers);
   }
 }
 
@@ -226,7 +227,7 @@ void EndingScene::buildOutput(systems::graphics::Display &display,
                                                 ? m_dancerBuffer->upcomingView()
                                                 : m_dancerBuffer->shownView();
       dancer = &view.pixels;
-      layer.carriesSprites = m_sprites;
+      layer.carriesSprites = m_dancerSprites;
       layer.sprites = view.sprites;
     } else if (number == m_bobScreen && m_stillSprited) {
       layer.carriesSprites = true;
@@ -455,7 +456,7 @@ void EndingScene::runBasic(int16_t joystick) {
       openScreen(1, DANCER_TOP, DANCER_HEIGHT, DANCER_PALETTE);
       m_screens[1].hidden = true;
       m_dancerBuffer.emplace(m_screens[1].surface);
-      m_dancerBuffer->setSprites(m_sprites);
+      m_dancerBuffer->setSprites(m_dancerSprites);
       m_bobScreen = 1;
       flow = hold(DOUBLE_BUFFER_VBLS, Step::Dance);
       break;

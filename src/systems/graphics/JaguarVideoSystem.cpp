@@ -551,6 +551,8 @@ bool VideoSystem::readsBuffersLive() const { return true; }
 
 bool VideoSystem::showsSprites() const { return true; }
 
+bool VideoSystem::diffsFrames() const { return false; }
+
 int VideoSystem::refreshRate() const { return m_window->geometry.hertz; }
 
 void VideoSystem::present() {

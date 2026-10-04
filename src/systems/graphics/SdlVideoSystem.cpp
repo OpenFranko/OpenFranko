@@ -143,6 +143,8 @@ VideoSystem::~VideoSystem() = default;
 
 bool VideoSystem::showsSprites() const { return true; }
 
+bool VideoSystem::diffsFrames() const { return false; }
+
 void VideoSystem::present() {
   if (m_window->toggleWanted.exchange(false)) {
     m_window->toggleFullscreen(refreshRate());

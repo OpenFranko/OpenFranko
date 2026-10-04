@@ -2,6 +2,7 @@
 
 #include "../../../../../src/engine/effects/color/Rainbow.h"
 #include "../../../../../src/engine/street/ui/StageFrame.h"
+#include "../../../../../src/systems/graphics/IndexedRasterizer.h"
 #include "../../../../../src/systems/input/ControllerSystem.h"
 #include "../core/box.h"
 #include "FakeStreetHost.h"
@@ -67,6 +68,14 @@ public:
 
   Picture loadPanelPicture(int) override { return box(304, 48, 0, 0, 7); }
 };
+
+std::vector<uint32_t> colorsOf(const IndexedFrame &frame) {
+  std::vector<uint32_t> argb;
+  for (const uint8_t pixel : frame.pixels) {
+    argb.push_back(toArgb(frame.palette[pixel]));
+  }
+  return argb;
+}
 
 GameSession afterStage() {
   GameSession session;
@@ -370,6 +379,51 @@ SCENARIO("KLIKER, Fade 5 and SCICH close the scene") {
           graveyard.run(1);
           REQUIRE(graveyard.scene.isFinished());
         }
+      }
+    }
+  }
+}
+
+SCENARIO("Bobs shown as sprites look the same as bobs drawn in game over") {
+  GIVEN("Two game overs, one on a monitor that shows sprites") {
+    Graveyard drawn;
+    Graveyard sprited;
+    sprited.scene.showSprites(true);
+
+    WHEN("Both run to the end, with fire pressed after the pan") {
+      int spriteFrames = 0;
+      int keptRevisions = 0;
+      uint32_t lastRevision = 0;
+      IndexedRasterizer rasterizer;
+      IndexedFrame indexed;
+      std::vector<uint32_t> drawnFrame;
+      std::vector<uint32_t> spritedFrame;
+      for (int frame = 0; frame < 2000 && !drawn.scene.isFinished(); ++frame) {
+        const int16_t joystick =
+            frame > OPENED_FRAME + PAN_FRAMES + 20 ? JOY_FIRE : 0;
+        drawn.scene.advance(joystick);
+        sprited.scene.advance(joystick);
+        drawn.scene.compose(drawnFrame);
+        sprited.scene.compose(spritedFrame);
+        REQUIRE(spritedFrame == drawnFrame);
+        const Display shown = sprited.scene.output();
+        rasterizer.rasterize(shown, indexed);
+        REQUIRE(colorsOf(indexed) == spritedFrame);
+        rasterize(drawn.scene.upcomingOutput(), drawnFrame);
+        rasterize(sprited.scene.upcomingOutput(), spritedFrame);
+        REQUIRE(spritedFrame == drawnFrame);
+        if (!shown.layers.empty() && !shown.layers[0].sprites.empty()) {
+          ++spriteFrames;
+          keptRevisions += shown.layers[0].revision == lastRevision ? 1 : 0;
+          lastRevision = shown.layers[0].revision;
+        }
+      }
+
+      THEN("Both end, the bobs shown as sprites over one unchanged picture") {
+        REQUIRE(drawn.scene.isFinished());
+        REQUIRE(sprited.scene.isFinished());
+        REQUIRE(spriteFrames > PAN_FRAMES);
+        REQUIRE(keptRevisions == spriteFrames - 1);
       }
     }
   }
