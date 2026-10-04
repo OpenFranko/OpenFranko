@@ -1,7 +1,7 @@
-#include "HighScoreStorage.h"
-#include "HighScoreTable.h"
+#include "../HighScoreStorage.h"
+#include "../HighScoreTable.h"
 
-#include "../../../systems/jaguar/Eeprom.h"
+#include "../../../../systems/jaguar/Eeprom.h"
 
 namespace openfranko::src::engine::street::core {
 

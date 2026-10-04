@@ -1,6 +1,6 @@
-#include "Lz4.h"
+#include "../Lz4.h"
 
-#include "../../systems/jaguar/Blitter.h"
+#include "../../../systems/jaguar/Blitter.h"
 
 namespace openfranko::src::engine::assets {
 

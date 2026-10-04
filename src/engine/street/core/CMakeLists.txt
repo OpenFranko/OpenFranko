@@ -26,7 +26,7 @@ add_library(StreetCore
 target_link_libraries(StreetCore PUBLIC Amal Common Graphics)
 
 if(JAGUAR)
-    target_sources(StreetCore PRIVATE JaguarHighScoreFile.cpp)
+    target_sources(StreetCore PRIVATE jaguar/JaguarHighScoreFile.cpp)
     target_link_libraries(StreetCore PRIVATE JaguarHardware)
 else()
     target_sources(StreetCore PRIVATE HighScoreFile.cpp)

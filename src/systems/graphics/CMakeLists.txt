@@ -14,7 +14,7 @@ add_library(Graphics
 target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 if(JAGUAR)
-    target_sources(Graphics PRIVATE JaguarPixelOps.cpp)
+    target_sources(Graphics PRIVATE jaguar/JaguarPixelOps.cpp)
     target_link_libraries(Graphics PRIVATE JaguarHardware)
 else()
     target_sources(Graphics PRIVATE PixelOps.cpp)
@@ -22,19 +22,19 @@ endif()
 
 if(JAGUAR)
     add_library(VideoSystem
-        JaguarVideoSystem.cpp
-        VideoSystem.h)
+        VideoSystem.h
+        jaguar/JaguarVideoSystem.cpp)
     target_link_libraries(VideoSystem PUBLIC Graphics PRIVATE JaguarHardware)
 elseif(DJGPP)
     add_library(VideoSystem
-        AllegroVideoSystem.cpp
         VideoSystem.cpp
-        VideoSystem.h)
+        VideoSystem.h
+        allegro/AllegroVideoSystem.cpp)
     target_link_libraries(VideoSystem PUBLIC Graphics PRIVATE ${ALLEGRO_TARGET})
 else()
     add_library(VideoSystem
-        SdlVideoSystem.cpp
         VideoSystem.cpp
-        VideoSystem.h)
+        VideoSystem.h
+        sdl/SdlVideoSystem.cpp)
     target_link_libraries(VideoSystem PUBLIC Graphics PRIVATE ${SDL2_TARGET})
 endif()

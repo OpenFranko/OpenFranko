@@ -1,8 +1,8 @@
-#include "GameFiles.h"
+#include "../GameFiles.h"
 
-#include "../../systems/jaguar/Hardware.h"
-#include "../../systems/jaguar/Runtime.h"
-#include "PackedFiles.h"
+#include "../../../systems/jaguar/Hardware.h"
+#include "../../../systems/jaguar/Runtime.h"
+#include "../PackedFiles.h"
 
 namespace openfranko::src::engine::assets {
 namespace {

@@ -11,7 +11,7 @@ if(JAGUAR)
     target_include_directories(Audio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
     add_library(AudioSystem
         AudioSystem.h
-        JaguarAudioSystem.cpp)
+        jaguar/JaguarAudioSystem.cpp)
     target_link_libraries(AudioSystem PUBLIC Audio PRIVATE JaguarHardware)
     return()
 endif()
@@ -31,11 +31,11 @@ target_link_libraries(Audio PRIVATE ${XMP_TARGET})
 
 if(DJGPP)
     add_library(AudioSystem
-        AllegroAudioDevice.cpp
         AudioDevice.h
         AudioOutput.h
         AudioSystem.cpp
-        AudioSystem.h)
+        AudioSystem.h
+        allegro/AllegroAudioDevice.cpp)
     target_link_libraries(AudioSystem PUBLIC Audio PRIVATE ${ALLEGRO_TARGET})
 else()
     add_library(AudioSystem
@@ -43,6 +43,6 @@ else()
         AudioOutput.h
         AudioSystem.cpp
         AudioSystem.h
-        SdlAudioDevice.cpp)
+        sdl/SdlAudioDevice.cpp)
     target_link_libraries(AudioSystem PUBLIC Audio PRIVATE ${SDL2_TARGET})
 endif()
