@@ -12,9 +12,6 @@ struct GameOptions {
   bool bass = false;
   bool mono = false;
 #if defined(__DJGPP__) || defined(DJGPP)
-  // Real DOS/FreeDOS setups commonly run at 60 Hz. DOSBox defaults often
-  // differ, so a DOS build must not silently start in PAL mode and run the
-  // intro too quickly.
   bool ntsc = true;
 #else
   bool ntsc = false;
