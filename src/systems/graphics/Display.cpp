@@ -190,9 +190,14 @@ void rasterize(const Display &display, std::vector<uint32_t> &argb) {
       for (int x = firstColumn; x < lastColumn; ++x) {
         int column = layer.sourceX + x - layer.left;
         int y = sourceRow;
-        if (layer.wrap && column >= layer.sourceColumns) {
-          column -= layer.sourceColumns;
-          y += layer.sourceStep;
+        if (layer.wrap && layer.sourceColumns > 0) {
+          while (column < 0) {
+            column += layer.sourceColumns;
+          }
+          while (column >= layer.sourceColumns) {
+            column -= layer.sourceColumns;
+            y += layer.sourceStep;
+          }
         }
         const bool inside = y >= 0 && y < layer.sourceRows && column >= 0 &&
                             column < layer.sourceColumns;

@@ -63,6 +63,21 @@ int sourceRowOf(const Layer &layer, int row) {
          (layer.repeat > 1 ? line / layer.repeat : line) * layer.sourceStep;
 }
 
+int wrappedColumn(const Layer &layer, int column, int &line) {
+  if (!layer.wrap || layer.sourceColumns <= 0) {
+    return column;
+  }
+  int wrapped = column;
+  while (wrapped < 0) {
+    wrapped += layer.sourceColumns;
+  }
+  while (wrapped >= layer.sourceColumns) {
+    wrapped -= layer.sourceColumns;
+    line += layer.sourceStep;
+  }
+  return wrapped;
+}
+
 bool coversColumns(const Display &display, const Layer &layer) {
   if (layer.left > 0 || layer.left + layer.columns < display.width) {
     return false;
@@ -923,6 +938,24 @@ Span IndexedRasterizer::changedSpan(const Display &display, std::size_t index,
     if (low >= high || line < 0 || line >= layer.sourceRows) {
       return;
     }
+    if (layer.wrap) {
+      for (int x = low; x < high; ++x) {
+        int sourceLine = line;
+        const int sourceColumn =
+            wrappedColumn(layer, column + x - first, sourceLine);
+        if (sourceLine < 0 || sourceLine >= layer.sourceRows) {
+          continue;
+        }
+        const std::size_t offset = static_cast<std::size_t>(sourceLine) *
+                                       static_cast<std::size_t>(layer.stride) +
+                                   static_cast<std::size_t>(sourceColumn);
+        if (layer.pixels[offset] != m_saved[index].data()[offset]) {
+          changed.first = std::min(changed.first, x);
+          changed.last = std::max(changed.last, x + 1);
+        }
+      }
+      return;
+    }
     const std::size_t offset = static_cast<std::size_t>(line) *
                                    static_cast<std::size_t>(layer.stride) +
                                static_cast<std::size_t>(column + low - first);
@@ -1267,6 +1300,24 @@ bool IndexedRasterizer::hasChanged(const Display &display, int row) const {
     const int sourceRow = sourceRowOf(layer, row);
     const auto changed = [&](int from, int to, int line, int column) {
       if (from >= to || line < 0 || line >= layer.sourceRows) {
+        return false;
+      }
+      if (layer.wrap) {
+        for (int x = from; x < to; ++x) {
+          int sourceLine = line;
+          const int sourceColumn =
+              wrappedColumn(layer, column + x - from, sourceLine);
+          if (sourceLine < 0 || sourceLine >= layer.sourceRows) {
+            continue;
+          }
+          const std::size_t offset =
+              static_cast<std::size_t>(sourceLine) *
+                  static_cast<std::size_t>(layer.stride) +
+              static_cast<std::size_t>(sourceColumn);
+          if (layer.pixels[offset] != m_saved[index].data()[offset]) {
+            return true;
+          }
+        }
         return false;
       }
       const std::size_t offset = static_cast<std::size_t>(line) *
@@ -1661,9 +1712,20 @@ uint8_t IndexedRasterizer::drawSpan(const Layer &layer, const Placed &placed,
     }
     const std::size_t count =
         static_cast<std::size_t>(clippedLast - clippedFirst);
+    int sourceColumn = column + (clippedFirst - first);
+    int sourceLine = line;
+    if (layer.wrap) {
+      sourceColumn = wrappedColumn(layer, sourceColumn, sourceLine);
+    }
+    if (sourceLine < 0 || sourceLine >= layer.sourceRows) {
+      if (layer.wrap) {
+        fill(clippedFirst, clippedLast);
+      }
+      return 0;
+    }
     const uint8_t *in = layer.pixels +
-                        static_cast<std::ptrdiff_t>(line) * layer.stride +
-                        column + (clippedFirst - first);
+                        static_cast<std::ptrdiff_t>(sourceLine) * layer.stride +
+                        sourceColumn;
     if (shown.block) {
       return copyMasked(out + clippedFirst, in, count, shown.keep, shown.base,
                         shown.checked);
@@ -1753,11 +1815,29 @@ void IndexedRasterizer::saveWindow(const Display &display, std::size_t index,
     if (low >= high || line < 0 || line >= layer.sourceRows) {
       return;
     }
-    const std::size_t offset = static_cast<std::size_t>(line) *
-                                   static_cast<std::size_t>(layer.stride) +
-                               static_cast<std::size_t>(column + low - first);
-    std::memcpy(m_saved[index].data() + offset, layer.pixels + offset,
-                static_cast<std::size_t>(high - low));
+    int sourceLine = line;
+    int sourceColumn = column + low - first;
+    if (layer.wrap) {
+      sourceColumn = wrappedColumn(layer, sourceColumn, sourceLine);
+    }
+    if (sourceLine < 0 || sourceLine >= layer.sourceRows) {
+      return;
+    }
+    std::size_t offset = static_cast<std::size_t>(sourceLine) *
+                             static_cast<std::size_t>(layer.stride) +
+                         static_cast<std::size_t>(sourceColumn);
+    const std::size_t count = static_cast<std::size_t>(high - low);
+    if (layer.wrap && sourceColumn + count > layer.sourceColumns) {
+      const std::size_t tail =
+          static_cast<std::size_t>(layer.sourceColumns - sourceColumn);
+      std::memcpy(m_saved[index].data() + offset, layer.pixels + offset, tail);
+      offset = static_cast<std::size_t>(sourceLine + layer.sourceStep) *
+               static_cast<std::size_t>(layer.stride);
+      std::memcpy(m_saved[index].data() + offset, layer.pixels + offset,
+                  count - tail);
+      return;
+    }
+    std::memcpy(m_saved[index].data() + offset, layer.pixels + offset, count);
   };
   copy(placed.start, placed.end, sourceRow, placed.start + placed.shift);
   if (layer.wrap) {

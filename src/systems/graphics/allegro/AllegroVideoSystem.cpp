@@ -378,6 +378,11 @@ bool waitDisplay(int timeout) {
   return true;
 }
 
+int wrapOffset(int value, int width) {
+  const int wrapped = value % width;
+  return wrapped < 0 ? wrapped + width : wrapped;
+}
+
 } // namespace
 
 struct VideoSystem::Window {
@@ -485,7 +490,12 @@ void VideoSystem::present() {
   bool cleared = fresh || letterbox != window.letterbox;
   const int pan =
       !cleared && step == 1 && copyable ? panOf(frame, placement.height) : 0;
-  const bool scrolls = pan != 0 && window.limit >= SCREEN_WIDTH;
+  const bool wrappedPastVirtualWidth = std::any_of(
+      m_shown.layers.begin(), m_shown.layers.end(), [](const Layer &layer) {
+        return layer.wrap && layer.sourceColumns > VIRTUAL_WIDTH;
+      });
+  const bool scrolls =
+      pan != 0 && window.limit >= SCREEN_WIDTH && !wrappedPastVirtualWidth;
   cleared = cleared || (!scrolls && window.origin != 0 && movesRows(frame));
   window.exposed = {};
   if (cleared) {
@@ -594,8 +604,9 @@ void VideoSystem::Window::prepareScroll() {
     latch(false);
     rebaseFrom = NO_REBASE;
   }
+  const int startPixel = wrapOffset(target, VIRTUAL_W);
   const uintptr_t start = reinterpret_cast<uintptr_t>(screen->line[0]) +
-                          static_cast<uintptr_t>(target / PLANES);
+                          static_cast<uintptr_t>(startPixel / PLANES);
   outportb(CRTC_PORT, START_HIGH);
   outportb(CRTC_PORT + 1, static_cast<int>(start >> BYTE_BITS) & 0xFF);
   outportb(CRTC_PORT, START_LOW);
@@ -607,8 +618,9 @@ void VideoSystem::Window::writeStrips() {
     columns.clear();
   }
   const auto add = [&](int column, int source) {
-    strips[static_cast<std::size_t>(column & (PLANES - 1))].push_back(
-        {column / PLANES, source});
+    const int wrapped = wrapOffset(column, VIRTUAL_WIDTH);
+    strips[static_cast<std::size_t>(wrapped & (PLANES - 1))].push_back(
+        {wrapped / PLANES, source});
   };
   const int moved = exposed.last - exposed.first;
   const bool rightward = exposed.first == 0;
@@ -677,7 +689,7 @@ void VideoSystem::Window::draw() {
   outportb(GRAPHICS_PORT, MODE_REGISTER);
   mode = inportb(GRAPHICS_PORT + 1);
   latched = false;
-  const int left = origin + placement.x;
+  const int left = wrapOffset(origin + placement.x, VIRTUAL_W);
   const auto lineStart = [&](int row) {
     return reinterpret_cast<uintptr_t>(screen->line[placement.y + row]);
   };
