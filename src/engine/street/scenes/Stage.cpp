@@ -393,6 +393,7 @@ void Stage::sys() {
     global(amal::RN) = 0;
     m_escape = true;
     m_machine.freezeAll();
+    m_loading.clear();
     break;
   case session::SystemKey::None:
   case session::SystemKey::Other:

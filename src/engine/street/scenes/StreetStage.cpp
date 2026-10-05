@@ -800,6 +800,15 @@ void StreetStage::runBasic(const StreetInput &input) {
       m_step = Step::Referee;
       break;
     case Step::Loading:
+      if (m_session.keyLatch == session::SystemKey::Escape) {
+        m_session.keyLatch = session::SystemKey::None;
+        global(amal::RN) = 0;
+        m_escape = true;
+        m_machine.freezeAll();
+        m_loading.clear();
+        gameOver();
+        break;
+      }
       if (m_loading.advance(m_panel.get())) {
         m_step = m_afterLoading;
       } else {
