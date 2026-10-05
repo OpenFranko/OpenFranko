@@ -65,3 +65,10 @@ target_link_libraries(${STREET_ENDING_CREDITS_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain StreetCore)
 add_test(NAME ${STREET_ENDING_CREDITS_TEST_TARGET}
     COMMAND ${STREET_ENDING_CREDITS_TEST_TARGET})
+
+set(SYSTEM_TEXT_TEST_TARGET systemTextTest)
+add_executable(${SYSTEM_TEXT_TEST_TARGET}
+    systemTextTest.cpp)
+target_link_libraries(${SYSTEM_TEXT_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain StreetCore)
+add_test(NAME ${SYSTEM_TEXT_TEST_TARGET} COMMAND ${SYSTEM_TEXT_TEST_TARGET})

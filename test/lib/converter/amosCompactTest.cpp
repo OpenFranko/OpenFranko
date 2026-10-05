@@ -491,3 +491,97 @@ SCENARIO("AMOS Compact decompression rejects invalid input") {
     }
   }
 }
+
+SCENARIO("AMOS Compact gives a 6-bitplane picture half-bright colours") {
+  GIVEN("A 6-bitplane screen whose colours 1 and 2 are white and red") {
+    std::vector<uint8_t> data(90, 0);
+    data[0] = 0x12;
+    data[1] = 0x03;
+    data[2] = 0x19;
+    data[3] = 0x90;
+    data[28] = 0x0F;
+    data[29] = 0xFF;
+    data[30] = 0x0F;
+    data[31] = 0x00;
+    auto bitmapData = buildPackedBitmap(1, 1, 1, 6, {0x80}, {0x00}, {0x00});
+    data.insert(data.end(), bitmapData.begin(), bitmapData.end());
+
+    WHEN("Decompressing") {
+      auto bmp = decompress(data);
+
+      THEN("The BMP has 64 colours") {
+        REQUIRE(LittleEndianReader(bmp).readUint32(46) == 64);
+      }
+
+      THEN("Colours 32 to 63 are the first 32 at half brightness") {
+        auto black = bmpPalette(bmp, 32);
+        REQUIRE(black.r == 0);
+        REQUIRE(black.g == 0);
+        REQUIRE(black.b == 0);
+
+        auto grey = bmpPalette(bmp, 33);
+        REQUIRE(grey.r == 0x77);
+        REQUIRE(grey.g == 0x77);
+        REQUIRE(grey.b == 0x77);
+
+        auto darkRed = bmpPalette(bmp, 34);
+        REQUIRE(darkRed.r == 0x77);
+        REQUIRE(darkRed.g == 0);
+        REQUIRE(darkRed.b == 0);
+      }
+
+      THEN("A pixel set in all six planes uses colour 63") {
+        REQUIRE(bmpPixel(bmp, 0, 0) == 63);
+        REQUIRE(bmpPixel(bmp, 1, 0) == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("AMOS Compact reads a new mask after every eight rows") {
+  GIVEN("A 16-row bitmap whose second pointer bit loads a mask that reads a "
+        "fresh value on row 8") {
+    auto data =
+        buildPackedBitmap(1, 1, 16, 1, {0x00, 0xAA}, {0x00, 0x80}, {0x40});
+
+    WHEN("Decompressing") {
+      auto bmp = decompress(data);
+
+      THEN("Rows 0 to 7 repeat the first value") {
+        for (int y = 0; y < 8; ++y) {
+          for (int x = 0; x < 8; ++x) {
+            REQUIRE(bmpPixel(bmp, x, y) == 0);
+          }
+        }
+      }
+
+      THEN("Rows 8 to 15 repeat the fresh value 0xAA") {
+        for (int y = 8; y < 16; ++y) {
+          for (int x = 0; x < 8; ++x) {
+            REQUIRE(bmpPixel(bmp, x, y) == (x % 2 == 0 ? 1 : 0));
+          }
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("AMOS Compact refuses bitmaps too large to unpack") {
+  GIVEN("A bitmap 8192 cells, 65536 pixels, wide") {
+    auto data = buildPackedBitmap(8192, 1, 1, 1, {0x00}, {0x00}, {0x00});
+
+    THEN("It throws, naming the size") {
+      REQUIRE_THROWS_WITH(decompress(data),
+                          "Bitmap dimensions out of range: 65536x1");
+    }
+  }
+
+  GIVEN("A bitmap of 65528 by 1025 pixels, past 64 megapixels") {
+    auto data = buildPackedBitmap(8191, 1, 1025, 1, {0x00}, {0x00}, {0x00});
+
+    THEN("It throws, naming the size") {
+      REQUIRE_THROWS_WITH(decompress(data),
+                          "Bitmap is implausibly large: 65528x1025");
+    }
+  }
+}

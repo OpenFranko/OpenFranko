@@ -75,7 +75,7 @@ jobs:
       - name: Build
         run: cmake --build build -j "$(nproc)"
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --output-on-failure -j "$(nproc)"
       - name: Report
         run: |
           mkdir -p coverage

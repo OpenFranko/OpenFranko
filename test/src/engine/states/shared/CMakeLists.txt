@@ -30,3 +30,18 @@ target_link_libraries(${ENGINE_STREET_HOST_TEST_TARGET}
             packedArchive)
 add_test(NAME ${ENGINE_STREET_HOST_TEST_TARGET}
     COMMAND ${ENGINE_STREET_HOST_TEST_TARGET})
+
+set(STEP_LOADER_TEST_TARGET stepLoaderTest)
+add_executable(${STEP_LOADER_TEST_TARGET}
+    stepLoaderTest.cpp)
+target_link_libraries(${STEP_LOADER_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets StatesShared packedArchive)
+add_test(NAME ${STEP_LOADER_TEST_TARGET} COMMAND ${STEP_LOADER_TEST_TARGET})
+
+set(INTRO_STRIP_TEST_TARGET introStripTest)
+add_executable(${INTRO_STRIP_TEST_TARGET}
+    introStripTest.cpp)
+target_link_libraries(${INTRO_STRIP_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets EffectsSequences Graphics
+            StatesShared)
+add_test(NAME ${INTRO_STRIP_TEST_TARGET} COMMAND ${INTRO_STRIP_TEST_TARGET})

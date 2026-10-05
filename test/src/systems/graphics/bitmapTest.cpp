@@ -5,6 +5,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <cstdint>
+#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -182,6 +183,76 @@ SCENARIO("mirrored turns a picture round its hot spot") {
         REQUIRE(flipped.height == 2);
         REQUIRE(flipped.palette == picture.palette);
       }
+    }
+  }
+}
+
+SCENARIO("readIndexedBitmap refuses headers it cannot use") {
+  GIVEN("Bitmaps with an old header, no pixels or too many colours") {
+    THEN("A header shorter than 40 bytes is refused") {
+      std::vector<uint8_t> file = BitmapFile().bytes();
+      put(file, 14, 4, 12);
+      REQUIRE_THROWS_WITH(readIndexedBitmap(file),
+                          Catch::Matchers::ContainsSubstring("header"));
+    }
+
+    THEN("A width or height of 0 is refused") {
+      BitmapFile narrow;
+      narrow.width = 0;
+      narrow.rows = {{}, {}};
+      REQUIRE_THROWS_WITH(readIndexedBitmap(narrow.bytes()),
+                          Catch::Matchers::ContainsSubstring("Empty"));
+      BitmapFile flat;
+      flat.height = 0;
+      flat.rows.clear();
+      REQUIRE_THROWS_WITH(readIndexedBitmap(flat.bytes()),
+                          Catch::Matchers::ContainsSubstring("Empty"));
+    }
+
+    THEN("More than 256 colours are refused") {
+      BitmapFile file;
+      file.colorsUsed = 257;
+      REQUIRE_THROWS_WITH(readIndexedBitmap(file.bytes()),
+                          Catch::Matchers::ContainsSubstring("colours"));
+    }
+  }
+}
+
+SCENARIO("loadIndexedBitmap reads a picture from a file") {
+  GIVEN("A bitmap written to a file") {
+    const TemporaryPath stored("openFrankoStoredPicture.bmp");
+    BitmapFile file;
+    file.hotX = 2;
+    const std::vector<uint8_t> bytes = file.bytes();
+    {
+      std::ofstream stream(stored.path(), std::ios::binary);
+      stream.write(reinterpret_cast<const char *>(bytes.data()),
+                   static_cast<std::streamsize>(bytes.size()));
+    }
+
+    THEN("It is the picture readIndexedBitmap reads from the bytes") {
+      const IndexedBitmap loaded = loadIndexedBitmap(stored.path().string());
+      const IndexedBitmap read = readIndexedBitmap(bytes);
+      REQUIRE(loaded.width == read.width);
+      REQUIRE(loaded.height == read.height);
+      REQUIRE(loaded.hotspotX == 2);
+      REQUIRE(loaded.pixels == read.pixels);
+      REQUIRE(loaded.palette == read.palette);
+    }
+  }
+
+  GIVEN("A file that is not a bitmap") {
+    const TemporaryPath stored("openFrankoNotAPicture.bmp");
+    {
+      std::ofstream stream(stored.path(), std::ios::binary);
+      stream << "PK not a picture";
+    }
+    const std::string path = stored.path().string();
+
+    THEN("The error names both the problem and the file") {
+      REQUIRE_THROWS_WITH(loadIndexedBitmap(path),
+                          Catch::Matchers::ContainsSubstring("Not a bitmap") &&
+                              Catch::Matchers::ContainsSubstring(path));
     }
   }
 }

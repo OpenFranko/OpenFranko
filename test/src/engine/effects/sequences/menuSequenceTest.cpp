@@ -496,3 +496,44 @@ SCENARIO("A key read by the menu leaves the attract timer running, as both "
     }
   }
 }
+
+namespace {
+
+constexpr int VERSION12_OPENING_FRAMES =
+    MenuSequence::VERSION12_MUSIC_WAIT + OPENING_FRAMES;
+
+} // namespace
+
+SCENARIO("The 1.2 menu reads keys and asks for the attract screens when left "
+         "alone") {
+  GIVEN("A 1.2 menu with keys already in AMOS's buffer") {
+    GameOptions options;
+    InkeyBuffer keyboard;
+    keyboard.permit();
+    keyboard.press('C');
+    keyboard.press('E');
+    MenuSequence menu(options, BACKDROP_PALETTE, keyboard, GameVersion::V12);
+    const std::string readInOpening =
+        readDuring(menu, VERSION12_OPENING_FRAMES);
+
+    WHEN("The first loop pass runs with the joystick untouched") {
+      menu.advance(NOTHING);
+
+      THEN("It reads the keys") {
+        REQUIRE(readInOpening.empty());
+        REQUIRE(menu.keysRead() == "CE");
+      }
+    }
+
+    WHEN("The menu is left alone for 300 frames after it opened") {
+      run(menu, 301);
+      const bool dueTooEarly = menu.isAttractDue();
+      menu.advance(NOTHING);
+
+      THEN("The attract screens are due on the next frame") {
+        REQUIRE_FALSE(dueTooEarly);
+        REQUIRE(menu.isAttractDue());
+      }
+    }
+  }
+}

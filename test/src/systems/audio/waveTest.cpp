@@ -2,6 +2,8 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
@@ -112,6 +114,70 @@ SCENARIO("readWave reads the sample files the asset pipeline writes") {
     THEN("Anything but a RIFF WAVE file is refused") {
       std::vector<uint8_t> file = WaveFile().bytes();
       file[0] = 'X';
+      REQUIRE_THROWS_AS(readWave(file), std::runtime_error);
+    }
+  }
+}
+
+namespace {
+
+constexpr int8_t FLIPPED = 9;
+
+bool flipToConstant(const uint8_t *, int8_t *target, std::size_t count) {
+  std::fill(target, target + count, FLIPPED);
+  return true;
+}
+
+bool refuseFlip(const uint8_t *, int8_t *, std::size_t) { return false; }
+
+} // namespace
+
+SCENARIO("readWave mixes 8-bit stereo down to mono") {
+  GIVEN("An 8-bit stereo WAVE file") {
+    WaveFile file;
+    file.channels = 2;
+    file.data = {144, 176, 0, 255, 128, 128};
+
+    THEN("Each frame is the mean of its two channels") {
+      REQUIRE(readWave(file.bytes()).frames == std::vector<int8_t>{32, -1, 0});
+    }
+  }
+}
+
+SCENARIO("readWave lets a sign flip convert 8-bit mono samples") {
+  GIVEN("An 8-bit mono WAVE file") {
+    const WaveFile file;
+
+    THEN("A flip that does the work gives its frames") {
+      REQUIRE(readWave(file.bytes(), flipToConstant).frames ==
+              std::vector<int8_t>(3, FLIPPED));
+    }
+
+    THEN("A flip that refuses leaves the work to the reader") {
+      REQUIRE(readWave(file.bytes(), refuseFlip).frames ==
+              std::vector<int8_t>{0, 127, -128});
+    }
+  }
+
+  GIVEN("A 16-bit mono WAVE file") {
+    WaveFile file;
+    file.bits = 16;
+    file.data = {0x00, 0x10, 0x00, 0xF0};
+
+    THEN("The flip is not asked") {
+      REQUIRE(readWave(file.bytes(), flipToConstant).frames ==
+              std::vector<int8_t>{0x10, -0x10});
+    }
+  }
+}
+
+SCENARIO("readWave refuses a format chunk cut short") {
+  GIVEN("A file whose format chunk has 12 of its 16 bytes") {
+    std::vector<uint8_t> file = WaveFile().bytes();
+    file[16] = 12;
+    file.resize(12 + 8 + 12);
+
+    THEN("It is refused") {
       REQUIRE_THROWS_AS(readWave(file), std::runtime_error);
     }
   }

@@ -25,3 +25,10 @@ target_link_libraries(${MERSENNE_TWISTER_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain Common)
 add_test(NAME ${MERSENNE_TWISTER_TEST_TARGET}
     COMMAND ${MERSENNE_TWISTER_TEST_TARGET})
+
+set(ENGINE_TEST_TARGET engineTest)
+add_executable(${ENGINE_TEST_TARGET}
+    engineTest.cpp)
+target_link_libraries(${ENGINE_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Engine ${SDL2_TARGET})
+add_test(NAME ${ENGINE_TEST_TARGET} COMMAND ${ENGINE_TEST_TARGET})

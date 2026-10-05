@@ -5,6 +5,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <algorithm>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,13 @@ namespace {
 bool contains(const std::vector<std::string> &paths, const std::string &path) {
   return std::find(paths.begin(), paths.end(), path) != paths.end();
 }
+
+class FailingFiles : public FakeFiles {
+public:
+  bool exists(const std::string &path) const override {
+    throw std::runtime_error("Cannot look at " + path);
+  }
+};
 
 FakeFiles filesWith(const std::vector<std::string> &paths) {
   FakeFiles files;
@@ -96,6 +104,17 @@ SCENARIO("missingFiles lists the required files that are not there") {
         REQUIRE(contains(missingFiles(files, GameVersion::V12),
                          "assets/s0/s0_000.bmp"));
       }
+    }
+  }
+}
+
+SCENARIO("missingFiles does not take a failed lookup for a missing file") {
+  GIVEN("Files that cannot be looked at") {
+    const FailingFiles files;
+
+    THEN("The failure reaches the caller") {
+      REQUIRE_THROWS_WITH(missingFiles(files, GameVersion::V10),
+                          "Cannot look at assets/0000/0000_000.bmp");
     }
   }
 }

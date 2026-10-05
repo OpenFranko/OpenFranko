@@ -6,6 +6,7 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <utility>
 #include <vector>
 
 using namespace openfranko::lib::converter::spriteSheet;
@@ -33,6 +34,38 @@ buildBankHeader(uint16_t count, uint16_t maxW, uint16_t maxH,
     pushBigEndian16(buf, d.hotspotY);
   }
   return buf;
+}
+
+std::vector<uint8_t> threeSpriteBank() {
+  std::vector<SpriteDescriptor> descs = {
+      {15, 1, 1, 3, 4},
+      {29, 1, 2, 5, 6},
+      {43, 1, 1, 7, 0},
+  };
+  auto data = buildBankHeader(3, 8, 2, 16, 0, descs);
+  for (uint16_t height : {1, 2, 1}) {
+    auto bitmap =
+        buildPackedBitmap(1, 1, height, 1, {0x42}, {0x00}, {0x00, 0x00});
+    data.insert(data.end(), bitmap.begin(), bitmap.end());
+  }
+  return data;
+}
+
+std::vector<std::pair<int, int>> setPixels(const std::vector<uint8_t> &bmp) {
+  LittleEndianReader reader(bmp);
+  const auto width = static_cast<int>(reader.readUint32(18));
+  const auto height = static_cast<int>(reader.readUint32(22));
+  const uint32_t pixels = reader.readUint32(10);
+  const int rowBytes = (width + 3) & ~3;
+  std::vector<std::pair<int, int>> set;
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      if (bmp.at(pixels + (height - 1 - y) * rowBytes + x) != 0) {
+        set.emplace_back(x, y);
+      }
+    }
+  }
+  return set;
 }
 
 } // namespace
@@ -273,6 +306,74 @@ SCENARIO("applyScreenPalette colours s50's logo reflection like the logo") {
     THEN("Only s50 names one, the logo p50") {
       REQUIRE(paletteScreen("s50") == "p50");
       REQUIRE(paletteScreen("0038").empty());
+    }
+  }
+}
+
+SCENARIO("convertToSheet lays the sprites out in a grid of padded cells") {
+  GIVEN("A bank with an 8x1, an 8x2 and an 8x1 sprite") {
+    const auto data = threeSpriteBank();
+    const std::vector<uint16_t> palette(palettes::LEVEL.begin(),
+                                        palettes::LEVEL.end());
+
+    WHEN("The sheet has two columns") {
+      const auto sheet = convertToSheet(data, palette, 2);
+      LittleEndianReader reader(sheet.data);
+
+      THEN("Each cell is the largest sprite plus a pixel of border") {
+        REQUIRE(reader.readUint32(18) == 2 * (8 + 2));
+        REQUIRE(reader.readUint32(22) == 2 * (2 + 2));
+      }
+
+      THEN("Each sprite is drawn inside its cell, row by row") {
+        const std::vector<std::pair<int, int>> expected = {
+            {2, 1}, {7, 1}, {12, 1}, {17, 1}, {12, 2}, {17, 2}, {2, 5}, {7, 5}};
+        REQUIRE(setPixels(sheet.data) == expected);
+      }
+    }
+
+    WHEN("The column count is not positive") {
+      THEN("It throws") {
+        REQUIRE_THROWS_WITH(convertToSheet(data, palette, 0),
+                            "Column count must be positive");
+        REQUIRE_THROWS_WITH(convertToSheet(data, palette, -1),
+                            "Column count must be positive");
+      }
+    }
+
+    WHEN("The sprites are converted one by one") {
+      const auto sprites = convertToIndividual(data, palette);
+
+      THEN("Each BMP carries its sprite's hotspot in the reserved header "
+           "fields") {
+        REQUIRE(sprites.size() == 3);
+        REQUIRE(LittleEndianReader(sprites[0].data).readUint16(6) == 3);
+        REQUIRE(LittleEndianReader(sprites[0].data).readUint16(8) == 4);
+        REQUIRE(LittleEndianReader(sprites[1].data).readUint16(6) == 5);
+        REQUIRE(LittleEndianReader(sprites[1].data).readUint16(8) == 6);
+        REQUIRE(LittleEndianReader(sprites[2].data).readUint16(6) == 7);
+        REQUIRE(LittleEndianReader(sprites[2].data).readUint16(8) == 0);
+      }
+    }
+  }
+
+  GIVEN("A bank whose only sprites point at data that is not a bitmap") {
+    auto data =
+        buildBankHeader(2, 8, 1, 16, 0, {{10, 1, 1, 0, 0}, {10, 1, 1, 0, 0}});
+    data.resize(data.size() + 24, 0);
+    const std::vector<uint16_t> palette(palettes::LEVEL.begin(),
+                                        palettes::LEVEL.end());
+
+    THEN("No sheet can be made") {
+      REQUIRE_THROWS_WITH(convertToSheet(data, palette),
+                          "No valid sprites found in bank");
+    }
+
+    THEN("The sprites one by one each say why") {
+      const auto sprites = convertToIndividual(data, palette);
+      REQUIRE(sprites.size() == 2);
+      REQUIRE(sprites[0].error == "Invalid bitmap magic number");
+      REQUIRE(sprites[1].error == "Invalid bitmap magic number");
     }
   }
 }

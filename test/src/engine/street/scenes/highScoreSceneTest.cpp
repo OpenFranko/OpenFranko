@@ -306,6 +306,34 @@ SCENARIO("After the title check, the menu tune is still loaded") {
   }
 }
 
+SCENARIO("1.2's hiscore stops the tune and loads only its two files") {
+  GIVEN("A 1.2 run that ended with 12 kills, the menu tune not in memory") {
+    Board board(12);
+    board.session.version = GameVersion::V12;
+    board.run(1);
+
+    THEN("The music is stopped and the picture is read at once, without a "
+         "tune or the title") {
+      REQUIRE(board.host.musicStops == 1);
+      REQUIRE(board.host.music.empty());
+      REQUIRE(board.host.pictures == std::vector<int>{0x3B9});
+    }
+
+    WHEN("Both files are in") {
+      board.run(2 * LoadingQueue::FILE_FRAMES);
+
+      THEN("The score takes its slot with no music started") {
+        REQUIRE(board.scene.slot() == 0);
+        REQUIRE(board.session.highScores.score(0) == 12);
+        REQUIRE(board.host.spriteSets ==
+                std::vector<std::pair<int, int>>{{0x35, 5}});
+        REQUIRE(board.host.musicStarts == 0);
+        REQUIRE(board.host.tempos.empty());
+      }
+    }
+  }
+}
+
 SCENARIO("HISHOW dims the picture four steps, relights 29-31, draws upwards") {
   GIVEN("12 kills against the seeded table") {
     Board board(12);

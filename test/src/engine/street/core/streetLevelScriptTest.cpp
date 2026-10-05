@@ -128,6 +128,38 @@ SCENARIO("A level script is read one wave per step") {
       REQUIRE_THROWS_WITH(
           LevelScript::fromJson(R"({"lengthInColumns": 1, "waves": [{}]})"),
           "JSON: missing \"triggerColumn\"");
+      REQUIRE_THROWS_WITH(LevelScript::fromJson(R"({"lengthInColumns": 1})"),
+                          "JSON: missing \"waves\"");
+      REQUIRE_THROWS_WITH(
+          LevelScript::fromJson(
+              R"({"lengthInColumns": 1, "waves": [{"triggerColumn": 1}]})"),
+          "JSON: missing \"slots\"");
+    }
+  }
+}
+
+SCENARIO("A wave keeps the first copy of its members and exactly three slots") {
+  GIVEN("A wave with a repeated trigger and an unknown member") {
+    const LevelScript script = LevelScript::fromJson(R"({
+      "lengthInColumns": 1,
+      "waves": [{"triggerColumn": 4, "triggerColumn": 8, "note": [1, 2],
+                 "slots": [null, null, null],
+                 "slots": [{"spriteSetId": 1}]}]})");
+
+    THEN("The first trigger and the first slots are kept") {
+      REQUIRE(script.waves.size() == 1);
+      REQUIRE(script.waves[0].trigger == 4);
+      REQUIRE(script.waves[0].slots[0].spriteSet == EnemySlot::EMPTY);
+    }
+  }
+
+  GIVEN("A wave with four slots") {
+    THEN("It is refused after the fourth is read past") {
+      REQUIRE_THROWS_WITH(
+          LevelScript::fromJson(R"({"lengthInColumns": 1, "waves": [
+            {"triggerColumn": 1, "slots": [null, null, null,
+                                           {"spriteSetId": 1}]}]})"),
+          "Level script: a wave needs three slots");
     }
   }
 }

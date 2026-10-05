@@ -196,6 +196,14 @@ SCENARIO("Fire waggles the hand through MACH, then the choice is taken") {
         REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::NewGame);
         REQUIRE(choice.session.registers[RO] == -1);
       }
+
+      THEN("Frames after the choice change nothing") {
+        choice.run(10, JOY_LEFT | JOY_FIRE);
+        REQUIRE(choice.scene.outcome() == ContinueScene::Outcome::NewGame);
+        REQUIRE_FALSE(choice.scene.isContinueChosen());
+        REQUIRE_FALSE(choice.scene.isShown());
+        REQUIRE(choice.session.registers[RO] == -1);
+      }
     }
   }
 }

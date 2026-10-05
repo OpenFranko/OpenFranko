@@ -4,6 +4,9 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <cstdint>
+#include <vector>
+
 using namespace openfranko::lib::bmpWriter;
 using namespace openfranko::lib::binary;
 
@@ -115,6 +118,35 @@ SCENARIO("pixelsToBmp pads unused palette entries with zeros") {
         REQUIRE(bmp[entry1 + 1] == 0);
         REQUIRE(bmp[entry1 + 2] == 0);
         REQUIRE(bmp[entry1 + 3] == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("pixelsToBmp keeps at most 256 palette entries") {
+  GIVEN("A 1x1 image with a 300-colour palette") {
+    uint8_t pixels[] = {255};
+    std::vector<uint16_t> palette(300, 0xF00);
+    palette[255] = 0xFFF;
+
+    WHEN("pixelsToBmp is called with all 300 colours") {
+      auto bmp = pixelsToBmp(1, 1, pixels, palette.data(), 300);
+      LittleEndianReader reader(bmp);
+
+      THEN("The header counts 256 colours") {
+        REQUIRE(reader.readUint32(46) == 256u);
+      }
+
+      THEN("The pixels still start right after 256 palette entries") {
+        REQUIRE(reader.readUint32(10) == 1078u);
+        REQUIRE(bmp.size() == 1078u + 4u);
+        REQUIRE(bmp[1078] == 255);
+      }
+
+      THEN("Entry 255 holds the 256th colour") {
+        REQUIRE(bmp[54 + 255 * 4 + 0] == 0xFF);
+        REQUIRE(bmp[54 + 255 * 4 + 1] == 0xFF);
+        REQUIRE(bmp[54 + 255 * 4 + 2] == 0xFF);
       }
     }
   }

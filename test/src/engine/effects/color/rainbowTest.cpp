@@ -56,3 +56,26 @@ SCENARIO("Set Rainbow builds its table as TRSet does") {
     }
   }
 }
+
+SCENARIO("Set Rainbow programs may be spaced out") {
+  GIVEN("The game-over sky written with spaces") {
+    const AmigaPalette spaced = rainbowTable(
+        300, " ( 8 , -1 , 15 ) ( 16 , 1 , 15 ) ", "  ", "(8, 1,15) (16,-1,15)");
+
+    THEN("It is the same table") {
+      REQUIRE(spaced == rainbowTable(300, "(8,-1,15)(16,1,15)", "",
+                                     "(8,1,15)(16,-1,15)"));
+    }
+  }
+
+  GIVEN("Programs with a field that holds no number") {
+    THEN("They are refused") {
+      REQUIRE_THROWS_AS(rainbowTable(10, "(,1,1)", "", ""),
+                        std::invalid_argument);
+      REQUIRE_THROWS_AS(rainbowTable(10, "(1,-,1)", "", ""),
+                        std::invalid_argument);
+      REQUIRE_THROWS_AS(rainbowTable(10, "", "", "(1,1,+)"),
+                        std::invalid_argument);
+    }
+  }
+}

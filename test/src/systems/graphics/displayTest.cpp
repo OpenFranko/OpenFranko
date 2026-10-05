@@ -298,5 +298,16 @@ SCENARIO("assign copies a display as a plain copy would") {
       assign(fewer, second);
       REQUIRE(sameLayers(fewer, second));
     }
+
+    THEN("Row colours that differ are taken over and then shared") {
+      second.layers[0].rowColors.push_back({4, 1, 0x0F0});
+      Display target = first;
+      REQUIRE_FALSE(
+          target.layers[0].rowColors.shares(second.layers[0].rowColors));
+      assign(target, second);
+      REQUIRE(sameLayers(target, second));
+      REQUIRE(target.layers[0].rowColors.shares(second.layers[0].rowColors));
+      REQUIRE(target.layers[1].rowColors.shares(first.layers[1].rowColors));
+    }
   }
 }

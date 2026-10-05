@@ -4,6 +4,7 @@
 #include "../../../../../src/engine/amal/Machine.h"
 #include "../../../../../src/engine/assets/Assets.h"
 #include "../../../../../src/engine/effects/sequences/MenuSequence.h"
+#include "../../../../../src/systems/graphics/Display.h"
 #include "../../../../../src/systems/input/ControllerSystem.h"
 #include "../../../systems/audio/FakeSpeaker.h"
 #include "../../../systems/graphics/FakeMonitor.h"
@@ -12,9 +13,13 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace openfranko::src::engine;
@@ -36,7 +41,9 @@ constexpr int LETTER_IMAGES = 41;
 constexpr int OPENING_FRAMES = 54;
 
 struct Menu {
-  explicit Menu(GameVersion version = GameVersion::V10, bool ntsc = false) {
+  explicit Menu(GameVersion version = GameVersion::V10, bool ntsc = false,
+                FakeFiles menuFiles = {})
+      : files(std::move(menuFiles)) {
     session.version = version;
     session.nameScreenOpen = true;
     session.registers[RO] = 2;
@@ -220,12 +227,12 @@ patterned(int width, int height, int seed, int hotX, int hotY) {
 }
 
 struct PaintedMenu {
-  explicit PaintedMenu(bool showsSprites) {
+  explicit PaintedMenu(bool showsSprites, int bobWidth = BOB_WIDTH) {
     files.bitmaps["assets/03B8.bmp"] =
         patterned(BACKDROP_WIDTH, BACKDROP_HEIGHT, 7, 0, 0);
     for (int index = 0; index < MENU_IMAGES; ++index) {
       files.bitmaps[assets::imagePath("0034", index)] =
-          patterned(BOB_WIDTH, BOB_HEIGHT, index, 3, 2);
+          patterned(bobWidth, BOB_HEIGHT, index, 3, 2);
     }
     monitor.sprites = showsSprites;
     session.version = GameVersion::V10;
@@ -274,6 +281,314 @@ SCENARIO("Menu bobs shown as sprites look the same as bobs drawn") {
       THEN("The bobs went out as sprites over a backdrop drawn once") {
         REQUIRE(spriteFrames > 200);
         REQUIRE(redraws == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("Menu bobs that cannot be sprites are drawn into the menu") {
+  GIVEN("Bobs of an odd width, on monitors with and without sprites") {
+    PaintedMenu drawn(false, BOB_WIDTH - 1);
+    PaintedMenu sprited(true, BOB_WIDTH - 1);
+
+    WHEN("The menu opens and the credits start") {
+      for (PaintedMenu *menu : {&drawn, &sprited}) {
+        run(*menu->state, OPENING_FRAMES + 20);
+      }
+
+      THEN("No layer carries sprites and both menus look the same") {
+        for (const auto &layer : sprited.monitor.shown().layers) {
+          REQUIRE_FALSE(layer.carriesSprites);
+        }
+        REQUIRE(sprited.monitor.frame() == drawn.monitor.frame());
+      }
+    }
+  }
+}
+
+namespace {
+
+void press(Menu &menu, bool ControllerSystem::ControllerStates::*direction,
+           int waitAfter) {
+  menu.controller.states.*direction = true;
+  run(*menu.state, 1);
+  menu.controller.states.*direction = false;
+  run(*menu.state, waitAfter);
+}
+
+constexpr int HAND_WAIT = 9;
+constexpr int MACH_WAIT = 39;
+
+int openingFrames(GameVersion version) {
+  return OPENING_FRAMES +
+         (version == GameVersion::V12 ? MenuSequence::VERSION12_MUSIC_WAIT : 0);
+}
+
+} // namespace
+
+SCENARIO("The music and bass icons switch the speaker at once") {
+  GIVEN("An open menu with the music on and the bass filter off") {
+    Menu menu;
+    run(*menu.state, OPENING_FRAMES);
+
+    WHEN("The music icon is fired") {
+      press(menu, &ControllerSystem::ControllerStates::down, HAND_WAIT);
+      press(menu, &ControllerSystem::ControllerStates::button, MACH_WAIT);
+
+      THEN("The music is turned down to nothing") {
+        REQUIRE_FALSE(menu.options.music);
+        REQUIRE(menu.speaker.volumes == std::vector<int>{0});
+        REQUIRE(menu.speaker.filters.empty());
+      }
+
+      AND_WHEN("The bass icon is fired, then the music icon again") {
+        press(menu, &ControllerSystem::ControllerStates::down, HAND_WAIT);
+        press(menu, &ControllerSystem::ControllerStates::button, MACH_WAIT);
+        press(menu, &ControllerSystem::ControllerStates::up, HAND_WAIT);
+        press(menu, &ControllerSystem::ControllerStates::button, MACH_WAIT);
+
+        THEN("The filter goes on and the music comes back at full volume") {
+          REQUIRE(menu.options.bass);
+          REQUIRE(menu.options.music);
+          REQUIRE(menu.speaker.filters == std::vector<bool>{true});
+          REQUIRE(menu.speaker.volumes == std::vector<int>{0, 63});
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("Words typed in the menu become cheat codes when the game starts") {
+  const auto typeAndStart = [](Menu &menu, const std::string &typed) {
+    for (const char key : typed) {
+      menu.session.keyboard.press(key);
+    }
+    run(*menu.state, openingFrames(menu.session.version) + 1);
+    menu.controller.states.button = true;
+    run(*menu.state, 1);
+    menu.controller.states.button = false;
+    return runToExit(*menu.state, 1000);
+  };
+
+  GIVEN("Version 1.0 with cent and mutant typed as the menu opens") {
+    Menu menu;
+    const Exit exit = typeAndStart(menu, "centmutant");
+
+    THEN("The game starts from the second stage with fifteen lives") {
+      REQUIRE(exit.next == EngineStateId::CharacterSelectionSequence);
+      REQUIRE(menu.session.registers[RO] == 1);
+      REQUIRE(menu.session.registers[RG] == 15);
+    }
+
+    THEN("The keys came from the key buffer, not from text entry") {
+      REQUIRE_FALSE(menu.state->isEnteringText());
+    }
+  }
+
+  GIVEN("Version 1.2 with ceat typed as the menu opens") {
+    Menu menu(GameVersion::V12);
+    const Exit exit = typeAndStart(menu, "ceat");
+
+    THEN("The game starts from the first stage with six lives") {
+      REQUIRE(exit.next == EngineStateId::CharacterSelectionSequence);
+      REQUIRE(menu.session.registers[RO] == 0);
+      REQUIRE(menu.session.registers[RG] == 6);
+    }
+  }
+
+  GIVEN("Version 1.0 with nothing typed") {
+    Menu menu;
+    menu.session.registers[RG] = 3;
+    const Exit exit = typeAndStart(menu, "");
+
+    THEN("The lives are left alone") {
+      REQUIRE(exit.next == EngineStateId::CharacterSelectionSequence);
+      REQUIRE(menu.session.registers[RG] == 3);
+    }
+  }
+}
+
+namespace {
+
+constexpr int ATTRACT_WIDTH = 320;
+constexpr int MENU_WIDTH = 368;
+constexpr int ATTRACT_LIMIT = MenuSequence::ATTRACT_AFTER + 100;
+constexpr uint16_t TITLE_COLOR = 0x0F0;
+constexpr uint8_t TITLE_INK = 2;
+constexpr uint8_t HISCORE_INK = 1;
+constexpr uint8_t LETTER_INK = 7;
+
+openfranko::src::systems::graphics::IndexedBitmap solid(int width, int height,
+                                                        uint8_t ink) {
+  openfranko::src::systems::graphics::IndexedBitmap bitmap;
+  bitmap.width = width;
+  bitmap.height = height;
+  bitmap.pixels.assign(static_cast<std::size_t>(width * height), ink);
+  bitmap.palette.assign(32, 0x000);
+  bitmap.palette[TITLE_INK] = TITLE_COLOR;
+  bitmap.palette[HISCORE_INK] = 0x00F;
+  bitmap.palette[LETTER_INK] = 0xF00;
+  return bitmap;
+}
+
+FakeFiles attractFiles() {
+  FakeFiles files;
+  files.bitmaps["assets/03BA.bmp"] = solid(ATTRACT_WIDTH, 256, TITLE_INK);
+  files.bitmaps["assets/03B9.bmp"] = solid(ATTRACT_WIDTH, 256, HISCORE_INK);
+  for (int letter = 0; letter < LETTER_IMAGES; ++letter) {
+    files.bitmaps[assets::imagePath("0035", letter)] = solid(8, 8, LETTER_INK);
+  }
+  return files;
+}
+
+struct AttractMenu : Menu {
+  AttractMenu() : Menu(GameVersion::V10, false, attractFiles()) {}
+
+  int runUntilWidth(int width) {
+    for (int frame = 0; frame < ATTRACT_LIMIT; ++frame) {
+      state->update();
+      if (monitor.width == width) {
+        return frame;
+      }
+    }
+    return ATTRACT_LIMIT;
+  }
+
+  std::size_t inkedPixels() const {
+    const std::vector<uint32_t> &frame = monitor.frame();
+    return static_cast<std::size_t>(
+        std::count_if(frame.begin(), frame.end(), [&frame](uint32_t pixel) {
+          return pixel != frame.front();
+        }));
+  }
+};
+
+} // namespace
+
+SCENARIO("The attract shows the title, then the scores a row at a time") {
+  GIVEN("A menu left alone until the attract starts") {
+    AttractMenu menu;
+    run(*menu.state, OPENING_FRAMES);
+    const int waited = menu.runUntilWidth(ATTRACT_WIDTH);
+    run(*menu.state, 20);
+
+    THEN("The title picture is shown in its own colours") {
+      REQUIRE(waited < ATTRACT_LIMIT);
+      REQUIRE(menu.monitor.width == ATTRACT_WIDTH);
+      REQUIRE(menu.monitor.pixel(160, 100) ==
+              openfranko::src::systems::graphics::toArgb(TITLE_COLOR));
+    }
+
+    WHEN("The joystick is touched") {
+      press(menu, &ControllerSystem::ControllerStates::right, 0);
+      const int widthAfterTouch = menu.monitor.width;
+      run(*menu.state, 1);
+      const int widthAfterNext = menu.monitor.width;
+      run(*menu.state, 1);
+
+      THEN("The title stays up while its screen closes, then the menu is "
+           "back") {
+        REQUIRE(widthAfterTouch == ATTRACT_WIDTH);
+        REQUIRE(widthAfterNext == ATTRACT_WIDTH);
+        REQUIRE(menu.monitor.width == MENU_WIDTH);
+      }
+
+      AND_WHEN("The menu is left alone again") {
+        const int idle = menu.runUntilWidth(ATTRACT_WIDTH);
+        run(*menu.state, 20);
+        const std::size_t firstRows = menu.inkedPixels();
+        run(*menu.state, 40);
+        const std::size_t moreRows = menu.inkedPixels();
+        run(*menu.state, 70);
+        const std::size_t allRows = menu.inkedPixels();
+
+        THEN("The scores come up a row at a time over the score picture") {
+          REQUIRE(idle < ATTRACT_LIMIT);
+          REQUIRE(idle > MenuSequence::ATTRACT_AFTER);
+          REQUIRE(menu.monitor.pixel(0, 0) !=
+                  openfranko::src::systems::graphics::toArgb(TITLE_COLOR));
+          REQUIRE(firstRows > 0);
+          REQUIRE(moreRows > firstRows);
+          REQUIRE(allRows > moreRows);
+        }
+
+        AND_WHEN("The joystick is touched once the rows are all up") {
+          press(menu, &ControllerSystem::ControllerStates::right, 2);
+          const int closedWidth = menu.monitor.width;
+          const int again = menu.runUntilWidth(ATTRACT_WIDTH);
+          run(*menu.state, 20);
+
+          THEN("The menu comes back and the title is shown next") {
+            REQUIRE(closedWidth == MENU_WIDTH);
+            REQUIRE(again < ATTRACT_LIMIT);
+            REQUIRE(menu.monitor.pixel(160, 100) ==
+                    openfranko::src::systems::graphics::toArgb(TITLE_COLOR));
+          }
+        }
+      }
+    }
+  }
+}
+
+namespace {
+
+class SlowFiles : public FakeFiles {
+public:
+  static constexpr int STEPS = 400;
+
+  std::unique_ptr<BitmapLoad> beginBitmap(const std::string &path) override;
+
+  int steps = 0;
+};
+
+class SlowLoad : public openfranko::src::engine::assets::Files::BitmapLoad {
+public:
+  SlowLoad(SlowFiles &files, std::string path)
+      : m_files(files), m_path(std::move(path)) {}
+
+  bool
+  step(openfranko::src::systems::graphics::IndexedBitmap &bitmap) override {
+    ++m_files.steps;
+    if (++m_taken < SlowFiles::STEPS) {
+      return false;
+    }
+    bitmap = m_files.loadBitmap(m_path);
+    return true;
+  }
+
+private:
+  SlowFiles &m_files;
+  std::string m_path;
+  int m_taken = 0;
+};
+
+std::unique_ptr<SlowFiles::BitmapLoad>
+SlowFiles::beginBitmap(const std::string &path) {
+  return std::make_unique<SlowLoad>(*this, path);
+}
+
+} // namespace
+
+SCENARIO("Attract pictures still loading when the attract is due are "
+         "finished at once") {
+  GIVEN("A menu whose attract pictures take many steps each") {
+    FakeMonitor monitor;
+    FakeSpeaker speaker;
+    ControllerSystem controller;
+    SlowFiles files;
+    GameOptions options;
+    GameSession session;
+    MenuState state(monitor, speaker, controller, files, options, session);
+
+    WHEN("The menu is left alone until the attract starts") {
+      run(state, OPENING_FRAMES + MenuSequence::ATTRACT_AFTER + 10);
+
+      THEN("Both pictures were finished and every letter read before it") {
+        REQUIRE(files.steps == 2 * SlowFiles::STEPS);
+        REQUIRE(files.wasLoaded("assets/03BA.bmp"));
+        REQUIRE(files.wasLoaded("assets/03B9.bmp"));
+        REQUIRE(files.wasLoaded(assets::imagePath("0035", LETTER_IMAGES - 1)));
+        REQUIRE(monitor.width == ATTRACT_WIDTH);
       }
     }
   }

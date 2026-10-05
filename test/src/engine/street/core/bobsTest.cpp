@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <random>
+#include <stdexcept>
 #include <vector>
 
 using namespace openfranko::src::engine::street::core;
@@ -679,6 +680,197 @@ SCENARIO("The sprite bank holds frames at base plus index") {
       REQUIRE(images.find(2)->pixels[0] == 3);
       REQUIRE(images.find(3) == nullptr);
       REQUIRE(images.find(0) == nullptr);
+    }
+  }
+}
+
+SCENARIO("Mirrors the cache cannot hold are drawn reversed straight from the "
+         "image") {
+  GIVEN("An image bigger than the whole mirror cache") {
+    ImageBank images;
+    const Picture picture = patterned(320, 256, 3);
+    images.load(1, {picture});
+    BobLayer bobs;
+    IndexedSurface screen(400, 300);
+    bobs.set(1, 220, 280, 1 + MIRROR);
+    bobs.draw(screen, images);
+
+    THEN("It has no cached mirror, yet shows reversed") {
+      REQUIRE(images.mirrored(1) == nullptr);
+      REQUIRE(mirroredMismatches(screen, picture, 220, 280) == 0);
+    }
+  }
+
+  GIVEN("Five mirrored bobs in one frame, their images together too big for "
+        "the cache") {
+    ImageBank images;
+    std::vector<Picture> pictures;
+    for (int seed = 0; seed < 5; ++seed) {
+      pictures.push_back(patterned(128, 128, seed));
+    }
+    images.load(1, pictures);
+    BobLayer bobs;
+    IndexedSurface screen(700, 140);
+    for (int bob = 1; bob <= 5; ++bob) {
+      bobs.set(bob, 86 + 140 * (bob - 1), 127, bob + MIRROR);
+    }
+    bobs.draw(screen, images);
+
+    THEN("No mirror of that frame is dropped for the last, which still shows "
+         "reversed") {
+      for (int bob = 1; bob <= 5; ++bob) {
+        REQUIRE(mirroredMismatches(screen,
+                                   pictures[static_cast<std::size_t>(bob - 1)],
+                                   86 + 140 * (bob - 1), 127) == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("Clearing the bank hands every image and mirror to the retire hook") {
+  GIVEN("Two images, the second mirrored, and a hook on the bank") {
+    ImageBank images;
+    images.load(1, {patterned(16, 4, 1), patterned(16, 4, 2)});
+    const uint8_t *first = images.find(1)->pixels.data();
+    const uint8_t *second = images.find(2)->pixels.data();
+    const uint8_t *mirror = images.mirrored(2)->pixels.data();
+    std::vector<const uint8_t *> retired;
+    images.setBeforeRetire(
+        [&retired](const uint8_t *pixels) { retired.push_back(pixels); });
+
+    WHEN("The bank is cleared") {
+      images.clear();
+
+      THEN("The hook sees both images, then the mirror, and the bank is "
+           "empty") {
+        REQUIRE(retired == std::vector<const uint8_t *>{first, second, mirror});
+        REQUIRE(images.find(1) == nullptr);
+        REQUIRE(images.find(2) == nullptr);
+        REQUIRE(images.mirrored(2) == nullptr);
+      }
+    }
+  }
+}
+
+SCENARIO("The bank has nothing to give for images it does not hold") {
+  GIVEN("A bank holding image 2 and an unmasked image 3") {
+    ImageBank images;
+    images.load(2, {box(16, 4, 0, 0, 5), box(16, 4, 0, 0, 5)});
+    images.noMask(3);
+
+    THEN("Missing images have no mask, mirror, sprite or orientation") {
+      REQUIRE(images.mask(1).picture == nullptr);
+      REQUIRE(images.mask(9).picture == nullptr);
+      REQUIRE(images.mirrored(9) == nullptr);
+      REQUIRE(images.spriteImage(0, 0) == nullptr);
+      REQUIRE(images.spriteImage(1, 0) == nullptr);
+      REQUIRE(images.spriteImage(9, 0) == nullptr);
+      images.orient(9, ImageBank::FLIP_X);
+      REQUIRE(images.orientation(9) == 0);
+    }
+
+    THEN("An unmasked image has no mask either") {
+      REQUIRE(images.mask(2).picture != nullptr);
+      REQUIRE(images.mask(3).picture == nullptr);
+    }
+  }
+}
+
+SCENARIO("Bob Col needs the tested bob on and knows every bob number") {
+  GIVEN("Bob 1 on top of bob 20") {
+    ImageBank images;
+    images.load(1, {box(16, 10, 0, 0, 7)});
+    BobLayer bobs;
+    bobs.set(1, 50, 50, 1);
+    bobs.set(20, 52, 52, 1);
+
+    THEN("A bob numbered past the first eight is found") {
+      REQUIRE(bobs.collide(1, images));
+      REQUIRE(bobs.collided(20));
+      REQUIRE_FALSE(bobs.collided(1));
+    }
+
+    WHEN("Bob 1 is switched off after a hit") {
+      bobs.collide(1, images);
+      bobs.off(1);
+
+      THEN("It meets nothing and the old hit is forgotten") {
+        REQUIRE_FALSE(bobs.collide(1, images));
+        REQUIRE_FALSE(bobs.collided(20));
+      }
+    }
+
+    THEN("Asking about a bob outside 0 to 63 is refused") {
+      REQUIRE_THROWS_AS(bobs.collided(BobLayer::BOBS), std::out_of_range);
+      REQUIRE_THROWS_AS(bobs.collided(-1), std::out_of_range);
+    }
+  }
+}
+
+SCENARIO("Only bobs the hardware sprites can show become sprites") {
+  GIVEN("A 16 px wide image, a 12 px wide one and an unmasked one") {
+    ImageBank images;
+    images.load(
+        1, {box(16, 4, 0, 0, 5), box(12, 4, 0, 0, 5), box(16, 4, 0, 0, 5)});
+    images.noMask(3);
+    IndexedSurface screen(320, 222);
+    BobLayer bobs;
+    std::vector<Sprite> sprites;
+
+    THEN("Sixteen bobs fill the sprite slots") {
+      for (int bob = 1; bob <= 16; ++bob) {
+        bobs.set(bob, bob * 16, 10, 1);
+      }
+      REQUIRE(bobs.sprites(screen, images, sprites));
+      REQUIRE(sprites.size() == 16);
+    }
+
+    THEN("A seventeenth is one too many") {
+      for (int bob = 1; bob <= 17; ++bob) {
+        bobs.set(bob, bob * 16, 10, 1);
+      }
+      REQUIRE_FALSE(bobs.sprites(screen, images, sprites));
+    }
+
+    THEN("An upside-down bob, an unmasked image and a width off the 8 px "
+         "grid cannot be sprites") {
+      bobs.set(1, 10, 10, 1 + UPSIDE_DOWN);
+      REQUIRE_FALSE(bobs.sprites(screen, images, sprites));
+      bobs.set(1, 10, 10, 3);
+      REQUIRE_FALSE(bobs.sprites(screen, images, sprites));
+      bobs.set(1, 10, 10, 2);
+      REQUIRE_FALSE(bobs.sprites(screen, images, sprites));
+    }
+  }
+}
+
+SCENARIO("Baking stamps only the sprites that are on the screen") {
+  GIVEN("Two recorded sprites, one wholly off the screen") {
+    ImageBank images;
+    images.load(1, {box(16, 4, 0, 0, 5)});
+    IndexedSurface screen(64, 32);
+    screen.fill(1);
+    const Picture &picture = *images.find(1);
+    const std::vector<Sprite> sprites = {{picture.pixels.data(), 16, 4, 8, 2},
+                                         {picture.pixels.data(), 16, 4, 80, 2}};
+    std::vector<SavedArea> saved;
+
+    WHEN("They are baked") {
+      const std::size_t count = BobLayer::bake(screen, sprites, saved);
+
+      THEN("One area is saved and only the visible sprite is stamped") {
+        REQUIRE(count == 1);
+        REQUIRE(saved[0].left == 0);
+        REQUIRE(saved[0].pixels.width() == 32);
+        REQUIRE(screen.pixel(8, 2) == 5);
+        REQUIRE(screen.pixel(63, 2) == 1);
+      }
+
+      AND_WHEN("The saved area is restored") {
+        BobLayer::restore(screen, saved, count);
+
+        THEN("The screen is as before") { REQUIRE(screen.pixel(8, 2) == 1); }
+      }
     }
   }
 }

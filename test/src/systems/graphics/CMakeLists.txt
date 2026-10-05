@@ -33,3 +33,17 @@ add_executable(${SCREEN_MODE_TEST_TARGET}
 target_link_libraries(${SCREEN_MODE_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain Graphics)
 add_test(NAME ${SCREEN_MODE_TEST_TARGET} COMMAND ${SCREEN_MODE_TEST_TARGET})
+
+set(VIDEO_SYSTEM_TEST_TARGET videoSystemTest)
+add_executable(${VIDEO_SYSTEM_TEST_TARGET}
+    videoSystemTest.cpp)
+target_link_libraries(${VIDEO_SYSTEM_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain VideoSystem ${SDL2_TARGET})
+add_test(NAME ${VIDEO_SYSTEM_TEST_TARGET} COMMAND ${VIDEO_SYSTEM_TEST_TARGET})
+
+set(MONITOR_TEST_TARGET monitorTest)
+add_executable(${MONITOR_TEST_TARGET}
+    monitorTest.cpp)
+target_link_libraries(${MONITOR_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Graphics)
+add_test(NAME ${MONITOR_TEST_TARGET} COMMAND ${MONITOR_TEST_TARGET})

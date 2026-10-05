@@ -147,6 +147,22 @@ SCENARIO("CharacterSelectionSequence plays the confirmation as TWARZ does") {
         run(selection, 1);
         REQUIRE(selection.isFinished());
       }
+
+      AND_WHEN("The joystick is used after the state has ended") {
+        run(selection, 4);
+        selection.advance(RIGHT);
+        selection.advance(FIRE);
+
+        THEN("Nothing changes any more") {
+          REQUIRE(selection.isFinished());
+          REQUIRE(options.character == Character::Franko);
+          REQUIRE_FALSE(selection.isScreenShown());
+          REQUIRE_FALSE(selection.hand().shown);
+          REQUIRE_FALSE(selection.sample().has_value());
+          REQUIRE_FALSE(selection.musicVolume().has_value());
+          REQUIRE_FALSE(selection.stopsMusic());
+        }
+      }
     }
   }
 

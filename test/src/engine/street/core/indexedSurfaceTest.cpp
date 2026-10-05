@@ -3,6 +3,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <stdexcept>
+#include <vector>
 
 using namespace openfranko::src::engine::street::core;
 
@@ -93,6 +94,20 @@ SCENARIO("Screen Copy clips as Sco0 does") {
       panel.copy(panel, 400, 0, 500, 5, 0, 0);
       REQUIRE(panel.pixels() == before);
     }
+
+    THEN("A negative source row shifts the destination down with it") {
+      panel.copy(panel, 0, -2, 10, 4, 100, 20);
+      REQUIRE(panel.pixel(100, 22) == stripe(0));
+      REQUIRE(panel.pixel(100, 21) == stripe(100));
+      REQUIRE(panel.pixel(100, 26) == stripe(100));
+    }
+
+    THEN("Rows that would land above the top are dropped") {
+      IndexedSurface target(304, 48);
+      target.copy(panel, 0, 0, 10, 4, 100, -3);
+      REQUIRE(target.pixel(100, 0) == stripe(0));
+      REQUIRE(target.pixel(100, 1) == 0);
+    }
   }
 }
 
@@ -114,6 +129,13 @@ SCENARIO("Cls fills a rectangle with exclusive ends, clamped to the screen") {
       REQUIRE(panel.pixel(0, 0) == 3);
       REQUIRE(panel.pixel(303, 1) == 3);
       REQUIRE(panel.pixel(0, 2) == 0);
+    }
+
+    THEN("A rectangle that is empty once clamped fills nothing") {
+      panel.clear(3, 400, 0, 500, 10);
+      panel.clear(3, 10, 20, 20, 20);
+      REQUIRE(panel.pixel(303, 0) == 0);
+      REQUIRE(panel.pixel(10, 20) == 0);
     }
   }
 }
@@ -172,6 +194,10 @@ SCENARIO("Unpack draws a packed picture opaquely at a byte-aligned X") {
     THEN("A picture that does not fit is refused, not clipped") {
       REQUIRE_THROWS_AS(screen.unpack(column, 312, 0), std::out_of_range);
       REQUIRE_THROWS_AS(screen.unpack(column, 0, 1), std::out_of_range);
+      REQUIRE_THROWS_AS(screen.unpack(column, -8, 0), std::out_of_range);
+      REQUIRE_THROWS_AS(screen.unpack(solid(16, 8, 5), 0, -1),
+                        std::out_of_range);
+      REQUIRE(screen.pixel(0, 0) == 9);
     }
   }
 }
@@ -203,6 +229,24 @@ SCENARIO("Draw is masked, flipped and clipped") {
       REQUIRE(screen.intersects(-2, 3, 3, 2));
       REQUIRE_FALSE(screen.intersects(-3, 3, 3, 2));
       REQUIRE_FALSE(screen.intersects(8, 0, 3, 2));
+    }
+
+    THEN("A picture or raw pixels wholly off the screen draw nothing") {
+      const std::vector<uint8_t> before = screen.pixels();
+      screen.draw(picture, 8, 0, false, false);
+      screen.draw(picture, 0, -2, true, true, true);
+      screen.draw(picture.pixels.data(), 3, 2, -3, 1, true);
+      screen.draw(picture.pixels.data(), 3, 2, 0, 4, false);
+      REQUIRE(screen.pixels() == before);
+    }
+
+    THEN("Raw pixels are drawn row by row, colour 0 kept only when opaque") {
+      screen.draw(picture.pixels.data(), 3, 2, 1, 1, false);
+      REQUIRE(screen.pixel(1, 1) == 1);
+      REQUIRE(screen.pixel(3, 1) == 9);
+      screen.draw(picture.pixels.data(), 3, 2, 1, 1, true);
+      REQUIRE(screen.pixel(3, 1) == 0);
+      REQUIRE(screen.pixel(3, 2) == 6);
     }
   }
 }

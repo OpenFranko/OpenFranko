@@ -118,6 +118,7 @@ SCENARIO("Game over plays through the street host") {
     run(*graveyard.state, 1);
 
     THEN("The music is stopped and the objects are loading") {
+      REQUIRE_FALSE(graveyard.state->scene().isFinished());
       REQUIRE(graveyard.host.musicStops == 1);
       REQUIRE(graveyard.host.spriteSets ==
               std::vector<std::pair<int, int>>{{OBJECTS, 0}});
@@ -137,6 +138,8 @@ SCENARIO("The scores follow the graveyard, sooner if fire is pressed") {
       REQUIRE(waited.next == EngineStateId::HighScore);
       REQUIRE(clicked.next == EngineStateId::HighScore);
       REQUIRE(waited.frames - clicked.frames == CLICK_FRAMES);
+      REQUIRE(idle.state->scene().isFinished());
+      REQUIRE(fired.state->scene().isFinished());
     }
   }
 }

@@ -6,6 +6,7 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -364,6 +365,153 @@ SCENARIO("The parser refuses what AMAL would not compile") {
       REQUIRE(program.instructions.size() == 4);
       REQUIRE(program.instructions[0].opcode == Opcode::Move);
       REQUIRE(program.instructions[2].jump == 3);
+    }
+  }
+}
+
+SCENARIO("Wait and End stop a channel's program") {
+  GIVEN("Two channels that set R0 before and after a Wait or an End") {
+    Registers globals{};
+    Machine machine(globals);
+    machine.create(1, "LR0=1;W;LR0=2;");
+    machine.create(2, "LR0=1;E;LR0=2;");
+    machine.startAll();
+    machine.tick();
+    machine.tick();
+
+    THEN("Nothing after them runs and the channels stop running") {
+      REQUIRE(machine.channelRegister(1, 0) == 1);
+      REQUIRE(machine.channelRegister(2, 0) == 1);
+      REQUIRE_FALSE(machine.isRunning(1));
+      REQUIRE_FALSE(machine.isRunning(2));
+      REQUIRE(machine.exists(1));
+      REQUIRE(machine.exists(2));
+    }
+  }
+}
+
+SCENARIO("! is AMAL's exclusive or") {
+  GIVEN("Two exclusive ors, one on a register") {
+    Registers globals{};
+    Machine machine(globals);
+    machine.create(1, "LR0=6!3;LR1=R0!$F0F0;");
+    machine.start(1);
+    machine.tick();
+
+    THEN("Only the bits that differ are set") {
+      REQUIRE(machine.channelRegister(1, 0) == 5);
+      REQUIRE(machine.channelRegister(1, 1) == static_cast<int16_t>(0xF0F5));
+    }
+  }
+}
+
+SCENARIO("A channel without an object still runs") {
+  GIVEN("A program reading X, Y and A and moving, on an unbound channel") {
+    Registers globals{};
+    Machine machine(globals);
+    machine.create(1, "LR0=5;LR0=X;LR1=5;LR1=Y;LR2=5;LR2=A;M10,0,3;LR3=1;");
+    machine.start(1);
+
+    WHEN("It runs through its Move") {
+      machine.tick();
+      machine.tick();
+      machine.tick();
+      const int16_t afterMove = machine.channelRegister(1, 3);
+      machine.tick();
+
+      THEN("X, Y and A read 0 and the Move still takes its three frames") {
+        REQUIRE(machine.channelRegister(1, 0) == 0);
+        REQUIRE(machine.channelRegister(1, 1) == 0);
+        REQUIRE(machine.channelRegister(1, 2) == 0);
+        REQUIRE(afterMove == 0);
+        REQUIRE(machine.channelRegister(1, 3) == 1);
+      }
+    }
+  }
+
+  GIVEN("A Move over ten frames on a channel bound only after two") {
+    Registers globals{};
+    Machine machine(globals);
+    Object bob{};
+    machine.create(1, "M10,0,10;");
+    machine.start(1);
+    machine.tick();
+    machine.tick();
+    machine.bind(1, &bob);
+    const auto frames = run(machine, bob, 10);
+
+    THEN("The object moves from then on, a pixel a frame, to the Move's end") {
+      REQUIRE(frames.xs.front() == 1);
+      REQUIRE(frames.xs[7] == 8);
+      REQUIRE(frames.xs.back() == 8);
+    }
+  }
+}
+
+SCENARIO("Channels and registers outside AMAL's range are refused") {
+  GIVEN("A machine with channel 1 open") {
+    Registers globals{};
+    Machine machine(globals);
+    Object bob{};
+    machine.create(1, "P;");
+
+    THEN("Channel 64, channel -1 and registers past R9 throw") {
+      REQUIRE_THROWS_AS(machine.create(Machine::CHANNELS, "P;"),
+                        std::out_of_range);
+      REQUIRE_THROWS_AS(machine.bind(-1, &bob), std::out_of_range);
+      REQUIRE_THROWS_AS(machine.channelRegister(1, 10), std::out_of_range);
+      REQUIRE_THROWS_AS(machine.channelRegister(1, -1), std::out_of_range);
+    }
+  }
+}
+
+SCENARIO("Programs built by hand may hold expressions the parser never "
+         "makes") {
+  GIVEN("A Let with no terms and a Let whose terms end in an operator") {
+    const std::vector<Term> terms = {
+        {TermKind::Number, Operator::Add, 5},
+        {TermKind::Operator, Operator::Add, 0},
+        {TermKind::Number, Operator::Add, 3},
+        {TermKind::Operator, Operator::Multiply, 0}};
+    std::vector<Instruction> instructions(2);
+    instructions[0].opcode = Opcode::Let;
+    instructions[0].reg = 0;
+    instructions[0].first = {0, 0};
+    instructions[1].opcode = Opcode::Let;
+    instructions[1].reg = 1;
+    instructions[1].first = {0, 4};
+    const std::vector<uint16_t> code = {0, 1};
+    const Program program{code.data(), instructions.data(), terms.data(),
+                          nullptr, 2};
+    Registers globals{};
+    Machine machine(globals);
+    machine.create(1, program);
+    machine.channelRegister(1, 0) = 9;
+    machine.start(1);
+    machine.tick();
+
+    THEN("The empty expression is 0 and the trailing operator is ignored") {
+      REQUIRE(machine.channelRegister(1, 0) == 0);
+      REQUIRE(machine.channelRegister(1, 1) == 8);
+    }
+  }
+}
+
+SCENARIO("The parser names what is missing") {
+  GIVEN("The AMAL program parser") {
+    THEN("A program cut short, a missing =, a bad label and a bad register "
+         "throw") {
+      REQUIRE_THROWS_AS(parse("L"), std::invalid_argument);
+      REQUIRE_THROWS_AS(parse("LR0 1;"), std::invalid_argument);
+      REQUIRE_THROWS_AS(parse("J1;"), std::invalid_argument);
+      REQUIRE_THROWS_AS(parse("LR*=1;"), std::invalid_argument);
+    }
+
+    THEN("Wait and End are read as instructions of their own") {
+      const ParsedProgram program = parse("Wait; End");
+      REQUIRE(program.instructions.size() == 2);
+      REQUIRE(program.instructions[0].opcode == Opcode::Wait);
+      REQUIRE(program.instructions[1].opcode == Opcode::End);
     }
   }
 }

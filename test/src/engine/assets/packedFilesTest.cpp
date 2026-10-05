@@ -3,6 +3,7 @@
 #include "../../../../lib/converter/packedArchive/packedArchive.h"
 #include "../../../../src/engine/assets/Assets.h"
 #include "../../../../src/engine/assets/Lz4.h"
+#include "../../../../src/engine/assets/PackedArchive.h"
 
 #include <catch2/catch_all.hpp>
 
@@ -399,6 +400,193 @@ SCENARIO("Packed bitmaps and files are read in steps") {
                           "Failed to open assets/missing");
       REQUIRE_THROWS_WITH(files.beginRead("assets/big.bmp")->step(bytes),
                           "Failed to open assets/big.bmp");
+    }
+  }
+}
+
+SCENARIO("Corrupt LZ4 sequences are refused") {
+  GIVEN("Blocks cut inside a sequence or pointing before the start") {
+    const std::vector<std::vector<uint8_t>> blocks = {{0xF0},
+                                                      {0x10, 'a', 0x01},
+                                                      {0x10, 'a', 0x00, 0x00},
+                                                      {0x10, 'a', 0x02, 0x00}};
+
+    THEN("Each fails instead of reading or writing out of bounds") {
+      for (const std::vector<uint8_t> &block : blocks) {
+        CAPTURE(block);
+        std::vector<uint8_t> unpacked(32, 0xAA);
+        REQUIRE_THROWS_WITH(decompressLz4(block.data(), block.size(),
+                                          unpacked.data(), unpacked.size()),
+                            "Corrupt LZ4 data");
+        REQUIRE(std::count(unpacked.begin() + 1, unpacked.end(), 0xAA) == 31);
+      }
+    }
+  }
+}
+
+namespace {
+
+constexpr auto TEXT = "assets/text.txt";
+constexpr auto SONG = "assets/music/song.s3m";
+constexpr auto PICTURE = "assets/0384/0384.bmp";
+constexpr auto NOISE = "assets/noise.bmp";
+
+IndexedBitmap noiseBitmap() {
+  IndexedBitmap picture;
+  picture.width = 8;
+  picture.height = 4;
+  picture.palette = {0x000, 0xFFF};
+  for (int at = 0; at < picture.width * picture.height; ++at) {
+    picture.pixels.push_back(static_cast<uint8_t>(at * 37 + 5));
+  }
+  return picture;
+}
+
+std::vector<uint8_t> corruptible() {
+  packedArchive::ArchiveWriter writer;
+  writer.addFile(SONG, pattern(5000, 1));
+  writer.addFile(TEXT, bytes("hello"));
+  writer.addBitmap(PICTURE, bitmap());
+  writer.addBitmap(NOISE, noiseBitmap());
+  return writer.finish();
+}
+
+void putLong(std::vector<uint8_t> &data, std::size_t at, uint32_t value) {
+  data[at] = static_cast<uint8_t>(value >> 24);
+  data[at + 1] = static_cast<uint8_t>(value >> 16);
+  data[at + 2] = static_cast<uint8_t>(value >> 8);
+  data[at + 3] = static_cast<uint8_t>(value);
+}
+
+std::size_t entryField(const std::vector<uint8_t> &data,
+                       const std::string &name, std::size_t field) {
+  const std::size_t count =
+      packed::readLong(data.data() + packed::COUNT_OFFSET);
+  for (std::size_t index = 0; index < count; ++index) {
+    const std::size_t at = packed::HEADER_SIZE + index * packed::ENTRY_SIZE;
+    const char *entry = reinterpret_cast<const char *>(
+        data.data() + packed::readLong(data.data() + at + packed::NAME_OFFSET));
+    if (name == entry) {
+      return at + field;
+    }
+  }
+  throw std::runtime_error("No entry " + name);
+}
+
+std::size_t dataOf(const std::vector<uint8_t> &data, const std::string &name) {
+  return packed::readLong(data.data() +
+                          entryField(data, name, packed::DATA_OFFSET));
+}
+
+constexpr auto CORRUPT = "Corrupt asset archive";
+
+} // namespace
+
+SCENARIO("A corrupt packed archive is refused instead of read out of bounds") {
+  GIVEN("A packed archive with files and bitmaps") {
+    std::vector<uint8_t> data = corruptible();
+
+    THEN("The intact archive reads") {
+      PackedFiles files(data.data(), data.size());
+      REQUIRE(files.read(TEXT) == bytes("hello"));
+      REQUIRE(files.loadBitmap(NOISE).pixels == noiseBitmap().pixels);
+    }
+
+    WHEN("The archive is cut short") {
+      const std::size_t cut = data.size() - packed::DATA_ALIGNMENT;
+
+      THEN("It is refused when opened") {
+        REQUIRE_THROWS_WITH(PackedFiles(data.data(), cut), CORRUPT);
+      }
+    }
+
+    WHEN("It claims more entries than its table holds") {
+      putLong(data, packed::COUNT_OFFSET, 100000);
+
+      THEN("It is refused when opened") {
+        REQUIRE_THROWS_WITH(PackedFiles(data.data(), data.size()), CORRUPT);
+      }
+    }
+
+    WHEN("A name points past the end") {
+      putLong(data, entryField(data, TEXT, packed::NAME_OFFSET),
+              static_cast<uint32_t>(data.size()));
+      PackedFiles files(data.data(), data.size());
+
+      THEN("Looking names up fails") {
+        REQUIRE_THROWS_WITH(files.exists(TEXT), CORRUPT);
+      }
+    }
+
+    WHEN("A file's data runs past the end") {
+      putLong(data, entryField(data, TEXT, packed::DATA_OFFSET),
+              static_cast<uint32_t>(data.size() - 2));
+      PackedFiles files(data.data(), data.size());
+
+      THEN("Reading it fails whether at once or in steps") {
+        REQUIRE_THROWS_WITH(files.read(TEXT), CORRUPT);
+        std::vector<uint8_t> stepped;
+        REQUIRE_THROWS_WITH(files.beginRead(TEXT)->step(stepped), CORRUPT);
+      }
+    }
+
+    WHEN("A file stored as is claims another size") {
+      putLong(data, entryField(data, TEXT, packed::UNPACKED_SIZE_OFFSET), 6);
+      PackedFiles files(data.data(), data.size());
+
+      THEN("Reading it fails whether at once or in steps") {
+        REQUIRE_THROWS_WITH(files.read(TEXT), CORRUPT);
+        std::vector<uint8_t> stepped;
+        REQUIRE_THROWS_WITH(files.beginRead(TEXT)->step(stepped), CORRUPT);
+      }
+    }
+
+    WHEN("A compressed file claims more bytes than it unpacks to") {
+      putLong(data, entryField(data, SONG, packed::UNPACKED_SIZE_OFFSET), 5100);
+      PackedFiles files(data.data(), data.size());
+
+      THEN("Reading it fails in the unpacking") {
+        REQUIRE_THROWS_WITH(files.read(SONG), "Corrupt LZ4 data");
+      }
+    }
+
+    WHEN("A bitmap claims more colours than it stores") {
+      const std::size_t header = dataOf(data, PICTURE);
+      data[header + packed::BITMAP_COLORS_OFFSET] = 0x7F;
+      PackedFiles files(data.data(), data.size());
+
+      THEN("Loading it fails whether at once or in steps") {
+        REQUIRE_THROWS_WITH(files.loadBitmap(PICTURE), CORRUPT);
+        IndexedBitmap stepped;
+        REQUIRE_THROWS_WITH(files.beginBitmap(PICTURE)->step(stepped), CORRUPT);
+      }
+    }
+
+    WHEN("A bitmap stored as is claims another size") {
+      const std::size_t header = dataOf(data, NOISE);
+      data[header + packed::BITMAP_WIDTH_OFFSET + 1] = 9;
+      PackedFiles files(data.data(), data.size());
+
+      THEN("Loading it fails whether at once or in steps") {
+        REQUIRE_THROWS_WITH(files.loadBitmap(NOISE), CORRUPT);
+        IndexedBitmap stepped;
+        REQUIRE_THROWS_WITH(files.beginBitmap(NOISE)->step(stepped), CORRUPT);
+      }
+    }
+  }
+}
+
+SCENARIO("A directory in a packed archive is not a bitmap") {
+  GIVEN("An archive with a bitmap inside a directory") {
+    const std::vector<uint8_t> data = archive();
+    PackedFiles files(data.data(), data.size());
+
+    THEN("Loading the directory as a bitmap fails like opening it") {
+      REQUIRE_THROWS_WITH(files.loadBitmap("assets/0384"),
+                          "Failed to open assets/0384");
+      IndexedBitmap stepped;
+      REQUIRE_THROWS_WITH(files.beginBitmap("assets/0384/")->step(stepped),
+                          "Failed to open assets/0384/");
     }
   }
 }

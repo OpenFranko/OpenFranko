@@ -632,3 +632,249 @@ SCENARIO("An S3M module is read in steps") {
     }
   }
 }
+
+namespace {
+
+constexpr uint8_t SLIDE_DOWN = 5;
+constexpr uint8_t SLIDE_UP = 6;
+constexpr uint8_t JUMP = 2;
+
+ModuleSpec slides() {
+  ModuleSpec spec;
+  spec.speed = 2;
+  spec.orders = {0, 1, 255};
+  SampleSpec tone;
+  tone.data = wave(2000, 40, 90);
+  spec.samples = {tone};
+  spec.patterns = {
+      {
+          {0, 0, C4, 1, -1, 0, 0},
+          {1, 0, NO_NOTE, 0, -1, SLIDE_DOWN, 0xF3},
+          {2, 0, NO_NOTE, 0, -1, SLIDE_UP, 0xE4},
+          {3, 0, NO_NOTE, 0, -1, SLIDE_UP, 0},
+      },
+      {
+          {0, 0, NO_NOTE, 0, -1, JUMP, 0},
+      },
+  };
+  return spec;
+}
+
+std::vector<TrackerTick> ticks(Tracker &tracker, int count) {
+  std::vector<TrackerTick> played;
+  for (int tick = 0; tick < count; ++tick) {
+    played.push_back(tracker.advance());
+  }
+  return played;
+}
+
+std::size_t pointerAt(const ModuleSpec &spec, std::size_t index) {
+  return 0x60 + spec.orders.size() + 2 * index;
+}
+
+} // namespace
+
+SCENARIO("Fine slides move the period once, on the row's first tick") {
+  GIVEN("C-4 followed by a fine slide down and two extra fine slides up") {
+    S3mModule module;
+    REQUIRE(parseS3m(buildS3m(slides()), module));
+    Tracker tracker(module);
+    const std::vector<TrackerTick> played = ticks(tracker, 8);
+    const uint32_t c4 = 428 * Tracker::PERIOD_ONE;
+
+    THEN("EF3 lowers the note by three periods for both ticks of its row") {
+      REQUIRE(played[0].voices[0].period == c4);
+      REQUIRE(played[2].voices[0].period == c4 + 3 * Tracker::PERIOD_ONE);
+      REQUIRE(played[3].voices[0].period == c4 + 3 * Tracker::PERIOD_ONE);
+    }
+
+    THEN("FE4 raises it by one period, and F00 repeats the last slide") {
+      REQUIRE(played[4].voices[0].period == c4 + 2 * Tracker::PERIOD_ONE);
+      REQUIRE(played[5].voices[0].period == c4 + 2 * Tracker::PERIOD_ONE);
+      REQUIRE(played[6].voices[0].period == c4 + Tracker::PERIOD_ONE);
+      REQUIRE(played[7].voices[0].period == c4 + Tracker::PERIOD_ONE);
+    }
+  }
+}
+
+SCENARIO("A pattern plays its 64 rows, then a position jump goes back") {
+  GIVEN("A first pattern without breaks and a second that jumps to order 0") {
+    S3mModule module;
+    REQUIRE(parseS3m(buildS3m(slides()), module));
+    Tracker tracker(module);
+
+    WHEN("All 64 rows of the first pattern have played") {
+      const std::vector<TrackerTick> played = ticks(tracker, 64 * 2 + 1);
+
+      THEN("The second order starts on its first row") {
+        REQUIRE(played[127].pattern == 0);
+        REQUIRE(played[127].row == 63);
+        REQUIRE(played[128].pattern == 1);
+        REQUIRE(played[128].row == 0);
+        REQUIRE(tracker.loops() == 0);
+      }
+    }
+
+    WHEN("The jump's row is over") {
+      ticks(tracker, 64 * 2 + 1);
+      const bool loopedEarly = tracker.loops() != 0;
+      tracker.advance();
+      const int loops = tracker.loops();
+      const TrackerTick next = tracker.advance();
+
+      THEN("Jumping back to the first order counts as a loop") {
+        REQUIRE_FALSE(loopedEarly);
+        REQUIRE(loops == 1);
+        REQUIRE(next.restarted);
+        REQUIRE(next.pattern == 0);
+        REQUIRE(next.row == 0);
+      }
+    }
+  }
+
+  GIVEN("A jump from the first order over the second to the third") {
+    ModuleSpec spec = slides();
+    spec.orders = {0, 1, 2, 255};
+    spec.patterns[0] = {{0, 0, C4, 1, -1, JUMP, 2}};
+    spec.patterns.push_back({{0, 0, C4, 1, -1, 0, 0}});
+    S3mModule module;
+    REQUIRE(parseS3m(buildS3m(spec), module));
+    Tracker tracker(module);
+    const std::vector<TrackerTick> played = ticks(tracker, 3);
+
+    THEN("The third order plays next and no loop is counted") {
+      REQUIRE(played[1].pattern == 0);
+      REQUIRE(played[2].pattern == 2);
+      REQUIRE(played[2].row == 0);
+      REQUIRE_FALSE(played[2].restarted);
+      REQUIRE(tracker.loops() == 0);
+    }
+  }
+}
+
+SCENARIO("A module with nothing to play stays silent") {
+  GIVEN("Order lists that end, or skip, before any pattern") {
+    const std::vector<std::vector<uint8_t>> orders = {
+        {255, 0}, {254, 255, 0}, {7}, {}};
+
+    THEN("The tracker is empty and every tick is silent at the module's "
+         "speed") {
+      for (const std::vector<uint8_t> &list : orders) {
+        ModuleSpec spec = slides();
+        spec.orders = list;
+        S3mModule module;
+        REQUIRE(parseS3m(buildS3m(spec), module));
+        Tracker tracker(module);
+        REQUIRE(tracker.isEmpty());
+        for (int tick = 0; tick < 3; ++tick) {
+          const TrackerTick &played = tracker.advance();
+          REQUIRE(played.speed == 2);
+          REQUIRE(played.bpm == 125);
+          for (const TrackerVoice &voice : played.voices) {
+            REQUIRE_FALSE(voice.active);
+            REQUIRE_FALSE(voice.trigger);
+          }
+        }
+        REQUIRE(tracker.loops() == 0);
+      }
+    }
+  }
+
+  GIVEN("A module that plays") {
+    S3mModule module;
+    REQUIRE(parseS3m(buildS3m(slides()), module));
+
+    THEN("It is not empty") { REQUIRE_FALSE(Tracker(module).isEmpty()); }
+  }
+}
+
+SCENARIO("S3M parts the tracker cannot play are left out") {
+  GIVEN("An AdLib instrument in place of the first sample") {
+    const ModuleSpec spec = slides();
+    std::vector<uint8_t> file = buildS3m(spec);
+    const std::size_t pointer = pointerAt(spec, 0);
+    file[(file[pointer] | file[pointer + 1] << 8) * 16u] = 2;
+    S3mModule module;
+    REQUIRE(parseS3m(file, module));
+
+    THEN("It has no data, so its note does not sound") {
+      REQUIRE(module.samples[0].data.empty());
+      REQUIRE(module.samples[0].volume == 0);
+      Tracker tracker(module);
+      REQUIRE_FALSE(tracker.advance().voices[0].active);
+    }
+  }
+
+  GIVEN("A pattern whose pointer is 0") {
+    const ModuleSpec spec = slides();
+    std::vector<uint8_t> file = buildS3m(spec);
+    const std::size_t pointer = pointerAt(spec, spec.samples.size());
+    file[pointer] = 0;
+    file[pointer + 1] = 0;
+    S3mModule module;
+    REQUIRE(parseS3m(file, module));
+
+    THEN("The pattern is there but empty") {
+      REQUIRE(module.patterns.size() == 2);
+      for (const S3mModule::Row &row : module.patterns[0]) {
+        for (const S3mEvent &event : row) {
+          REQUIRE(event.note == 0);
+          REQUIRE(event.instrument == 0);
+          REQUIRE(event.command == 0);
+        }
+      }
+      REQUIRE(module.patterns[1][0][0].command == JUMP);
+    }
+  }
+
+  GIVEN("Events on channels past the fourth, between events on the first "
+        "two") {
+    ModuleSpec spec = slides();
+    spec.patterns[0] = {{0, 0, C4, 1, 20, 0, 0},
+                        {0, 5, 0x47, 1, 30, SLIDE_DOWN, 0x22},
+                        {0, 1, 0x42, 1, 40, SLIDE_UP, 0x11},
+                        {1, 9, 0x30, 1, -1, 0, 0},
+                        {1, 2, 0x31, 1, -1, 0, 0}};
+    S3mModule module;
+    REQUIRE(parseS3m(buildS3m(spec), module));
+    const S3mModule::Pattern &pattern = module.patterns[0];
+
+    THEN("They are skipped and the events after them are read whole") {
+      REQUIRE(pattern[0][0].note == 13 + 12 * 4);
+      REQUIRE(pattern[0][0].volume == 21);
+      REQUIRE(pattern[0][0].command == 0);
+      REQUIRE(pattern[0][1].note == 13 + 12 * 4 + 2);
+      REQUIRE(pattern[0][1].volume == 41);
+      REQUIRE(pattern[0][1].command == SLIDE_UP);
+      REQUIRE(pattern[0][1].parameter == 0x11);
+      REQUIRE(pattern[0][2].note == 0);
+      REQUIRE(pattern[0][3].note == 0);
+      REQUIRE(pattern[1][2].note == 13 + 12 * 3 + 1);
+      REQUIRE(pattern[1][0].note == 0);
+    }
+  }
+}
+
+SCENARIO("A reader with a budget of one or two steps reads all at once") {
+  GIVEN("The two-pattern module") {
+    const std::vector<uint8_t> file = buildS3m(song());
+    S3mModule whole;
+    REQUIRE(parseS3m(file, whole));
+
+    THEN("The header takes a step and everything else the next") {
+      for (const int budget : {1, 2}) {
+        S3mReader reader(file, nullptr, budget);
+        S3mModule stepped;
+        int steps = 1;
+        while (!reader.step(stepped)) {
+          ++steps;
+        }
+        REQUIRE(steps == 2);
+        REQUIRE(stepped.patterns.size() == whole.patterns.size());
+        REQUIRE(stepped.samples.size() == whole.samples.size());
+        REQUIRE(stepped.samples[1].data == whole.samples[1].data);
+        REQUIRE(stepped.tempoRows == whole.tempoRows);
+      }
+    }
+  }
+}
