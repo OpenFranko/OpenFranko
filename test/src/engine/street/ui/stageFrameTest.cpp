@@ -184,6 +184,56 @@ SCENARIO("composeFrame shows the screens where the display puts them") {
   }
 }
 
+SCENARIO("Sprites ride on the play screen's layer and are swapped in place") {
+  GIVEN("A PAL stage output built with one sprite on the play screen") {
+    Stage stage(StageLayout{false, false});
+    const std::vector<uint8_t> pixels(16 * 4, 3);
+    const std::vector<Sprite> first = {{pixels.data(), 16, 4, 10, 20}};
+    Display output;
+    stageOutput(output, &stage.play, GREYS, stage.display, 0, &stage.panel,
+                panelDisplayY(stage.layout), panelPalette(), stage.layout,
+                &first);
+
+    THEN("The play layer carries it") {
+      REQUIRE(output.layers.front().carriesSprites);
+      REQUIRE(output.layers.front().sprites == first);
+    }
+
+    WHEN("New sprites are put on the built output") {
+      const std::vector<Sprite> moved = {{pixels.data(), 16, 4, 30, 20},
+                                         {pixels.data(), 16, 4, 60, 40}};
+      const bool updated = updateSprites(output, moved);
+
+      THEN("They replace the old ones and nothing else changes") {
+        REQUIRE(updated);
+        REQUIRE(output.layers.front().sprites == moved);
+        REQUIRE(output.layers.front().pixels == stage.play.pixels().data());
+        REQUIRE(output.layers.size() == 3);
+      }
+    }
+  }
+
+  GIVEN("Outputs that carry no sprites") {
+    Stage stage(StageLayout{false, false});
+    const std::vector<uint8_t> pixels(16 * 4, 3);
+    const std::vector<Sprite> sprites = {{pixels.data(), 16, 4, 10, 20}};
+    Display drawn;
+    stageOutput(drawn, &stage.play, GREYS, stage.display, 0, &stage.panel,
+                panelDisplayY(stage.layout), panelPalette(), stage.layout);
+    Display hidden;
+    stageOutput(hidden, &stage.play, GREYS, stage.display, 0, nullptr,
+                panelDisplayY(stage.layout), panelPalette(), stage.layout,
+                &sprites);
+
+    THEN("Sprites cannot be put on them") {
+      REQUIRE_FALSE(updateSprites(drawn, sprites));
+      REQUIRE(drawn.layers.front().sprites.empty());
+      REQUIRE(hidden.layers.empty());
+      REQUIRE_FALSE(updateSprites(hidden, sprites));
+    }
+  }
+}
+
 SCENARIO("StageDisplay shows copper changes a VBL after the list is built") {
   GIVEN("A PAL display with the play screen up") {
     StageDisplay display;

@@ -270,3 +270,18 @@ SCENARIO("decompressStream unpacks a stream that has no file footer") {
     }
   }
 }
+
+SCENARIO("decompressStream fails on a stream that runs out of bits") {
+  GIVEN("A bare 12-byte trailer that asks for 4 bytes") {
+    std::vector<uint8_t> stream = {
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04,
+    };
+
+    WHEN("Attempting to decompress") {
+      THEN("It throws instead of reading before the stream") {
+        REQUIRE_THROWS_WITH(decompressStream(stream),
+                            "Unexpected end of stream");
+      }
+    }
+  }
+}

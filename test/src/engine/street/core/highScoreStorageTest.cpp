@@ -36,6 +36,19 @@ SCENARIO("High scores fit the 63 data words of the cartridge EEPROM") {
     }
   }
 
+  GIVEN("A new score whose name has not been typed yet") {
+    HighScoreTable table(GameVersion::V10);
+    const int slot = table.insert(30);
+    const std::optional<HighScoreTable> unpacked =
+        unpackHighScores(packHighScores(table));
+
+    THEN("Its blank letters survive the packing") {
+      REQUIRE(table.letter(slot, 0) == 0xFF);
+      REQUIRE(unpacked.has_value());
+      REQUIRE(unpacked->bytes() == table.bytes());
+    }
+  }
+
   GIVEN("Words that were never written") {
     StorageWords blank{};
     blank.fill(0xFFFF);

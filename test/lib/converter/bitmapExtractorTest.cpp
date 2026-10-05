@@ -49,6 +49,28 @@ buildTileFile(const std::vector<std::vector<uint8_t>> &tiles) {
   return buf;
 }
 
+std::vector<uint8_t> buildScreenHeader(const std::vector<uint16_t> &palette) {
+  std::vector<uint8_t> header;
+  pushBigEndian32(header, 0x12031990);
+  for (uint16_t value : {320, 256, 0, 0, 320, 256, 0, 0, 0, 32, 5}) {
+    pushBigEndian16(header, value);
+  }
+  for (std::size_t i = 0; i < 32; ++i) {
+    pushBigEndian16(header, i < palette.size() ? palette[i] : 0);
+  }
+  return header;
+}
+
+void append(std::vector<uint8_t> &data, const std::vector<uint8_t> &more) {
+  data.insert(data.end(), more.begin(), more.end());
+}
+
+std::vector<uint8_t> bmpPaletteEntry(const std::vector<uint8_t> &bmp,
+                                     int index) {
+  const auto at = static_cast<std::ptrdiff_t>(54 + index * 4);
+  return std::vector<uint8_t>(bmp.begin() + at, bmp.begin() + at + 4);
+}
+
 } // namespace
 
 SCENARIO("extract handles edge cases gracefully") {
@@ -311,6 +333,105 @@ SCENARIO("extract treats 1.2 files like their 1.0 counterparts") {
         REQUIRE(results.size() == 2);
         REQUIRE(results[0].name == "t11_000");
         REQUIRE(results[1].name == "t11_001");
+      }
+    }
+  }
+}
+
+SCENARIO("extract reads a packed screen's bitmaps with the screen's palette") {
+  GIVEN("A packed screen whose colour 1 is red, followed by an 8x1 and an "
+        "8x2 bitmap") {
+    auto data = buildScreenHeader({0x000, 0xF00});
+    append(data, buildBitmap(1));
+    append(data, buildBitmap(2));
+
+    WHEN("extract is called") {
+      const auto results = extract(data, "03B8");
+      REQUIRE(results.size() == 2);
+
+      THEN("Both bitmaps are converted, even the one-line one") {
+        REQUIRE(results[0].name == "03B8");
+        REQUIRE(results[1].name == "03B8_1");
+        REQUIRE(results[0].error.empty());
+        REQUIRE(results[1].error.empty());
+        REQUIRE_FALSE(results[0].data.empty());
+        REQUIRE_FALSE(results[1].data.empty());
+      }
+
+      THEN("They use the screen's palette") {
+        const std::vector<uint8_t> red = {0x00, 0x00, 0xFF, 0x00};
+        REQUIRE(bmpPaletteEntry(results[0].data, 1) == red);
+        REQUIRE(bmpPaletteEntry(results[1].data, 1) == red);
+      }
+    }
+  }
+
+  GIVEN("The cemetery picture 03BB, which also starts with a screen header") {
+    auto data = buildScreenHeader({0x000, 0xF00});
+    append(data, buildBitmap(2));
+    append(data, buildBitmap(1));
+
+    WHEN("extract is called") {
+      const auto results = extract(data, "03BB");
+      REQUIRE(results.size() == 2);
+
+      THEN("Its bitmaps are drawn in magenta and black, not in the screen's "
+           "colours") {
+        REQUIRE(results[0].error.empty());
+        REQUIRE(bmpPaletteEntry(results[0].data, 0) ==
+                std::vector<uint8_t>{0xFF, 0x00, 0xFF, 0x00});
+        REQUIRE(bmpPaletteEntry(results[0].data, 1) ==
+                std::vector<uint8_t>{0x00, 0x00, 0x00, 0x00});
+      }
+
+      THEN("A one-line bitmap is skipped as in other multi-bitmap files") {
+        REQUIRE(results[1].data.empty());
+        REQUIRE(results[1].error == "Bitmap is only 8x1 pixels");
+      }
+    }
+  }
+}
+
+SCENARIO("extract gives 0384's bitmaps the palette of the screen before them") {
+  GIVEN("0384 listing a bitmap, a packed screen with its bitmap, and another "
+        "bitmap") {
+    const auto first = buildBitmap(2);
+    auto screen = buildScreenHeader({0x000, 0x0F0});
+    append(screen, buildBitmap(2));
+    const auto last = buildBitmap(2);
+    std::vector<uint8_t> data;
+    const std::size_t tableSize = 6;
+    pushBigEndian16(data, static_cast<uint16_t>(tableSize));
+    pushBigEndian16(data, static_cast<uint16_t>(tableSize + first.size()));
+    pushBigEndian16(
+        data, static_cast<uint16_t>(tableSize + first.size() + screen.size()));
+    append(data, first);
+    append(data, screen);
+    append(data, last);
+
+    WHEN("extract is called") {
+      const auto results = extract(data, "0384");
+      REQUIRE(results.size() == 3);
+
+      THEN("All three bitmaps are converted in table order") {
+        REQUIRE(results[0].name == "0384");
+        REQUIRE(results[1].name == "0384_1");
+        REQUIRE(results[2].name == "0384_2");
+        for (const auto &result : results) {
+          REQUIRE(result.error.empty());
+        }
+      }
+
+      THEN("The bitmap before the screen uses the HUD palette") {
+        REQUIRE(bmpPaletteEntry(results[0].data, 2) ==
+                std::vector<uint8_t>{0x00, 0x11, 0xFF, 0x00});
+      }
+
+      THEN("The screen's bitmap and the one after it use the screen's "
+           "palette") {
+        const std::vector<uint8_t> green = {0x00, 0xFF, 0x00, 0x00};
+        REQUIRE(bmpPaletteEntry(results[1].data, 1) == green);
+        REQUIRE(bmpPaletteEntry(results[2].data, 1) == green);
       }
     }
   }

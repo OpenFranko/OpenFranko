@@ -154,12 +154,12 @@ patterned(int width, int height, int seed, int hotX, int hotY) {
 }
 
 struct PaintedSpider {
-  explicit PaintedSpider(bool showsSprites) {
+  explicit PaintedSpider(bool showsSprites, int bobWidth = BOB_WIDTH) {
     files.bitmaps[assets::picturePath("p50")] =
         patterned(LOGO_WIDTH, LOGO_HEIGHT, 3, 0, 0);
     for (int index = 0; index < IMAGES; ++index) {
       files.bitmaps[assets::imagePath("s50", index)] =
-          patterned(BOB_WIDTH, BOB_HEIGHT, index, 5, 4);
+          patterned(bobWidth, BOB_HEIGHT, index, 5, 4);
     }
     monitor.sprites = showsSprites;
     state.emplace(monitor, speaker, files);
@@ -202,6 +202,32 @@ SCENARIO("The spider shown as a sprite looks the same as the spider drawn") {
         REQUIRE(next == EngineStateId::Adverts);
         REQUIRE(spriteFrames > 300);
         REQUIRE(redraws == 1);
+      }
+    }
+  }
+}
+
+SCENARIO("A spider that cannot be a sprite is drawn into the screen") {
+  GIVEN("Spider images of an odd width, on monitors with and without "
+        "sprites") {
+    PaintedSpider drawn(false, BOB_WIDTH - 1);
+    PaintedSpider sprited(true, BOB_WIDTH - 1);
+
+    WHEN("The spider has walked into view") {
+      for (PaintedSpider *spider : {&drawn, &sprited}) {
+        run(*spider->state, WALK_SETUP + 3);
+      }
+      const std::vector<uint32_t> offView = drawn.monitor.frame();
+      for (PaintedSpider *spider : {&drawn, &sprited}) {
+        run(*spider->state, 100);
+      }
+
+      THEN("No layer carries sprites and both screens look the same") {
+        REQUIRE(drawn.monitor.frame() != offView);
+        for (const auto &layer : sprited.monitor.shown().layers) {
+          REQUIRE_FALSE(layer.carriesSprites);
+        }
+        REQUIRE(sprited.monitor.frame() == drawn.monitor.frame());
       }
     }
   }

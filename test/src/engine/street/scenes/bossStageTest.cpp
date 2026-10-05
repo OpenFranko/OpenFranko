@@ -41,7 +41,26 @@ constexpr uint8_t BOSS_COLOR = 2;
 constexpr int BOSS_FILES = 6;
 constexpr int READY_FRAMES = 1 + BOSS_FILES * LoadingQueue::FILE_FRAMES;
 
+constexpr int SPECIAL_ROLL = 2;
+constexpr int ATTACK_ROLL = 3;
+
 uint8_t columnColor(int column) { return static_cast<uint8_t>(100 + column); }
+
+struct BossDice {
+  int zeroRoll;
+  int tens = 0;
+
+  int operator()(int limit) {
+    if (limit == 40) {
+      tens = 0;
+      return limit;
+    }
+    if (limit == 10) {
+      return ++tens == zeroRoll ? 0 : limit;
+    }
+    return 0;
+  }
+};
 
 class FakeHost : public FakeStreetHost {
 public:
@@ -131,6 +150,21 @@ struct Duel : StageRunner<Duel> {
   }
 
   int16_t &global(int index) { return session.registers[index]; }
+
+  int16_t &reg(int channel, int index) {
+    return stage->machine().channelRegister(channel, index);
+  }
+
+  int bossCloses() {
+    return runUntil(
+        [this] {
+          const auto &bobs = stage->bobs();
+          return global(RX) == 3 && bobs.y(2) == bobs.y(1) &&
+                 std::abs(bobs.x(2) - bobs.x(1)) <= 32 && reg(4, 4) == 0 &&
+                 reg(4, 5) == 0;
+        },
+        2000);
+  }
 };
 
 } // namespace
@@ -879,9 +913,251 @@ SCENARIO("On stage 3 KONBOSS sends the boss over the railing") {
                 REQUIRE(exit.panel.pixels() ==
                         stage.panel()->surface().pixels());
               }
+
+              THEN("The Cls handed over blanks both buffers once CONGRA's "
+                   "VBLs run it") {
+                duel.runUntil(
+                    [&] {
+                      return stage.outcome() != BossStage::Outcome::Playing;
+                    },
+                    2000);
+                BossExit exit = *duel.session.bossExit;
+                const BobLayer noBobs;
+                ImageBank noImages;
+                for (int vbl = 0; vbl < 3; ++vbl) {
+                  exit.buffer.vbl();
+                  exit.buffer.autobackStep(noBobs, noImages);
+                }
+                const std::vector<uint8_t> &shown =
+                    exit.buffer.shown().pixels();
+                const std::vector<uint8_t> &upcoming =
+                    exit.buffer.upcoming().pixels();
+                REQUIRE_FALSE(exit.buffer.isAutobacking());
+                REQUIRE(std::all_of(shown.begin(), shown.end(),
+                                    [](uint8_t pixel) { return pixel == 0; }));
+                REQUIRE(std::all_of(upcoming.begin(), upcoming.end(),
+                                    [](uint8_t pixel) { return pixel == 0; }));
+              }
             }
           }
         }
+      }
+    }
+  }
+}
+
+SCENARIO("The boss's dice pick its own attacks as state 16 rolls them") {
+  GIVEN("Dice whose third roll of ten picks an attack whenever the boss can") {
+    Duel duel;
+    duel.host.randomValue = BossDice{ATTACK_ROLL};
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 1);
+    duel.reachFight();
+
+    WHEN("The boss reaches the player") {
+      const int hit = duel.runUntil([&] { return duel.reg(2, 1) != 0; }, 2000);
+      const int x = stage.bobs().x(1);
+
+      THEN("It snaps 32 px in front of him and knocks him back for 2 "
+           "energy") {
+        REQUIRE(hit > 0);
+        REQUIRE(stage.bobs().x(2) == x + 32);
+        REQUIRE(duel.reg(2, 1) == 1);
+        REQUIRE(stage.machine().isFrozen(1));
+        const int freed =
+            duel.runUntil([&] { return !stage.machine().isFrozen(1); }, 300);
+        REQUIRE(freed > 0);
+        REQUIRE(duel.global(RF) == 62);
+        REQUIRE(stage.bobs().x(1) < x);
+      }
+    }
+  }
+
+  GIVEN("Dice whose second roll of ten picks the boss's special move") {
+    Duel duel;
+    duel.host.randomValue = BossDice{SPECIAL_ROLL};
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 1);
+    duel.reachFight();
+
+    WHEN("The boss is close enough") {
+      const int grabbed =
+          duel.runUntil([&] { return duel.reg(2, 1) != 0; }, 2000);
+
+      THEN("It grabs the player and beats him for 8 energy") {
+        REQUIRE(grabbed > 0);
+        REQUIRE(duel.reg(4, 9) == 3);
+        REQUIRE(duel.reg(2, 1) == 3);
+        REQUIRE(duel.global(RP) == BossStage::BOSS_ENERGY);
+        REQUIRE(duel.runUntil([&] { return duel.global(RF) < 64; }, 300) > 0);
+        REQUIRE(duel.global(RF) == 56);
+        REQUIRE(stage.machine().isFrozen(1));
+      }
+    }
+  }
+
+  GIVEN("Dice that always pick a taunt") {
+    Duel duel;
+    duel.host.randomValue = [](int limit) {
+      return limit == 40 || limit == 2 ? 0 : limit;
+    };
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 1);
+    duel.reachFight();
+    duel.run(300);
+
+    THEN("The boss stays in its corner shouting sample 6 of bank 4") {
+      REQUIRE(duel.reg(4, 1) == 2);
+      REQUIRE(duel.host.played(4, 6, 1));
+      REQUIRE(stage.bobs().x(2) == 174);
+      REQUIRE(duel.global(RF) == 64);
+    }
+  }
+}
+
+SCENARIO("The boss referee resolves the player's other moves") {
+  GIVEN("The boss in reach of the player, with dice that always duck") {
+    Duel duel;
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 1);
+    duel.reachFight();
+    duel.bossCloses();
+    const int x = stage.bobs().x(1);
+
+    THEN("While fighting the stage is neither finishing nor at the railing") {
+      REQUIRE(stage.isFighting());
+      REQUIRE_FALSE(stage.isFinishing());
+      REQUIRE_FALSE(stage.isAtRailing());
+    }
+
+    WHEN("He jumps at it") {
+      duel.runUntil([&] { return duel.global(RD) == 4; }, 20,
+                    JOY_FIRE | JOY_UP);
+      duel.run(2);
+
+      THEN("The boss ducks and keeps its 80 energy") {
+        REQUIRE(duel.reg(4, 1) == 1);
+        REQUIRE(duel.reg(5, 0) == 0);
+        REQUIRE(duel.reg(5, 7) == 80);
+      }
+    }
+
+    WHEN("He kicks low") {
+      duel.runUntil([&] { return duel.reg(5, 0) != 0; }, 20,
+                    JOY_FIRE | JOY_DOWN);
+      duel.run(1);
+
+      THEN("The low kick takes 1 energy") {
+        REQUIRE(duel.reg(5, 0) == 2);
+        REQUIRE(duel.reg(5, 7) == 79);
+        REQUIRE(stage.machine().isFrozen(4));
+      }
+    }
+
+    WHEN("He grabs it") {
+      duel.runUntil([&] { return duel.reg(5, 0) != 0; }, 30,
+                    JOY_FIRE | JOY_RIGHT);
+
+      THEN("It is pulled 40 px in front of him and both are held") {
+        REQUIRE(duel.reg(5, 0) == 6);
+        REQUIRE(stage.bobs().x(2) == x + 40);
+        REQUIRE(duel.reg(2, 5) == 1);
+        REQUIRE(stage.machine().isFrozen(1));
+        REQUIRE(stage.machine().isFrozen(4));
+        REQUIRE(duel.reg(5, 7) == 80);
+      }
+    }
+  }
+
+  GIVEN("The boss in reach, with dice that never duck") {
+    Duel duel;
+    duel.host.randomValue = [](int limit) { return limit == 10 ? 3 : limit; };
+    duel.start();
+    duel.run(READY_FRAMES + 1);
+    duel.reachFight();
+    duel.bossCloses();
+
+    WHEN("He jumps at it") {
+      duel.runUntil([&] { return duel.reg(5, 0) != 0; }, 20, JOY_FIRE | JOY_UP);
+      duel.run(1);
+
+      THEN("The flying kick takes 20 energy") {
+        REQUIRE(duel.reg(5, 0) == 4);
+        REQUIRE(duel.reg(5, 3) == 48);
+        REQUIRE(duel.reg(5, 7) == 60);
+      }
+    }
+  }
+}
+
+SCENARIO("A life lost or Esc pressed as the boss dies ends the run after "
+         "the finisher") {
+  GIVEN("The first boss's fight") {
+    Duel duel;
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 1);
+    duel.reachFight();
+    const auto ended = [&] {
+      return stage.outcome() != BossStage::Outcome::Playing;
+    };
+
+    WHEN("The boss dies and the player's last life goes during the "
+         "finisher") {
+      duel.global(RI) = 0;
+      duel.run(1);
+      duel.global(RG) = -2;
+      const int frames = duel.runUntil(ended, 3000);
+
+      THEN("The walk-off ends in game over instead of the bonus drive") {
+        REQUIRE(frames > 0);
+        REQUIRE(stage.outcome() == BossStage::Outcome::GameOver);
+        REQUIRE(duel.global(RO) == -1);
+        REQUIRE(duel.host.played(2, 4, 1));
+      }
+    }
+
+    WHEN("Esc is read on the pass before the boss dies") {
+      duel.run(1, 0, SystemKey::Escape);
+      duel.global(RI) = 0;
+      const int frames = duel.runUntil(ended, 3000);
+
+      THEN("The finisher still plays, then the run quits") {
+        REQUIRE(frames > 0);
+        REQUIRE(stage.outcome() == BossStage::Outcome::Quit);
+        REQUIRE(duel.host.played(4, 9, 1));
+        REQUIRE(duel.global(RN) == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("A third boss beaten right at the railing is sat on it at once") {
+  GIVEN("Franko up at y 144 and right of the boss, which stops at 208,144") {
+    Duel duel;
+    duel.global(RO) = 3;
+    BossStage &stage = duel.start();
+    duel.run(READY_FRAMES + 1);
+    duel.reachFight();
+    duel.run(66, JOY_RIGHT);
+    duel.run(21, JOY_UP);
+    const int settled = duel.runUntil(
+        [&] { return stage.bobs().x(2) == 208 && stage.bobs().y(2) == 144; },
+        300);
+
+    WHEN("It dies there and its bubble is clicked away") {
+      duel.global(RI) = 0;
+      duel.runUntil([&] { return stage.bobs().image(5) == 93; }, 100);
+      const int hidden = duel.runUntil(
+          [&] { return stage.bobs().image(5) == 10; }, 10, JOY_FIRE);
+
+      THEN("Wait RT has nothing to wait for: Bob Off takes him on that "
+           "frame") {
+        REQUIRE(settled > 0);
+        REQUIRE(hidden > 0);
+        REQUIRE(duel.global(RT) == 0);
+        REQUIRE(stage.isAtRailing());
+        REQUIRE_FALSE(stage.bobs().isActive(2));
+        REQUIRE_FALSE(stage.machine().exists(4));
       }
     }
   }

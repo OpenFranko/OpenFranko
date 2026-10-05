@@ -98,3 +98,17 @@ SCENARIO("AmalMotion moves like the AMAL M instruction") {
     }
   }
 }
+
+SCENARIO("AmalMotion keeps AMAL's 16-bit step word") {
+  GIVEN("Moves of 200 and 300 pixels in one frame") {
+    AmalMotion flipped({{200, 1}});
+    AmalMotion dropped({{300, 1}});
+
+    THEN("A step past 32767 flips sign and one past 65535 is dropped, as "
+         "AMAL does") {
+      REQUIRE(flipped.advance(100) == 100 - 56);
+      REQUIRE(dropped.advance(100) == 100);
+      REQUIRE(dropped.isFinished());
+    }
+  }
+}

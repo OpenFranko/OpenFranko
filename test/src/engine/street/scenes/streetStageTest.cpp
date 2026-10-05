@@ -8,7 +8,11 @@
 #include <catch2/catch_all.hpp>
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdlib>
 #include <functional>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -47,12 +51,38 @@ EnemySlot enemy(int spriteSet, int x, int y, int energy, int aggression) {
   return slot;
 }
 
+class SteppedLevelScript : public StreetHost::LevelScriptLoad {
+public:
+  SteppedLevelScript(LevelScript script, int steps)
+      : m_script(std::move(script)), m_steps(steps) {}
+
+  bool step(LevelScript &script) override {
+    if (--m_steps > 0) {
+      return false;
+    }
+    script = m_script;
+    return true;
+  }
+
+private:
+  LevelScript m_script;
+  int m_steps;
+};
+
 class FakeHost : public FakeStreetHost {
 public:
   LevelScript script;
+  int scriptSteps = 1;
   std::vector<int> scenery;
   int randomCalls = 0;
   std::function<int(int)> randomValue = [](int limit) { return limit; };
+
+  std::unique_ptr<LevelScriptLoad> beginLevelScript(int resource) override {
+    if (scriptSteps > 1) {
+      return std::make_unique<SteppedLevelScript>(script, scriptSteps);
+    }
+    return FakeStreetHost::beginLevelScript(resource);
+  }
 
   std::vector<Picture> loadSpriteSet(int resource, int sampleBank) override {
     spriteSets.emplace_back(resource, sampleBank);
@@ -118,6 +148,33 @@ struct Street : StageRunner<Street> {
   }
 
   int16_t &global(int index) { return session.registers[index]; }
+
+  int16_t &reg(int channel, int index) {
+    return stage->machine().channelRegister(channel, index);
+  }
+
+  int gap(int bob) const {
+    return std::abs(stage->bobs().x(bob) - stage->bobs().x(1));
+  }
+
+  void fight() {
+    run(OPENING_FRAMES + 1);
+    runUntil([this] { return stage->wavesSpawned() == 1; }, 400, JOY_RIGHT);
+  }
+
+  int closeIn(int bob) {
+    return runUntil([this, bob] { return gap(bob) <= 32; }, 500);
+  }
+
+  void throwOverShoulder(int16_t forward) {
+    runUntil([this] { return global(RD) == 6; }, 30, JOY_FIRE | forward);
+    runUntil([this] { return global(RV) == 5; }, 40, JOY_UP);
+  }
+
+  int screenPixels(uint8_t color) const {
+    const std::vector<uint8_t> &pixels = stage->screen().pixels();
+    return static_cast<int>(std::count(pixels.begin(), pixels.end(), color));
+  }
 };
 
 LevelScript emptyStreet(int length) {
@@ -131,6 +188,16 @@ LevelScript oneEnemyAt(int trigger, EnemySlot slot, int length = 600) {
   Wave wave;
   wave.trigger = trigger;
   wave.slots[0] = slot;
+  script.waves.push_back(wave);
+  return script;
+}
+
+LevelScript waveAt(int trigger, EnemySlot first, EnemySlot second,
+                   EnemySlot third) {
+  LevelScript script = emptyStreet(600);
+  Wave wave;
+  wave.trigger = trigger;
+  wave.slots = {first, second, third};
   script.waves.push_back(wave);
   return script;
 }
@@ -476,6 +543,43 @@ SCENARIO("Sound requests are routed to the sprite sets' banks") {
         REQUIRE(street.host.samples.back() == FakeHost::Sample{2, 7, 1});
       }
     }
+
+    WHEN("A request is for the third slot's samples") {
+      street.global(RW) = 19;
+      street.global(RE) = 0;
+      street.run(1);
+
+      THEN("It plays from bank 6, rebased past the three sets before it") {
+        REQUIRE(street.host.samples.back() == FakeHost::Sample{6, 2, 1});
+      }
+    }
+  }
+}
+
+SCENARIO("1.2 leaves the blood bob up after its stain is pasted") {
+  GIVEN("A 1.2 fight whose player blood is splashing") {
+    Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
+    street.session.version = GameVersion::V12;
+    StreetStage &stage = street.start();
+    street.fight();
+    street.global(RZ) = 60;
+    street.global(RA) = stage.bobs().x(1);
+    street.global(RB) = stage.bobs().y(1);
+
+    WHEN("The splat is reached and pasted") {
+      const int splat =
+          street.runUntil([&] { return stage.bobs().image(10) == 9; }, 60);
+      street.run(1);
+      const int stained = street.screenPixels(3);
+
+      THEN("The bob keeps its splat image until its own program hides it") {
+        REQUIRE(splat > 0);
+        REQUIRE(stained > 0);
+        REQUIRE(stage.bobs().image(10) == 9);
+        REQUIRE(street.runUntil([&] { return stage.bobs().image(10) == 10; },
+                                20) > 0);
+      }
+    }
   }
 }
 
@@ -688,6 +792,12 @@ SCENARIO("The run ends as state 11 and SYS decide") {
       street.run(1);
       REQUIRE(street.host.samples.back() == FakeHost::Sample{2, 3, 1});
     }
+
+    THEN("F9 gives twelve lives") {
+      street.run(1, 0, SystemKey::Lives);
+      REQUIRE(street.global(RG) == 12);
+      REQUIRE(stage.outcome() == StreetStage::Outcome::Playing);
+    }
   }
 }
 
@@ -764,6 +874,11 @@ SCENARIO("The level ends one column before its length") {
         const auto screen = stage.screen().pixels();
         street.run(20, JOY_RIGHT);
         REQUIRE(stage.screen().pixels() == screen);
+      }
+
+      THEN("The upcoming frame is the one shown, as no update comes") {
+        const uint32_t shown = stage.output().revision;
+        REQUIRE(stage.upcomingOutput().revision == shown);
       }
 
       THEN("Handing it over gives the boss stage the stamped screen and the "
@@ -843,6 +958,13 @@ SCENARIO("The composed frame shows the play screen over the panel") {
     THEN("Before state 09's View only the border shows") {
       REQUIRE(frame[0] == 0xFF555555u);
       REQUIRE(frame[(223 + 10) * 304 + 101] == 0xFF555555u);
+    }
+
+    THEN("Asking again without a change gives the output already built") {
+      const uint32_t revision = stage.output().revision;
+      street.run(1);
+      REQUIRE(stage.output().revision == revision);
+      REQUIRE(stage.output().layers.empty());
     }
 
     WHEN("View has run") {
@@ -1082,6 +1204,592 @@ SCENARIO("1.2 clears the play area before its game over closes the screens") {
     THEN("Only 1.2 blanks the play area first") {
       REQUIRE_FALSE(version10Cleared);
       REQUIRE(version12Cleared);
+    }
+  }
+}
+
+SCENARIO("A level script read in many steps holds the opening back") {
+  GIVEN("Two 13 column streets, one whose script takes 70 steps to read") {
+    constexpr int STEPS = 70;
+    Street plain(emptyStreet(13));
+    Street stepped(emptyStreet(13));
+    stepped.host.scriptSteps = STEPS;
+    StreetStage &plainStage = plain.start();
+    StreetStage &steppedStage = stepped.start();
+
+    WHEN("Both stages open") {
+      const int plainOpened =
+          plain.runUntil([&] { return plainStage.isFighting(); }, 1000);
+      const int steppedOpened =
+          stepped.runUntil([&] { return steppedStage.isFighting(); }, 1000);
+
+      THEN("The stepped one opens once its last step is taken, the frames "
+           "past the file's own time later") {
+        REQUIRE(plainOpened == OPENING_FRAMES);
+        REQUIRE(steppedOpened ==
+                plainOpened + STEPS - (LoadingQueue::FILE_FRAMES + 1));
+      }
+
+      THEN("The script it read is the one played") {
+        stepped.runUntil(
+            [&] {
+              return steppedStage.outcome() == StreetStage::Outcome::Cleared;
+            },
+            600, JOY_RIGHT);
+        REQUIRE(steppedStage.columnsWalked() == 12);
+      }
+    }
+  }
+}
+
+SCENARIO("Each of the player's moves lands on an enemy in reach") {
+  GIVEN("Franko facing an enemy with 50 energy that has walked up to him") {
+    Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
+    StreetStage &stage = street.start();
+    street.fight();
+    street.closeIn(2);
+    const int x = stage.bobs().x(1);
+    const auto strike = [&street](int16_t joystick) {
+      const int landed =
+          street.runUntil([&] { return street.reg(5, 0) != 0; }, 20, joystick);
+      street.run(1);
+      return landed;
+    };
+
+    WHEN("He punches") {
+      const int landed = strike(JOY_FIRE);
+
+      THEN("The punch takes 3 energy and the enemy's walk freezes") {
+        REQUIRE(landed > 0);
+        REQUIRE(street.reg(5, 0) == 1);
+        REQUIRE(street.reg(5, 7) == 47);
+        REQUIRE(stage.machine().isFrozen(4));
+      }
+    }
+
+    WHEN("He kicks low with fire and down") {
+      strike(JOY_FIRE | JOY_DOWN);
+
+      THEN("The low kick takes 2 energy") {
+        REQUIRE(street.reg(5, 0) == 2);
+        REQUIRE(street.reg(5, 7) == 48);
+      }
+    }
+
+    WHEN("He kicks with fire and left, against the way he faces") {
+      strike(JOY_FIRE | JOY_LEFT);
+
+      THEN("The enemy staggers without losing energy") {
+        REQUIRE(street.reg(5, 0) == 3);
+        REQUIRE(street.reg(5, 7) == 50);
+        REQUIRE(stage.machine().isFrozen(4));
+      }
+    }
+
+    WHEN("He jumps at it with fire and up") {
+      strike(JOY_FIRE | JOY_UP);
+
+      THEN("The flying kick takes 6 energy and sends it off to the right") {
+        REQUIRE(street.reg(5, 0) == 4);
+        REQUIRE(street.reg(5, 3) == 16);
+        REQUIRE(street.reg(5, 7) == 44);
+      }
+    }
+
+    WHEN("He jumps up kicking with fire, left and down") {
+      strike(JOY_FIRE | JOY_LEFT | JOY_DOWN);
+
+      THEN("The jump kick takes 6 energy as well") {
+        REQUIRE(street.reg(5, 0) == 5);
+        REQUIRE(street.reg(5, 7) == 44);
+      }
+    }
+
+    WHEN("He grabs it with fire and right") {
+      strike(JOY_FIRE | JOY_RIGHT);
+
+      THEN("It is pulled 40 px in front of him and held, without damage") {
+        REQUIRE(street.reg(5, 0) == 6);
+        REQUIRE(stage.bobs().x(2) == x + 40);
+        REQUIRE(street.reg(2, 5) == 1);
+        REQUIRE(street.reg(5, 7) == 50);
+      }
+    }
+  }
+}
+
+SCENARIO("A hit enemy walks on once its reaction is over, in any slot") {
+  for (std::size_t slot = 0; slot < 3; ++slot) {
+    GIVEN("An enemy in wave slot " << slot << " punched once") {
+      std::array<EnemySlot, 3> slots;
+      slots[slot] = enemy(1, 300, 172, 50, 100);
+      Street street(waveAt(1, slots[0], slots[1], slots[2]));
+      StreetStage &stage = street.start();
+      street.fight();
+      const int bob = 2 + static_cast<int>(slot);
+      const int walk = 2 * bob;
+      street.closeIn(bob);
+      street.runUntil([&] { return street.reg(walk + 1, 0) != 0; }, 20,
+                      JOY_FIRE);
+
+      THEN("Its walk is frozen during the reaction, then restarted with the "
+           "reaction's flag cleared") {
+        REQUIRE(stage.machine().isFrozen(walk));
+        const int walking = street.runUntil(
+            [&] { return !stage.machine().isFrozen(walk); }, 100);
+        REQUIRE(walking > 0);
+        REQUIRE(street.reg(walk + 1, 2) == 0);
+        REQUIRE(street.reg(walk + 1, 7) == 47);
+      }
+    }
+  }
+}
+
+SCENARIO("Enemies spawned on one spot step out of each other's way") {
+  GIVEN("Three enemies spawned on top of each other") {
+    const EnemySlot slot = enemy(1, 300, 172, 50, 100);
+    Street street(waveAt(1, slot, slot, slot));
+    StreetStage &stage = street.start();
+    street.fight();
+    street.run(2);
+
+    THEN("The first two are told to step aside and the third walks on") {
+      REQUIRE(street.reg(4, 3) == 1);
+      REQUIRE(street.reg(6, 3) == 1);
+      REQUIRE(street.reg(8, 3) == 0);
+      street.run(20);
+      REQUIRE(stage.bobs().y(2) > 172);
+      REQUIRE(stage.bobs().y(3) > 172);
+      REQUIRE(stage.bobs().y(4) == 172);
+      REQUIRE(stage.bobs().x(4) < 300);
+    }
+  }
+}
+
+SCENARIO("A downed enemy is picked up and kneed until it dies") {
+  GIVEN("An enemy floored by a jump kick, Franko just past it facing right") {
+    Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
+    StreetStage &stage = street.start();
+    street.fight();
+    street.run(36, JOY_LEFT);
+    street.run(4, JOY_RIGHT);
+    street.closeIn(2);
+    street.runUntil([&] { return street.global(RD) == 5; }, 20,
+                    JOY_FIRE | JOY_LEFT | JOY_DOWN);
+    const int floored =
+        street.runUntil([&] { return street.reg(5, 4) == 1; }, 200);
+    const int past = street.runUntil(
+        [&] {
+          const int over = stage.bobs().x(1) - stage.bobs().x(2);
+          return over > 0 && over < 25;
+        },
+        200, JOY_RIGHT);
+
+    WHEN("Fire and down are pressed") {
+      const int held = street.runUntil([&] { return street.reg(5, 4) == 2; },
+                                       10, JOY_FIRE | JOY_DOWN);
+
+      THEN("He holds it 24 px behind him and 4 px up, both of them frozen") {
+        REQUIRE(floored > 0);
+        REQUIRE(past > 0);
+        REQUIRE(held > 0);
+        REQUIRE(stage.bobs().x(2) == stage.bobs().x(1) - 24);
+        REQUIRE(stage.bobs().y(2) == stage.bobs().y(1) - 4);
+        REQUIRE(stage.machine().isFrozen(1));
+        REQUIRE(stage.machine().isFrozen(4));
+        REQUIRE(street.global(RD) == 2);
+      }
+
+      AND_WHEN("The knees have played out") {
+        const int freed =
+            street.runUntil([&] { return !stage.machine().isFrozen(1); }, 200);
+        const int killed =
+            street.runUntil([&] { return street.global(RN) == 1; }, 100);
+
+        THEN("He walks again and the enemy dies") {
+          REQUIRE(freed > 0);
+          REQUIRE(killed > 0);
+          REQUIRE(street.global(RI) <= 0);
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("An enemy that strikes knocks the player back") {
+  GIVEN("Dice that make every enemy in reach attack") {
+    Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
+    street.host.randomValue = [](int) { return 0; };
+    StreetStage &stage = street.start();
+    street.fight();
+
+    WHEN("The enemy's first blow lands") {
+      int before = 0;
+      const int hit = street.runUntil(
+          [&] {
+            if (street.reg(2, 1) == 1) {
+              return true;
+            }
+            before = stage.bobs().x(2);
+            return false;
+          },
+          300);
+      const int x = stage.bobs().x(2);
+      street.run(8);
+
+      THEN("The player is frozen, the enemy is set 8 px back and the player "
+           "loses 1 energy") {
+        REQUIRE(hit > 0);
+        REQUIRE(x == before + 8);
+        REQUIRE(stage.machine().isFrozen(1));
+        REQUIRE(street.global(RD) == 9);
+        REQUIRE(street.global(RF) == 63);
+      }
+
+      AND_WHEN("The knock-back has played out") {
+        const int freed =
+            street.runUntil([&] { return !stage.machine().isFrozen(1); }, 100);
+
+        THEN("The player can move again") {
+          REQUIRE(freed > 0);
+          REQUIRE(street.global(RD) == 0);
+          REQUIRE(street.reg(2, 1) == 0);
+          REQUIRE(street.reg(2, 4) == 0);
+        }
+      }
+    }
+
+    WHEN("It lands on the last point of energy") {
+      street.global(RF) = 1;
+      const int lost =
+          street.runUntil([&] { return street.global(RG) == 2; }, 300);
+
+      THEN("A life goes and the bar on the panel is full again") {
+        REQUIRE(lost > 0);
+        REQUIRE(street.global(RF) == 64);
+        REQUIRE(street.panelPixel(112, 13) != street.panelPixel(175, 13));
+        REQUIRE(street.panelPixel(174, 13) == street.panelPixel(112, 13));
+      }
+    }
+  }
+}
+
+SCENARIO("An enemy thrown over the shoulder floors the one it lands on") {
+  GIVEN("Franko grabbing the enemy in front of him while another comes up "
+        "behind in slot 2") {
+    Street street(waveAt(1, enemy(1, 300, 172, 50, 100),
+                         enemy(1, -100, 172, 50, 100), EnemySlot{}));
+    StreetStage &stage = street.start();
+    street.fight();
+    street.closeIn(2);
+    street.throwOverShoulder(JOY_RIGHT);
+
+    WHEN("The thrown enemy comes down") {
+      const int floored =
+          street.runUntil([&] { return street.reg(7, 0) == 4; }, 120);
+      const int thrownFlag = street.reg(5, 3);
+      street.run(1);
+
+      THEN("The one behind is kicked over for 6 energy, and the throw is "
+           "spent") {
+        REQUIRE(floored > 0);
+        REQUIRE(thrownFlag == 0);
+        REQUIRE(street.reg(7, 7) == 44);
+        REQUIRE(stage.machine().isFrozen(6));
+      }
+    }
+  }
+
+  GIVEN("The same throw while the enemy behind is in slot 3") {
+    Street street(waveAt(1, enemy(1, 300, 172, 50, 100),
+                         enemy(1, 600, 172, 50, 100),
+                         enemy(1, -120, 172, 50, 100)));
+    street.start();
+    street.fight();
+    street.closeIn(2);
+    street.throwOverShoulder(JOY_RIGHT);
+
+    THEN("The slot 3 enemy is kicked over") {
+      REQUIRE(street.runUntil([&] { return street.reg(9, 0) == 4; }, 120) > 0);
+      street.run(1);
+      REQUIRE(street.reg(9, 7) == 44);
+      REQUIRE(street.reg(5, 3) == 0);
+    }
+  }
+
+  GIVEN("Franko facing left, throwing the slot 2 enemy onto slot 1's") {
+    Street street(waveAt(1, enemy(1, 450, 172, 50, 100),
+                         enemy(1, -40, 172, 50, 100), EnemySlot{}));
+    StreetStage &stage = street.start();
+    street.fight();
+    street.run(4, JOY_LEFT);
+    street.closeIn(3);
+    street.throwOverShoulder(JOY_LEFT);
+
+    THEN("The thrown enemy flies right and floors the slot 1 enemy") {
+      REQUIRE(street.global(RC) != 0);
+      REQUIRE(stage.bobs().x(3) < stage.bobs().x(1));
+      REQUIRE(street.runUntil([&] { return street.reg(5, 0) == 4; }, 120) > 0);
+      REQUIRE(street.reg(7, 3) == 0);
+      street.run(1);
+      REQUIRE(street.reg(5, 7) == 44);
+    }
+  }
+}
+
+SCENARIO("A corpse is stamped only where it falls on the screen") {
+  GIVEN("An enemy with no energy left") {
+    Street street(oneEnemyAt(1, enemy(1, 300, 172, 0, 100)));
+    StreetStage &stage = street.start();
+    street.fight();
+
+    WHEN("It is punched dead in the street") {
+      street.closeIn(2);
+      street.runUntil([&] { return street.global(RN) == 1; }, 300, JOY_FIRE);
+      street.run(5);
+
+      THEN("Its 96 x 21 corpse is pasted into the screen") {
+        REQUIRE(street.screenPixels(2) == 96 * 21);
+        REQUIRE(stage.bobs().image(2) == 10);
+      }
+    }
+
+    WHEN("It is kicked dead past the right edge") {
+      street.run(50, JOY_RIGHT);
+      street.closeIn(2);
+      street.runUntil([&] { return street.global(RN) == 1; }, 300,
+                      JOY_FIRE | JOY_UP);
+      street.run(5);
+
+      THEN("Nothing is pasted and the bob is hidden") {
+        REQUIRE(street.global(RN) == 1);
+        REQUIRE(street.screenPixels(2) == 0);
+        REQUIRE(stage.bobs().image(2) == 10);
+      }
+    }
+  }
+}
+
+SCENARIO("Blood that lands off the screen leaves no stain") {
+  GIVEN("Franko at the left edge facing left, an enemy come in from beyond "
+        "it") {
+    Street street(oneEnemyAt(1, enemy(1, -104, 172, 50, 100)));
+    StreetStage &stage = street.start();
+    street.fight();
+    street.run(80, JOY_LEFT);
+    street.closeIn(2);
+
+    WHEN("He punches it") {
+      street.runUntil([&] { return street.reg(5, 0) != 0; }, 20, JOY_FIRE);
+      const int splashed = street.runUntil(
+          [&] {
+            return stage.bobs().x(11) < 0 && stage.bobs().y(11) == 172 &&
+                   stage.bobs().image(11) == 10;
+          },
+          60);
+
+      THEN("The blood flies off the left edge and is hidden unstamped") {
+        REQUIRE(stage.bobs().x(1) == 32);
+        REQUIRE(stage.bobs().x(2) < 16);
+        REQUIRE(splashed > 0);
+        REQUIRE(street.screenPixels(3) == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("Stage 2 is walked to the left") {
+  GIVEN("Franko on stage 2, a weak enemy due at column 3") {
+    Street street(oneEnemyAt(3, enemy(1, -40, 172, 0, 100)));
+    street.global(RO) = 1;
+    StreetStage &stage = street.start();
+    street.run(OPENING_FRAMES + 1);
+
+    WHEN("Left is held until the first column has scrolled in") {
+      const int walked = street.runUntil(
+          [&] { return stage.columnsWalked() == 1; }, 300, JOY_LEFT);
+      street.run(6, JOY_LEFT);
+
+      THEN("He stops at x 158 and the street comes in at the left edge") {
+        REQUIRE(walked > 0);
+        REQUIRE(stage.bobs().x(1) == 158);
+        REQUIRE(stage.screen().pixel(0, 100) == columnColor(0));
+        REQUIRE(stage.screen().pixel(40, 100) == OPENING_COLOR);
+      }
+    }
+
+    WHEN("The enemy is met and punched dead") {
+      street.runUntil([&] { return stage.wavesSpawned() == 1; }, 600, JOY_LEFT);
+      street.closeIn(2);
+      street.runUntil([&] { return street.global(RN) == 1; }, 300, JOY_FIRE);
+      street.run(10);
+
+      THEN("Its whole corpse is pasted into the screen") {
+        REQUIRE(street.screenPixels(2) == 96 * 21);
+      }
+    }
+  }
+}
+
+SCENARIO("The mouse button counts the rest of the wave as killed") {
+  GIVEN("A fight against one enemy") {
+    Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
+    StreetStage &stage = street.start();
+    street.fight();
+
+    WHEN("The mouse button is pressed") {
+      for (int frame = 0; frame < 10 && street.global(RN) == 0; ++frame) {
+        stage.advance({0, SystemKey::None, true});
+      }
+
+      THEN("SYS adds the enemies left to the kills and the walk resumes") {
+        REQUIRE(street.global(RN) == 1);
+        REQUIRE(street.global(RI) <= 0);
+        REQUIRE(street.runUntil([&] { return !stage.isFighting(); }, 100) > 0);
+      }
+    }
+  }
+
+  GIVEN("A street being walked, no wave left") {
+    Street street(emptyStreet(600));
+    StreetStage &stage = street.start();
+    street.run(OPENING_FRAMES + 1 + LoadingQueue::FILE_FRAMES);
+
+    WHEN("The mouse button is pressed") {
+      for (int frame = 0; frame < 10; ++frame) {
+        stage.advance({0, SystemKey::None, true});
+      }
+
+      THEN("Nothing is counted") {
+        REQUIRE(street.global(RN) == 0);
+        REQUIRE(street.global(RI) == -1);
+      }
+    }
+  }
+}
+
+SCENARIO("Bobs shown as sprites look the same as bobs drawn on the street") {
+  GIVEN("Two streets with a wave, one on a monitor that shows sprites") {
+    Street drawn(oneEnemyAt(2, enemy(1, 300, 172, 0, 100)));
+    Street sprited(oneEnemyAt(2, enemy(1, 300, 172, 0, 100)));
+    drawn.start();
+    sprited.start().showSprites(true);
+
+    WHEN("Both walk into the wave and fight it, sprites switched off for "
+         "the last stretch") {
+      constexpr int FRAMES = 640;
+      constexpr int WALK = OPENING_FRAMES + 200;
+      constexpr int DRAWN_FROM = 480;
+      int spriteFrames = 0;
+      int matched = 0;
+      std::vector<uint32_t> drawnFrame;
+      std::vector<uint32_t> spritedFrame;
+      for (int frame = 0; frame < FRAMES; ++frame) {
+        if (frame == DRAWN_FROM) {
+          sprited.stage->showSprites(false);
+        }
+        const int16_t joystick = frame < WALK ? JOY_RIGHT : JOY_FIRE;
+        drawn.run(1, joystick);
+        sprited.run(1, joystick);
+        if (frame % 8 != 0) {
+          continue;
+        }
+        drawn.stage->compose(drawnFrame);
+        sprited.stage->compose(spritedFrame);
+        matched += spritedFrame == drawnFrame ? 1 : 0;
+        const openfranko::src::systems::graphics::Display &shown =
+            sprited.stage->output();
+        if (!shown.layers.empty() && !shown.layers.front().sprites.empty()) {
+          ++spriteFrames;
+        }
+      }
+
+      THEN("Every frame matched, the bobs riding on the play screen as "
+           "sprites until they were switched off") {
+        REQUIRE(matched == FRAMES / 8);
+        REQUIRE(spriteFrames > 0);
+        REQUIRE(sprited.stage->output().layers.front().sprites.empty());
+        REQUIRE(drawn.global(RN) == 1);
+        REQUIRE(sprited.global(RN) == 1);
+      }
+    }
+  }
+}
+
+SCENARIO("Later waves keep the sprite sets already loaded") {
+  GIVEN("Three waves: set 1, then sets 1 and 7, then sets 8, 9 and 7") {
+    LevelScript script = emptyStreet(600);
+    Wave first;
+    first.trigger = 1;
+    first.slots[0] = enemy(1, 300, 172, 50, 100);
+    Wave second;
+    second.trigger = 3;
+    second.slots[0] = enemy(1, 300, 172, 50, 100);
+    second.slots[1] = enemy(7, 330, 172, 50, 100);
+    Wave third;
+    third.trigger = 5;
+    third.slots = {enemy(8, 300, 172, 50, 100), enemy(9, 330, 172, 50, 100),
+                   enemy(7, 360, 172, 50, 100)};
+    script.waves = {first, second, third};
+    Street street(script);
+    StreetStage &stage = street.start();
+    street.fight();
+    const auto skipWave = [&] {
+      for (int frame = 0; frame < 20 && street.global(RI) > 0; ++frame) {
+        stage.advance({0, SystemKey::None, true});
+      }
+    };
+    const auto reachWave = [&](int wave) {
+      return street.runUntil([&] { return stage.wavesSpawned() == wave; }, 1000,
+                             JOY_RIGHT);
+    };
+    const std::size_t opening = street.host.spriteSets.size();
+
+    WHEN("The second wave comes") {
+      skipWave();
+      const int reached = reachWave(2);
+
+      THEN("Only set 7 is read, into the second slot's bank 5") {
+        REQUIRE(reached > 0);
+        REQUIRE(street.host.spriteSets.size() == opening + 1);
+        REQUIRE(street.host.spriteSets.back() == std::make_pair(7, 5));
+      }
+
+      AND_WHEN("The third wave comes") {
+        skipWave();
+        reachWave(3);
+
+        THEN("Set 8 takes the first slot, set 9 the third, set 7 stays") {
+          REQUIRE(street.host.spriteSets.size() == opening + 3);
+          REQUIRE(street.host.spriteSets[opening + 1] == std::make_pair(8, 4));
+          REQUIRE(street.host.spriteSets[opening + 2] == std::make_pair(9, 6));
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("In 1.2 Esc ends the run as a game over") {
+  GIVEN("A 1.2 fight in progress") {
+    Street street(oneEnemyAt(1, enemy(1, 300, 172, 50, 100)));
+    street.session.version = GameVersion::V12;
+    StreetStage &stage = street.start();
+    street.fight();
+    street.global(RN) = 5;
+
+    WHEN("Esc is pressed") {
+      street.run(1, 0, SystemKey::Escape);
+      const int ended = street.runUntil(
+          [&] { return stage.outcome() != StreetStage::Outcome::Playing; },
+          400);
+
+      THEN("The score is zeroed, but state 19's Wait 200 and the game over "
+           "follow instead of the quit") {
+        REQUIRE(ended > 200);
+        REQUIRE(stage.outcome() == StreetStage::Outcome::GameOver);
+        REQUIRE(street.global(RN) == 0);
+        REQUIRE(street.global(RO) == -1);
+      }
     }
   }
 }

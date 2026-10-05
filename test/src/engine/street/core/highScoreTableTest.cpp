@@ -190,4 +190,14 @@ SCENARIO("The table is saved and loaded as the rotated 160-byte file") {
       REQUIRE_FALSE(readHighScoreFile(file.path().string()).has_value());
     }
   }
+
+  GIVEN("A path in a folder that does not exist") {
+    const TemporaryPath folder("openFrankoMissingScoreFolder");
+    const std::filesystem::path path = folder.path() / "missing" / "h";
+
+    THEN("Saving reports the failure and leaves no file") {
+      REQUIRE_FALSE(writeHighScoreFile(HighScoreTable(), path.string()));
+      REQUIRE_FALSE(std::filesystem::exists(path));
+    }
+  }
 }

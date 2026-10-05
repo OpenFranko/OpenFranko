@@ -277,3 +277,29 @@ SCENARIO("Delete and the left mouse button are read at each update") {
     }
   }
 }
+
+SCENARIO("The controller tells the platform which keys the screen wants") {
+  GIVEN("A new controller") {
+    ControllerSystem controller;
+
+    THEN("It starts on the front end with no text being entered") {
+      REQUIRE(controller.keyMode() == KeyMode::FrontEnd);
+      REQUIRE_FALSE(controller.isEnteringText());
+    }
+
+    WHEN("The street starts and then the name entry asks for text") {
+      controller.setKeyMode(KeyMode::Game);
+      const KeyMode street = controller.keyMode();
+      controller.setKeyMode(KeyMode::NameEntry);
+      controller.setEnteringText(true);
+
+      THEN("Both are reported until they change") {
+        REQUIRE(street == KeyMode::Game);
+        REQUIRE(controller.keyMode() == KeyMode::NameEntry);
+        REQUIRE(controller.isEnteringText());
+        controller.setEnteringText(false);
+        REQUIRE_FALSE(controller.isEnteringText());
+      }
+    }
+  }
+}

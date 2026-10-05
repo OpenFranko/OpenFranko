@@ -111,6 +111,8 @@ SCENARIO("The title check wants both cards right") {
         REQUIRE(exit.next == EngineStateId::HighScore);
         REQUIRE(check.files.loaded ==
                 std::vector<std::string>{CARDS, QUESTION, QUESTION});
+        REQUIRE(check.state.check().isFinished());
+        REQUIRE(check.state.check().isPassed());
       }
     }
 
@@ -124,6 +126,8 @@ SCENARIO("The title check wants both cards right") {
         REQUIRE(check.files.wasLoaded(FAILURE));
         REQUIRE(check.speaker.musicStops == 1);
         REQUIRE_FALSE(check.state.isEnteringText());
+        REQUIRE(check.state.check().isFinished());
+        REQUIRE_FALSE(check.state.check().isPassed());
       }
     }
 

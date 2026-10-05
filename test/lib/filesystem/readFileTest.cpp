@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 using namespace openfranko::lib::filesystem::readFile;
@@ -36,6 +38,32 @@ SCENARIO("readFile returns the bytes of a file") {
       const auto actualData = readFile(file.path().string());
       THEN("The file data matches the expected output") {
         REQUIRE(actualData == expectedData);
+      }
+    }
+  }
+}
+
+SCENARIO("readFile refuses paths it cannot read") {
+  GIVEN("A file in a directory that does not exist") {
+    const TemporaryPath directory("openFrankoReadFileMissing");
+    const std::string path = (directory.path() / "missing.bin").string();
+
+    WHEN("Reading the file") {
+      THEN("It throws, naming the file") {
+        REQUIRE_THROWS_WITH(readFile(path),
+                            "Cannot open file for reading: " + path);
+      }
+    }
+  }
+
+  GIVEN("A directory") {
+    const TemporaryPath directory("openFrankoReadFileDirectory");
+    std::filesystem::create_directories(directory.path());
+
+    WHEN("Reading it as a file") {
+      THEN("It throws instead of returning data") {
+        REQUIRE_THROWS_AS(readFile(directory.path().string()),
+                          std::runtime_error);
       }
     }
   }

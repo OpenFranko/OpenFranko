@@ -123,6 +123,14 @@ SCENARIO("The chosen character's voice is heard before the street") {
       REQUIRE(selection.speaker.volumes.empty());
       REQUIRE_FALSE(selection.session.nameScreenOpen);
     }
+
+    THEN("Asked again, it names the same street and plays nothing more") {
+      const int shows = selection.monitor.shows;
+      REQUIRE(selection.state->update() == EngineStateId::Level1);
+      REQUIRE(selection.speaker.plays.size() == 1);
+      REQUIRE(selection.speaker.musicStops == 1);
+      REQUIRE(selection.monitor.shows == shows);
+    }
   }
 
   GIVEN("Alex fired with the music on") {

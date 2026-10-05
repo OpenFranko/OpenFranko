@@ -109,3 +109,43 @@ SCENARIO("Each mocked file is read under LADUJ, then unpacked under CZEKAJ") {
     }
   }
 }
+
+SCENARIO("A stepped file that outlasts its read and unpack holds the queue") {
+  GIVEN("A file that needs 60 steps, then a plain one") {
+    StatusPanel panel(loadingStrip(), artwork());
+    LoadingQueue loading;
+    int steps = 0;
+    std::vector<int> loaded;
+    loading.queueSteps([&] { return ++steps == 60; });
+    loading.queue([&] { loaded.push_back(2); });
+
+    WHEN("Its read and unpack time has passed") {
+      for (int frame = 0; frame < LoadingQueue::FILE_FRAMES + 5; ++frame) {
+        REQUIRE_FALSE(loading.advance(&panel));
+      }
+
+      THEN("It takes one step a frame under the wait word, the next file "
+           "untouched") {
+        REQUIRE(steps == LoadingQueue::FILE_FRAMES + 5);
+        REQUIRE(loaded.empty());
+        REQUIRE(panel.surface().pixel(101, 10) == WAIT_WORD_COLOR);
+      }
+
+      AND_WHEN("Its last step is taken") {
+        while (steps < 60) {
+          REQUIRE_FALSE(loading.advance(&panel));
+        }
+
+        THEN("The next file starts on that frame and takes its own time") {
+          REQUIRE(loaded == std::vector<int>{2});
+          REQUIRE(panel.surface().pixel(101, 10) == STRIP_COLOR);
+          for (int frame = 1; frame < LoadingQueue::FILE_FRAMES; ++frame) {
+            REQUIRE_FALSE(loading.advance(&panel));
+          }
+          REQUIRE(loading.advance(&panel));
+          REQUIRE(steps == 60);
+        }
+      }
+    }
+  }
+}

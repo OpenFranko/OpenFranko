@@ -46,5 +46,12 @@ set(PREFETCHING_FILES_TEST_TARGET prefetchingFilesTest)
 add_executable(${PREFETCHING_FILES_TEST_TARGET}
     prefetchingFilesTest.cpp)
 target_link_libraries(${PREFETCHING_FILES_TEST_TARGET}
-    PRIVATE Catch2::Catch2WithMain Assets)
+    PRIVATE Catch2::Catch2WithMain Assets packedArchive)
 add_test(NAME ${PREFETCHING_FILES_TEST_TARGET} COMMAND ${PREFETCHING_FILES_TEST_TARGET})
+
+set(GAME_FILES_TEST_TARGET gameFilesTest)
+add_executable(${GAME_FILES_TEST_TARGET}
+    gameFilesTest.cpp)
+target_link_libraries(${GAME_FILES_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets)
+add_test(NAME ${GAME_FILES_TEST_TARGET} COMMAND ${GAME_FILES_TEST_TARGET})

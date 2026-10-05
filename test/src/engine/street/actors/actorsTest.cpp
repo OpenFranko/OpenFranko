@@ -384,6 +384,13 @@ SCENARIO("CONGRA's actors are the source's programs") {
         REQUIRE_NOTHROW(parse(actors::portraitShuttle(portrait)));
       }
     }
+
+    THEN("Only the three portraits have programs") {
+      for (int portrait : {0, 4}) {
+        REQUIRE(actors::portraitEntrance(portrait).empty());
+        REQUIRE(actors::portraitShuttle(portrait).empty());
+      }
+    }
   }
 }
 

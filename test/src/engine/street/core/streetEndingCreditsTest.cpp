@@ -59,8 +59,35 @@ SCENARIO("Ending credits are read from the extractor's JSON") {
       REQUIRE_THROWS_WITH(
           EndingCredits::fromJson(R"({"pages": [{"beat": 1, "lines": [{}]}]})"),
           "JSON: missing \"text\"");
+      REQUIRE_THROWS_WITH(
+          EndingCredits::fromJson(
+              R"({"pages": [{"beat": 1, "lines": [{"text": "A"}]}]})"),
+          "JSON: missing \"y\"");
+      REQUIRE_THROWS_WITH(
+          EndingCredits::fromJson(R"({"pages": [{"lines": []}]})"),
+          "JSON: missing \"beat\"");
+      REQUIRE_THROWS_WITH(
+          EndingCredits::fromJson(R"({"pages": [{"beat": 1}]})"),
+          "JSON: missing \"lines\"");
       REQUIRE_THROWS_AS(EndingCredits::fromJson(R"({"pages": [)"),
                         std::invalid_argument);
+    }
+  }
+}
+
+SCENARIO("Credit pages keep the first copy of their members") {
+  GIVEN("A page and a line with repeated and unknown members") {
+    const EndingCredits credits = EndingCredits::fromJson(R"({"pages": [
+      {"beat": 5, "beat": 9, "colour": 3,
+       "lines": [{"text": "A", "text": "B", "y": 2, "y": 4, "x": 1}],
+       "lines": []}]})");
+
+    THEN("The first beat, lines, text and y are kept") {
+      REQUIRE(credits.pages.size() == 1);
+      REQUIRE(credits.pages[0].beat == 5);
+      REQUIRE(credits.pages[0].lines.size() == 1);
+      REQUIRE(credits.pages[0].lines[0].text == "A");
+      REQUIRE(credits.pages[0].lines[0].y == 2);
     }
   }
 }

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -37,6 +38,23 @@ SCENARIO("YieldingFiles lets the program run after each file it loads") {
       }
     }
 
+    WHEN("Both are read in steps") {
+      const auto bitmapLoad = files.beginBitmap("0137/0137_000.bmp");
+      openfranko::src::systems::graphics::IndexedBitmap bitmap;
+      const bool bitmapDone = bitmapLoad->step(bitmap);
+      const auto scriptLoad = files.beginRead("0385.json");
+      std::vector<uint8_t> script;
+      const bool scriptDone = scriptLoad->step(script);
+
+      THEN("The steps pass the files on without yielding") {
+        REQUIRE(bitmapDone);
+        REQUIRE(scriptDone);
+        REQUIRE(bitmap.pixels == std::vector<uint8_t>{1, 2});
+        REQUIRE(script == std::vector<uint8_t>{'{', '}'});
+        REQUIRE(yields == 0);
+      }
+    }
+
     WHEN("They are only looked up") {
       const bool found = files.exists("0385.json");
       const auto listed = files.list("0137");
@@ -53,6 +71,24 @@ SCENARIO("YieldingFiles lets the program run after each file it loads") {
         REQUIRE(walked == std::vector<std::string>{"0137_000.bmp"});
         REQUIRE(yields == 0);
       }
+    }
+  }
+}
+
+SCENARIO("An error raised while yielding reaches the loader") {
+  GIVEN("Yielding files whose yield fails") {
+    auto fake = std::make_unique<FakeFiles>();
+    fake->bitmaps["0137/0137_000.bmp"] = {};
+    fake->contents["0385.json"] = {'{', '}'};
+    FakeFiles &inner = *fake;
+    YieldingFiles files(std::move(fake),
+                        [] { throw std::runtime_error("Interrupted"); });
+
+    THEN("Each load fails with that error after reading its file") {
+      REQUIRE_THROWS_WITH(files.loadBitmap("0137/0137_000.bmp"), "Interrupted");
+      REQUIRE_THROWS_WITH(files.read("0385.json"), "Interrupted");
+      REQUIRE(inner.loaded ==
+              std::vector<std::string>{"0137/0137_000.bmp", "0385.json"});
     }
   }
 }

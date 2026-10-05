@@ -4,7 +4,9 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
 #include <cstdint>
+#include <initializer_list>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -76,6 +78,30 @@ public:
     call(OTHER);
   }
 
+  void lineWithYThroughD3(const std::string &value, int32_t y) {
+    pushLong(static_cast<uint32_t>(text(value)));
+    word(0x263C);
+    word(static_cast<uint16_t>(static_cast<uint32_t>(y) >> 16));
+    word(static_cast<uint16_t>(y));
+    word(0x2703);
+    call(FONT);
+  }
+
+  void lineAt(uint32_t pointer, int y) {
+    pushLong(pointer);
+    pushInt(y);
+    call(FONT);
+  }
+
+  void callWithoutArguments(uint32_t target) { call(target); }
+
+  void store(std::size_t at, const std::vector<uint8_t> &bytes) {
+    std::copy(bytes.begin(), bytes.end(),
+              m_code.begin() + static_cast<std::ptrdiff_t>(at));
+  }
+
+  const std::vector<uint8_t> &code() const { return m_code; }
+
   std::vector<uint8_t> executable() const {
     std::vector<uint8_t> file;
     for (uint32_t value :
@@ -120,6 +146,14 @@ private:
   std::size_t m_at = 0x0600;
   std::size_t m_strings = STRINGS;
 };
+
+std::vector<uint8_t> longs(std::initializer_list<uint32_t> values) {
+  std::vector<uint8_t> bytes;
+  for (uint32_t value : values) {
+    pushBigEndian32(bytes, value);
+  }
+  return bytes;
+}
 
 } // namespace
 
@@ -280,6 +314,152 @@ SCENARIO("The 1.2 intro texts are the FONT lines closed by a bare BLYSK") {
 
     THEN("No intro pages are found") {
       REQUIRE(extractIntro(program.executable()).empty());
+    }
+  }
+}
+
+SCENARIO("The ending credits reader skips calls it cannot read") {
+  GIVEN("Lines whose y is moved into D3 as a long before it is pushed") {
+    Program program;
+    program.lineWithYThroughD3("AB", 300);
+    program.lineWithYThroughD3("CD", -200);
+    program.beat(10);
+    const auto pages = extract(program.executable());
+
+    THEN("The lines keep their full y values") {
+      REQUIRE(pages.size() == 1);
+      REQUIRE(pages[0].lines.size() == 2);
+      REQUIRE(pages[0].lines[0].text == "AB");
+      REQUIRE(pages[0].lines[0].y == 300);
+      REQUIRE(pages[0].lines[1].text == "CD");
+      REQUIRE(pages[0].lines[1].y == -200);
+    }
+  }
+
+  GIVEN("A call without pushed arguments between two lines") {
+    Program program;
+    program.line("AB", 0);
+    program.callWithoutArguments(OTHER);
+    program.line("CD", 8);
+    program.beat(10);
+    const auto pages = extract(program.executable());
+
+    THEN("It is ignored and both lines stay on one page") {
+      REQUIRE(pages.size() == 1);
+      REQUIRE(pages[0].lines.size() == 2);
+      REQUIRE(pages[0].lines[0].text == "AB");
+      REQUIRE(pages[0].lines[1].text == "CD");
+    }
+  }
+
+  GIVEN("FONT calls whose text pointer is odd, negative or past the end, or "
+        "points at an unprintable, empty or overlong string") {
+    Program program;
+    program.line("AB", 0);
+    program.beat(10);
+    program.store(0x0F00, {0x00, 0x02, 'X', 0x07});
+    program.store(0x0F10, {0x00, 0x00});
+    program.store(0x0FF0, {0x01, 0x00});
+    const std::vector<uint32_t> pointers = {static_cast<uint32_t>(STRINGS + 1),
+                                            0xFFFFFFF0u,
+                                            static_cast<uint32_t>(CODE_SIZE),
+                                            0x0F00,
+                                            0x0F10,
+                                            0x0FF0};
+    for (uint32_t pointer : pointers) {
+      program.lineAt(pointer, 4);
+      program.beat(20);
+    }
+    program.line("CD", 16);
+    program.beat(30);
+    const auto pages = extract(program.executable());
+
+    THEN("None of them becomes a line or a page") {
+      REQUIRE(pages.size() == 2);
+      REQUIRE(pages[0].lines.size() == 1);
+      REQUIRE(pages[0].lines[0].text == "AB");
+      REQUIRE(pages[1].lines.size() == 1);
+      REQUIRE(pages[1].lines[0].text == "CD");
+      REQUIRE(pages[1].beat == 30);
+    }
+  }
+}
+
+SCENARIO("Programs without text calls or waits have no credits or intro") {
+  GIVEN("A program that calls procedures without any text") {
+    Program program;
+    program.other(1);
+    program.other(2);
+
+    THEN("It has no intro pages") {
+      REQUIRE(extractIntro(program.executable()).empty());
+    }
+  }
+
+  GIVEN("A program that prints lines but never calls anything after them") {
+    Program program;
+    program.line("AB", 0);
+    program.line("CD", 8);
+
+    THEN("No ending credits are found") {
+      REQUIRE_THROWS_WITH(extract(program.executable()),
+                          "No ending credits found in the executable");
+    }
+  }
+}
+
+SCENARIO("readHunks returns the code, data and BSS hunks of an executable") {
+  GIVEN("An executable with a resident library name, relocations, symbols, "
+        "debug data, a hunk name and a data hunk for chip memory") {
+    const auto file = longs(
+        {0x3F3,      1,          0x6C696272, 0,          3,          0,
+         2,          2,          1,          4,          0x3E9,      2,
+         0x11111111, 0x22222222, 0x3EC,      1,          1,          4,
+         0,          0x3F0,      1,          0x73796D31, 0x10,       0,
+         0x3F1,      2,          0xAAAAAAAA, 0xBBBBBBBB, 0x3F2,      0x3E8,
+         1,          0x64617461, 0x400003EA, 1,          0x33333333, 0x3F2,
+         0x3EB,      4,          0x3F2});
+    const auto hunks = readHunks(file);
+
+    THEN("The code, data and BSS hunks come back in order") {
+      REQUIRE(hunks.size() == 3);
+      REQUIRE(hunks[0] == std::vector<uint8_t>{0x11, 0x11, 0x11, 0x11, 0x22,
+                                               0x22, 0x22, 0x22});
+      REQUIRE(hunks[1] == std::vector<uint8_t>{0x33, 0x33, 0x33, 0x33});
+      REQUIRE(hunks[2].empty());
+    }
+  }
+
+  GIVEN("Credits in a code hunk that follows a BSS hunk") {
+    Program program;
+    program.line("AB", 16);
+    program.beat(10);
+    auto file = longs({0x3F3, 0, 2, 0, 1, 4, CODE_SIZE / 4, 0x3EB, 4, 0x3F2,
+                       0x3E9, CODE_SIZE / 4});
+    file.insert(file.end(), program.code().begin(), program.code().end());
+    const auto end = longs({0x3F2});
+    file.insert(file.end(), end.begin(), end.end());
+
+    THEN("They are found in the code hunk") {
+      const auto pages = extract(file);
+      REQUIRE(pages.size() == 1);
+      REQUIRE(pages[0].lines[0].text == "AB");
+    }
+  }
+
+  GIVEN("A code hunk longer than the file") {
+    const auto file = longs({0x3F3, 0, 1, 0, 0, 4, 0x3E9, 4, 0, 0});
+
+    THEN("It throws") {
+      REQUIRE_THROWS_WITH(readHunks(file), "Truncated hunk");
+    }
+  }
+
+  GIVEN("A hunk type the reader does not know") {
+    const auto file = longs({0x3F3, 0, 1, 0, 0, 0, 0x3F5, 0});
+
+    THEN("It throws") {
+      REQUIRE_THROWS_WITH(readHunks(file), "Unsupported hunk type");
     }
   }
 }

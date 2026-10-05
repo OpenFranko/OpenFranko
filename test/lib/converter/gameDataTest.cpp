@@ -76,6 +76,26 @@ SCENARIO("selectPalette returns the correct palette for known file IDs") {
       }
     }
 
+    WHEN("selectPalette is called with the title, the 24-colour pictures and "
+         "the cemetery picture") {
+      using Pal = std::vector<uint16_t>;
+
+      THEN("They get TITLE, PAL24 and the black and magenta BW_MAGENTA") {
+        const Pal title(palettes::TITLE.begin(), palettes::TITLE.end());
+        const Pal pal24(palettes::PAL24.begin(), palettes::PAL24.end());
+        const Pal bwMagenta(palettes::BW_MAGENTA.begin(),
+                            palettes::BW_MAGENTA.end());
+        REQUIRE(palettes::selectPalette("03B7") == title);
+        REQUIRE(palettes::selectPalette("p51") == title);
+        for (const char *id : {"03BE", "03BF", "03C0", "p58", "p59", "p60"}) {
+          CAPTURE(id);
+          REQUIRE(palettes::selectPalette(id) == pal24);
+        }
+        REQUIRE(palettes::selectPalette("03BB") == bwMagenta);
+        REQUIRE(palettes::selectPalette("p55") == bwMagenta);
+      }
+    }
+
     WHEN("selectPalette is called with 's50'") {
       auto p = palettes::selectPalette("s50");
       THEN("It returns WORLD_SOFTWARE") {

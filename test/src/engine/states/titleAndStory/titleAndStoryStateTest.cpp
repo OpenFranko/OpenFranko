@@ -250,3 +250,90 @@ SCENARIO("The title and story are painted only when they change") {
     }
   }
 }
+
+namespace {
+
+constexpr int STORY_LIMIT = 3000;
+constexpr int STORY_IMAGES = 7;
+constexpr int STORY_ANIMATION_FRAMES = 68;
+constexpr int STORY_CLOSE_FRAMES = 2 * SCREEN_CLOSE_VBLS;
+constexpr int FADE_FRAMES = 64;
+constexpr int BLYSK_PAGE_FRAMES = 90;
+
+bool readEvery(const Title &title, const std::string &resource, int count) {
+  for (int part = 0; part < count; ++part) {
+    if (!title.files.wasLoaded(assets::partPath(resource, part))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+} // namespace
+
+SCENARIO("The story shows every page's frames, picture and text") {
+  GIVEN("Version 1.0 at the start of its story") {
+    Title title(GameVersion::V10);
+    run(*title.state, TITLE_FRAMES + STORY_OPEN_FRAMES);
+
+    WHEN("The joystick is held to turn each page once it is read") {
+      title.controller.states.right = true;
+      const Exit exit = runToExit(*title.state, STORY_LIMIT);
+
+      THEN("Every frame, picture and text was shown before the code card "
+           "check") {
+        REQUIRE(exit.next == EngineStateId::ProtectionCheck);
+        REQUIRE(readEvery(title, "03BE", STORY_ANIMATION_FRAMES));
+        REQUIRE(readEvery(title, "03BF", STORY_IMAGES));
+        REQUIRE(readEvery(title, "03C0", STORY_IMAGES));
+        REQUIRE(title.speaker.volumes.empty());
+      }
+    }
+
+    WHEN("Fire is pressed during the first page") {
+      run(*title.state, 20);
+      latchFire(title.controller);
+      const Exit exit = runToExit(*title.state, STORY_LIMIT);
+
+      THEN("The story stops at the next frame and its screens close") {
+        REQUIRE(exit.next == EngineStateId::ProtectionCheck);
+        REQUIRE(exit.frames <= 8 + STORY_CLOSE_FRAMES);
+        REQUIRE_FALSE(title.files.wasLoaded(assets::partPath("03BF", 0)));
+      }
+    }
+  }
+
+  GIVEN("Version 1.2 with four pages of credits") {
+    Title title(GameVersion::V12, introFiles());
+    run(*title.state, VERSION12_TITLE_FRAMES);
+
+    WHEN("Fire is held through the pages and the story") {
+      title.controller.states.button = true;
+      const Exit exit = runToExit(*title.state, STORY_LIMIT);
+
+      THEN("The pages and the whole 1.2 story were shown, then the music "
+           "faded") {
+        REQUIRE(exit.next == EngineStateId::HighScore);
+        REQUIRE(exit.frames > 2 * BLYSK_PAGE_FRAMES + FADE_FRAMES);
+        REQUIRE(title.files.wasLoaded(glyphPath('D')));
+        REQUIRE(readEvery(title, "p58", STORY_ANIMATION_FRAMES));
+        REQUIRE(readEvery(title, "p59", STORY_IMAGES));
+        REQUIRE(readEvery(title, "p60", STORY_IMAGES));
+        REQUIRE(title.speaker.volumes == fadeOut());
+      }
+    }
+
+    WHEN("Fire is pressed while the first page is up") {
+      run(*title.state, 10);
+      latchFire(title.controller);
+      const Exit exit = runToExit(*title.state, STORY_LIMIT);
+
+      THEN("The rest is skipped for the music fade and the scores") {
+        REQUIRE(exit.next == EngineStateId::HighScore);
+        REQUIRE(exit.frames < BLYSK_PAGE_FRAMES + FADE_FRAMES);
+        REQUIRE_FALSE(title.files.wasLoaded(assets::partPath("p58", 0)));
+        REQUIRE(title.speaker.volumes == fadeOut());
+      }
+    }
+  }
+}

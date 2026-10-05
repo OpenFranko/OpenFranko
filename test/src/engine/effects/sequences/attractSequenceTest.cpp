@@ -143,6 +143,19 @@ SCENARIO("AttractSequence shows the hi-score table as HISHOW does") {
         REQUIRE_FALSE(finishedBefore);
         REQUIRE(attract.isFinished());
       }
+
+      AND_WHEN("More frames pass, with the joystick touched") {
+        const AmigaPalette palette = attract.palette();
+        run(attract, 20, true);
+
+        THEN("The finished table stays as it was") {
+          REQUIRE(attract.isFinished());
+          REQUIRE_FALSE(attract.isShowing());
+          REQUIRE_FALSE(attract.isWaiting());
+          REQUIRE(attract.rowsShown() == 10);
+          REQUIRE(attract.palette() == palette);
+        }
+      }
     }
   }
 }

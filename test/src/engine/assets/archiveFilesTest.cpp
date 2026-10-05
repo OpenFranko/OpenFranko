@@ -121,6 +121,13 @@ SCENARIO("ArchiveFiles reads the extracted files from a tar archive") {
       REQUIRE(files.list("assets/0264").empty());
     }
 
+    THEN("A directory named with a trailing slash is the same directory") {
+      REQUIRE(files.exists("assets/0263/"));
+      REQUIRE(files.exists("./assets//"));
+      REQUIRE(files.list("assets/0263/") ==
+              std::vector<std::string>{first, second});
+    }
+
     THEN("A file is read whole, across blocks") {
       REQUIRE(files.read(first) == std::vector<uint8_t>{'R', 'I', 'F', 'F'});
       REQUIRE(files.read(second) == std::vector<uint8_t>(600, 'W'));
@@ -183,6 +190,30 @@ SCENARIO("ArchiveFiles reads the extracted files from a tar archive") {
               std::vector<uint8_t>{'N', 'E', 'W'});
       REQUIRE(files.list("assets") ==
               std::vector<std::string>{"assets/03B6.bmp", "assets/03B7.bmp"});
+    }
+  }
+}
+
+SCENARIO("ArchiveFiles reports a file cut short by the end of the archive") {
+  GIVEN("An archive whose last file is cut short") {
+    const TemporaryPath archive("openFrankoArchiveCutShort.tar");
+    const std::string whole = "assets/0385.json";
+    const std::string cut = "assets/0386.json";
+    writeArchive(archive.path(), {{whole, "{}"}, {cut, std::string(900, 'J')}});
+    std::filesystem::resize_file(archive.path(), 3 * BLOCK_SIZE + 100);
+    ArchiveFiles files(archive.path().string());
+
+    THEN("Reading it fails with its path") {
+      REQUIRE(files.exists(cut));
+      REQUIRE_THROWS_WITH(files.read(cut),
+                          "Truncated asset archive entry: " + cut);
+      REQUIRE_THROWS_WITH(files.loadBitmap(cut),
+                          "Truncated asset archive entry: " + cut);
+    }
+
+    THEN("The files before it still read after the failure") {
+      REQUIRE_THROWS(files.read(cut));
+      REQUIRE(files.read(whole) == std::vector<uint8_t>{'{', '}'});
     }
   }
 }

@@ -80,6 +80,14 @@ target_link_libraries(${LEVEL_SCRIPT_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain binary levelScript)
 add_test(NAME ${LEVEL_SCRIPT_TEST_TARGET} COMMAND ${LEVEL_SCRIPT_TEST_TARGET})
 
+set(PACKED_ARCHIVE_TEST_TARGET packedArchiveTest)
+add_executable(${PACKED_ARCHIVE_TEST_TARGET}
+    packedArchiveTest.cpp)
+target_link_libraries(${PACKED_ARCHIVE_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets bmpWriter packedArchive)
+add_test(NAME ${PACKED_ARCHIVE_TEST_TARGET}
+    COMMAND ${PACKED_ARCHIVE_TEST_TARGET})
+
 set(SPRITE_SHEET_TEST_TARGET spriteSheetTest)
 add_executable(${SPRITE_SHEET_TEST_TARGET}
     spriteSheetTest.cpp)

@@ -2314,3 +2314,717 @@ SCENARIO("Frames whose colours change are recoloured instead of rebuilt") {
     }
   }
 }
+
+namespace {
+
+graphics::Display fullScreen() {
+  graphics::Display display;
+  display.width = 320;
+  display.height = 256;
+  display.displayHeight = 256;
+  return display;
+}
+
+graphics::Display bandedStage() {
+  graphics::Display display = fullScreen();
+  graphics::Layer play = layer(320, 200, 16, 30);
+  for (int row = 10; row < 190; row += 9) {
+    play.rowColors.push_back(
+        {row, 3, static_cast<uint16_t>(row * 0x51 & 0xFFF)});
+  }
+  play.rowColors.push_back({100, 2, play.palette[2]});
+  graphics::Layer panel = layer(304, 32, 8, 31);
+  panel.top = 210;
+  display.layers = {play, panel};
+  return display;
+}
+
+} // namespace
+
+SCENARIO("Frames that need the copper show what the desktop rasterizer "
+         "draws") {
+  for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+    GIVEN("A play screen with row colours on colour 3 over a panel in its "
+          "own bank") {
+      const graphics::Display display = bandedStage();
+
+      THEN("The copper sets the row colours and every pixel matches") {
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame =
+            build(arena, inArena(arena, display), geometry, memory);
+        REQUIRE(frame.copper.size() > 1);
+        REQUIRE(frame.translations.size() == 1);
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    GIVEN("A screen over the top of a picture that starts inside it, both "
+          "with row colours") {
+      graphics::Display display = fullScreen();
+      graphics::Layer lower = layer(320, 100, 16, 32);
+      lower.top = 50;
+      lower.rowColors.push_back({70, 1, 0x0F0});
+      lower.rowColors.push_back({120, 4, 0x00F});
+      graphics::Layer upper = layer(320, 100, 16, 33);
+      upper.rowColors.push_back({20, 2, 0xF00});
+      upper.rowColors.push_back({60, 5, 0xFF0});
+      display.layers = {lower, upper};
+
+      THEN("Each row takes the palette of the layer on top") {
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    GIVEN("A picture below an empty band whose row colours come out of "
+          "order, one above it and one on its first row") {
+      graphics::Display display = fullScreen();
+      graphics::Layer picture = layer(320, 150, 16, 34);
+      picture.top = 20;
+      picture.rowColors.push_back({120, 2, 0x0F0});
+      picture.rowColors.push_back({60, 1, 0xF00});
+      picture.rowColors.push_back({20, 3, 0x00F});
+      picture.rowColors.push_back({5, 1, 0xFF0});
+      display.layers = {picture};
+
+      THEN("Each change shows on its own row only") {
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    GIVEN("A masked picture with row colours on colours its mask hides") {
+      graphics::Display display = fullScreen();
+      graphics::Layer picture = layer(320, 200, 64, 35);
+      picture.mask = 0x0F;
+      picture.palette.resize(16);
+      picture.rowColors.push_back({40, 0x13, 0xF0F});
+      picture.rowColors.push_back({40, 2, 0x0FF});
+      picture.rowColors.push_back({80, 0x2F, 0x00F});
+      display.layers = {picture};
+
+      THEN("Those changes do nothing") {
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    GIVEN("A picture whose pixels go past its palette and a row colour on "
+          "one of those values") {
+      graphics::Display display = fullScreen();
+      graphics::Layer picture = layer(320, 200, 32, 36);
+      picture.palette.resize(16);
+      picture.rowColors.push_back({30, 20, 0xF80});
+      picture.rowColors.push_back({90, 25, 0x08F});
+      display.layers = {picture};
+
+      THEN("Those pixels are black except on the changed rows") {
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    GIVEN("A rainbow behind a picture and a panel over it with a row colour "
+          "of its own") {
+      graphics::Display display = fullScreen();
+      graphics::Layer sky = layer(320, 256, 32, 37);
+      for (int row = 0; row < 256; ++row) {
+        sky.rowColors.push_back(
+            {row, 0, static_cast<uint16_t>(row * 0x13 & 0xFFF)});
+      }
+      graphics::Layer panel = layer(320, 40, 8, 38);
+      panel.top = 210;
+      panel.rowColors.push_back({220, 2, 0xF0F});
+      display.layers = {sky, panel};
+
+      THEN("The rainbow comes from line phrases and the panel from the "
+           "copper") {
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame =
+            build(arena, inArena(arena, display), geometry, memory);
+        REQUIRE(frame.lineLayer == 0);
+        REQUIRE(frame.copper.size() > 1);
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("Copper frames follow every change between builds") {
+  GIVEN("The banded play screen built twice into the same slot") {
+    const Geometry geometry = palGeometry();
+    Arena arena;
+    ArenaBuffers buffers(arena);
+    const FrameMemory memory = frameMemory(arena, buffers);
+    graphics::Display shown = inArena(arena, bandedStage());
+    BuiltFrame first;
+    buildFrame(shown, geometry, memory, nullptr, 0, first);
+    BuiltFrame second;
+    buildFrame(shown, geometry, memory, nullptr, 0, second);
+
+    THEN("The second build gives the same copper list") {
+      REQUIRE(second.copper == first.copper);
+      REQUIRE(second.clut == first.clut);
+    }
+
+    THEN("New row colours, palettes, masks and places each show") {
+      const auto check = [&](const graphics::Display &next) {
+        BuiltFrame frame;
+        buildFrame(next, geometry, memory, nullptr, 0, frame);
+        for (const Translation &translation : frame.translations) {
+          translateOnCpu(translation);
+        }
+        REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+      };
+      graphics::Display next = shown;
+      next.layers[0].rowColors.push_back({150, 3, 0x0F0});
+      check(next);
+      next.layers[0].palette[3] = 0x0AF;
+      check(next);
+      next.layers[1].mask = 0x03;
+      check(next);
+      next.layers[1].top += 4;
+      check(next);
+      next.layers.pop_back();
+      check(next);
+    }
+  }
+}
+
+namespace {
+
+class FailingBuffers : public TranslationBuffers {
+public:
+  uint8_t *buffer(const uint8_t *, std::size_t) override { return nullptr; }
+};
+
+class CopperBan {
+public:
+  CopperBan() { allowCopper(false); }
+  ~CopperBan() { allowCopper(true); }
+  CopperBan(const CopperBan &) = delete;
+  CopperBan &operator=(const CopperBan &) = delete;
+};
+
+graphics::Display plainStage() {
+  graphics::Display display;
+  display.width = 304;
+  display.height = 255;
+  display.displayHeight = 255;
+  display.layers.push_back(layer(320, 222, 16, 51));
+  display.layers.back().columns = 304;
+  graphics::Layer panel = layer(304, 32, 8, 52);
+  panel.top = 223;
+  display.layers.push_back(panel);
+  return display;
+}
+
+graphics::Display rainbowPicture() {
+  graphics::Display display = fullScreen();
+  graphics::Layer picture = layer(640, 256, 32, 53);
+  picture.wrap = true;
+  picture.columns = 320;
+  for (int row = 0; row < 256; ++row) {
+    picture.rowColors.push_back(
+        {row, 0, static_cast<uint16_t>(row * 0x17 & 0xFFF)});
+  }
+  display.layers = {picture};
+  return display;
+}
+
+} // namespace
+
+SCENARIO("Unusual layers still show what the desktop rasterizer draws") {
+  for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+    GIVEN("A picture shown three rows to each of its rows") {
+      graphics::Display display = fullScreen();
+      graphics::Layer stretched = layer(320, 60, 16, 40);
+      stretched.top = 12;
+      stretched.rows = 180;
+      stretched.repeat = 3;
+      display.layers = {stretched};
+
+      THEN("Every pixel matches") {
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    GIVEN("A strip of 40000 rows shown from row 35000") {
+      graphics::Display display;
+      display.width = 32;
+      display.height = 200;
+      display.displayHeight = 200;
+      graphics::Layer strip = layer(32, 40000, 16, 41);
+      strip.sourceY = 35000;
+      strip.rows = 200;
+      display.layers = {strip};
+
+      THEN("The rows past 32767 are found as on the desktop") {
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    GIVEN("A picture using all 256 colours under a band of a colour it "
+          "lacks") {
+      graphics::Display display = fullScreen();
+      graphics::Layer picture = layer(320, 256, 256, 47);
+      for (std::size_t value = 0; value < picture.palette.size(); ++value) {
+        picture.palette[value] = static_cast<uint16_t>(value);
+      }
+      display.layers = {picture, graphics::solidLayer(0xF00, 100, 20, 320)};
+
+      THEN("The copper lends the band a colour on its rows") {
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame =
+            build(arena, inArena(arena, display), geometry, memory);
+        REQUIRE(frame.copper.size() > 1);
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    GIVEN("A rainbow picture and frame memory without line phrases") {
+      const graphics::Display display = rainbowPicture();
+
+      THEN("The copper sets colour 0 on every row instead") {
+        Arena arena;
+        ArenaBuffers buffers(arena);
+        FrameMemory memory = frameMemory(arena, buffers);
+        memory.linePhrases = nullptr;
+        memory.lineCapacity = 0;
+        const graphics::Display shown = inArena(arena, display);
+        BuiltFrame frame;
+        buildFrame(shown, geometry, memory, nullptr, 0, frame);
+        REQUIRE(frame.lineLayer == -1);
+        REQUIRE(frame.copper.size() > 1);
+        REQUIRE(wrongPixels(arena, frame, memory, shown, geometry) == 0);
+      }
+    }
+  }
+}
+
+SCENARIO("A layer outside the display gets no object") {
+  GIVEN("A panel placed below and to the right of the display") {
+    graphics::Display display = fullScreen();
+    display.layers.push_back(layer(320, 256, 16, 43));
+    graphics::Layer away = layer(64, 32, 8, 44);
+    away.top = 300;
+    away.left = 400;
+    display.layers.push_back(away);
+
+    THEN("Its area is empty, it gets no object and the rest matches") {
+      for (const Geometry &geometry : {palGeometry(), ntscGeometry()}) {
+        const Placement placement = placeDisplay(display, geometry);
+        const LayerArea area =
+            visibleArea(display, display.layers[1], placement, geometry);
+        REQUIRE(area.lastRow == area.firstRow);
+        REQUIRE(area.lastColumn == area.firstColumn);
+        Arena arena;
+        FrameMemory memory;
+        const BuiltFrame frame =
+            build(arena, inArena(arena, display), geometry, memory);
+        REQUIRE(frame.objects[0] != -1);
+        REQUIRE(frame.objects[1] == -1);
+        REQUIRE(mismatches(display, geometry) == 0);
+      }
+    }
+
+    THEN("Fading the colours only changes the colour table") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      const std::vector<uint64_t> phrases = frame.phrases;
+      graphics::Display faded = shown;
+      for (graphics::Layer &fading : faded.layers) {
+        for (uint16_t &color : fading.palette) {
+          color = static_cast<uint16_t>((color >> 1) & 0x777);
+        }
+      }
+      REQUIRE(recolorFrame(faded, shown, geometry, memory, frame));
+      REQUIRE(frame.phrases == phrases);
+      REQUIRE(wrongPixels(arena, frame, memory, faded, geometry) == 0);
+    }
+  }
+}
+
+SCENARIO("Sprites the object processor cannot show are left out") {
+  GIVEN("A picture carrying a sprite 12 pixels wide and one 16 wide") {
+    const Bob odd = bob(12, 10, 4);
+    const Bob even = bob(16, 10, 4);
+    graphics::Display picture = fullScreen();
+    picture.layers = {layer(320, 256, 16, 42)};
+
+    THEN("The narrow one is not drawn and the other is") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      const graphics::Display shown =
+          inArena(arena, withBobs(picture, {&odd}, {{100, 100}}));
+      FrameMemory memory;
+      const BuiltFrame frame = build(arena, shown, geometry, memory);
+      graphics::Display bare = shown;
+      bare.layers.front().sprites.clear();
+      REQUIRE(wrongPixels(arena, frame, memory, bare, geometry) == 0);
+      REQUIRE(mismatches(withBobs(picture, {&even}, {{100, 100}}), geometry) ==
+              0);
+    }
+  }
+
+  GIVEN("A display with no rows whose layer carries a sprite") {
+    const Bob small = bob(16, 12, 1);
+    graphics::Display empty;
+    empty.width = 320;
+    graphics::Layer screen = layer(320, 10, 16, 45);
+    screen.rows = 0;
+    empty.layers = {screen};
+
+    THEN("It gets its sprite slots but no border masks") {
+      Arena arena;
+      FrameMemory memory;
+      const BuiltFrame frame =
+          build(arena, inArena(arena, withBobs(empty, {&small}, {{10, 10}})),
+                palGeometry(), memory);
+      REQUIRE(frame.spriteSlots.size() == 1);
+      REQUIRE(frame.masks.empty());
+    }
+  }
+}
+
+SCENARIO("Overlays are drawn over the frame where they are placed") {
+  GIVEN("A picture and an 8 by 4 overlay of 16-bit colours") {
+    THEN("The overlay replaces the picture there and nowhere else") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      graphics::Display display = fullScreen();
+      display.layers = {layer(320, 256, 16, 46)};
+      const graphics::Display shown = inArena(arena, display);
+      uint8_t *pixels = arena.allocate(8 * 4 * 2);
+      for (int at = 0; at < 32; ++at) {
+        const uint16_t color = static_cast<uint16_t>(0x1000 + at * 0x111);
+        pixels[at * 2] = static_cast<uint8_t>(color >> 8);
+        pixels[at * 2 + 1] = static_cast<uint8_t>(color);
+      }
+      const Overlay overlay{arena.address(pixels), 8, 4, 30, 40};
+      BuiltFrame plain;
+      buildFrame(shown, geometry, memory, nullptr, 0, plain);
+      const Screen before =
+          simulate(arena, plain, memory.liveAddress, geometry);
+      BuiltFrame covered;
+      buildFrame(shown, geometry, memory, &overlay, 1, covered);
+      const Screen after =
+          simulate(arena, covered, memory.liveAddress, geometry);
+      int covers = 0;
+      int wrong = 0;
+      for (std::size_t row = 0; row < after.size(); ++row) {
+        for (std::size_t column = 0; column < after[row].size(); ++column) {
+          const bool inside =
+              row >= 40 && row < 44 && column >= 30 && column < 38;
+          const uint16_t expected =
+              inside ? static_cast<uint16_t>(
+                           0x1000 + ((row - 40) * 8 + column - 30) * 0x111)
+                     : before[row][column];
+          covers += inside && before[row][column] != expected ? 1 : 0;
+          wrong += after[row][column] != expected ? 1 : 0;
+        }
+      }
+      REQUIRE(covers == 32);
+      REQUIRE(wrong == 0);
+    }
+  }
+}
+
+SCENARIO("Display comparisons look at every layer") {
+  GIVEN("A display with row colours and a copy whose equal row colours are "
+        "its own") {
+    graphics::Display display = fullScreen();
+    display.layers = {layer(320, 256, 16, 54)};
+    display.layers[0].rowColors = {{1, 2, 0xF00}, {3, 1, 0x0F0}};
+    graphics::Display copy = display;
+    copy.layers[0].rowColors = {{1, 2, 0xF00}, {3, 1, 0x0F0}};
+
+    THEN("They have the same colours until a row colour differs") {
+      REQUIRE_FALSE(
+          copy.layers[0].rowColors.shares(display.layers[0].rowColors));
+      REQUIRE(sameColors(display, copy));
+      REQUIRE(sameLayers(display, copy));
+      copy.layers[0].rowColors = {{1, 2, 0xF00}, {3, 1, 0x0F1}};
+      REQUIRE_FALSE(sameColors(display, copy));
+    }
+  }
+
+  GIVEN("Displays with one and two layers") {
+    graphics::Display one = fullScreen();
+    one.layers = {layer(320, 256, 16, 55)};
+    graphics::Display two = one;
+    two.layers.push_back(layer(320, 20, 4, 56));
+
+    THEN("Their sprites never compare the same") {
+      REQUIRE_FALSE(sameSprites(one, two));
+      REQUIRE_FALSE(sameSprites(two, one));
+      REQUIRE_FALSE(sameSprites(one, SpriteLists(2)));
+      REQUIRE(sameSprites(one, SpriteLists(1)));
+    }
+  }
+}
+
+SCENARIO("The copper can be switched off") {
+  GIVEN("A play screen whose row colours need the copper") {
+    const graphics::Display display = bandedStage();
+
+    THEN("Without the copper the frame has none, and it is back afterwards") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display shown = inArena(arena, display);
+      {
+        const CopperBan ban;
+        BuiltFrame frame;
+        buildFrame(shown, palGeometry(), memory, nullptr, 0, frame);
+        REQUIRE(frame.copper == std::vector<uint32_t>{COPPER_END});
+      }
+      BuiltFrame frame;
+      buildFrame(shown, palGeometry(), memory, nullptr, 0, frame);
+      REQUIRE(frame.copper.size() > 1);
+    }
+  }
+}
+
+SCENARIO("Colour banks are planned again when buffers run out or colours "
+         "change") {
+  GIVEN("A stage whose panel has a bank of its own") {
+    const Geometry geometry = palGeometry();
+
+    THEN("Built again with no translation buffer left, the panel is drawn "
+         "through the copper") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, geometry, memory);
+      const graphics::Display shown = inArena(arena, plainStage());
+      BuiltFrame first;
+      buildFrame(shown, geometry, memory, nullptr, 0, first);
+      REQUIRE(first.translations.size() == 1);
+      FailingBuffers full;
+      memory.buffers = &full;
+      BuiltFrame second;
+      buildFrame(shown, geometry, memory, nullptr, 0, second);
+      REQUIRE(second.translations.empty());
+      REQUIRE(second.copper.size() > 1);
+      REQUIRE(wrongPixels(arena, second, memory, shown, geometry) == 0);
+    }
+
+    THEN("When the panel could share the first bank after the plan was "
+         "forgotten, recolouring is left to a rebuild") {
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, geometry, memory);
+      const graphics::Display built = inArena(arena, plainStage());
+      BuiltFrame frame;
+      buildFrame(built, geometry, memory, nullptr, 0, frame);
+      REQUIRE(frame.translations.size() == 1);
+      forgetBanks(arena, geometry, memory);
+      graphics::Display next = built;
+      std::copy_n(next.layers[0].palette.begin(), next.layers[1].palette.size(),
+                  next.layers[1].palette.begin());
+      REQUIRE_FALSE(recolorFrame(next, built, geometry, memory, frame));
+      buildFrame(next, geometry, memory, nullptr, 0, frame);
+      REQUIRE(frame.translations.empty());
+      REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+    }
+  }
+
+  GIVEN("A 160-colour picture and a panel that only fits the last bank") {
+    graphics::Display display = fullScreen();
+    display.layers.push_back(layer(320, 200, 160, 57));
+    graphics::Layer panel = layer(320, 40, 8, 58);
+    panel.top = 210;
+    display.layers.push_back(panel);
+
+    THEN("Colours that would move the panel to another bank after the plan "
+         "was forgotten are left to a rebuild") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, geometry, memory);
+      const graphics::Display built = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(built, geometry, memory, nullptr, 0, frame);
+      REQUIRE(frame.translations.size() == 1);
+      REQUIRE(frame.translations[0].flip == 0xC0C0C0C0u);
+      forgetBanks(arena, geometry, memory);
+      graphics::Display next = built;
+      std::copy_n(next.layers[1].palette.begin(), next.layers[1].palette.size(),
+                  next.layers[0].palette.begin() + 0x80);
+      REQUIRE_FALSE(recolorFrame(next, built, geometry, memory, frame));
+      buildFrame(next, geometry, memory, nullptr, 0, frame);
+      for (const Translation &translation : frame.translations) {
+        translateOnCpu(translation);
+      }
+      REQUIRE(frame.translations[0].flip == 0x80808080u);
+      REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+    }
+  }
+
+  GIVEN("A picture and a panel whose eight colours are the picture's first "
+        "eight") {
+    graphics::Display display = fullScreen();
+    display.layers.push_back(layer(320, 200, 16, 48));
+    graphics::Layer panel = layer(320, 40, 8, 49);
+    panel.top = 210;
+    std::copy_n(display.layers[0].palette.begin(), 8, panel.palette.begin());
+    display.layers.push_back(panel);
+
+    THEN("A new colour the panel does not use keeps the plan, so the other "
+         "frame of the pair can follow") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      forgetBanks(arena, geometry, memory);
+      const graphics::Display shown = inArena(arena, display);
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      REQUIRE(frame.translations.empty());
+      BuiltFrame twin = frame;
+      graphics::Display next = shown;
+      next.layers[0].palette[12] = 0x0F0;
+      REQUIRE(recolorFrame(next, shown, geometry, memory, frame));
+      REQUIRE(frame.plan == twin.plan);
+      REQUIRE(recolorPalettes(next, twin));
+      REQUIRE(twin.clut == frame.clut);
+      REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+      REQUIRE(freshClut(arena, next, geometry, memory) == frame.clut);
+    }
+  }
+}
+
+SCENARIO("Frames that cannot be patched are left to a rebuild") {
+  GIVEN("A stage built for PAL") {
+    const Geometry geometry = palGeometry();
+    Arena arena;
+    ArenaBuffers buffers(arena);
+    const FrameMemory memory = frameMemory(arena, buffers);
+    forgetBanks(arena, geometry, memory);
+    const graphics::Display built = inArena(arena, plainStage());
+    BuiltFrame frame;
+    buildFrame(built, geometry, memory, nullptr, 0, frame);
+    for (const Translation &translation : frame.translations) {
+      translateOnCpu(translation);
+    }
+    REQUIRE(frame.translations.size() == 1);
+
+    THEN("Another border, palette size or screen is refused") {
+      graphics::Display border = built;
+      border.border = 0x123;
+      BuiltFrame copy = frame;
+      REQUIRE_FALSE(scrollFrame(border, built, geometry, memory, copy));
+      graphics::Display longer = built;
+      longer.layers[1].palette.push_back(0x777);
+      copy = frame;
+      REQUIRE_FALSE(scrollFrame(longer, built, geometry, memory, copy));
+      graphics::Display moved = built;
+      moved.layers[0].sourceX += 2;
+      copy = frame;
+      REQUIRE_FALSE(scrollFrame(moved, built, ntscGeometry(), memory, copy));
+    }
+
+    THEN("A panel scrolled out of its pixels is refused") {
+      graphics::Display gone = built;
+      gone.layers[1].sourceX = 304;
+      BuiltFrame copy = frame;
+      REQUIRE_FALSE(scrollFrame(gone, built, geometry, memory, copy));
+    }
+
+    THEN("A panel flipped to new pixels with no buffer for them is refused") {
+      const graphics::Layer otherPanel = layer(304, 32, 8, 59);
+      graphics::Display flipped = built;
+      flipped.layers[1].pixels = arenaCopy(arena, otherPanel.pixels, 304 * 32);
+      FrameMemory withoutBuffers = memory;
+      withoutBuffers.buffers = nullptr;
+      BuiltFrame copy = frame;
+      REQUIRE_FALSE(
+          scrollFrame(flipped, built, geometry, withoutBuffers, copy));
+      FailingBuffers full;
+      FrameMemory fullBuffers = memory;
+      fullBuffers.buffers = &full;
+      copy = frame;
+      REQUIRE_FALSE(scrollFrame(flipped, built, geometry, fullBuffers, copy));
+      copy = frame;
+      REQUIRE(scrollFrame(flipped, built, geometry, memory, copy));
+      for (const Translation &translation : copy.translations) {
+        translateOnCpu(translation);
+      }
+      REQUIRE(wrongPixels(arena, copy, memory, flipped, geometry) == 0);
+    }
+  }
+
+  GIVEN("A play screen whose row colours need the copper") {
+    const Geometry geometry = palGeometry();
+    Arena arena;
+    ArenaBuffers buffers(arena);
+    const FrameMemory memory = frameMemory(arena, buffers);
+    const graphics::Display built = inArena(arena, bandedStage());
+    BuiltFrame frame;
+    buildFrame(built, geometry, memory, nullptr, 0, frame);
+
+    THEN("Scrolling it is refused") {
+      graphics::Display next = built;
+      next.layers[0].sourceX += 1;
+      REQUIRE_FALSE(scrollFrame(next, built, geometry, memory, frame));
+    }
+  }
+
+  GIVEN("A rainbow picture with its colours in line phrases") {
+    const Geometry geometry = palGeometry();
+    Arena arena;
+    ArenaBuffers buffers(arena);
+    const FrameMemory memory = frameMemory(arena, buffers);
+    const graphics::Display built = inArena(arena, rainbowPicture());
+    BuiltFrame frame;
+    buildFrame(built, geometry, memory, nullptr, 0, frame);
+    REQUIRE(frame.lineLayer == 0);
+
+    THEN("Scrolling it into memory without line phrases is refused") {
+      graphics::Display next = built;
+      next.layers[0].sourceX += 3;
+      FrameMemory withoutLines = memory;
+      withoutLines.linePhrases = nullptr;
+      REQUIRE_FALSE(scrollFrame(next, built, geometry, withoutLines, frame));
+    }
+  }
+
+  GIVEN("A picture doubled in height carrying one sprite") {
+    const Bob small = bob(16, 12, 1);
+    graphics::Display display = fullScreen();
+    graphics::Layer doubled = layer(320, 128, 16, 60);
+    doubled.rows = 256;
+    doubled.repeat = 2;
+    display.layers = {doubled};
+
+    THEN("A second sprite, which needs a scaled object, is left to a "
+         "rebuild") {
+      const Geometry geometry = palGeometry();
+      Arena arena;
+      ArenaBuffers buffers(arena);
+      const FrameMemory memory = frameMemory(arena, buffers);
+      const graphics::Display shown =
+          inArena(arena, withBobs(display, {&small}, {{40, 30}}));
+      BuiltFrame frame;
+      buildFrame(shown, geometry, memory, nullptr, 0, frame);
+      graphics::Display next = inArena(
+          arena, withBobs(display, {&small, &small}, {{40, 30}, {80, 50}}));
+      next.layers.front().pixels = shown.layers.front().pixels;
+      BuiltFrame copy = frame;
+      REQUIRE_FALSE(scrollFrame(next, shown, geometry, memory, copy));
+      copy = frame;
+      REQUIRE_FALSE(moveSprites(next, shown, geometry, memory, copy));
+      buildFrame(next, geometry, memory, nullptr, 0, frame);
+      REQUIRE(wrongPixels(arena, frame, memory, next, geometry) == 0);
+    }
+  }
+}

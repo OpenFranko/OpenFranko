@@ -72,6 +72,11 @@ SCENARIO("The joystick answers the continue question") {
     Choice choice;
     run(*choice.state, 3);
 
+    THEN("Nothing is chosen yet") {
+      REQUIRE(choice.state->scene().outcome() ==
+              street::scenes::ContinueScene::Outcome::Choosing);
+    }
+
     WHEN("TAK is fired") {
       choice.press(&ControllerSystem::ControllerStates::button);
       const Exit exit = runToExit(*choice.state, 1000);
@@ -79,6 +84,8 @@ SCENARIO("The joystick answers the continue question") {
       THEN("The character selection follows, for the first stage again") {
         REQUIRE(exit.next == EngineStateId::CharacterSelectionSequence);
         REQUIRE(choice.session.registers[RO] == 0);
+        REQUIRE(choice.state->scene().outcome() ==
+                street::scenes::ContinueScene::Outcome::Continue);
       }
     }
 
@@ -90,6 +97,8 @@ SCENARIO("The joystick answers the continue question") {
       THEN("The menu follows with the stage left alone") {
         REQUIRE(exit.next == EngineStateId::Menu);
         REQUIRE(choice.session.registers[RO] == -1);
+        REQUIRE(choice.state->scene().outcome() ==
+                street::scenes::ContinueScene::Outcome::NewGame);
       }
     }
   }

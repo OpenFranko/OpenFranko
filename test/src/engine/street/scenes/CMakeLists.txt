@@ -52,3 +52,20 @@ add_executable(${STREET_STAGE_TEST_TARGET}
 target_link_libraries(${STREET_STAGE_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain Input StreetCore StreetScenes)
 add_test(NAME ${STREET_STAGE_TEST_TARGET} COMMAND ${STREET_STAGE_TEST_TARGET})
+
+set(ENDING_SCENE_FLOW_TEST_TARGET endingSceneFlowTest)
+add_executable(${ENDING_SCENE_FLOW_TEST_TARGET}
+    endingSceneFlowTest.cpp)
+target_link_libraries(${ENDING_SCENE_FLOW_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Common Input StreetCore StreetScenes
+            StreetUi)
+add_test(NAME ${ENDING_SCENE_FLOW_TEST_TARGET}
+    COMMAND ${ENDING_SCENE_FLOW_TEST_TARGET})
+
+set(GAME_OVER_SCENE_FLOW_TEST_TARGET gameOverSceneFlowTest)
+add_executable(${GAME_OVER_SCENE_FLOW_TEST_TARGET}
+    gameOverSceneFlowTest.cpp)
+target_link_libraries(${GAME_OVER_SCENE_FLOW_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Input StreetCore StreetScenes StreetUi)
+add_test(NAME ${GAME_OVER_SCENE_FLOW_TEST_TARGET}
+    COMMAND ${GAME_OVER_SCENE_FLOW_TEST_TARGET})

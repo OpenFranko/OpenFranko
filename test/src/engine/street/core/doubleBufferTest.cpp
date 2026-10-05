@@ -376,3 +376,127 @@ SCENARIO("A recorded sprite is baked only when its image is retired") {
     }
   }
 }
+
+SCENARIO("A double buffer assigned from another carries on where it was") {
+  GIVEN("A bob on screen and a Paste Bob still to be drawn") {
+    Screen screen;
+    screen.bobs.set(1, 16, 8, 1);
+    screen.frame();
+    screen.frame();
+    screen.buffer.autoback([&screen](IndexedSurface &surface) {
+      BobLayer::paste(surface, screen.images, 40, 20, 2);
+    });
+
+    WHEN("It is copied over another buffer") {
+      DoubleBuffer copy(8, 8);
+      copy = screen.buffer;
+
+      THEN("The copy shows the same frame and finishes the stall by itself") {
+        REQUIRE(copy.shown().width() == 64);
+        REQUIRE(copy.shown().pixel(16, 8) == INK);
+        REQUIRE(copy.isAutobacking());
+        for (int frame = 0; frame < 2; ++frame) {
+          copy.vbl();
+          copy.autobackStep(screen.bobs, screen.images);
+        }
+        REQUIRE(copy.shown().pixel(40, 20) == STAMP);
+        REQUIRE(screen.shown(40, 20) == PAPER);
+      }
+    }
+
+    WHEN("It is assigned to itself") {
+      const DoubleBuffer &same = screen.buffer;
+      screen.buffer = same;
+
+      THEN("Nothing changes") {
+        REQUIRE(screen.shown(16, 8) == INK);
+        REQUIRE(screen.buffer.isAutobacking());
+      }
+    }
+  }
+
+  GIVEN("A bob recorded as a sprite and shown") {
+    Screen screen;
+    screen.buffer.setSprites(true);
+    screen.bobs.set(1, 10, 10, 1);
+    screen.frame();
+    screen.frame();
+
+    WHEN("The buffer is copied") {
+      DoubleBuffer copy(8, 8);
+      copy = screen.buffer;
+
+      THEN("The copy has the sprite stamped into its pixels") {
+        REQUIRE(copy.shownView().sprites.empty());
+        REQUIRE(copy.shownView().pixels.pixel(12, 12) == INK);
+        REQUIRE(screen.buffer.shownView().sprites.size() == 1);
+      }
+    }
+  }
+}
+
+SCENARIO("Bobs numbered past the first eight are tracked like the rest") {
+  GIVEN("Bob 20 alone on screen") {
+    Screen screen;
+    screen.bobs.set(20, 16, 8, 1);
+    screen.frame();
+    screen.frame();
+
+    THEN("It is drawn, and while it stays put the buffers are left alone") {
+      REQUIRE(screen.shown(16, 8) == INK);
+      REQUIRE_FALSE(screen.buffer.isDirty(screen.bobs));
+    }
+
+    WHEN("It moves") {
+      screen.bobs.setX(20, 40);
+
+      THEN("The move is seen and drawn") {
+        REQUIRE(screen.buffer.isDirty(screen.bobs));
+        screen.frame();
+        screen.frame();
+        REQUIRE(screen.shown(40, 8) == INK);
+        REQUIRE(screen.shown(16, 8) == PAPER);
+      }
+    }
+  }
+}
+
+SCENARIO("Bob Draw over sprites not yet cleared stamps them into the screen") {
+  GIVEN("Sprites on, updates off and a bob recorded at x 16") {
+    Screen screen;
+    screen.buffer.setSprites(true);
+    screen.buffer.setUpdates(false);
+    screen.bobs.set(1, 16, 8, 1);
+    screen.buffer.drawBobs(screen.bobs, screen.images);
+
+    WHEN("It moves and Bob Draw runs again without a Bob Clear") {
+      screen.bobs.setX(1, 40);
+      screen.buffer.drawBobs(screen.bobs, screen.images);
+      screen.buffer.swap();
+      const DoubleBuffer::View drawn = screen.buffer.upcomingView();
+
+      THEN("The old place keeps its image as pixels, the new one is a "
+           "sprite") {
+        REQUIRE(drawn.pixels.pixel(16, 8) == INK);
+        REQUIRE(drawn.pixels.pixel(40, 8) == PAPER);
+        REQUIRE(drawn.sprites.size() == 1);
+        REQUIRE(drawn.sprites.front().left == 40);
+      }
+    }
+  }
+}
+
+SCENARIO("Sprite mode draws bobs that cannot be sprites into the screen") {
+  GIVEN("Sprites on and a bob shown upside down") {
+    Screen screen;
+    screen.buffer.setSprites(true);
+    screen.bobs.set(1, 16, 8, 1 + ImageBank::FLIP_Y);
+    screen.frame();
+    screen.frame();
+
+    THEN("It is drawn into the shown screen and no sprite is recorded") {
+      REQUIRE(screen.buffer.shownView().sprites.empty());
+      REQUIRE(screen.buffer.shownView().pixels.pixel(20, 4) == INK);
+    }
+  }
+}

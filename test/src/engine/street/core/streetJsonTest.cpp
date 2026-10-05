@@ -60,6 +60,13 @@ SCENARIO("JSON documents are read into values") {
                           "JSON: expected ':' at offset 5");
       REQUIRE_THROWS_AS(parseJson("[nul]"), std::invalid_argument);
     }
+
+    THEN("A string cut off after a backslash is refused, read or skipped") {
+      REQUIRE_THROWS_WITH(parseJson("\"ab\\"),
+                          "JSON: unexpected end at offset 4");
+      REQUIRE_THROWS_WITH(JsonCursor("\"ab\\").skip(),
+                          "JSON: unexpected end at offset 4");
+    }
   }
 }
 
@@ -98,6 +105,7 @@ SCENARIO("A JSON cursor reads values one at a time") {
       REQUIRE_THROWS_WITH(JsonCursor("\"9\"").integer(),
                           "JSON: expected an integer");
       REQUIRE_THROWS_WITH(JsonCursor("[]").text(), "JSON: expected a string");
+      REQUIRE_THROWS_WITH(parseJson("{}").array(), "JSON: expected an array");
       REQUIRE_THROWS_WITH(JsonCursor("[1 2]").skip(),
                           "JSON: expected ']' at offset 3");
     }

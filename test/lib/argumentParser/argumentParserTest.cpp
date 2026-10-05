@@ -31,3 +31,27 @@ SCENARIO("ArgumentParser gives the value after each option") {
     }
   }
 }
+
+SCENARIO("ArgumentParser has no value for an option that is absent or last") {
+  GIVEN("A command line that ends with -o") {
+    std::vector<std::string> arguments = {"program", "-i", "input.txt", "-o"};
+    std::vector<char *> argv;
+    for (std::string &argument : arguments) {
+      argv.push_back(argument.data());
+    }
+
+    WHEN("Parsing the arguments") {
+      ArgumentParser parser(static_cast<int>(argv.size()), argv.data());
+
+      THEN("-o has no value") { REQUIRE_FALSE(parser.option("-o")); }
+
+      THEN("An option that is not there has no value") {
+        REQUIRE_FALSE(parser.option("-x"));
+      }
+
+      THEN("The program name is not an option") {
+        REQUIRE_FALSE(parser.option("program"));
+      }
+    }
+  }
+}

@@ -1284,4 +1284,121 @@ SCENARIO("IndexedRasterizer falls back to the nearest colour past 256") {
       REQUIRE(frame.palette[frame.pixels[5]] == 0x0F0);
     }
   }
+
+  GIVEN("A full 256-colour screen with a copper colour it lacks") {
+    std::vector<uint16_t> palette(FRAME_COLORS);
+    for (std::size_t index = 0; index < palette.size(); ++index) {
+      palette[index] = static_cast<uint16_t>(index << 4);
+    }
+    const std::vector<uint8_t> pixels = pattern(4, 4, 256);
+    Display display = screen(4, 4, 0x000);
+    Layer drawn = layer(pixels, 4, 4, palette);
+    drawn.rowColors = {{0, 0, 0x0F1}};
+    display.layers.push_back(drawn);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    rasterizer.rasterize(display, frame);
+
+    THEN("Its row uses the closest colour and the other rows keep theirs") {
+      REQUIRE(pixels[0] == 0);
+      REQUIRE(frame.palette[frame.pixels[0]] == 0x0F0);
+      REQUIRE(frame.palette[frame.pixels[4]] == palette[pixels[4]]);
+    }
+  }
+}
+
+SCENARIO("IndexedRasterizer redraws what moved or changed beside sprites") {
+  GIVEN("A picture whose next frame gives a copper colour to another row") {
+    const std::vector<uint8_t> pixels = pattern(12, 6, 8);
+    Display display = screen(12, 6);
+    Layer picture = layer(pixels, 12, 6, PANEL_COLORS);
+    picture.rowColors = {{1, 2, 0xF00}};
+    display.layers.push_back(picture);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    rasterizer.rasterize(display, frame);
+    applyChanges(frame, shownPixels);
+
+    WHEN("Row 4 gets colour 3 changed as well") {
+      display.layers[0].rowColors = {{1, 2, 0xF00}, {4, 3, 0x0F0}};
+      rasterizer.rasterize(display, frame);
+      applyChanges(frame, shownPixels);
+
+      THEN("Row 4 shows the new colour") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+        REQUIRE(frame.changes[4].spans[0].last == 12);
+      }
+    }
+  }
+
+  GIVEN("A play screen carrying a sprite over a panel without sprites") {
+    std::vector<uint8_t> panel = pattern(16, 4, 8);
+    const std::vector<uint8_t> play = pattern(16, 8, 16);
+    const std::vector<uint8_t> image = pattern(4, 3, 15);
+    Display display = screen(16, 12);
+    Layer playLayer = layer(play, 16, 8, LEVEL_COLORS);
+    playLayer.carriesSprites = true;
+    playLayer.sprites = {{image.data(), 4, 3, 2, 2}};
+    display.layers.push_back(playLayer);
+    Layer panelLayer = layer(panel, 16, 4, PANEL_COLORS);
+    panelLayer.top = 8;
+    display.layers.push_back(panelLayer);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    rasterizer.rasterize(display, frame);
+    applyChanges(frame, shownPixels);
+
+    WHEN("A few pixels of the panel change") {
+      panel[17] ^= 1;
+      panel[40] ^= 3;
+      rasterizer.rasterize(display, frame);
+      applyChanges(frame, shownPixels);
+
+      THEN("Only the panel's changed spans are drawn, without sprites") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+        for (int row = 0; row < 8; ++row) {
+          REQUIRE_FALSE(
+              isChanged(frame.changes[static_cast<std::size_t>(row)]));
+        }
+      }
+    }
+  }
+
+  GIVEN("A street with a sprite at its left edge") {
+    std::vector<uint8_t> street = pattern(64, 12, 16);
+    const std::vector<uint8_t> image(8 * 4, 5);
+    Display display = screen(48, 12);
+    Layer streetLayer = layer(street, 64, 12, LEVEL_COLORS);
+    streetLayer.sourceX = 8;
+    streetLayer.columns = 48;
+    streetLayer.carriesSprites = true;
+    streetLayer.sprites = {{image.data(), 8, 4, 8, 3}};
+    display.layers.push_back(streetLayer);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    rasterizer.rasterize(display, frame);
+    applyChanges(frame, shownPixels);
+
+    WHEN("The street's pixels move eight columns left under it") {
+      for (int y = 0; y < 12; ++y) {
+        uint8_t *row = street.data() + y * 64;
+        std::memmove(row, row + SHIFT_STEP, 64 - SHIFT_STEP);
+        std::fill(row + 64 - SHIFT_STEP, row + 64,
+                  static_cast<uint8_t>(y % 16));
+      }
+      rasterizer.rasterize(display, frame);
+      applyChanges(frame, shownPixels);
+
+      THEN("The rows are shifted and the sprite stays where it was") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(shownPixels == frame.pixels);
+        REQUIRE(frame.changes[4].shift == -SHIFT_STEP);
+      }
+    }
+  }
 }

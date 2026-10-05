@@ -168,3 +168,24 @@ SCENARIO("parse reads the 5x5 cards of version 1.2") {
     }
   }
 }
+
+SCENARIO("colors::name names the eleven card colours and nothing else") {
+  GIVEN("Colour numbers past the last card colour") {
+    const std::vector<uint8_t> outside = {consts::COLOR_COUNT, 12, 255};
+
+    THEN("They are unknown") {
+      for (uint8_t color : outside) {
+        CAPTURE(int{color});
+        REQUIRE(std::string(colors::name(color)) == "unknown");
+      }
+    }
+  }
+
+  GIVEN("The first and the last card colour") {
+    THEN("They are black and dark green") {
+      REQUIRE(std::string(colors::name(0)) == "black");
+      REQUIRE(std::string(colors::name(consts::COLOR_COUNT - 1)) ==
+              "dark green");
+    }
+  }
+}

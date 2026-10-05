@@ -8,8 +8,11 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
+#include <cstddef>
 #include <deque>
 #include <memory>
+#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -771,6 +774,212 @@ SCENARIO("The second drive inherits what the first left in ZAP, L, M, B, T") {
       REQUIRE(drive.session.lastDrive.ignition == 1);
       REQUIRE(drive.session.lastDrive.fenceBand == fence);
       REQUIRE(drive.session.lastDrive.roadBand == road);
+    }
+  }
+}
+
+SCENARIO("1.2 goes from Cls straight to the loads, without a password") {
+  GIVEN("The boss of stage 1 just beaten in 1.2") {
+    Drive drive;
+    drive.session.version = GameVersion::V12;
+    CarStage &stage = drive.start();
+    const std::string before = drive.session.textBuffer;
+    drive.run(3);
+    const bool waiting = drive.host.musicStops == 0;
+    drive.run(1);
+
+    THEN("Cls stalls its three frames, then the screen goes and ERA reads "
+         "the car") {
+      REQUIRE(waiting);
+      REQUIRE_FALSE(stage.isShowingPassword());
+      REQUIRE_FALSE(stage.isScreenShown());
+      REQUIRE(drive.host.musicStops == 1);
+      REQUIRE(drive.host.spriteSets ==
+              std::vector<std::pair<int, int>>{{150, 2}});
+      REQUIRE(drive.session.textBuffer == before);
+    }
+  }
+}
+
+SCENARIO("Fire honks the horn every third pass while the car moves") {
+  GIVEN("The car moving") {
+    Drive drive;
+    drive.toTheWheel();
+    drive.ignite();
+    drive.accelerateTo(2);
+
+    WHEN("Fire is held with right for nine passes") {
+      const std::size_t before = drive.host.samples.size();
+      drive.runPasses(9, JOY_FIRE | JOY_RIGHT);
+      const std::vector<FakeHost::Sample> played(
+          drive.host.samples.begin() + static_cast<std::ptrdiff_t>(before),
+          drive.host.samples.end());
+
+      THEN("Sample 2 sounds three times on voice 1") {
+        REQUIRE(played == std::vector<FakeHost::Sample>(3, {2, 2, 1}));
+      }
+    }
+  }
+}
+
+SCENARIO("Steering down into the lower kerb bounces the car back too") {
+  GIVEN("The car at top speed") {
+    Drive drive;
+    drive.toTheWheel();
+    drive.ignite();
+    drive.accelerateTo(12);
+    CarStage &stage = *drive.stage;
+
+    WHEN("Down is held with right") {
+      const int bounced = drive.runUntil([&] { return stage.speed() < 0; },
+                                         20 * PASS_LIMIT, JOY_DOWN | JOY_RIGHT);
+
+      THEN("Y stops at 198, the car rolls back and costs 8 energy") {
+        REQUIRE(bounced > 0);
+        REQUIRE(stage.carY() == 198);
+        REQUIRE(stage.speed() == -1);
+        REQUIRE(drive.host.played(2, 7, 1));
+        REQUIRE(drive.global(RF) == 32);
+      }
+    }
+  }
+}
+
+SCENARIO("Left brakes the car, then rolls it back until the engine dies") {
+  GIVEN("The car moving at speed 3") {
+    Drive drive;
+    drive.toTheWheel();
+    drive.ignite();
+    drive.accelerateTo(3);
+    CarStage &stage = *drive.stage;
+
+    WHEN("Left is held for two passes") {
+      const std::size_t before = drive.host.samples.size();
+      drive.runPasses(2, JOY_LEFT);
+
+      THEN("Each pass takes a step of speed off with the brake sample") {
+        REQUIRE(stage.speed() == 1);
+        REQUIRE(drive.host.samples.size() == before + 2);
+        REQUIRE(drive.host.samples.back() == FakeHost::Sample{2, 6, 1});
+      }
+
+      AND_WHEN("It is held on") {
+        int furthest = stage.distance();
+        const int died = drive.runUntil(
+            [&] {
+              furthest = std::min(furthest, stage.distance());
+              return !stage.isEngineOn();
+            },
+            100 * PASS_LIMIT, JOY_LEFT);
+
+        THEN("Reversing stops 20 px behind the furthest point reached, the "
+             "car coasts 2 px more and the engine dies") {
+          REQUIRE(died > 0);
+          REQUIRE(stage.speed() == 0);
+          REQUIRE(stage.distance() == furthest + 20 + 2);
+          REQUIRE(stage.carX() == 96);
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("Energy running past full or empty moves a life") {
+  GIVEN("Walkers big enough to meet the car at speed 8") {
+    Drive drive;
+    drive.host.hugePedestrians = true;
+    drive.toTheWheel();
+    drive.ignite();
+    drive.accelerateTo(8);
+
+    WHEN("An old man is run down with only 10 energy left") {
+      drive.global(RF) = 10;
+      drive.host.rolls = {4, 3, 50, 11, 0, 0};
+      drive.runPasses(2, JOY_RIGHT);
+
+      THEN("A life goes and the bar wraps round to 60") {
+        REQUIRE(drive.global(RG) == 2);
+        REQUIRE(drive.global(RF) == 60);
+      }
+    }
+
+    WHEN("A punk is run down with 60 energy") {
+      drive.global(RF) = 60;
+      drive.host.rolls = {4, 0, 50, 11, 0, 0};
+      drive.runPasses(2, JOY_RIGHT);
+
+      THEN("A life is won and 10 energy is left over") {
+        REQUIRE(drive.global(RG) == 4);
+        REQUIRE(drive.global(RF) == 10);
+      }
+    }
+  }
+}
+
+SCENARIO("Braking onto the very end of the distance still drives the car off") {
+  GIVEN("The car at top speed, 68 px from the end") {
+    constexpr int BRAKING_RUN = 11 + 10 + 9 + 8 + 7 + 6 + 5;
+    Drive drive;
+    drive.toTheWheel();
+    drive.ignite();
+    drive.accelerateTo(12);
+    CarStage &stage = *drive.stage;
+    const int reached = drive.runUntil(
+        [&] { return stage.distance() == BRAKING_RUN + 12; }, 4000, JOY_RIGHT);
+
+    WHEN("Left is held with right until the distance has run out") {
+      const int ran = drive.runUntil(
+          [&] { return stage.machine().isRunning(CarStage::CAR_CHANNEL); },
+          50 * PASS_LIMIT, JOY_LEFT | JOY_RIGHT);
+      const int from = stage.bobs().x(CarStage::CAR);
+
+      THEN("The last pass covers exactly what was left, and channel 4 still "
+           "drives the car 800 px off") {
+        REQUIRE(reached > 0);
+        REQUIRE(ran > 0);
+        REQUIRE(stage.speed() == 5);
+        REQUIRE(stage.distance() == 0);
+        drive.run(400);
+        REQUIRE(stage.bobs().x(CarStage::CAR) == from + 800);
+      }
+
+      AND_WHEN("The stage ends") {
+        drive.runUntil(
+            [&] { return stage.outcome() != CarStage::Outcome::Playing; },
+            1000);
+        stage.handOver();
+
+        THEN("It hands nothing over beyond the flag for the next stage") {
+          REQUIRE(stage.outcome() == CarStage::Outcome::Cleared);
+          REQUIRE(drive.session.fromBonusDrive);
+          REQUIRE_FALSE(drive.session.streetExit.has_value());
+          REQUIRE_FALSE(drive.session.bossExit.has_value());
+        }
+      }
+    }
+  }
+}
+
+SCENARIO("The music keys do nothing once ERA has dropped the tune") {
+  GIVEN("A drive under way with the music on") {
+    Drive drive;
+    drive.toTheWheel();
+    const std::size_t volumes = drive.host.volumes.size();
+
+    WHEN("F2 and then F1 are pressed") {
+      drive.runPasses(1, 0);
+      drive.run(1, 0, SystemKey::MusicOff);
+      drive.runPasses(2, 0);
+      const bool afterOff = drive.options.music;
+      drive.run(1, 0, SystemKey::MusicOn);
+      drive.runPasses(2, 0);
+
+      THEN("Neither the volume nor the music option changes") {
+        REQUIRE(afterOff);
+        REQUIRE(drive.options.music);
+        REQUIRE(drive.host.volumes.size() == volumes);
+        REQUIRE(drive.session.keyLatch == SystemKey::None);
+      }
     }
   }
 }

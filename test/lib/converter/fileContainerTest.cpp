@@ -347,3 +347,122 @@ SCENARIO("unsquashVersion12 gives the whole squashed block of a 1.2 file") {
     }
   }
 }
+
+SCENARIO("unpack refuses damaged files") {
+  GIVEN("A version 1.0 file whose squashed data fails its checksum") {
+    auto file = squash({1, 2, 3});
+    file[file.size() - 5] ^= 0x01;
+    pushBigEndian32(file, 3);
+    pushBigEndian16(file, 0x0385);
+    pushBigEndian16(file, 0x0200);
+
+    THEN("It throws the decompressor's reason") {
+      REQUIRE_THROWS_WITH(unpack("anything", file),
+                          "Decompression failed: XOR checksum mismatch");
+    }
+  }
+
+  GIVEN("1.2 files shorter than the packed length in front of them") {
+    THEN("They throw") {
+      REQUIRE_THROWS_WITH(unpack("p58", {0, 0, 0}),
+                          "File too small for its packed length");
+      REQUIRE_THROWS_WITH(unpack("p1", {0}),
+                          "File too small for its packed length");
+    }
+  }
+
+  GIVEN("p1 whose block says its bank is a single byte") {
+    const auto file = withWordLength(squash({0, 1, 0, 0, 0xA1}));
+
+    THEN("It throws") {
+      REQUIRE_THROWS_WITH(unpack("p1", file), "Data bank is too short");
+    }
+  }
+
+  GIVEN("p52 that is not a whole number of longwords") {
+    THEN("It throws") {
+      REQUIRE_THROWS_WITH(unpack("p52", {1, 2, 3, 4, 5}),
+                          "Coded file is not a whole number of longwords");
+    }
+  }
+
+  GIVEN("s1 whose block is shorter than a bob bank header") {
+    const auto file = withLongLength(squash({0, 0, 0, 0, 1, 0, 0, 0, 0}));
+
+    THEN("It throws") {
+      REQUIRE_THROWS_WITH(unpack("s1", file),
+                          "Data too small for a bob bank header");
+    }
+  }
+
+  GIVEN("s1 whose header counts three bobs but holds one descriptor") {
+    std::vector<uint8_t> block;
+    pushBigEndian32(block, 0);
+    block.push_back(3);
+    block.push_back(0);
+    pushBigEndian16(block, 0);
+    block.push_back(16);
+    block.push_back(16);
+    append(block, std::vector<uint8_t>(10, 0));
+
+    THEN("It throws") {
+      REQUIRE_THROWS_WITH(unpack("s1", withLongLength(squash(block))),
+                          "Data too small for the bob descriptor table");
+    }
+  }
+}
+
+SCENARIO("unpack counts colours only from a 1.2 bob bank's real pictures") {
+  GIVEN("s1 with bobs on junk, on a 7-bitplane picture and on a 3-bitplane "
+        "picture") {
+    std::vector<uint8_t> block;
+    pushBigEndian32(block, 0);
+    block.push_back(3);
+    block.push_back(0);
+    pushBigEndian16(block, 0);
+    block.push_back(0);
+    block.push_back(40);
+    for (uint16_t value : {15, 1, 2, 3, 4, 23, 1, 2, 3, 4, 31, 1, 2, 3, 4}) {
+      pushBigEndian16(block, value);
+    }
+    append(block, std::vector<uint8_t>(16, 0));
+    append(block, pictureHeader(7));
+    append(block, pictureHeader(3));
+
+    WHEN("It is unpacked") {
+      const auto resource = unpack("s1", withLongLength(squash(block)));
+      BigEndianReader reader(resource.data);
+
+      THEN("The colours come from the 3-bitplane picture alone") {
+        REQUIRE(reader.readUint16(0) == 3);
+        REQUIRE(reader.readUint16(6) == 8);
+      }
+
+      THEN("Without a sample bank the pictures run to the end of the block") {
+        REQUIRE(reader.readUint32(8) == 0);
+        REQUIRE(resource.data.size() == 12 + block.size() - 10);
+      }
+    }
+  }
+
+  GIVEN("s1 whose only bob points past the end of the block") {
+    std::vector<uint8_t> block;
+    pushBigEndian32(block, 0);
+    block.push_back(1);
+    block.push_back(0);
+    pushBigEndian16(block, 0);
+    block.push_back(16);
+    block.push_back(16);
+    for (uint16_t value : {1000, 1, 16, 0, 0}) {
+      pushBigEndian16(block, value);
+    }
+
+    WHEN("It is unpacked") {
+      const auto resource = unpack("s1", withLongLength(squash(block)));
+
+      THEN("The bank has no colours") {
+        REQUIRE(BigEndianReader(resource.data).readUint16(6) == 0);
+      }
+    }
+  }
+}

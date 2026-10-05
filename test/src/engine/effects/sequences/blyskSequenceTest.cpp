@@ -117,5 +117,16 @@ SCENARIO("BlyskSequence shows FONT pages the way BLYSK lights them") {
       REQUIRE_FALSE(sequence.nextPage().has_value());
       REQUIRE_FALSE(sequence.isSteady());
     }
+
+    WHEN("Frames pass with fire latched") {
+      run(sequence, BlyskSequence::PAGE_FRAMES + 1, true);
+
+      THEN("No page is pasted, the strip stays black and nothing is skipped") {
+        REQUIRE(sequence.isFinished());
+        REQUIRE_FALSE(sequence.isSkipped());
+        REQUIRE_FALSE(sequence.page().has_value());
+        REQUIRE(sequence.palette() == AmigaPalette(BlyskSequence::COLORS, 0));
+      }
+    }
   }
 }
