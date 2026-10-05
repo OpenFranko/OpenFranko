@@ -430,6 +430,9 @@ struct VideoSystem::Window {
 };
 
 VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
+#if defined(__DJGPP__) || defined(DJGPP)
+  m_ntsc = true;
+#endif
   set_color_depth(8);
   if (set_gfx_mode(GFX_MODEX, SCREEN_WIDTH, SCREEN_HEIGHT, VIRTUAL_WIDTH,
                    SCREEN_HEIGHT) != 0 &&
