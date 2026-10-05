@@ -20,6 +20,7 @@ public:
 
   void queue(std::function<void()> load);
   void queueSteps(std::function<bool()> step);
+  void clear();
   bool advance(StatusPanel *panel);
 
 private:

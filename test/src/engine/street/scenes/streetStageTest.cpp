@@ -832,6 +832,17 @@ SCENARIO("SYS reads the CIA key register, which keeps the last key event") {
     }
   }
 
+  GIVEN("A new game loading its stage files while Escape is pressed") {
+    Street street(emptyStreet(600));
+    street.start();
+    street.run(GAME_INIT_FRAMES);
+    street.run(1, 0, SystemKey::Escape);
+
+    THEN("Its event is consumed immediately instead of leaving stale input") {
+      REQUIRE(street.session.keyLatch == SystemKey::None);
+    }
+  }
+
   GIVEN("A key still in the register when the stage starts") {
     Street street(emptyStreet(600));
     street.session.keyLatch = SystemKey::Ntsc;

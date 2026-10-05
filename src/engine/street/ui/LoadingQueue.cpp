@@ -12,6 +12,13 @@ void LoadingQueue::queueSteps(std::function<bool()> step) {
   m_files.push_back(Job{nullptr, std::move(step)});
 }
 
+void LoadingQueue::clear() {
+  m_files.clear();
+  m_running = nullptr;
+  m_phase = Phase::Idle;
+  m_countdown = 0;
+}
+
 bool LoadingQueue::advance(StatusPanel *panel) {
   if (m_running && m_running()) {
     m_running = nullptr;
