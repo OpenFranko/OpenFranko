@@ -125,14 +125,14 @@ Options starting with `-D` are passed to CMake, e.g.
 
 `build-dos/game` holds `franko.exe`, `CWSDPMI.EXE` (the DPMI host), the assets
 packed into `assets.tar` and a `dosbox.conf` for DOSBox, DOSBox Staging and
-DOSBox-X (`flatpak run com.dosbox_x.DOSBox-X -conf
-"$PWD/build-dos/game/dosbox.conf"`; the flatpak starts in the home directory,
-so the path has to be absolute). DOS has no long file names, so the game reads
-its assets from the archive; every build does that when `assets.tar` sits next
-to it instead of `assets`. On a real PC, copy the first three files into one
-directory and run `franko`. It needs a VGA card and, for sound, a Sound Blaster
-compatible card; without one it says so while it loads and plays silently.
-Ctrl+C or Ctrl+Break quits it.
+DOSBox-X that emulates a 486DX2-66 with 8 MB of memory (`flatpak run
+com.dosbox_x.DOSBox-X -conf "$PWD/build-dos/game/dosbox.conf"`; the flatpak
+starts in the home directory, so the path has to be absolute). DOS has no long
+file names, so the game reads its assets from the archive; every build does that
+when `assets.tar` sits next to it instead of `assets`. On a real PC, copy the
+first three files into one directory and run `franko`. It needs a VGA card and,
+for sound, a Sound Blaster compatible card; without one it says so while it
+loads and plays silently. Ctrl+C or Ctrl+Break quits it.
 
 The game shows the Amiga picture pixel for pixel in a 376x282 256-colour VGA
 mode (Mode X) that, like a PAL Amiga, refreshes about 50 times a second; high

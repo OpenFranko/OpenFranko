@@ -154,10 +154,10 @@ assemble_game() {
   fi
   cat > "$GAME_DIR/dosbox.conf" << EOF
 [cpu]
-cputype=486dx2
-cycles=66000
+cputype=486
+cycles=fixed 23880
 
-[memory]
+[dosbox]
 memsize=8
 
 [autoexec]

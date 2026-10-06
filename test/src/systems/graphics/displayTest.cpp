@@ -93,6 +93,16 @@ SCENARIO("rasterize paints the border and then each layer in turn") {
                                                      color(6), color(0)});
     }
 
+    THEN("A wrapping layer wraps the same row back to its left edge") {
+      Layer layer = source(3, 2);
+      layer.sourceX = -1;
+      layer.wrap = true;
+      output.layers.push_back(layer);
+      REQUIRE(shown(output) == std::vector<uint32_t>{color(3), color(1),
+                                                     color(2), color(6),
+                                                     color(4), color(5)});
+    }
+
     THEN("The mask limits the colour numbers") {
       Layer layer = source(3, 2);
       layer.mask = 3;
