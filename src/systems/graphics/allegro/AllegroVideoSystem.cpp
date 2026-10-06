@@ -1,6 +1,7 @@
 #include "graphics/VideoSystem.h"
 
 #include "graphics/IndexedRasterizer.h"
+#include "graphics/KeptRuns.h"
 
 #include <algorithm>
 #include <allegro.h>
@@ -19,6 +20,7 @@ namespace {
 constexpr int SCREEN_WIDTH = 376;
 constexpr int SCREEN_HEIGHT = 282;
 constexpr int PLANES = 4;
+static_assert(PLANES == GROUP_PIXELS);
 constexpr int SEQUENCER_PORT = 0x3C4;
 constexpr int GRAPHICS_PORT = 0x3CE;
 constexpr int MAP_MASK = 0x02;
@@ -49,6 +51,7 @@ constexpr int PHASE_TIMEOUT = SCREEN_HERTZ;
 constexpr int QUICK_PART = 8;
 constexpr int PERIOD_SMOOTHING = 8;
 constexpr int PERIOD_SAMPLES = 64;
+constexpr int EARLY_RETRACES = 3;
 constexpr int FASTEST_HERTZ = 55;
 constexpr int SLOWEST_HERTZ = 45;
 constexpr int VIRTUAL_WIDTH = 896;
@@ -413,6 +416,7 @@ struct VideoSystem::Window {
   bool polled = false;
   int period = BPS_TO_TIMER(SCREEN_HERTZ);
   int periodSamples = 0;
+  int earlyRetraces = 0;
   int refClock = 0;
   int refVbl = 0;
   int phase = 0;
@@ -430,9 +434,6 @@ struct VideoSystem::Window {
 };
 
 VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
-#if defined(__DJGPP__) || defined(DJGPP)
-  m_ntsc = true;
-#endif
   set_color_depth(8);
   if (set_gfx_mode(GFX_MODEX, SCREEN_WIDTH, SCREEN_HEIGHT, VIRTUAL_WIDTH,
                    SCREEN_HEIGHT) != 0 &&
@@ -545,6 +546,9 @@ void VideoSystem::present() {
       work.from = change.from;
       work.shift = change.shift / step;
       work.spans = {screenSpan(change.spans[0]), screenSpan(change.spans[1])};
+      if (work.from != NO_ROW || work.shift != 0) {
+        work.spans = groupSpans(work.spans, placement.width);
+      }
     } else {
       continue;
     }
@@ -706,22 +710,19 @@ void VideoSystem::Window::draw() {
     const std::size_t end = std::min(rows.size(), band + BAND_ROWS);
     for (std::size_t index = band; index < end; ++index) {
       const RowWork &work = rows[index];
-      if (work.from != NO_ROW) {
-        latch(true);
-        copyLatches(rowStart(work.from), rowStart(work.row), groups, false);
+      if (work.from == NO_ROW && work.shift == 0) {
+        continue;
       }
-      if (work.shift != 0) {
-        latch(true);
-        const int moved = std::abs(work.shift) / PLANES;
-        const uintptr_t start = rowStart(work.row);
-        if (work.shift < 0) {
-          copyLatches(start + static_cast<uintptr_t>(moved), start,
-                      groups - moved, false);
-        } else {
-          copyLatches(start, start + static_cast<uintptr_t>(moved),
-                      groups - moved, true);
-        }
-      }
+      latch(true);
+      const uintptr_t source =
+          rowStart(work.from != NO_ROW ? work.from : work.row);
+      const uintptr_t target = rowStart(work.row);
+      copyKeptRuns(work.spans, groups, work.shift / PLANES, work.from == NO_ROW,
+                   [&](const KeptRun &run) {
+                     copyLatches(source + static_cast<uintptr_t>(run.from),
+                                 target + static_cast<uintptr_t>(run.to),
+                                 run.count, run.backward);
+                   });
     }
     for (int plane = 0; plane < PLANES; ++plane) {
       bool selected = false;
@@ -788,6 +789,7 @@ void VideoSystem::Window::measurePeriod(int found, int vblTicks) {
   const int elapsed = clockTicks(refClock, found, vblTicks);
   const int refreshes = (elapsed + period / 2) / period;
   if (refreshes == 0) {
+    retrace = ++earlyRetraces < EARLY_RETRACES;
     return;
   }
   period += (elapsed / refreshes - period) / PERIOD_SMOOTHING;

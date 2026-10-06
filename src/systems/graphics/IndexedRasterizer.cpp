@@ -78,6 +78,17 @@ int wrappedColumn(const Layer &layer, int column, int &line) {
   return wrapped;
 }
 
+bool wrapsFar(const Display &display, const Layer &layer) {
+  if (!layer.wrap || !layer.pixels || layer.sourceColumns <= 0) {
+    return false;
+  }
+  const int first = std::max(0, layer.left);
+  const int last = std::min(display.width, layer.left + layer.columns);
+  const int shift = layer.sourceX - layer.left;
+  return first < last &&
+         (first + shift < 0 || last + shift > 2 * layer.sourceColumns);
+}
+
 bool coversColumns(const Display &display, const Layer &layer) {
   if (layer.left > 0 || layer.left + layer.columns < display.width) {
     return false;
@@ -310,7 +321,10 @@ void IndexedRasterizer::rasterize(const Display &display, IndexedFrame &frame) {
         revision != 0 && revision == m_lastDisplay.layers[index].revision;
     m_anyKept = m_anyKept || m_sourceKept[index];
   }
-  const int panned = resized ? NEW_LAYOUT : pannedLayer(display);
+  const bool farWrap =
+      std::any_of(display.layers.begin(), display.layers.end(),
+                  [&](const Layer &layer) { return wrapsFar(display, layer); });
+  const int panned = resized || farWrap ? NEW_LAYOUT : pannedLayer(display);
   if (panned != NEW_LAYOUT) {
     for (Mapping &mapping : m_mappings) {
       mapping.block = mapping.placed;
@@ -323,7 +337,7 @@ void IndexedRasterizer::rasterize(const Display &display, IndexedFrame &frame) {
     findChanges(display);
     markSprites(display);
   } else {
-    arrange(display, resized);
+    arrange(display, resized, farWrap);
   }
   int row = 0;
   while (row < height) {
@@ -417,7 +431,8 @@ void IndexedRasterizer::panLayer(const Display &display, std::size_t index) {
   panRows(display, index, moved);
 }
 
-void IndexedRasterizer::arrange(const Display &display, bool resized) {
+void IndexedRasterizer::arrange(const Display &display, bool resized,
+                                bool redrawAll) {
   const int height = m_frame->height;
   m_frame->palette.fill(BLACK);
   if (m_colorSlots.size() != AMIGA_COLORS) {
@@ -481,8 +496,8 @@ void IndexedRasterizer::arrange(const Display &display, bool resized) {
            (left.block || (left.pixels ? left.slots == right.slots
                                        : left.slots[0] == right.slots[0]));
   };
-  bool redraw =
-      resized || m_border != m_lastBorder || m_lastDrawn.size() != layers;
+  bool redraw = resized || redrawAll || m_border != m_lastBorder ||
+                m_lastDrawn.size() != layers;
   int movedLayer = NO_LAYER;
   int pannedLayer = NO_LAYER;
   int panned = 0;
@@ -1420,10 +1435,37 @@ void IndexedRasterizer::overlaySprites(
       }
     }
   };
+  const auto overlayFar = [&](int first, int last) {
+    const int low = std::max(first, from);
+    const int high = std::min(last, to);
+    for (int x = low; x < high; ++x) {
+      int line = sourceRow;
+      const int column = wrappedColumn(layer, x + placed.shift, line);
+      if (line < 0 || line >= layer.sourceRows) {
+        continue;
+      }
+      for (const Sprite &sprite : layer.sprites) {
+        const int spriteX = column - sprite.left;
+        const int spriteY = line - sprite.top;
+        if (spriteX < 0 || spriteX >= sprite.width || spriteY < 0 ||
+            spriteY >= sprite.height) {
+          continue;
+        }
+        const uint8_t pixel =
+            sprite.pixels[static_cast<std::ptrdiff_t>(spriteY) * sprite.width +
+                          spriteX];
+        if (pixel != 0) {
+          out[x] = slots[pixel];
+        }
+      }
+    }
+  };
   overlay(placed.start, placed.end, sourceRow, placed.start + placed.shift);
   if (layer.wrap) {
     overlay(placed.end, placed.wrapEnd, sourceRow + layer.sourceStep,
             placed.end + placed.shift - layer.sourceColumns);
+    overlayFar(placed.first, placed.start);
+    overlayFar(placed.wrapEnd, placed.last);
   }
 }
 
@@ -1734,13 +1776,32 @@ uint8_t IndexedRasterizer::drawSpan(const Layer &layer, const Placed &placed,
     return 0;
   };
   const int sourceRow = sourceRowOf(layer, row);
+  const auto far = [&](int first, int last) -> uint8_t {
+    uint8_t seen = 0;
+    for (int x = std::max(first, low); x < std::min(last, high); ++x) {
+      int line = sourceRow;
+      const int column = wrappedColumn(layer, x + placed.shift, line);
+      if (line < 0 || line >= layer.sourceRows) {
+        out[x] = zero;
+        continue;
+      }
+      const uint8_t value =
+          layer.pixels[static_cast<std::ptrdiff_t>(line) * layer.stride +
+                       column];
+      seen |= value;
+      out[x] = shown.block
+                   ? static_cast<uint8_t>((value & shown.keep) | shown.base)
+                   : shown.slots[value];
+    }
+    return seen;
+  };
   uint8_t seen =
       run(placed.start, placed.end, sourceRow, placed.start + placed.shift);
   if (layer.wrap) {
-    fill(placed.first, placed.start);
+    seen |= far(placed.first, placed.start);
     seen |= run(placed.end, placed.wrapEnd, sourceRow + layer.sourceStep,
                 placed.end + placed.shift - layer.sourceColumns);
-    fill(placed.wrapEnd, placed.last);
+    seen |= far(placed.wrapEnd, placed.last);
   }
   return seen;
 }

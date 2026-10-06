@@ -107,7 +107,7 @@ private:
 
   int pannedLayer(const Display &display) const;
   void panLayer(const Display &display, std::size_t index);
-  void arrange(const Display &display, bool resized);
+  void arrange(const Display &display, bool resized, bool redrawAll);
   void placeBlock(const Layer &layer, Mapping &mapping);
   Mapping &mapped(const Layer &layer, Mapping &mapping);
   uint8_t slot(uint16_t color);

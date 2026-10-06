@@ -11,11 +11,7 @@ struct GameOptions {
   bool music = true;
   bool bass = false;
   bool mono = false;
-#if defined(__DJGPP__) || defined(DJGPP)
-  bool ntsc = true;
-#else
   bool ntsc = false;
-#endif
   bool tallScreen = false;
   Character character = Character::Franko;
 };

@@ -27,6 +27,13 @@ target_link_libraries(${INDEXED_RASTERIZER_TEST_TARGET}
 add_test(NAME ${INDEXED_RASTERIZER_TEST_TARGET}
     COMMAND ${INDEXED_RASTERIZER_TEST_TARGET})
 
+set(KEPT_RUNS_TEST_TARGET keptRunsTest)
+add_executable(${KEPT_RUNS_TEST_TARGET}
+    keptRunsTest.cpp)
+target_link_libraries(${KEPT_RUNS_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Graphics)
+add_test(NAME ${KEPT_RUNS_TEST_TARGET} COMMAND ${KEPT_RUNS_TEST_TARGET})
+
 set(SCREEN_MODE_TEST_TARGET screenModeTest)
 add_executable(${SCREEN_MODE_TEST_TARGET}
     screenModeTest.cpp)

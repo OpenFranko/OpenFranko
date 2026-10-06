@@ -696,6 +696,37 @@ SCENARIO("IndexedRasterizer pans a wide wrapped picture by shifting rows") {
   }
 }
 
+SCENARIO("IndexedRasterizer wraps columns outside two copies like rasterize") {
+  GIVEN("A narrow wrapped picture with a sprite near the end of its rows") {
+    constexpr int SOURCE_WIDTH = 12;
+    constexpr int SOURCE_HEIGHT = 8;
+    constexpr int WIDTH = 16;
+    const std::vector<uint8_t> picture =
+        pattern(SOURCE_WIDTH, SOURCE_HEIGHT, 16);
+    const std::vector<uint8_t> image = pattern(3, 4, 13);
+    Display display = screen(WIDTH, SOURCE_HEIGHT);
+    Layer wrapped = layer(picture, SOURCE_WIDTH, SOURCE_HEIGHT, LEVEL_COLORS);
+    wrapped.columns = WIDTH;
+    wrapped.wrap = true;
+    wrapped.carriesSprites = true;
+    wrapped.sprites = {{image.data(), 3, 4, 9, 2}};
+    display.layers.push_back(wrapped);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+
+    THEN("Each frame panning from before it to past both copies matches") {
+      for (int offset = -4; offset <= 2 * SOURCE_WIDTH - WIDTH + 4; ++offset) {
+        display.layers[0].sourceX = offset;
+        rasterizer.rasterize(display, frame);
+        REQUIRE(colorsOf(frame) == expected(display));
+        applyChanges(frame, shownPixels);
+        REQUIRE(shownPixels == frame.pixels);
+      }
+    }
+  }
+}
+
 SCENARIO("IndexedRasterizer draws sprites over a picture that did not change") {
   GIVEN("Two copies of a wrapped graveyard with copper rows sharing a "
         "revision, a title sprite, an animated hand and a sprite past the "
@@ -800,7 +831,7 @@ SCENARIO("IndexedRasterizer draws sprites over a picture that did not change") {
     Layer wrapped = layer(picture, 20, 12, LEVEL_COLORS);
     wrapped.columns = 37;
     wrapped.rows = 10;
-    wrapped.sourceX = 5;
+    wrapped.sourceX = 3;
     wrapped.wrap = true;
     wrapped.carriesSprites = true;
     wrapped.sprites = {{image.data(), 4, 6, 8, 2}};
@@ -1168,7 +1199,7 @@ SCENARIO("IndexedRasterizer redraws copper rows whose colours change") {
       shown.sourceX = -1;
       show();
 
-      THEN("The uncovered columns show each row's copper colour") {
+      THEN("The uncovered column shows the end of the same row") {
         REQUIRE(colorsOf(frame) == expected(display));
         REQUIRE(shownPixels == frame.pixels);
       }

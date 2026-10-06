@@ -61,19 +61,6 @@ struct Screen {
 
 } // namespace
 
-#if defined(__DJGPP__) || defined(DJGPP)
-SCENARIO("The DOS video system defaults to NTSC timing") {
-  GIVEN("A DOS video system") {
-    Screen screen;
-
-    THEN("It starts at 60 Hz so FreeDOS matches the real hardware") {
-      REQUIRE(screen.video.isNtsc());
-      REQUIRE(screen.video.refreshRate() == NTSC_HERTZ);
-    }
-  }
-}
-#endif
-
 SCENARIO("The video system opens an 800x600 window without a pointer") {
   GIVEN("A video system") {
     Screen screen;

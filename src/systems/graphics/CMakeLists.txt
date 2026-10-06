@@ -7,6 +7,7 @@ add_library(Graphics
     Display.h
     IndexedRasterizer.cpp
     IndexedRasterizer.h
+    KeptRuns.h
     Monitor.h
     PixelOps.h
     ScreenMode.cpp
