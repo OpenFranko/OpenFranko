@@ -2,12 +2,14 @@
 
 #include "graphics/IndexedRasterizer.h"
 #include "graphics/KeptRuns.h"
+#include "graphics/PlanarFrame.h"
 
 #include <algorithm>
 #include <allegro.h>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <dos.h>
 #include <pc.h>
 #include <stdexcept>
@@ -20,7 +22,7 @@ namespace {
 constexpr int SCREEN_WIDTH = 376;
 constexpr int SCREEN_HEIGHT = 282;
 constexpr int PLANES = 4;
-static_assert(PLANES == GROUP_PIXELS);
+static_assert(PLANES == GROUP_PIXELS && PLANES == PlanarFrame::PLANES);
 constexpr int SEQUENCER_PORT = 0x3C4;
 constexpr int GRAPHICS_PORT = 0x3CE;
 constexpr int MAP_MASK = 0x02;
@@ -58,11 +60,8 @@ constexpr int VIRTUAL_WIDTH = 896;
 constexpr int CRTC_PORT = 0x3D4;
 constexpr int START_HIGH = 0x0C;
 constexpr int START_LOW = 0x0D;
-constexpr int ATTRIBUTE_PORT = 0x3C0;
-constexpr int PEL_PANNING = 0x13;
-constexpr int PALETTE_ADDRESS_SOURCE = 0x20;
-constexpr int PEL_STEP = 2;
 constexpr int NO_REBASE = -1;
+constexpr int WORD_BYTES = sizeof(uint32_t);
 
 volatile int vbls = 0;
 
@@ -314,6 +313,59 @@ void writePlaneRow(uintptr_t address, const uint8_t *source, int count,
   }
 }
 
+void writePlaneRows(uintptr_t address, const uint8_t *source, int rows,
+                    int bytes, int sourceSkip, int screenSkip) {
+  const int words = bytes / WORD_BYTES;
+  const int rest = bytes % WORD_BYTES;
+  const uint16_t selector = static_cast<uint16_t>(screen->seg);
+  asm volatile(
+      "movw %w[selector], %%es\n\t"
+      "cld\n\t"
+      "1:\n\t"
+      "movl %[words], %%ecx\n\t"
+      "rep movsl\n\t"
+      "movl %[rest], %%ecx\n\t"
+      "rep movsb\n\t"
+      "addl %[sourceSkip], %%esi\n\t"
+      "addl %[screenSkip], %%edi\n\t"
+      "decl %[rows]\n\t"
+      "jnz 1b\n\t"
+      "movw %%ds, %%cx\n\t"
+      "movw %%cx, %%es"
+      : "+S"(source), "+D"(address), [rows] "+rm"(rows)
+      : [words] "r"(words), [rest] "r"(rest), [sourceSkip] "r"(sourceSkip),
+        [screenSkip] "rm"(screenSkip), [selector] "rm"(selector)
+      : "ecx", "cc", "memory");
+}
+
+void writeChangedRows(uintptr_t address, const uint8_t *source, uint8_t *shown,
+                      int rows, int words, int sourceSkip, int shownSkip,
+                      int screenSkip) {
+  uintptr_t offset = address - reinterpret_cast<uintptr_t>(shown);
+  const int offsetSkip = screenSkip - shownSkip;
+  asm volatile("cld\n\t"
+               "1:\n\t"
+               "movl %[words], %%ecx\n\t"
+               "2:\n\t"
+               "repe cmpsl\n\t"
+               "je 3f\n\t"
+               "movl -4(%%esi), %%eax\n\t"
+               "movl %%eax, -4(%%edi)\n\t"
+               "movl %%eax, %%fs:-4(%%edi,%%edx)\n\t"
+               "testl %%ecx, %%ecx\n\t"
+               "jnz 2b\n\t"
+               "3:\n\t"
+               "addl %[sourceSkip], %%esi\n\t"
+               "addl %[shownSkip], %%edi\n\t"
+               "addl %[offsetSkip], %%edx\n\t"
+               "decl %[rows]\n\t"
+               "jnz 1b"
+               : "+S"(source), "+D"(shown), "+d"(offset), [rows] "+rm"(rows)
+               : [words] "rm"(words), [sourceSkip] "rm"(sourceSkip),
+                 [shownSkip] "rm"(shownSkip), [offsetSkip] "rm"(offsetSkip)
+               : "eax", "ecx", "cc", "memory");
+}
+
 int startClock() {
   const int speaker = inportb(SPEAKER_PORT);
   outportb(SPEAKER_PORT, (speaker & ~SPEAKER_DATA) | CLOCK_GATE);
@@ -396,6 +448,8 @@ struct VideoSystem::Window {
   void prepareScroll();
   void latch(bool on);
   void writeStrips();
+  void slide(int pan);
+  void writePlanes();
 
   IndexedRasterizer rasterizer{leadingWords, trailingWords};
   IndexedFrame frame;
@@ -431,6 +485,11 @@ struct VideoSystem::Window {
   bool wide = false;
   Span exposed;
   std::array<std::vector<std::array<int, 2>>, PLANES> strips;
+  PlanarFrame planes;
+  std::vector<uint8_t> shownPlanes;
+  bool planesKept = false;
+  bool slid = false;
+  bool rewritten = false;
 };
 
 VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
@@ -494,14 +553,23 @@ void VideoSystem::present() {
   bool cleared = fresh || letterbox != window.letterbox;
   const int pan =
       !cleared && step == 1 && copyable ? panOf(frame, placement.height) : 0;
+  const bool slides =
+      pan != 0 && movable && (pan % PLANES != 0 || window.planesKept);
   const bool wrappedPastVirtualWidth = std::any_of(
       m_shown.layers.begin(), m_shown.layers.end(), [](const Layer &layer) {
         return layer.wrap && layer.sourceColumns > VIRTUAL_WIDTH;
       });
-  const bool scrolls =
-      pan != 0 && window.limit >= SCREEN_WIDTH && !wrappedPastVirtualWidth;
-  cleared = cleared || (!scrolls && window.origin != 0 && movesRows(frame));
+  const bool scrolls = pan % PLANES == 0 && pan != 0 && !slides &&
+                       window.limit >= SCREEN_WIDTH && !wrappedPastVirtualWidth;
+  cleared = cleared ||
+            (!scrolls && !slides && window.origin != 0 && movesRows(frame));
   window.exposed = {};
+  window.rows.clear();
+  window.slid = slides;
+  if (slides) {
+    window.slide(pan);
+    return;
+  }
   if (cleared) {
     window.cleared = true;
     window.letterbox = letterbox;
@@ -515,7 +583,6 @@ void VideoSystem::present() {
     return Span{(span.first + step - 1) / step,
                 std::min(placement.width, (span.last + step - 1) / step)};
   };
-  window.rows.clear();
   for (int row = 0; scrolls && row < placement.height; ++row) {
     RowWork work;
     work.row = row;
@@ -559,6 +626,34 @@ void VideoSystem::present() {
                     return work.from != NO_ROW && work.from < work.row;
                   })) {
     std::reverse(window.rows.begin(), window.rows.end());
+  }
+  window.planesKept =
+      window.planesKept && !cleared && !scrolls && window.rows.empty();
+}
+
+void VideoSystem::Window::slide(int pan) {
+  const int height = placement.height;
+  rewritten = !planesKept;
+  if (!planesKept) {
+    planes.resize(frame.width, height);
+    for (int row = 0; row < height; ++row) {
+      planes.copy(frame, row, {0, frame.width});
+    }
+    planesKept = true;
+  } else {
+    const Span uncovered =
+        pan < 0 ? Span{frame.width + pan, frame.width} : Span{0, pan};
+    planes.shift(pan);
+    planes.copyColumns(frame, uncovered);
+    for (int row = 0; row < height; ++row) {
+      for (const Span &span :
+           frame.changes[static_cast<std::size_t>(row)].spans) {
+        if (span.first < span.last &&
+            (span.first != uncovered.first || span.last != uncovered.last)) {
+          planes.copy(frame, row, span);
+        }
+      }
+    }
   }
 }
 
@@ -671,9 +766,6 @@ void VideoSystem::Window::writeStrips() {
 
 void VideoSystem::Window::draw() {
   if (scrolling) {
-    inportb(STATUS_PORT);
-    outportb(ATTRIBUTE_PORT, PEL_PANNING | PALETTE_ADDRESS_SOURCE);
-    outportb(ATTRIBUTE_PORT, target % PLANES * PEL_STEP);
     origin = target;
     scrolling = false;
     if (!cleared) {
@@ -688,6 +780,11 @@ void VideoSystem::Window::draw() {
     rectfill(screen, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, letterbox);
     wide = false;
     cleared = false;
+  }
+  if (slid) {
+    writePlanes();
+    slid = false;
+    return;
   }
   if (rows.empty()) {
     return;
@@ -753,6 +850,54 @@ void VideoSystem::Window::draw() {
   }
   latch(false);
   rows.clear();
+}
+
+void VideoSystem::Window::writePlanes() {
+  const uintptr_t left = static_cast<uintptr_t>(
+      wrapOffset(origin + placement.x, VIRTUAL_W) / PLANES);
+  const int bytes = planes.bytes();
+  const int wordBytes = bytes / WORD_BYTES * WORD_BYTES;
+  const int screenPitch = static_cast<int>(screen->line[1] - screen->line[0]);
+  const int bandRows = static_cast<int>(BAND_ROWS);
+  const auto rowBytes = static_cast<std::size_t>(bytes);
+  const auto planeBytes = static_cast<std::size_t>(placement.height) * rowBytes;
+  shownPlanes.resize(PLANES * planeBytes);
+  const bool compares = !rewritten && wordBytes > 0;
+  bmp_select(screen);
+  for (int band = 0; band < placement.height; band += bandRows) {
+    const int rows = std::min(bandRows, placement.height - band);
+    const uintptr_t address =
+        reinterpret_cast<uintptr_t>(screen->line[placement.y + band]) + left;
+    for (int plane = 0; plane < PLANES; ++plane) {
+      outportw(SEQUENCER_PORT, (1 << (PLANE_SHIFT + plane)) | MAP_MASK);
+      uint8_t *shown = shownPlanes.data() +
+                       static_cast<std::size_t>(plane) * planeBytes +
+                       static_cast<std::size_t>(band) * rowBytes;
+      if (!compares) {
+        writePlaneRows(address, planes.line(plane, band), rows, bytes,
+                       planes.pitch() - bytes, screenPitch - bytes);
+        for (int row = 0; row < rows; ++row) {
+          std::memcpy(shown + static_cast<std::size_t>(row) * rowBytes,
+                      planes.line(plane, band + row), rowBytes);
+        }
+        continue;
+      }
+      writeChangedRows(address, planes.line(plane, band), shown, rows,
+                       wordBytes / WORD_BYTES, planes.pitch() - wordBytes,
+                       bytes - wordBytes, screenPitch - wordBytes);
+      for (int row = 0; wordBytes < bytes && row < rows; ++row) {
+        const uint8_t *line = planes.line(plane, band + row);
+        uint8_t *kept = shown + static_cast<std::size_t>(row) * rowBytes;
+        for (int at = wordBytes; at < bytes; ++at) {
+          if (kept[at] != line[at]) {
+            kept[at] = line[at];
+            bmp_write8(address + static_cast<uintptr_t>(row * screenPitch + at),
+                       line[at]);
+          }
+        }
+      }
+    }
+  }
 }
 
 void VideoSystem::Window::followRetrace() {

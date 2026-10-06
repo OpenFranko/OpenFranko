@@ -128,8 +128,11 @@ private:
   void markSprites(const Display &display);
   int pinSprite(const Display &display, std::size_t index,
                 const std::vector<Sprite> &before);
+  void cachePinnedRuns(const Sprite &sprite);
   void markSprite(const Display &display, std::size_t index,
                   const Sprite &sprite, bool kept, bool old);
+  static Span spriteRows(const Layer &layer, const Placed &placed,
+                         const Sprite &sprite);
   static Span spriteColumns(const Layer &layer, const Placed &placed,
                             const Sprite &sprite, bool wrapped);
   Span changedSpan(const Display &display, std::size_t index, int row, int from,
@@ -144,13 +147,13 @@ private:
   void drawRow(const Display &display, int row, uint8_t border);
   void shiftRows(int firstRow, int lastRow, int shift);
   void drawSpans(const Display &display, int row);
+  void drawPinned(const Display &display, std::size_t index, int row);
   void drawExposed(const Display &display);
   void drawWindow(const Display &display, std::size_t index, int row, int from,
                   int to);
   const std::array<uint8_t, FRAME_COLORS> &rowSlots(const Layer &layer,
                                                     std::size_t index, int row);
   void overlaySpans(const Display &display, int row);
-  void drawPinned(const Display &display, std::size_t index, int row);
   void overlaySprites(const Display &display, std::size_t index, int row,
                       int from, int to,
                       const std::array<uint8_t, FRAME_COLORS> &slots);
@@ -206,8 +209,14 @@ private:
   int m_pannedBy = 0;
   int m_pinnedSprite = -1;
   int m_pinnedX = 0;
-  Span m_pinnedSpan;
-  std::vector<bool> m_pinnedRows;
+  std::vector<Span> m_pinnedSpans;
+  std::vector<bool> m_pinnedBlocked;
+  bool m_pinnedBefore = false;
+  const uint8_t *m_pinnedImage = nullptr;
+  int m_pinnedWidth = 0;
+  int m_pinnedHeight = 0;
+  std::vector<Span> m_pinnedRuns;
+  std::vector<std::size_t> m_pinnedRunStarts;
   std::vector<ExposedColumn> m_exposedColumns;
   std::vector<bool> m_recoloredRows;
   Span m_exposed;

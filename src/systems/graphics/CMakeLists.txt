@@ -10,6 +10,8 @@ add_library(Graphics
     KeptRuns.h
     Monitor.h
     PixelOps.h
+    PlanarFrame.cpp
+    PlanarFrame.h
     ScreenMode.cpp
     ScreenMode.h)
 target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)

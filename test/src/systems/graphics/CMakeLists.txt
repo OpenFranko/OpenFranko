@@ -34,6 +34,13 @@ target_link_libraries(${KEPT_RUNS_TEST_TARGET}
     PRIVATE Catch2::Catch2WithMain Graphics)
 add_test(NAME ${KEPT_RUNS_TEST_TARGET} COMMAND ${KEPT_RUNS_TEST_TARGET})
 
+set(PLANAR_FRAME_TEST_TARGET planarFrameTest)
+add_executable(${PLANAR_FRAME_TEST_TARGET}
+    planarFrameTest.cpp)
+target_link_libraries(${PLANAR_FRAME_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Graphics)
+add_test(NAME ${PLANAR_FRAME_TEST_TARGET} COMMAND ${PLANAR_FRAME_TEST_TARGET})
+
 set(SCREEN_MODE_TEST_TARGET screenModeTest)
 add_executable(${SCREEN_MODE_TEST_TARGET}
     screenModeTest.cpp)
