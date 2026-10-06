@@ -30,12 +30,26 @@ struct RowChange {
 
 bool isChanged(const RowChange &change);
 
+struct Overlay {
+  int left = 0;
+  int top = 0;
+  int width = 0;
+  int height = 0;
+  std::vector<uint8_t> pixels;
+  std::vector<uint8_t> mask;
+  std::vector<uint8_t> shownRows;
+  uint32_t revision = 0;
+};
+
+bool isOverlaid(const Overlay &overlay, int row);
+
 struct IndexedFrame {
   int width = 0;
   int height = 0;
   std::vector<uint8_t> pixels;
   std::array<uint16_t, FRAME_COLORS> palette{};
   std::vector<RowChange> changes;
+  Overlay overlay;
 };
 
 std::size_t leadingBytes(const uint8_t *left, const uint8_t *right,
@@ -51,7 +65,8 @@ public:
   explicit IndexedRasterizer(Scan leading = leadingBytes,
                              Scan trailing = trailingBytes);
 
-  void rasterize(const Display &display, IndexedFrame &frame);
+  void rasterize(const Display &display, IndexedFrame &frame,
+                 bool overlays = false);
 
 private:
   struct Mapping {
@@ -129,6 +144,10 @@ private:
   int pinSprite(const Display &display, std::size_t index,
                 const std::vector<Sprite> &before);
   void cachePinnedRuns(const Sprite &sprite);
+  bool recolorsPinned(const Layer &layer, std::size_t index, int row) const;
+  void showOverlay(const Layer &layer, std::size_t index, const Sprite &sprite,
+                   int firstRow, int lastRow);
+  void restoreOverlaid();
   void markSprite(const Display &display, std::size_t index,
                   const Sprite &sprite, bool kept, bool old);
   static Span spriteRows(const Layer &layer, const Placed &placed,
@@ -147,7 +166,6 @@ private:
   void drawRow(const Display &display, int row, uint8_t border);
   void shiftRows(int firstRow, int lastRow, int shift);
   void drawSpans(const Display &display, int row);
-  void drawPinned(const Display &display, std::size_t index, int row);
   void drawExposed(const Display &display);
   void drawWindow(const Display &display, std::size_t index, int row, int from,
                   int to);
@@ -202,14 +220,13 @@ private:
   Mapping m_rowMapping;
   int m_rowLayer = -1;
   int m_exposedLayer = -1;
-  std::vector<bool> m_sourceKept;
+  std::vector<uint8_t> m_sourceKept;
   bool m_anyKept = false;
   bool m_anySprites = false;
   int m_pannedLayer = -1;
   int m_pannedBy = 0;
   int m_pinnedSprite = -1;
   int m_pinnedX = 0;
-  std::vector<Span> m_pinnedSpans;
   std::vector<bool> m_pinnedBlocked;
   bool m_pinnedBefore = false;
   const uint8_t *m_pinnedImage = nullptr;
@@ -217,6 +234,18 @@ private:
   int m_pinnedHeight = 0;
   std::vector<Span> m_pinnedRuns;
   std::vector<std::size_t> m_pinnedRunStarts;
+  std::array<bool, FRAME_COLORS> m_pinnedUses{};
+  bool m_overlays = false;
+  std::vector<uint8_t> m_overlaid;
+  std::vector<uint8_t> m_wasOverlaid;
+  int m_overlayLayer = -1;
+  Span m_overlayColumns;
+  bool m_overlayBuilt = false;
+  const uint8_t *m_overlayImage = nullptr;
+  int m_overlayImageWidth = 0;
+  int m_overlayImageHeight = 0;
+  int m_overlaySourceY = 0;
+  std::array<uint8_t, FRAME_COLORS> m_overlaySlots{};
   std::vector<ExposedColumn> m_exposedColumns;
   std::vector<bool> m_recoloredRows;
   Span m_exposed;

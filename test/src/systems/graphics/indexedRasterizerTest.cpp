@@ -41,8 +41,23 @@ std::vector<uint32_t> expected(const Display &display) {
 }
 
 std::vector<uint32_t> colorsOf(const IndexedFrame &frame) {
+  std::vector<uint8_t> pixels = frame.pixels;
+  const Overlay &overlay = frame.overlay;
+  for (int row = 0; row < frame.height; ++row) {
+    if (!isOverlaid(overlay, row)) {
+      continue;
+    }
+    for (int x = 0; x < overlay.width; ++x) {
+      const std::size_t at =
+          static_cast<std::size_t>((row - overlay.top) * overlay.width + x);
+      if (overlay.mask[at] != 0) {
+        pixels[static_cast<std::size_t>(row * frame.width + overlay.left + x)] =
+            overlay.pixels[at];
+      }
+    }
+  }
   std::vector<uint32_t> argb;
-  for (const uint8_t pixel : frame.pixels) {
+  for (const uint8_t pixel : pixels) {
     argb.push_back(toArgb(frame.palette[pixel]));
   }
   return argb;
@@ -771,6 +786,7 @@ SCENARIO("IndexedRasterizer draws sprites over a picture that did not change") {
     int shiftedRows = 0;
     int drawnPixels = 0;
     int pannedScans = 0;
+    int overlaidFrames = 0;
     int stillChanges = 0;
     for (int step = 0; step < 60; ++step) {
       const bool pans = step < 50;
@@ -792,10 +808,11 @@ SCENARIO("IndexedRasterizer draws sprites over a picture that did not change") {
         }
       }
       g_scans = 0;
-      rasterizer.rasterize(display, frame);
+      rasterizer.rasterize(display, frame, true);
       REQUIRE(colorsOf(frame) == expected(display));
       applyChanges(frame, shownPixels);
       REQUIRE(shownPixels == frame.pixels);
+      overlaidFrames += frame.overlay.width > 0 ? 1 : 0;
       if (pans && step > 0) {
         ++pannedFrames;
         pannedScans += g_scans;
@@ -813,6 +830,7 @@ SCENARIO("IndexedRasterizer draws sprites over a picture that did not change") {
     }
 
     THEN("Panned frames compare no picture rows and draw only a few columns") {
+      REQUIRE(overlaidFrames > 0);
       REQUIRE(pannedScans == 0);
       REQUIRE(shiftedRows == pannedFrames * SOURCE_HEIGHT);
       REQUIRE(drawnPixels < pannedFrames * SOURCE_HEIGHT * WIDTH / 3);
@@ -966,7 +984,7 @@ SCENARIO("IndexedRasterizer keeps a sprite pinned over a panning picture") {
       Layer &shown = display.layers[0];
       shown.sprites.resize(std::max<std::size_t>(shown.sprites.size(), 1));
       shown.sprites[0] = {title.data(), 20, 9, shown.sourceX + titleX, 6};
-      rasterizer.rasterize(display, frame);
+      rasterizer.rasterize(display, frame, true);
       applyChanges(frame, shownPixels);
       REQUIRE(colorsOf(frame) == expected(display));
       REQUIRE(shownPixels == frame.pixels);
@@ -987,6 +1005,41 @@ SCENARIO("IndexedRasterizer keeps a sprite pinned over a panning picture") {
 
       THEN("Every frame shows the title over the moved picture") {
         REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(frame.overlay.width == 20);
+      }
+    }
+
+    WHEN("The picture stops panning under the title") {
+      for (int step = 0; step < 4; ++step) {
+        pan(1 + step % 2);
+      }
+      show();
+      const bool overlaidWhileStill = frame.overlay.width > 0;
+      show();
+
+      THEN("The title is drawn into the frame again") {
+        REQUIRE_FALSE(overlaidWhileStill);
+        REQUIRE(colorsOf(frame) == expected(display));
+      }
+    }
+
+    WHEN("The title shows another image between two pans") {
+      std::vector<uint8_t> second = title;
+      for (std::size_t at = 0; at < second.size(); at += 2) {
+        second[at] = second[at] == 0 ? 3 : 0;
+      }
+      for (int step = 0; step < 3; ++step) {
+        pan(1);
+      }
+      title.swap(second);
+      show();
+      for (int step = 0; step < 3; ++step) {
+        pan(2);
+      }
+
+      THEN("The pinned title shows the new image") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(frame.overlay.width == 20);
       }
     }
 
@@ -1071,6 +1124,61 @@ SCENARIO("IndexedRasterizer keeps a sprite pinned over a panning picture") {
 
       THEN("Every frame shows the changed picture under the title") {
         REQUIRE(colorsOf(frame) == expected(display));
+      }
+    }
+  }
+
+  GIVEN("A panel with more colours above a wrapped picture with a pinned "
+        "title, so the picture's colours move to other slots") {
+    constexpr int SOURCE_WIDTH = 120;
+    constexpr int SOURCE_HEIGHT = 24;
+    constexpr int WIDTH = 40;
+    constexpr int PANEL_ROWS = 3;
+    const std::vector<uint8_t> picture =
+        pattern(SOURCE_WIDTH, SOURCE_HEIGHT, 16);
+    const std::vector<uint8_t> panel = pattern(WIDTH, PANEL_ROWS, 32);
+    const std::vector<uint8_t> title = pattern(20, 9, 9);
+    std::vector<uint16_t> panelColors;
+    for (int color = 0; color < 32; ++color) {
+      panelColors.push_back(static_cast<uint16_t>(0x800 + 0x021 * color));
+    }
+    std::vector<uint16_t> colors;
+    for (int color = 0; color < 16; ++color) {
+      colors.push_back(static_cast<uint16_t>(0x0F0 + 0x101 * color));
+    }
+    Display display = screen(WIDTH, PANEL_ROWS + SOURCE_HEIGHT);
+    Layer panelLayer = layer(panel, WIDTH, PANEL_ROWS, panelColors);
+    display.layers.push_back(panelLayer);
+    Layer graveyard = layer(picture, SOURCE_WIDTH, SOURCE_HEIGHT, colors);
+    graveyard.top = PANEL_ROWS;
+    graveyard.columns = WIDTH;
+    graveyard.wrap = true;
+    graveyard.sourceX = 30;
+    graveyard.revision = 1;
+    graveyard.carriesSprites = true;
+    display.layers.push_back(graveyard);
+    IndexedRasterizer rasterizer;
+    IndexedFrame frame;
+    std::vector<uint8_t> shownPixels;
+    const auto show = [&] {
+      Layer &shown = display.layers[1];
+      shown.sprites = {{title.data(), 20, 9, shown.sourceX + 10, 6}};
+      rasterizer.rasterize(display, frame, true);
+      applyChanges(frame, shownPixels);
+      REQUIRE(colorsOf(frame) == expected(display));
+      REQUIRE(shownPixels == frame.pixels);
+    };
+    show();
+
+    WHEN("The picture pans under the title") {
+      for (int step = 0; step < 8; ++step) {
+        display.layers[1].sourceX += 1 + step % 2;
+        show();
+      }
+
+      THEN("Every frame shows the title in its own colours") {
+        REQUIRE(colorsOf(frame) == expected(display));
+        REQUIRE(frame.overlay.width == 20);
       }
     }
   }
