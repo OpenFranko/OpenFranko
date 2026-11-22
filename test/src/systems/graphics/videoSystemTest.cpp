@@ -21,6 +21,7 @@ constexpr int WINDOW_WIDTH = 800;
 constexpr int WINDOW_HEIGHT = 600;
 constexpr int MIDDLE_X = WINDOW_WIDTH / 2;
 constexpr int MIDDLE_Y = WINDOW_HEIGHT / 2;
+constexpr bool FULLSCREEN = true;
 
 constexpr uint16_t RED = 0xF00;
 constexpr uint16_t GREEN = 0x0F0;
@@ -50,6 +51,8 @@ void pressAltReturn() {
 }
 
 struct Screen {
+  explicit Screen(bool fullscreen = false) : video(fullscreen) {}
+
   HeadlessSdl sdl;
   VideoSystem video;
 
@@ -75,6 +78,7 @@ SCENARIO("The video system opens an 800x600 window without a pointer") {
       REQUIRE(width == WINDOW_WIDTH);
       REQUIRE(height == WINDOW_HEIGHT);
       REQUIRE((SDL_GetWindowFlags(window) & SDL_WINDOW_RESIZABLE) != 0);
+      REQUIRE((SDL_GetWindowFlags(window) & SDL_WINDOW_SHOWN) != 0);
       REQUIRE_FALSE(isFullscreen());
       REQUIRE(SDL_GetRenderer(window) != nullptr);
       REQUIRE(SDL_ShowCursor(SDL_QUERY) == SDL_DISABLE);
@@ -269,6 +273,55 @@ SCENARIO("Alt+Return switches fullscreen at the next sync") {
       screen.video.sync();
 
       THEN("The window stays as it is") { REQUIRE_FALSE(isFullscreen()); }
+    }
+  }
+}
+
+SCENARIO("A video system opened fullscreen covers the desktop at once") {
+  GIVEN("A video system opened fullscreen") {
+    Screen screen(FULLSCREEN);
+    SDL_DisplayMode desktop{};
+    SDL_GetDesktopDisplayMode(0, &desktop);
+
+    THEN("Its window is shown over the whole desktop before any sync") {
+      REQUIRE(isFullscreen());
+      REQUIRE((SDL_GetWindowFlags(openWindow()) & SDL_WINDOW_SHOWN) != 0);
+      int width = 0;
+      int height = 0;
+      SDL_GetWindowSize(openWindow(), &width, &height);
+      REQUIRE(width == desktop.w);
+      REQUIRE(height == desktop.h);
+    }
+
+    WHEN("A frame is synced") {
+      screen.present(frame(320, 200, 200, RED));
+
+      THEN("The frame is fitted to the desktop") {
+        REQUIRE(windowPixel(desktop.w / 2, desktop.h / 2) == toArgb(RED));
+        REQUIRE(windowPixel(desktop.w - 1, desktop.h / 2) == toArgb(RED));
+        REQUIRE(windowPixel(desktop.w / 2, 0) == BLACK_PIXEL);
+      }
+    }
+
+    WHEN("NTSC is switched on and a frame is synced") {
+      screen.video.setNtsc(true);
+      screen.video.sync();
+
+      THEN("The window stays fullscreen") { REQUIRE(isFullscreen()); }
+    }
+
+    WHEN("Alt+Return is pressed and the next frame is synced") {
+      pressAltReturn();
+      screen.video.sync();
+
+      THEN("The window is an 800x600 window") {
+        REQUIRE_FALSE(isFullscreen());
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSize(openWindow(), &width, &height);
+        REQUIRE(width == WINDOW_WIDTH);
+        REQUIRE(height == WINDOW_HEIGHT);
+      }
     }
   }
 }

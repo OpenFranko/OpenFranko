@@ -617,7 +617,7 @@ struct VideoSystem::Window {
   bool rewritten = false;
 };
 
-VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
+VideoSystem::VideoSystem(bool) : m_window(std::make_unique<Window>()) {
   set_color_depth(8);
   if (set_gfx_mode(GFX_MODEX, SCREEN_WIDTH, SCREEN_HEIGHT, VIRTUAL_WIDTH,
                    SCREEN_HEIGHT) != 0 &&

@@ -47,6 +47,9 @@ ctest --output-on-failure
 
 Executables can be located in the build directory
 
+The game opens in a window. Started with `-f` or `--fullscreen`, e.g.
+`./OpenFranko --fullscreen`, it opens in fullscreen instead.
+
 In the game, Alt+Enter switches between a window and fullscreen. In
 fullscreen the game switches the screen to 50 Hz (60 Hz in NTSC mode) when the
 screen offers that rate, like many TVs and external monitors do, so it runs
@@ -99,7 +102,8 @@ Tests are enabled and launched the same way as on Linux.
 The executables are linked statically, so they also run outside of MSYS2 without
 any extra DLLs. Like on Linux, the game has to be started from the directory
 that holds `assets`, e.g. copy `build/src/OpenFranko.exe` next to `assets` and
-double-click it.
+double-click it. To have it open in fullscreen, make a shortcut to it and add
+`--fullscreen` at the end of the shortcut's Target.
 
 ## DOS (DJGPP)
 
