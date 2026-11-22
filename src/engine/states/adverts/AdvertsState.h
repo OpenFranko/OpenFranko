@@ -64,6 +64,7 @@ private:
   int m_frame = 0;
   int m_resumeFrame = 0;
   std::optional<int> m_closeFrame;
+  std::optional<int> m_painted;
 };
 
 } // namespace adverts

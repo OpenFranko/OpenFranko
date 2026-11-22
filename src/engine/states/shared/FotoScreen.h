@@ -8,6 +8,7 @@
 #include "../../assets/Files.h"
 #include "../../effects/sequences/FotoSequence.h"
 
+#include <optional>
 #include <string>
 
 namespace openfranko {
@@ -35,6 +36,8 @@ private:
   systems::graphics::Canvas m_screen;
   effects::sequences::FotoSequence m_sequence;
   bool m_shaking = false;
+  std::optional<int> m_drawnTop;
+  bool m_filled = false;
 };
 
 } // namespace shared

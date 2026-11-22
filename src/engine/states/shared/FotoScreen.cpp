@@ -37,9 +37,16 @@ void FotoScreen::advance() {
   m_sequence.advance();
   if (m_sequence.isShown()) {
     m_screen.setPalette(m_sequence.palette());
-    m_screen.draw(m_picture, 0, -m_rows.first - raisedLines());
-  } else {
+    const int top = -m_rows.first - raisedLines();
+    if (m_drawnTop != top) {
+      m_screen.draw(m_picture, 0, top);
+      m_drawnTop = top;
+      m_filled = false;
+    }
+  } else if (!m_filled) {
     m_screen.fill(effects::color::BLACK);
+    m_filled = true;
+    m_drawnTop.reset();
   }
   m_monitor.show(m_screen.output());
 }

@@ -20,6 +20,7 @@ KIND_FILL	.equ	3
 KIND_LZ4	.equ	4
 KIND_OUTLINE	.equ	5
 KIND_FLIP	.equ	6
+KIND_BARRIER	.equ	7
 EMPTY_SPAN	.equ	$7FFF8000
 SPAN_MAX	.equ	$7FFF
 SPAN_MIN	.equ	$FFFF8000
@@ -136,6 +137,10 @@ queueLoop:
 	nop
 	movei	#flipCommand,r0
 	cmpq	#KIND_FLIP,r1
+	jump	eq,(r0)
+	nop
+	movei	#barrierCommand,r0
+	cmpq	#KIND_BARRIER,r1
 	jump	eq,(r0)
 	nop
 
@@ -839,6 +844,14 @@ flipLoop:
 	jump	(r29)
 	nop
 
+barrierCommand:
+	movei	#queueRelease,r0
+barrierWait:
+	load	(r0),r1
+	sub	r2,r1
+	jr	mi,barrierWait
+	nop
+
 commandDone:
 	addq	#1,r23
 	and	r26,r23
@@ -911,6 +924,8 @@ queueRing:
 queueWrite:
 	dc.l	0
 queueRead:
+	dc.l	0
+queueRelease:
 	dc.l	0
 
 	.long

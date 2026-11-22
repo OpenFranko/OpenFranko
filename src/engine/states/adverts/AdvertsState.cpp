@@ -15,6 +15,7 @@ constexpr int DISPLAY_LINE = 42;
 constexpr std::size_t SCREEN_COLORS = 32;
 constexpr int SCREENS = 2;
 constexpr int LOAD_STEPS = 1;
+constexpr int BLANK_SLIDE = -1;
 
 effects::color::AmigaPalette
 screenPalette(const systems::graphics::IndexedBitmap &picture) {
@@ -109,12 +110,18 @@ void AdvertsState::wait(int frames, Step next) {
 void AdvertsState::show() {
   const bool closed =
       m_closeFrame && m_frame >= *m_closeFrame + SCREEN_CLOSE_SHOWN_VBLS;
-  if (!m_copied || closed) {
-    m_screen.fill(effects::color::BLACK);
-  } else {
+  const int slide = !m_copied || closed ? BLANK_SLIDE : *m_copied;
+  if (slide != BLANK_SLIDE) {
     m_screen.setPalette(m_palette);
-    m_screen.draw(m_slides[static_cast<std::size_t>(*m_copied)], 0,
-                  -m_rows.first);
+  }
+  if (m_painted != slide) {
+    m_painted = slide;
+    if (slide == BLANK_SLIDE) {
+      m_screen.fill(effects::color::BLACK);
+    } else {
+      m_screen.draw(m_slides[static_cast<std::size_t>(slide)], 0,
+                    -m_rows.first);
+    }
   }
   m_monitor.show(m_screen.output());
 }

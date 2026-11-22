@@ -1,3 +1,10 @@
+set(FOTO_SCREEN_TEST_TARGET fotoScreenTest)
+add_executable(${FOTO_SCREEN_TEST_TARGET}
+    fotoScreenTest.cpp)
+target_link_libraries(${FOTO_SCREEN_TEST_TARGET}
+    PRIVATE Catch2::Catch2WithMain Assets Graphics StatesShared)
+add_test(NAME ${FOTO_SCREEN_TEST_TARGET} COMMAND ${FOTO_SCREEN_TEST_TARGET})
+
 set(MUSIC_FADE_OUT_TEST_TARGET musicFadeOutTest)
 add_executable(${MUSIC_FADE_OUT_TEST_TARGET}
     musicFadeOutTest.cpp)

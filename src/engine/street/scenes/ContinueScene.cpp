@@ -158,9 +158,7 @@ void ContinueScene::redraw() {
   if (!m_shown) {
     return;
   }
-  core::IndexedSurface &display = m_display.compose();
-  display = m_screen;
-  m_bobs.draw(display, m_images);
+  m_display.compose(m_screen, m_bobs, m_images);
 }
 
 } // namespace openfranko::src::engine::street::scenes

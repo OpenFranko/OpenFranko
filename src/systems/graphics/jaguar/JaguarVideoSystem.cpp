@@ -112,7 +112,10 @@ struct VideoSystem::Window : VblankTarget, jaguar::TranslationBuffers {
   volatile int pending = NO_FRAME;
   volatile bool marked = true;
   volatile uint32_t frameMark = 0;
+  volatile uint32_t pendingToken = 0;
   volatile uint32_t vbls = 0;
+  uint32_t presented = 0;
+  uint32_t nextVbl = 0;
   int appliedClut = NO_FRAME;
   uint32_t copperNext = 0;
   unsigned overlayShown = 0;
@@ -158,6 +161,7 @@ void VideoSystem::Window::vblank() {
   if (next != NO_FRAME && marked && jaguar::blitter::reached(frameMark)) {
     current = next;
     pending = NO_FRAME;
+    jaguar::blitter::release(pendingToken);
   }
   const int shown = current;
   if (shown != NO_FRAME) {
@@ -543,7 +547,6 @@ void VideoSystem::sync() {
   waitVbl();
   jaguar::runtime::feedWatchdog();
   window.updateStart = jaguar::profiler::now();
-  jaguar::blitter::wait();
   window.measure();
 }
 
@@ -561,11 +564,16 @@ int VideoSystem::refreshRate() const { return m_window->geometry.hertz; }
 
 void VideoSystem::present() {
   Window &window = *m_window;
+  jaguar::blitter::wait();
   struct Refresh {
     Window &window;
     ~Refresh() {
       window.refreshTranslations();
       window.frameMark = jaguar::blitter::mark();
+      if (window.pending != NO_FRAME) {
+        window.pendingToken = ++window.presented;
+        jaguar::blitter::barrier(window.pendingToken);
+      }
       window.marked = true;
     }
   } refresh{window};
@@ -721,8 +729,11 @@ void VideoSystem::settle(int slot) {
 
 void VideoSystem::waitVbl() {
   Window &window = *m_window;
-  const uint32_t start = window.vbls;
-  while (window.vbls == start) {
+  ++window.nextVbl;
+  while (static_cast<int32_t>(window.vbls - window.nextVbl) < 0) {
+  }
+  if (window.vbls - window.nextVbl > 1) {
+    window.nextVbl = window.vbls;
   }
 }
 

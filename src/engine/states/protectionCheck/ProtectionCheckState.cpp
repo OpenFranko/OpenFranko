@@ -104,7 +104,7 @@ ProtectionCheckState::ProtectionCheckState(systems::graphics::Monitor &monitor,
 std::optional<EngineStateId> ProtectionCheckState::update() {
   if (m_loadingFrames > 0) {
     --m_loadingFrames;
-    m_screen.fill(m_border);
+    paint(Drawn::Border);
     show();
     return std::nullopt;
   }
@@ -182,14 +182,28 @@ bool ProtectionCheckState::takeAnswer() {
 void ProtectionCheckState::draw() {
   if (m_failureShown) {
     m_screen.setPalette(m_failure.palette);
-    m_screen.draw(m_failure, 0, -m_failureTop);
+    paint(Drawn::Failure);
   } else if (m_questionShown) {
     m_screen.setPalette(m_questionPalette);
+    paint(Drawn::Question);
+  } else {
+    paint(Drawn::Border);
+  }
+  show();
+}
+
+void ProtectionCheckState::paint(Drawn wanted) {
+  if (wanted == m_drawn) {
+    return;
+  }
+  m_drawn = wanted;
+  if (wanted == Drawn::Failure) {
+    m_screen.draw(m_failure, 0, -m_failureTop);
+  } else if (wanted == Drawn::Question) {
     m_screen.draw(m_question, 0, 0);
   } else {
     m_screen.fill(m_border);
   }
-  show();
 }
 
 void ProtectionCheckState::show() { m_monitor.show(m_screen.output()); }
@@ -206,6 +220,7 @@ void ProtectionCheckState::showQuestion() {
   m_question = m_files.loadBitmap(QUESTION_PATH);
   m_questionPalette = m_question.palette;
   m_border = m_questionPalette[0];
+  m_drawn = Drawn::Nothing;
   m_flasher.start(BOX_INK, BOX_FLASH);
   const effects::protection::CodeCardCheck::Cell cell = m_check.cell();
   xorRect(m_question, CELL_PITCH * cell.x + BOX_OFFSET,
@@ -219,6 +234,7 @@ void ProtectionCheckState::showFailure() {
   m_failureTop = rows.first;
   m_screen = systems::graphics::Canvas(FAILURE_SCREEN_WIDTH, rows.count);
   m_failure = m_files.loadBitmap(FAILURE_PATH);
+  m_drawn = Drawn::Nothing;
 }
 
 } // namespace openfranko::src::engine::states::protectionCheck

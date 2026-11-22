@@ -33,12 +33,14 @@ public:
 
 private:
   enum class Step { Unpack, Ask, Hidden, Closed, FailureUnpacked, Hang };
+  enum class Drawn { Nothing, Border, Question, Failure };
 
   std::optional<EngineStateId> runCheck();
   bool takeAnswer();
   void showQuestion();
   void showFailure();
   void draw();
+  void paint(Drawn wanted);
   void show();
 
   systems::graphics::Monitor &m_monitor;
@@ -60,6 +62,7 @@ private:
   effects::color::AmigaColor m_border;
   effects::color::PaletteFlasher m_flasher;
   int m_failureTop = 0;
+  Drawn m_drawn = Drawn::Nothing;
 };
 
 } // namespace protectionCheck

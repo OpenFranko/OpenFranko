@@ -26,12 +26,14 @@ constexpr uint32_t ENTRY_LONGS = 16;
 constexpr uint32_t INDEX_MASK = 0xFFFF;
 constexpr uint32_t QUEUE_WRITE_OFFSET = 4;
 constexpr uint32_t QUEUE_READ_OFFSET = 8;
+constexpr uint32_t QUEUE_RELEASE_OFFSET = 12;
 constexpr uint32_t KIND_PHRASES = 1;
 constexpr uint32_t KIND_PIXELS = 2;
 constexpr uint32_t KIND_FILL = 3;
 constexpr uint32_t KIND_LZ4 = 4;
 constexpr uint32_t KIND_OUTLINE = 5;
 constexpr uint32_t KIND_FLIP = 6;
+constexpr uint32_t KIND_BARRIER = 7;
 constexpr std::size_t OUTLINE_BOX = 6;
 constexpr std::size_t BOX_VALUES = 4;
 constexpr uint32_t SIGN_BITS = 0x80808080u;
@@ -48,6 +50,7 @@ constexpr uint32_t WORD_MASK = 0xFFFF;
 alignas(64) volatile uint32_t ring[QUEUE_ENTRIES * ENTRY_LONGS];
 volatile uint32_t *queueWrite = nullptr;
 volatile uint32_t *queueRead = nullptr;
+volatile uint32_t *queueRelease = nullptr;
 uint32_t written = 0;
 uint32_t knownRead = 0;
 uint32_t pattern = 0;
@@ -411,8 +414,10 @@ void useQueue(uint32_t control) {
   longWord(control) = reinterpret_cast<uint32_t>(ring);
   longWord(control + QUEUE_WRITE_OFFSET) = 0;
   longWord(control + QUEUE_READ_OFFSET) = 0;
+  longWord(control + QUEUE_RELEASE_OFFSET) = 0;
   queueRead = &longWord(control + QUEUE_READ_OFFSET);
   queueWrite = &longWord(control + QUEUE_WRITE_OFFSET);
+  queueRelease = &longWord(control + QUEUE_RELEASE_OFFSET);
 }
 
 bool isQueued() { return queueWrite != nullptr; }
@@ -529,6 +534,8 @@ bool flipSigns(const uint8_t *source, int8_t *target, std::size_t count) {
 void resumeQueue(uint32_t control) {
   queueRead = &longWord(control + QUEUE_READ_OFFSET);
   queueWrite = &longWord(control + QUEUE_WRITE_OFFSET);
+  queueRelease = &longWord(control + QUEUE_RELEASE_OFFSET);
+  *queueRelease = 0;
   written = *queueWrite & INDEX_MASK;
   knownRead = *queueRead & INDEX_MASK;
 }
@@ -537,6 +544,26 @@ void stopQueue() {
   wait();
   queueWrite = nullptr;
   queueRead = nullptr;
+  queueRelease = nullptr;
+}
+
+void barrier(uint32_t token) {
+  if (!queueWrite) {
+    return;
+  }
+  waitForRoom();
+  volatile uint32_t *entry =
+      ring + (written & (QUEUE_ENTRIES - 1)) * ENTRY_LONGS;
+  entry[0] = KIND_BARRIER;
+  entry[1] = token;
+  written = (written + 1) & INDEX_MASK;
+  *queueWrite = written;
+}
+
+void release(uint32_t token) {
+  if (queueRelease) {
+    *queueRelease = token;
+  }
 }
 
 bool queue(Source source, Area target, int width, int height, Mode mode) {

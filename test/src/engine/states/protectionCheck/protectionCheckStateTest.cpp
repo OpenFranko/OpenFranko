@@ -10,6 +10,7 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -32,6 +33,8 @@ constexpr auto QUESTION = "assets/03C1.bmp";
 constexpr auto FAILURE = "assets/03C2.bmp";
 constexpr int ANSWER_FRAMES = 20;
 constexpr uint16_t PAPER = 0xDDD;
+constexpr std::size_t BOX_INK = 15;
+constexpr int FLASH_FRAMES = 10;
 
 IndexedBitmap picture(int height) {
   IndexedBitmap bitmap;
@@ -49,6 +52,10 @@ FakeFiles cardFiles() {
   files.bitmaps[QUESTION] = picture(200);
   files.bitmaps[FAILURE] = picture(256);
   return files;
+}
+
+const Layer &screen(const FakeMonitor &monitor) {
+  return monitor.shown().layers.front();
 }
 
 struct Check {
@@ -185,6 +192,49 @@ SCENARIO("The stage 3 check lets the first right answer through") {
       const Exit exit = runToExit(check.state, 100);
 
       THEN("Stage 3 follows") { REQUIRE(exit.next == EngineStateId::Level3); }
+    }
+  }
+}
+
+SCENARIO("The check paints its screen only when the picture changes") {
+  GIVEN("The first question up") {
+    Check check;
+    run(check.state, 2);
+    const uint8_t *question = screen(check.monitor).pixels;
+
+    WHEN("Its box flashes") {
+      std::vector<const uint8_t *> frames;
+      std::vector<uint16_t> inks;
+      for (int frame = 0; frame < FLASH_FRAMES; ++frame) {
+        run(check.state, 1);
+        frames.push_back(screen(check.monitor).pixels);
+        inks.push_back(screen(check.monitor).palette[BOX_INK]);
+      }
+
+      THEN("The same pixels stay up in the flashing colours") {
+        REQUIRE(frames == std::vector<const uint8_t *>(FLASH_FRAMES, question));
+        REQUIRE(std::count(inks.begin(), inks.end(), 0xFFF) != 0);
+        REQUIRE(std::count(inks.begin(), inks.end(), 0x000) != 0);
+      }
+    }
+  }
+
+  GIVEN("The stage 3 check loading its files") {
+    Check check(ProtectionCheckState::Check::Stage3);
+    run(check.state, 1);
+    const uint8_t *grey = screen(check.monitor).pixels;
+
+    WHEN("More loading frames pass") {
+      std::vector<const uint8_t *> frames;
+      for (int frame = 0; frame < LoadingQueue::FILE_FRAMES; ++frame) {
+        run(check.state, 1);
+        frames.push_back(screen(check.monitor).pixels);
+      }
+
+      THEN("The same grey stays up") {
+        REQUIRE(frames ==
+                std::vector<const uint8_t *>(LoadingQueue::FILE_FRAMES, grey));
+      }
     }
   }
 }

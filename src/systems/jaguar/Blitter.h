@@ -28,6 +28,8 @@ bool reached(uint32_t mark);
 void useQueue(uint32_t control);
 void resumeQueue(uint32_t control);
 void stopQueue();
+void barrier(uint32_t token);
+void release(uint32_t token);
 bool queue(Source source, Area target, int width, int height, Mode mode);
 bool isQueued();
 bool unpack(const uint8_t *source, std::size_t sourceSize, uint8_t *target,

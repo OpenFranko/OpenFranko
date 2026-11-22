@@ -578,7 +578,13 @@ void ImageBank::setBeforeRetire(std::function<void(const uint8_t *)> hook) {
 
 void ImageBank::beginPass() { ++m_pass; }
 
-void ImageBank::releaseRetired() { m_retired.clear(); }
+void ImageBank::releaseRetired() {
+  if (m_retired.empty()) {
+    return;
+  }
+  systems::graphics::pixels::finish();
+  m_retired.clear();
+}
 
 void ImageBank::retire(std::vector<uint8_t> &&pixels) {
   if (m_beforeRetire && !pixels.empty()) {

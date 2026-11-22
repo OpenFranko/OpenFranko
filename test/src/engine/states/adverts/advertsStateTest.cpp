@@ -8,12 +8,15 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 using namespace openfranko::src::engine;
 using namespace openfranko::src::engine::states;
 using namespace openfranko::src::engine::states::adverts;
+using namespace openfranko::src::systems::graphics;
 using namespace openfranko::src::systems::input;
 using namespace openfranko::test::src::engine::assets;
 using namespace openfranko::test::src::engine::states;
@@ -24,6 +27,18 @@ namespace {
 constexpr int SLIDE_FRAMES =
     2 * AdvertsState::KLIKER_FRAMES + SCREEN_REOPEN_VBLS;
 constexpr int CLOSE_FRAMES = 2 * SCREEN_CLOSE_VBLS + 1;
+constexpr int FADE_FRAMES = 3 * AdvertsState::FADE_SPEED;
+
+FakeFiles slideFiles() {
+  IndexedBitmap slide;
+  slide.width = 320;
+  slide.height = 256;
+  slide.pixels.assign(static_cast<std::size_t>(320) * 256, 1);
+  slide.palette = {0x000, 0xFFF};
+  FakeFiles files;
+  files.bitmaps["assets/p80.bmp"] = slide;
+  return files;
+}
 
 struct Adverts {
   FakeMonitor monitor;
@@ -87,6 +102,32 @@ SCENARIO("Each slide fades in and out, then the Presents screen follows") {
     THEN("The first slide closes at once") {
       REQUIRE(exit.next == EngineStateId::Presents);
       REQUIRE(exit.frames == SCREEN_OPEN_VBLS + CLOSE_FRAMES);
+    }
+  }
+}
+
+SCENARIO("A slide is drawn once while its colours fade") {
+  GIVEN("The first slide just copied to the screen") {
+    FakeMonitor monitor;
+    ControllerSystem controller;
+    FakeFiles files = slideFiles();
+    AdvertsState state{monitor, controller, files};
+    run(state, SCREEN_OPEN_VBLS + 1);
+    const uint8_t *slide = monitor.shown().layers.front().pixels;
+    const uint16_t ink = monitor.shown().layers.front().palette[1];
+
+    WHEN("It fades in") {
+      std::vector<const uint8_t *> frames;
+      for (int frame = 0; frame < FADE_FRAMES; ++frame) {
+        run(state, 1);
+        frames.push_back(monitor.shown().layers.front().pixels);
+      }
+
+      THEN("The same pixels stay up in brighter colours") {
+        REQUIRE(frames == std::vector<const uint8_t *>(FADE_FRAMES, slide));
+        REQUIRE(monitor.shown().layers.front().palette[1] != ink);
+        REQUIRE(monitor.pixel(0, 0) != toArgb(0x000));
+      }
     }
   }
 }
