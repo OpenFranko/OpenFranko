@@ -8,6 +8,20 @@ _start:
 	move.l	#0,0xF1A114
 	move.w	#0xFFFF,0xF0004E
 	move.w	#0x1F00,0xF000E0
+	move.w	#0xFFFF,0xF00046
+	moveq	#3,%d1
+.Lline:
+	move.w	0xF00006,%d0
+.Lsameline:
+	cmp.w	0xF00006,%d0
+	beq.s	.Lsameline
+	dbra	%d1,.Lline
+	lea	__boot_list,%a0
+	clr.l	(%a0)
+	move.l	#4,4(%a0)
+	move.l	%a0,%d0
+	swap	%d0
+	move.l	%d0,0xF00020
 	lea	__stack_top,%sp
 	lea	__text_load,%a0
 	lea	__text_start,%a1

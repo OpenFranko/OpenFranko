@@ -34,6 +34,7 @@ constexpr unsigned KEYBOARD_PANEL = 2;
 constexpr unsigned COMPACT_KEYBOARD = 4;
 constexpr int COMPACT_PANEL_LEFT = 26;
 constexpr int COMPACT_PANEL_BOTTOM = 12;
+constexpr uint32_t WATCHDOG_VBLS = 900;
 
 alignas(jaguar::SCALED_ALIGNMENT) uint64_t liveList[LIVE_PHRASES];
 constexpr uint64_t BYTE_COPIES = 0x0101010101010101ull;
@@ -476,9 +477,11 @@ VideoSystem::VideoSystem(bool) : m_window(std::make_unique<Window>()) {
   jaguar::profiler::start();
   jaguar::runtime::setVideoHandler(onVblank);
   jaguar::runtime::enableVideoInterrupt(window.geometry.vblankHalfLine);
+  jaguar::runtime::armWatchdog(WATCHDOG_VBLS);
 }
 
 VideoSystem::~VideoSystem() {
+  jaguar::runtime::armWatchdog(0);
   jaguar::blitter::stopQueue();
   jaguar::runtime::setVideoHandler(nullptr);
   activeTarget = nullptr;
@@ -538,6 +541,7 @@ void VideoSystem::sync() {
   jaguar::profiler::addBusy(busy);
   window.longestUpdate = std::max<uint32_t>(window.longestUpdate, busy);
   waitVbl();
+  jaguar::runtime::feedWatchdog();
   window.updateStart = jaguar::profiler::now();
   jaguar::blitter::wait();
   window.measure();

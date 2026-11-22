@@ -10,6 +10,7 @@ MEMORY
 
 __stack_top = 0x200000;
 __stack_size = 0x8000;
+__boot_list = ORIGIN(RAM) - 16;
 
 SECTIONS
 {

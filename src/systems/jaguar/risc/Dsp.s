@@ -217,14 +217,19 @@ sfxCommandLoop:
 	nop
 	store	r7,(r14+1)
 	load	(r15+1),r7
+	or	r7,r7
 	store	r7,(r14+4)
 	load	(r15+2),r8
+	or	r8,r8
 	store	r8,(r14+5)
 	load	(r15+3),r8
+	or	r8,r8
 	store	r8,(r14+2)
 	load	(r15+4),r8
+	or	r8,r8
 	store	r8,(r14+3)
 	load	(r15+5),r8
+	or	r8,r8
 	store	r8,(r14+6)
 	move	r6,r8
 	sub	r7,r8
@@ -313,8 +318,10 @@ applyVoice:
 applyNoTrigger:
 	nop
 	load	(r15+2),r3
+	or	r3,r3
 	store	r3,(r14+4)
 	load	(r15+3),r3
+	or	r3,r3
 	store	r3,(r14+5)
 	load	(r15+4),r3
 	load	(r12),r5
@@ -362,6 +369,7 @@ divideNext:
 	store	r8,(r14+3)
 applySameStep:
 	load	(r15+6),r3
+	or	r3,r3
 	store	r3,(r14+6)
 	move	r1,r4
 	shrq	#1,r4

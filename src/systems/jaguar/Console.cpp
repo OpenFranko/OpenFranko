@@ -153,7 +153,7 @@ void attach(const std::string &title) {
   attachedTitle = title;
   render(title);
   prepare(geometry, false);
-  waitBlanking(geometry);
+  waitTopBlanking(geometry);
   refresh();
   setOlp(reinterpret_cast<uint32_t>(live));
   runtime::setVideoHandler(refresh);
@@ -168,7 +168,7 @@ void attach(const std::string &title) {
   const Geometry geometry = detectGeometry();
   render(title);
   prepare(geometry, fatal);
-  waitBlanking(geometry);
+  waitTopBlanking(geometry);
   refresh();
   setOlp(reinterpret_cast<uint32_t>(live));
   for (;;) {
