@@ -113,17 +113,19 @@ std::unique_ptr<assets::Files> openCheckedFiles() {
 
 } // namespace
 
-Engine::Engine()
-    : Engine(states::EngineStateId::Mirage, street::session::GameSession{}) {}
+Engine::Engine(const LaunchOptions &launch)
+    : Engine(states::EngineStateId::Mirage, street::session::GameSession{},
+             launch) {}
 
 Engine::Engine(states::EngineStateId firstState,
-               street::session::GameSession startingSession)
+               street::session::GameSession startingSession,
+               const LaunchOptions &launch)
     : m_audioSystem(
           [this](const std::string &path) { return m_files->read(path); }),
       m_files(std::make_unique<assets::PrefetchingFiles>(
           std::make_unique<assets::YieldingFiles>(
               openCheckedFiles(), [this] { m_audioSystem.update(); }))),
-      m_menuPrefetch(*m_files, m_audioSystem),
+      m_menuPrefetch(*m_files, m_audioSystem), m_videoSystem(launch.fullscreen),
       m_session(std::move(startingSession)), m_running(true) {
   m_options.ntsc = m_videoSystem.isNtsc();
   m_session.version = assets::detectVersion(*m_files);

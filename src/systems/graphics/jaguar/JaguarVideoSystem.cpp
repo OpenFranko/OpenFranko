@@ -442,7 +442,7 @@ void VideoSystem::Window::choose(int slot) {
   pending = slot == current ? NO_FRAME : slot;
 }
 
-VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
+VideoSystem::VideoSystem(bool) : m_window(std::make_unique<Window>()) {
   Window &window = *m_window;
   window.geometry = jaguar::detectGeometry();
   m_ntsc = window.geometry.ntsc;

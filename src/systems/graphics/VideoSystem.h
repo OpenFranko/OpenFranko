@@ -15,7 +15,7 @@ namespace graphics {
 
 class VideoSystem : public Monitor {
 public:
-  VideoSystem();
+  explicit VideoSystem(bool fullscreen = false);
   ~VideoSystem() override;
 
   VideoSystem(const VideoSystem &) = delete;

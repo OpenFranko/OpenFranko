@@ -6,6 +6,7 @@
 #include "../systems/input/ControllerSystem.h"
 #include "../systems/input/Platform.h"
 #include "GameOptions.h"
+#include "LaunchOptions.h"
 #include "MersenneTwister.h"
 #include "assets/PrefetchingFiles.h"
 #include "states/EngineState.h"
@@ -22,9 +23,10 @@ namespace engine {
 
 class Engine {
 public:
-  Engine();
+  explicit Engine(const LaunchOptions &launch = {});
   Engine(states::EngineStateId firstState,
-         street::session::GameSession startingSession);
+         street::session::GameSession startingSession,
+         const LaunchOptions &launch = {});
   ~Engine();
 
   bool isRunning();

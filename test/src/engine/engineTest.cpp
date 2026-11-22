@@ -282,3 +282,28 @@ SCENARIO("A 1.0 data set boots into the Mirage logo") {
     }
   }
 }
+
+SCENARIO("The fullscreen launch option opens the engine fullscreen") {
+  GIVEN("A 1.0 data set with a Mirage logo picture") {
+    const TemporaryWorkingDirectory directory("openFrankoEngineFullscreen");
+    writeGameData(GameVersion::V10);
+    writeFile(MIRAGE_LOGO, bitmap(LOGO_WIDTH, LOGO_HEIGHT));
+    const HeadlessSdl sdl;
+
+    WHEN("The engine is launched with it") {
+      LaunchOptions launch;
+      launch.fullscreen = true;
+      const Engine engine(launch);
+
+      THEN("Its window covers the desktop before the first frame") {
+        REQUIRE(isFullscreen());
+      }
+    }
+
+    WHEN("The engine is launched without it") {
+      const Engine engine;
+
+      THEN("Its window opens as a window") { REQUIRE_FALSE(isFullscreen()); }
+    }
+  }
+}

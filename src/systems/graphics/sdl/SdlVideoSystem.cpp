@@ -115,7 +115,8 @@ ScreenMode VideoSystem::Window::displayMode() const {
   return screenMode(mode);
 }
 
-VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
+VideoSystem::VideoSystem(bool fullscreen)
+    : m_window(std::make_unique<Window>()) {
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
     throwError("SDL initialization failed");
   }
@@ -124,11 +125,14 @@ VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
 
   m_window->window = SDL_CreateWindow(
       WINDOW_NAME, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH,
-      WINDOW_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+      WINDOW_HEIGHT, SDL_WINDOW_HIDDEN | SDL_WINDOW_RESIZABLE);
   if (!m_window->window) {
     throwError("Window creation failed");
   }
   SDL_ShowCursor(SDL_DISABLE);
+  if (fullscreen) {
+    m_window->enterFullscreen(refreshRate());
+  }
 
   m_window->renderer =
       SDL_CreateRenderer(m_window->window, -1,
@@ -136,6 +140,7 @@ VideoSystem::VideoSystem() : m_window(std::make_unique<Window>()) {
   if (!m_window->renderer) {
     throwError("Renderer creation failed");
   }
+  SDL_ShowWindow(m_window->window);
   SDL_AddEventWatch(Window::watchKeys, m_window.get());
 }
 
